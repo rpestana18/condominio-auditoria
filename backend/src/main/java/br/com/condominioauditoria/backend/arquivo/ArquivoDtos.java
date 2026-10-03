@@ -38,4 +38,8 @@ final class ArquivoDtos {
 
     record CategoriaDto(Categoria codigo, String rotulo) {
     }
+
+    /** Pedido de troca de categoria (RF-01.7). */
+    record NovaCategoria(Categoria categoria) {
+    }
 }

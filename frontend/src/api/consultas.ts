@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { enviar, obter } from "./cliente";
-import type { ArquivoDetalhe, ArquivoResumo, Categoria, CategoriaDto, Painel, UsuarioLogado } from "./tipos";
+import { atualizar, enviar, obter } from "./cliente";
+import type { ArquivoDetalhe, ArquivoResumo, Categoria, CategoriaDto, NovaCategoria, Painel, UsuarioLogado } from "./tipos";
 
 const emAndamento = (a: ArquivoResumo) => a.status === "PENDENTE" || a.status === "PROCESSANDO";
 
@@ -46,7 +46,7 @@ export function usePainel(condominioId: string) {
   });
 }
 
-/** Depois de enviar ou reprocessar, tudo o que depende de arquivos é recarregado. */
+/** Depois de enviar, reprocessar ou trocar a categoria, tudo o que depende de arquivos é recarregado. */
 function useRecarregarArquivos() {
   const cliente = useQueryClient();
   return () => {
@@ -72,6 +72,16 @@ export function useReprocessar(condominioId: string) {
   const recarregar = useRecarregarArquivos();
   return useMutation({
     mutationFn: (id: string) => enviar<ArquivoResumo>(`/condominios/${condominioId}/arquivos/${id}/reprocessar`),
+    onSuccess: recarregar,
+  });
+}
+
+/** Troca a categoria; o backend reprocessa o arquivo com a nova (RF-01.7). */
+export function useAlterarCategoria(condominioId: string) {
+  const recarregar = useRecarregarArquivos();
+  return useMutation({
+    mutationFn: ({ id, categoria }: { id: string; categoria: Categoria }) =>
+      atualizar<ArquivoResumo>(`/condominios/${condominioId}/arquivos/${id}/categoria`, { categoria } satisfies NovaCategoria),
     onSuccess: recarregar,
   });
 }

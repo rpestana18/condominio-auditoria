@@ -2,6 +2,7 @@ package br.com.condominioauditoria.backend.processamento;
 
 import br.com.condominioauditoria.backend.arquivo.Arquivo;
 import br.com.condominioauditoria.backend.arquivo.ArquivoRepository;
+import br.com.condominioauditoria.backend.arquivo.Categoria;
 import br.com.condominioauditoria.backend.arquivo.StatusArquivo;
 import br.com.condominioauditoria.backend.contabil.Conferencia;
 import br.com.condominioauditoria.backend.contabil.ConferenciaRepository;
@@ -63,6 +64,14 @@ public class GravacaoResultado {
         conferencias.apagarDoArquivo(arquivo.getId());
 
         Fluxo fluxo = resultado.fluxoDeCaixa();
+        if (fluxo != null && arquivo.getCategoria() != Categoria.BALANCETE) {
+            // RF-01.7: só a categoria de balancetes e fluxos de caixa gera lançamentos, saldos e conferências.
+            arquivo.concluir(StatusArquivo.CONCLUIDO,
+                    "Arquivo guardado. Ele parece um fluxo de caixa: para gerar os lançamentos, mude a categoria para \""
+                            + Categoria.BALANCETE.rotulo() + "\".",
+                    null, null, null, null);
+            return;
+        }
         if (fluxo == null) {
             arquivo.concluir(StatusArquivo.CONCLUIDO,
                     "Arquivo guardado. A leitura dos dados deste tipo de documento ainda vai ser construída.",

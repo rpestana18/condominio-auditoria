@@ -92,6 +92,23 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Painel" } } } }
         "204": { description: Ainda não há fluxo de caixa processado }
+  /condominios/{condominioId}/fundo-ordinario:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    put:
+      summary: Confirma qual fundo é o ordinário do condomínio (GESTOR ou ADMIN)
+      operationId: confirmarFundoOrdinario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fundoId]
+              properties: { fundoId: { type: string, format: uuid } }
+      responses:
+        "204": { description: Confirmado }
+        "403": { description: Perfil sem permissão }
+        "404": { description: Fundo não é deste condomínio }
 components:
   securitySchemes:
     bearer: { type: http, scheme: bearer, bearerFormat: JWT }
@@ -170,7 +187,7 @@ components:
               saldoAtual: { type: number }
     Painel:
       type: object
-      required: [arquivoId, arquivoNome, periodoInicio, periodoFim, saldoAnterior, entradas, saidas, saldoAtual, conferenciasComFalha, fundos, maioresDespesas]
+      required: [arquivoId, arquivoNome, periodoInicio, periodoFim, saldoAnterior, entradas, saidas, saldoAtual, conferenciasComFalha, fundoOrdinario, fundos, maioresDespesas]
       properties:
         arquivoId: { type: string, format: uuid }
         arquivoNome: { type: string }
@@ -181,12 +198,26 @@ components:
         saidas: { type: number }
         saldoAtual: { type: number }
         conferenciasComFalha: { type: integer }
+        fundoOrdinario:
+          description: |
+            Saldo acumulado do fundo ordinário (cartão "Saldo acumulado"). Com confirmado=false é só a sugestão
+            (fundo com mais entradas no mês), que a tela mostra para o Gestor confirmar. Nulo quando não há sugestão.
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [fundoId, fundo, confirmado, saldoAtual]
+              properties:
+                fundoId: { type: string, format: uuid }
+                fundo: { type: string }
+                confirmado: { type: boolean }
+                saldoAtual: { type: [number, "null"], description: Nulo quando o fundo confirmado não está no relatório }
         fundos:
           type: array
           items:
             type: object
-            required: [fundo, saldoAnterior, entradas, saidas, resultado, saldoAtual]
+            required: [fundoId, fundo, saldoAnterior, entradas, saidas, resultado, saldoAtual]
             properties:
+              fundoId: { type: string, format: uuid }
               fundo: { type: string }
               saldoAnterior: { type: number }
               entradas: { type: number }

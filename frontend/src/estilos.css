@@ -70,6 +70,8 @@ main { padding: 24px 28px 64px; }
 .cartao-numero { padding: 16px; display: flex; flex-direction: column; gap: 6px; }
 .cartao-titulo { color: var(--texto-discreto); font-size: 0.85rem; }
 .cartao-numero strong { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+.cartao-numero strong.nome-fundo { font-size: inherit; }
+.acoes-cartao { display: flex; gap: 12px; align-items: center; }
 .positivo { color: var(--positivo); }
 .negativo { color: var(--negativo); }
 

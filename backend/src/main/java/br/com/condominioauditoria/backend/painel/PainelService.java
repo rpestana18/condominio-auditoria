@@ -10,6 +10,8 @@ import br.com.condominioauditoria.backend.contabil.LancamentoRepository;
 import br.com.condominioauditoria.backend.contabil.SaldoFundo;
 import br.com.condominioauditoria.backend.contabil.SaldoFundoRepository;
 import br.com.condominioauditoria.backend.arquivo.StatusArquivo;
+import br.com.condominioauditoria.backend.condominio.Condominio;
+import br.com.condominioauditoria.backend.condominio.CondominioRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -38,10 +40,12 @@ public class PainelService {
     private final FundoRepository fundos;
     private final LancamentoRepository lancamentos;
     private final ConferenciaRepository conferencias;
+    private final CondominioRepository condominios;
 
-    PainelService(ArquivoRepository arquivos, SaldoFundoRepository saldos,
-            FundoRepository fundos, LancamentoRepository lancamentos, ConferenciaRepository conferencias) {
+    PainelService(ArquivoRepository arquivos, SaldoFundoRepository saldos, FundoRepository fundos,
+            LancamentoRepository lancamentos, ConferenciaRepository conferencias, CondominioRepository condominios) {
         this.arquivos = arquivos;
+        this.condominios = condominios;
         this.saldos = saldos;
         this.fundos = fundos;
         this.lancamentos = lancamentos;
@@ -60,8 +64,8 @@ public class PainelService {
                 .collect(Collectors.toMap(Fundo::getId, Fundo::getNome));
         List<SaldoFundo> posicao = saldos.findByArquivoId(arquivo.getId());
         List<FundoNoPeriodo> porFundo = posicao.stream()
-                .map(s -> new FundoNoPeriodo(nomes.get(s.getFundoId()), s.getSaldoAnterior(), s.getCreditos(),
-                        s.getDebitos(), s.getCreditos().subtract(s.getDebitos()), s.getSaldoAtual()))
+                .map(s -> new FundoNoPeriodo(s.getFundoId(), nomes.get(s.getFundoId()), s.getSaldoAnterior(),
+                        s.getCreditos(), s.getDebitos(), s.getCreditos().subtract(s.getDebitos()), s.getSaldoAtual()))
                 .sorted(Comparator.comparing(FundoNoPeriodo::saldoAtual).reversed())
                 .toList();
         List<Despesa> maiores = lancamentos
@@ -70,10 +74,12 @@ public class PainelService {
                 .toList();
         long conferenciasComFalha = conferencias.findByArquivoIdOrderByOrdem(arquivo.getId()).stream()
                 .filter(c -> !c.isOk()).count();
+        UUID ordinarioId = condominios.findById(condominioId).map(Condominio::getFundoOrdinarioId).orElse(null);
+        FundoOrdinario ordinario = FundoOrdinario.de(ordinarioId, nomes.get(ordinarioId), porFundo).orElse(null);
         return new Painel(arquivo.getId(), arquivo.getNomeOriginal(), arquivo.getPeriodoInicio(), arquivo.getPeriodoFim(),
                 soma(posicao, SaldoFundo::getSaldoAnterior), soma(posicao, SaldoFundo::getCreditos),
                 soma(posicao, SaldoFundo::getDebitos), soma(posicao, SaldoFundo::getSaldoAtual),
-                conferenciasComFalha, porFundo, maiores);
+                conferenciasComFalha, ordinario, porFundo, maiores);
     }
 
     private static BigDecimal soma(List<SaldoFundo> lista, Function<SaldoFundo, BigDecimal> campo) {
@@ -82,11 +88,12 @@ public class PainelService {
 
     public record Painel(UUID arquivoId, String arquivoNome, LocalDate periodoInicio, LocalDate periodoFim,
             BigDecimal saldoAnterior, BigDecimal entradas, BigDecimal saidas, BigDecimal saldoAtual,
-            long conferenciasComFalha, List<FundoNoPeriodo> fundos, List<Despesa> maioresDespesas) {
+            long conferenciasComFalha, FundoOrdinario fundoOrdinario, List<FundoNoPeriodo> fundos,
+            List<Despesa> maioresDespesas) {
     }
 
-    public record FundoNoPeriodo(String fundo, BigDecimal saldoAnterior, BigDecimal entradas, BigDecimal saidas,
-            BigDecimal resultado, BigDecimal saldoAtual) {
+    public record FundoNoPeriodo(UUID fundoId, String fundo, BigDecimal saldoAnterior, BigDecimal entradas,
+            BigDecimal saidas, BigDecimal resultado, BigDecimal saldoAtual) {
     }
 
     public record Despesa(LocalDate data, String fundo, String conta, String historico, BigDecimal valor, int pagina) {

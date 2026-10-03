@@ -13,6 +13,9 @@ public class Condominio {
     private String nome;
     private String cnpj;
     private Instant criadoEm;
+    private UUID fundoOrdinarioId;
+    private String fundoOrdinarioConfirmadoPor;
+    private Instant fundoOrdinarioConfirmadoEm;
 
     protected Condominio() {
     }
@@ -31,5 +34,24 @@ public class Condominio {
 
     public Instant getCriadoEm() {
         return criadoEm;
+    }
+
+    public UUID getFundoOrdinarioId() {
+        return fundoOrdinarioId;
+    }
+
+    public String getFundoOrdinarioConfirmadoPor() {
+        return fundoOrdinarioConfirmadoPor;
+    }
+
+    public Instant getFundoOrdinarioConfirmadoEm() {
+        return fundoOrdinarioConfirmadoEm;
+    }
+
+    /** O Gestor ou o Admin confirma qual fundo é o ordinário (RF-05.1b). */
+    public void confirmarFundoOrdinario(UUID fundoId, String usuario, Instant quando) {
+        this.fundoOrdinarioId = fundoId;
+        this.fundoOrdinarioConfirmadoPor = usuario;
+        this.fundoOrdinarioConfirmadoEm = quando;
     }
 }

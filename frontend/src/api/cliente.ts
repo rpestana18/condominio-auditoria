@@ -36,6 +36,11 @@ export async function enviar<T>(caminho: string, corpo?: FormData): Promise<T> {
   return (await resposta.json()) as T;
 }
 
+/** PUT com corpo JSON e sem resposta (204). */
+export async function gravar(caminho: string, corpo: unknown): Promise<void> {
+  await chamar(caminho, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
+}
+
 /** Baixa um arquivo autenticado e abre numa nova aba (o navegador não manda o token sozinho num link). */
 export async function abrirArquivo(caminho: string): Promise<void> {
   const resposta = await chamar(caminho);

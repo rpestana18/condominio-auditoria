@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { enviar, obter } from "./cliente";
+import { enviar, gravar, obter } from "./cliente";
 import type { ArquivoDetalhe, ArquivoResumo, Categoria, CategoriaDto, Painel, UsuarioLogado } from "./tipos";
 
 const emAndamento = (a: ArquivoResumo) => a.status === "PENDENTE" || a.status === "PROCESSANDO";
@@ -73,5 +73,13 @@ export function useReprocessar(condominioId: string) {
   return useMutation({
     mutationFn: (id: string) => enviar<ArquivoResumo>(`/condominios/${condominioId}/arquivos/${id}/reprocessar`),
     onSuccess: recarregar,
+  });
+}
+
+export function useConfirmarFundoOrdinario(condominioId: string) {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: (fundoId: string) => gravar(`/condominios/${condominioId}/fundo-ordinario`, { fundoId }),
+    onSuccess: () => void cliente.invalidateQueries({ queryKey: ["painel", condominioId] }),
   });
 }

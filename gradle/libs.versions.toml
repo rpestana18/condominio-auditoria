@@ -1,0 +1,14 @@
+# Catálogo único de versões do backend
+[versions]
+spring-boot = "4.1.1"
+spring-dependency-management = "1.1.7"
+spring-ai = "2.0.1"
+json-schema-validator = "3.0.8"
+
+[libraries]
+spring-ai-bom = { module = "org.springframework.ai:spring-ai-bom", version.ref = "spring-ai" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }

@@ -1,0 +1,171 @@
+{
+  "realm": "condominio",
+  "displayName": "Auditoria do Condomínio",
+  "enabled": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "pt-BR"
+  ],
+  "defaultLocale": "pt-BR",
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": true,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "USUARIO",
+        "description": "Consulta e exporta relatórios"
+      },
+      {
+        "name": "GESTOR",
+        "description": "Consulta, envia e atualiza arquivos e exporta relatórios"
+      },
+      {
+        "name": "ADMIN",
+        "description": "Permissão total"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "frontend",
+      "name": "Tela web",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8080/*",
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8080",
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:8080/*##http://localhost:5173/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "condominios",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "condominios",
+            "claim.name": "condominios",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "dev-cli",
+      "name": "Scripts de desenvolvimento e testes (só local)",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "condominios",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "condominios",
+            "claim.name": "condominios",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "usuario",
+      "firstName": "Usuário",
+      "lastName": "Consulta",
+      "email": "usuario@exemplo.local",
+      "emailVerified": true,
+      "enabled": true,
+      "attributes": {
+        "condominios": [
+          "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "usuario",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "USUARIO"
+      ]
+    },
+    {
+      "username": "gestor",
+      "firstName": "Gestor",
+      "lastName": "Piloto",
+      "email": "gestor@exemplo.local",
+      "emailVerified": true,
+      "enabled": true,
+      "attributes": {
+        "condominios": [
+          "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "gestor",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "GESTOR"
+      ]
+    },
+    {
+      "username": "admin",
+      "firstName": "Administrador",
+      "lastName": "Sistema",
+      "email": "admin@exemplo.local",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ADMIN"
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"email\", \"displayName\": \"${email}\", \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"condominios\", \"displayName\": \"Condom\\u00ednios (ids)\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": true}], \"groups\": [{\"name\": \"user-metadata\", \"displayHeader\": \"User metadata\", \"displayDescription\": \"Attributes, which refer to user metadata\"}]}"
+          ]
+        }
+      }
+    ]
+  }
+}

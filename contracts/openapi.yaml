@@ -1,0 +1,214 @@
+openapi: 3.1.0
+info:
+  title: Auditoria do Condomínio – API
+  version: 0.1.0
+  description: |
+    Contrato entre backend, frontend e MCP. Toda chamada exige token Bearer do Keycloak.
+    Perfis: USUARIO (consulta), GESTOR (+ envia arquivos), ADMIN (tudo).
+    Valores monetários são números com 2 casas decimais; datas em ISO 8601.
+servers:
+  - url: /api
+security:
+  - bearer: []
+paths:
+  /eu:
+    get:
+      summary: Usuário logado, perfis e condomínios visíveis
+      operationId: eu
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/UsuarioLogado" } } } }
+  /categorias:
+    get:
+      summary: Categorias de arquivo, na ordem da tela
+      operationId: categorias
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CategoriaDto" } } } }
+  /condominios/{condominioId}/arquivos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Arquivos do mais recente para o mais antigo
+      operationId: listarArquivos
+      parameters:
+        - { name: categoria, in: query, required: false, schema: { $ref: "#/components/schemas/Categoria" } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ArquivoResumo" } } } }
+    post:
+      summary: Envia um arquivo (GESTOR ou ADMIN). O processamento segue em segundo plano.
+      operationId: enviarArquivo
+      parameters:
+        - { name: categoria, in: query, required: true, schema: { $ref: "#/components/schemas/Categoria" } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [arquivo]
+              properties: { arquivo: { type: string, format: binary } }
+      responses:
+        "202": { description: Recebido e na fila, content: { application/json: { schema: { $ref: "#/components/schemas/ArquivoResumo" } } } }
+        "403": { description: Perfil sem permissão }
+        "409": { description: Arquivo já enviado (mesmo conteúdo), content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+  /condominios/{condominioId}/arquivos/ultimo:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Último arquivo enviado (indicador no canto da tela)
+      operationId: ultimoArquivo
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ArquivoResumo" } } } }
+        "204": { description: Nenhum arquivo ainda }
+  /condominios/{condominioId}/arquivos/{id}:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/ArquivoId" }]
+    get:
+      summary: Detalhe com conferências e saldos por fundo
+      operationId: detalheArquivo
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ArquivoDetalhe" } } } }
+        "404": { description: Não encontrado }
+  /condominios/{condominioId}/arquivos/{id}/conteudo:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/ArquivoId" }]
+    get:
+      summary: Arquivo original, exatamente como foi enviado
+      operationId: conteudoArquivo
+      responses:
+        "200": { description: O arquivo, content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+  /condominios/{condominioId}/arquivos/{id}/reprocessar:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/ArquivoId" }]
+    post:
+      summary: Coloca o arquivo de novo na fila (GESTOR ou ADMIN). Não duplica dados.
+      operationId: reprocessarArquivo
+      responses:
+        "202": { description: Na fila, content: { application/json: { schema: { $ref: "#/components/schemas/ArquivoResumo" } } } }
+        "409": { description: Já está em processamento }
+  /condominios/{condominioId}/painel:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Números da tela inicial, do fluxo de caixa mais recente
+      operationId: painel
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Painel" } } } }
+        "204": { description: Ainda não há fluxo de caixa processado }
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    CondominioId: { name: condominioId, in: path, required: true, schema: { type: string, format: uuid } }
+    ArquivoId: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+  schemas:
+    Categoria:
+      type: string
+      enum: [BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+    StatusArquivo:
+      type: string
+      enum: [PENDENTE, PROCESSANDO, CONCLUIDO, PRECISA_REVISAO, FALHOU]
+    CategoriaDto:
+      type: object
+      required: [codigo, rotulo]
+      properties:
+        codigo: { $ref: "#/components/schemas/Categoria" }
+        rotulo: { type: string }
+    UsuarioLogado:
+      type: object
+      required: [usuario, nome, perfis, condominios]
+      properties:
+        usuario: { type: string }
+        nome: { type: string }
+        perfis: { type: array, items: { type: string, enum: [USUARIO, GESTOR, ADMIN] } }
+        condominios:
+          type: array
+          items:
+            type: object
+            required: [id, nome]
+            properties: { id: { type: string, format: uuid }, nome: { type: string } }
+    ArquivoResumo:
+      type: object
+      required: [id, categoria, categoriaRotulo, nome, tamanhoBytes, status, enviadoPor, enviadoEm]
+      properties:
+        id: { type: string, format: uuid }
+        categoria: { $ref: "#/components/schemas/Categoria" }
+        categoriaRotulo: { type: string }
+        nome: { type: string }
+        tamanhoBytes: { type: integer, format: int64 }
+        status: { $ref: "#/components/schemas/StatusArquivo" }
+        mensagem: { type: [string, "null"] }
+        periodoInicio: { type: [string, "null"], format: date }
+        periodoFim: { type: [string, "null"], format: date }
+        totalLancamentos: { type: [integer, "null"] }
+        enviadoPor: { type: string }
+        enviadoEm: { type: string, format: date-time }
+        processadoEm: { type: [string, "null"], format: date-time }
+    ArquivoDetalhe:
+      type: object
+      required: [arquivo, sha256, conferencias, fundos]
+      properties:
+        arquivo: { $ref: "#/components/schemas/ArquivoResumo" }
+        sha256: { type: string }
+        conferencias:
+          type: array
+          items:
+            type: object
+            required: [codigo, descricao, ok]
+            properties:
+              codigo: { type: string }
+              descricao: { type: string }
+              ok: { type: boolean }
+              detalhe: { type: [string, "null"] }
+        fundos:
+          type: array
+          items:
+            type: object
+            required: [fundo, saldoAnterior, creditos, debitos, saldoAtual]
+            properties:
+              fundo: { type: string }
+              saldoAnterior: { type: number }
+              creditos: { type: number }
+              debitos: { type: number }
+              saldoAtual: { type: number }
+    Painel:
+      type: object
+      required: [arquivoId, arquivoNome, periodoInicio, periodoFim, saldoAnterior, entradas, saidas, saldoAtual, conferenciasComFalha, fundos, maioresDespesas]
+      properties:
+        arquivoId: { type: string, format: uuid }
+        arquivoNome: { type: string }
+        periodoInicio: { type: string, format: date }
+        periodoFim: { type: string, format: date }
+        saldoAnterior: { type: number }
+        entradas: { type: number }
+        saidas: { type: number }
+        saldoAtual: { type: number }
+        conferenciasComFalha: { type: integer }
+        fundos:
+          type: array
+          items:
+            type: object
+            required: [fundo, saldoAnterior, entradas, saidas, resultado, saldoAtual]
+            properties:
+              fundo: { type: string }
+              saldoAnterior: { type: number }
+              entradas: { type: number }
+              saidas: { type: number }
+              resultado: { type: number }
+              saldoAtual: { type: number }
+        maioresDespesas:
+          type: array
+          items:
+            type: object
+            required: [data, fundo, conta, historico, valor, pagina]
+            properties:
+              data: { type: string, format: date }
+              fundo: { type: string }
+              conta: { type: string }
+              historico: { type: string }
+              valor: { type: number }
+              pagina: { type: integer }
+    Problema:
+      type: object
+      properties:
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        arquivoExistenteId: { type: string, format: uuid }

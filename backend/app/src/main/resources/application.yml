@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: condominio-auditoria
+  datasource:
+    url: ${BANCO_URL:jdbc:postgresql://localhost:5432/condominio}
+    username: ${BANCO_USUARIO:condominio}
+    password: ${BANCO_SENHA:condominio}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.batch_size: 100
+      hibernate.order_inserts: true
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Emissor que aparece no token (endereço que o navegador usa)
+          issuer-uri: ${KEYCLOAK_EMISSOR:http://localhost:8180/realms/condominio}
+          # Endereço para buscar as chaves (dentro do docker compose é http://keycloak:8080/...)
+          jwk-set-uri: ${KEYCLOAK_CHAVES:http://localhost:8180/realms/condominio/protocol/openid-connect/certs}
+
+condominio:
+  armazenamento:
+    tipo: local
+    pasta: ${PASTA_DADOS:./dados}
+  leitor:
+    url: ${LEITOR_URL:http://localhost:8090}
+    timeout-segundos: 300
+  processamento:
+    threads: ${PROCESSAMENTO_THREADS:2}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

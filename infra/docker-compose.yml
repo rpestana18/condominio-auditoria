@@ -1,0 +1,65 @@
+# Sobe o sistema inteiro na máquina local: docker compose up --build
+# Endereços: tela http://localhost:8080 · Keycloak http://localhost:8180 (admin/admin)
+name: condominio-auditoria
+
+services:
+  banco:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: condominio
+      POSTGRES_USER: condominio
+      POSTGRES_PASSWORD: condominio
+    ports: ["5432:5432"]
+    volumes: [banco:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U condominio -d condominio"]
+      interval: 5s
+      retries: 20
+
+  keycloak:
+    image: keycloak/keycloak:26.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # O token sempre sai com o endereço público como emissor; o backend busca as chaves pela rede interna
+      KC_HOSTNAME: http://localhost:8180
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports: ["8180:8080"]
+    volumes: [./keycloak/realm-condominio.json:/opt/keycloak/data/import/realm-condominio.json:ro]
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      retries: 40
+
+  leitor:
+    build: ../services/ingestion-py
+    ports: ["8090:8090"]
+    read_only: true
+    tmpfs: [/tmp]
+
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      BANCO_URL: jdbc:postgresql://banco:5432/condominio
+      KEYCLOAK_EMISSOR: http://localhost:8180/realms/condominio
+      KEYCLOAK_CHAVES: http://keycloak:8080/realms/condominio/protocol/openid-connect/certs
+      LEITOR_URL: http://leitor:8090
+      PASTA_DADOS: /dados
+    volumes: [../dados:/dados]
+    ports: ["8081:8080"]
+    depends_on:
+      banco: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      leitor: { condition: service_started }
+
+  frontend:
+    build: ../frontend
+    ports: ["8080:80"]
+    depends_on: [backend]
+
+volumes:
+  banco:

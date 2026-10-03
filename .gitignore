@@ -1,0 +1,22 @@
+# Build
+build/
+.gradle/
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+.ca-teste.crt
+
+# Arquivos enviados ao sistema (originais): nunca no git
+/dados/*
+!/dados/.gitkeep
+
+# Documentos reais do piloto usados nos testes (dado pessoal/financeiro)
+/data/golden/privado/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store

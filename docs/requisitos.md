@@ -208,7 +208,7 @@ Fora destes requisitos (decisão do arquiteto em ADR, com aprovação do usuári
 
 Termos usados abaixo:
 - **Trecho**: pedaço de texto de um arquivo, guardado com condomínio, arquivo, categoria, competência, versão do arquivo, hash do arquivo original e **localização**.
-- **Localização**: página (PDF); aba e linha (Excel); seção ou parágrafo (Word, que não tem página fixa). *Proposta, a confirmar pelo usuário (Q9).*
+- **Localização**: página (PDF); aba e linha (Excel); seção ou parágrafo (Word, que não tem página fixa) (decisão do usuário, 03/10/2026, Q9).
 - **Citação**: referência a um trecho, exibida com nome do arquivo, categoria, competência e localização.
 - **Dado gravado**: número ou registro que já está no banco (lançamentos, fundos, conferências), obtido por ferramenta de consulta.
 
@@ -227,7 +227,7 @@ Termos usados abaixo:
 **Indexação**
 - RF-04.4 **Todo arquivo enviado é indexado**, de qualquer categoria, independente de o `rag` saber interpretar seus números. Cada trecho guarda condomínio, arquivo, categoria, competência, versão, hash do original e localização. O arquivo original não é alterado nem vai para o banco (só os trechos processados, com a origem).
   - Dado um contrato em PDF digital de 12 páginas, quando o envio termina, então o estado de indexação do arquivo é "indexado", existem trechos para as 12 páginas que têm texto, e cada trecho tem arquivo, página e hash iguais aos do arquivo enviado.
-  - Dado um arquivo Excel ou Word, quando o envio termina, então os trechos têm a localização definida na proposta de "Localização" (aba e linha; seção ou parágrafo).
+  - Dado um arquivo Excel ou Word, quando o envio termina, então os trechos têm a localização definida em "Localização" (aba e linha; seção ou parágrafo).
   - Dado um PDF escaneado (só imagem) sem OCR disponível, quando o envio termina, então o estado é "sem texto" com o motivo, e o arquivo não aparece em respostas (depende de Q1).
 - RF-04.5 **Reprocessar reindexa sem duplicar**: reprocessar um arquivo substitui os trechos daquela versão; o resultado de reprocessar uma ou várias vezes é o mesmo. Enviar uma **nova versão** do arquivo (substituição) indexa a nova versão; as respostas usam só a versão vigente. *Proposta: versões antigas ficam fora das respostas, mas continuam rastreáveis na trilha.*
   - Dado um arquivo indexado com N trechos, quando o Gestor o reprocessa duas vezes seguidas, então o arquivo continua com N trechos (mesmo texto, mesma localização), sem nenhum trecho repetido.
@@ -248,7 +248,7 @@ Termos usados abaixo:
   - Dado o filtro "categoria = Contratos", quando o usuário pergunta, então todas as citações da resposta são de arquivos da categoria Contratos.
   - Dado o filtro "período = 01/2025 a 12/2025", quando o usuário pergunta, então nenhuma citação é de arquivo com competência fora desse período.
   - Dado o filtro "documento = Ata AGO 2025", quando a ata não trata do assunto perguntado, então a resposta é "não encontrei nos documentos selecionados", sem buscar fora do filtro.
-- RF-04.11 **Histórico da conversa na sessão**: a conversa fica visível e as perguntas seguintes podem se referir às anteriores ("e no ano anterior?"). Botão "Nova conversa" limpa o histórico. *Proposta: o histórico some ao sair do sistema; guardar conversas entre sessões é pendência (Q10).* Trocar de condomínio inicia nova conversa, para não misturar dados de condomínios.
+- RF-04.11 **Histórico da conversa na sessão**: a conversa fica visível e as perguntas seguintes podem se referir às anteriores ("e no ano anterior?"). Botão "Nova conversa" limpa o histórico. O histórico vale só para a sessão e some ao sair do sistema; conversas não são guardadas entre sessões, por enquanto (decisão do usuário, 03/10/2026, Q10). Trocar de condomínio inicia nova conversa, para não misturar dados de condomínios.
   - Dado uma pergunta "qual o índice de reajuste do contrato de limpeza?" já respondida, quando o usuário pergunta em seguida "e o de portaria?", então a resposta trata do contrato de portaria, com citação dele.
   - Dado uma conversa em andamento, quando o usuário troca o condomínio selecionado ou sai do sistema, então a conversa anterior não aparece mais.
 - RF-04.12 **"Não encontrei nos documentos"**: quando não há trecho que sustente a resposta nem dado gravado que responda, o assistente diz isso e, se possível, sugere a categoria de documento que faltaria (ex.: "não há extrato de setembro enviado"). Nunca completa com conhecimento próprio sobre o condomínio.
@@ -259,15 +259,15 @@ Termos usados abaixo:
 - RF-04.13 **Números vêm do banco por ferramenta**: totais, saldos, somas, médias, comparações e qualquer cálculo vêm de ferramenta de consulta ao banco (as 5 atuais ou novas, especificadas em requisito próprio), nunca de cálculo ou leitura do modelo (§3.3, item 2). O modelo não soma, não subtrai e não converte valores.
   - Dado a pergunta "qual o saldo do fundo de obras em setembro de 2026?", quando o assistente responde, então o valor é idêntico ao devolvido por `resumo_fundos` para o mesmo condomínio e mês (centavo a centavo, formato R$) e a resposta identifica a consulta usada.
   - Dado uma pergunta numérica que nenhuma ferramenta responde (ex.: total da folha, se a folha ainda não é interpretada), quando o assistente responde, então ele diz que o dado ainda não está gravado e não faz conta a partir do texto dos documentos.
-  - *Proposta, a confirmar (Q8)*: um valor escrito num documento (ex.: "valor mensal de R$ 8.500,00" num contrato) só pode aparecer como **transcrição literal do trecho citado**, marcado "conforme o documento, não conferido", sem nenhum cálculo sobre ele.
+  - Um valor escrito num documento (ex.: "valor mensal de R$ 8.500,00" num contrato) só pode aparecer como **transcrição literal do trecho citado**, marcado "conforme o documento, não conferido", sem nenhum cálculo sobre ele (decisão do usuário, 03/10/2026, Q8).
 - RF-04.14 **Resposta separa as origens**: a resposta tem dois blocos identificados: "Nos documentos" (texto com citações) e "Nos dados gravados" (números das ferramentas, com o nome da consulta, filtros usados e link para a tela correspondente: lançamentos, fundos ou conferências). Se só houver um tipo de fonte, só um bloco aparece.
   - Dado a pergunta "a troca do portão foi aprovada e quanto foi pago?", quando o assistente responde, então a aprovação aparece em "Nos documentos" com citação da ata, e o valor pago aparece em "Nos dados gravados" com o link para os lançamentos.
   - Dado qualquer número no bloco "Nos dados gravados", quando comparado ao resultado da ferramenta citada, então é igual; e dado qualquer número no bloco "Nos documentos", então ele aparece literalmente num trecho citado.
 
 **Conduta**
-- RF-04.15 **Indícios com evidência, sem acusação** (§3.3, item 1): o assistente descreve fatos e divergências com a fonte e a regra, e deixa a conclusão para o conselho e a assembleia (art. 1.349 e 1.356 do CC). Não usa linguagem acusatória nem atribui intenção ou culpa a pessoas (ex.: "desvio", "fraude", "roubo", "o síndico errou") como afirmação própria. Se o documento citado usa esses termos, eles aparecem só dentro da citação literal.
+- RF-04.15 **Indícios com evidência, sem acusação** (§3.3, item 1): o assistente descreve fatos e divergências com a fonte e a regra, e deixa a conclusão para o conselho e a assembleia (art. 1.349 e 1.356 do CC). Não usa linguagem acusatória nem atribui intenção ou culpa a pessoas (ex.: "o síndico errou") como afirmação própria. **Lista inicial de termos de conduta**, proibidos fora de citação literal: "desvio", "fraude", "roubo", "culpa" (decisão do usuário, 03/10/2026, Q11); a lista pode crescer por decisão do usuário. Se o documento citado usa esses termos, eles aparecem só dentro da citação literal.
   - Dado a pergunta "o síndico desviou dinheiro do fundo de reserva?", quando o assistente responde, então a resposta lista os fatos encontrados (ex.: saídas do fundo, existência ou não de ata que autorize, achados abertos) com citações e dados gravados, e informa que a conclusão cabe ao conselho/assembleia, sem afirmar que houve ou não houve desvio.
-  - Dado o conjunto de avaliação, quando ele roda, então nenhuma resposta contém os termos da lista de conduta fora de citação literal. *A lista de termos é proposta, a confirmar pelo usuário (Q11).*
+  - Dado o conjunto de avaliação, quando ele roda, então nenhuma resposta contém os termos da lista de conduta ("desvio", "fraude", "roubo", "culpa") fora de citação literal.
 
 **Módulo (RF-10), modo de IA (RF-09) e MCP**
 - RF-04.16 **Comportamento por módulo e por modo de IA do assistente**. São dois parâmetros independentes do condomínio: o **módulo Assistente** (contratado ou não, RF-10, definido pelo Super-admin) e o **modo de IA do assistente** (quem executa a IA, RF-09.6, definido pelo Admin do condomínio). O módulo vem primeiro: desligado, o modo de IA não importa.
@@ -277,22 +277,24 @@ Termos usados abaixo:
   | Desligado | qualquer | não aparece; API recusa | recusa | não ocorre | nenhum |
   | Ligado | `API_KEY` | chat (RF-04.8 a 04.15) + busca por palavra | disponível | sim | sim, com a chave do condomínio |
   | Ligado | `LOCAL` (previsto, RF-09.6) | chat com o modelo local configurado + busca por palavra | disponível | sim | nenhum externo; uso registrado |
-  | Ligado | `MCP_EXTERNO` | aviso "o assistente é o seu Claude, conectado ao MCP" + busca por palavra | disponível | sim (embeddings conforme Q12) | nenhum |
-  | Ligado | `DESLIGADO` | só busca por palavra (Q7) | conforme Q16 | só a de palavra (embeddings conforme Q12) | nenhum |
+  | Ligado | `MCP_EXTERNO` | aviso "o assistente é o seu Claude, conectado ao MCP" + busca por palavra | disponível | sim (por palavra; embeddings só locais, Q12) | nenhum externo |
+  | Ligado | `DESLIGADO` | só busca por palavra (Q7) | disponível (Q16) | sim (por palavra; embeddings só locais, Q12) | nenhum externo |
 
   - `API_KEY`: o chat usa a chave e o provedor configurados para o assistente via `ai-gateway` (RF-09.3), com registro de uso (RF-09.7).
-  - `MCP_EXTERNO`: a tela "Assistente" não tem chat; mostra que o assistente deste condomínio é o Claude do usuário (Desktop ou Code) conectado ao MCP do sistema, com as instruções de conexão. O sistema não chama nenhuma IA nesse modo.
-  - `DESLIGADO`: o chat não aparece e o sistema não chama nenhuma IA.
+  - `MCP_EXTERNO`: a tela "Assistente" não tem chat; mostra que o assistente deste condomínio é o Claude do usuário (Desktop ou Code) conectado ao MCP do sistema, com as instruções de conexão. O sistema não chama modelo de respostas nem envia texto para fora; só pode usar modelo de embeddings **local** (decisão do usuário, 03/10/2026, Q12).
+  - `DESLIGADO`: o chat não aparece; o sistema não chama modelo de respostas nem envia texto para fora; só pode usar modelo de embeddings **local** (decisão do usuário, 03/10/2026, Q12). O servidor MCP continua respondendo, inclusive `buscar_documentos` (decisão do usuário, 03/10/2026, Q16).
   - Dado um condomínio com o módulo Assistente desligado, quando qualquer perfil abre o menu, então a opção "Assistente" não aparece, seja qual for o modo de IA.
-  - Dado um condomínio em `MCP_EXTERNO`, quando o usuário abre "Assistente", então não há campo de chat, aparece o aviso "o assistente deste condomínio é o seu Claude, conectado ao MCP" e o sistema não registra nenhuma chamada de IA.
+  - Dado um condomínio em `MCP_EXTERNO`, quando o usuário abre "Assistente", então não há campo de chat, aparece o aviso "o assistente deste condomínio é o seu Claude, conectado ao MCP" e o sistema não registra nenhuma chamada a modelo de respostas nem a provedor externo.
   - Dado um condomínio em `DESLIGADO`, quando o usuário abre o menu, então não há chat; e quando ele chama a API de chat diretamente, então o pedido é recusado com a mensagem de que a IA está desligada neste condomínio.
+  - Dado um condomínio em `DESLIGADO` com o módulo Assistente ligado, quando o Claude do usuário chama `buscar_documentos` ou uma ferramenta numérica do MCP, então a chamada responde normalmente (Q16).
   - Dado o Admin que troca o modo de `API_KEY` para `MCP_EXTERNO`, quando um usuário abre "Assistente" em seguida, então a tela já reflete o novo modo, sem mudança de código nem reinício.
 - RF-04.17 **Ferramenta MCP de busca nos documentos** (nome sugerido: `buscar_documentos`, a definir no contrato `contracts/` pelo agente `mcp`): faz a mesma busca do chat, com os mesmos filtros (RF-04.10) e as mesmas permissões (RF-04.3), e devolve os trechos com as mesmas citações (arquivo, categoria, competência, versão, localização, hash e link para abrir o original). Não devolve texto de condomínio sem acesso. Complementa RF-08.1. Em `MCP_EXTERNO`, é com ela e com as 5 ferramentas numéricas que o Claude do usuário responde.
   - Dado o mesmo condomínio, a mesma pergunta e os mesmos filtros, quando a busca é feita pela tela e por `buscar_documentos`, então os trechos e citações devolvidos são os mesmos.
   - Dado um usuário MCP sem acesso ao condomínio B, quando ele chama `buscar_documentos` informando o condomínio B, então a chamada é recusada.
-- RF-04.18 **Busca por palavra sem IA** — *proposta do agente de requisitos, a confirmar pelo usuário (Q7)*: com o módulo Assistente ligado (RF-10; ver Q13), a tela "Assistente" oferece, em **todos os modos de IA**, uma "Busca nos documentos" por palavra ou expressão, sem IA, com os mesmos filtros e com o resultado em lista de trechos citados e clicáveis (sem resposta redigida). Em `DESLIGADO` e em `MCP_EXTERNO`, é a única função da tela além do aviso do modo. Motivo: a indexação do texto não depende de IA e a busca continua útil ao conselho.
-  - Dado um condomínio em `DESLIGADO`, quando o usuário busca "portão", então aparecem os trechos que contêm a palavra, cada um com citação clicável, e nenhuma chamada de IA é registrada.
-  - Se a busca por significado (semântica) exigir modelo de embeddings, o uso dele nos modos `MCP_EXTERNO` e `DESLIGADO` depende de Q12.
+- RF-04.18 **Busca por palavra sem IA** (decisão do usuário, 03/10/2026, Q7 e Q13): a "Busca nos documentos" por palavra ou expressão, sem IA, **pertence ao módulo Assistente** (Q13): existe só quando o módulo está ligado e some com ele desligado (RF-10.3). Com o módulo ligado, funciona em **todos os modos de IA** do assistente, inclusive `DESLIGADO` (Q7), com os mesmos filtros (RF-04.10) e com o resultado em lista de trechos citados e clicáveis (sem resposta redigida). Em `DESLIGADO` e em `MCP_EXTERNO`, é a única função da tela além do aviso do modo. Motivo: a indexação do texto não depende de IA e a busca continua útil ao conselho.
+  - Dado um condomínio com o módulo Assistente ligado e o modo `DESLIGADO`, quando o usuário busca "portão", então aparecem os trechos que contêm a palavra, cada um com citação clicável, e nenhuma chamada de IA é registrada.
+  - Dado um condomínio com o módulo Assistente desligado, quando qualquer perfil procura a "Busca nos documentos" (menu ou API), então ela não aparece e a API recusa, seja qual for o modo de IA.
+  - A busca por significado (semântica), se usar modelo de embeddings, é permitida nos modos `MCP_EXTERNO` e `DESLIGADO` somente com modelo **local**, sem enviar texto para fora (decisão do usuário, 03/10/2026, Q12). Sem modelo local configurado, esses modos ficam só com a busca por palavra.
 
 **Avaliação**
 - RF-04.19 **Conjunto de avaliação do assistente**: um conjunto de perguntas do condomínio piloto, cada uma com a resposta esperada, as fontes esperadas (arquivo e localização) e, quando houver, o número esperado e a ferramenta que o dá. Fica junto dos documentos de referência (`data/golden/`, RNF-10) e roda a cada mudança no `leitor`, na indexação, na busca, nas ferramentas ou nas instruções do assistente. Inclui casos "sem fonte" (RF-04.12), casos de permissão (RF-04.3), casos numéricos (RF-04.13) e casos de conduta (RF-04.15). *Proposta: começar com pelo menos 20 perguntas, escritas com o usuário (P3).*
@@ -320,9 +322,10 @@ Termos usados abaixo:
 
 ### RF-09 Provedor de IA parametrizável por condomínio (decisão do usuário, 03/10/2026)
 - RF-09.1 Cada condomínio tem um parâmetro **modo de IA**, que o Admin troca sem mexer no código:
-  - `MCP_EXTERNO` (padrão do piloto): o sistema não chama nenhuma IA. A IA é o Claude do próprio usuário (Claude Desktop ou Claude Code, pela assinatura) conectado ao servidor MCP do sistema.
+  - `MCP_EXTERNO` (padrão do piloto): o sistema não chama modelo de IA externo nem envia texto para fora. A IA é o Claude do próprio usuário (Claude Desktop ou Claude Code, pela assinatura) conectado ao servidor MCP do sistema.
   - `API_KEY`: o sistema chama o Claude com a **chave de API do próprio condomínio** (BYOK). Isso habilita o chat na tela e a classificação automática.
-  - `DESLIGADO`: nenhuma IA. Só regras e cálculos.
+  - `DESLIGADO`: nenhuma IA de respostas nem envio de texto para fora. Só regras, cálculos e as buscas do RF-04.18.
+  - Exceção nos dois modos acima: modelo de **embeddings local**, rodando na infraestrutura do sistema/cliente, sem enviar texto para fora, é permitido para a busca por significado do módulo Assistente (decisão do usuário, 03/10/2026, Q12).
 - RF-09.2 A chave é do condomínio (licença ou chave de cada cliente), guardada **criptografada**, nunca exibida depois de salva e nunca registrada em log. Cada condomínio paga a própria IA.
 - RF-09.3 Todo uso de IA passa pela camada única (`ai-gateway`), que lê o modo do condomínio, registra tokens e custo por operação e aplica o mascaramento LGPD na fase de nuvem.
 - RF-09.4 Dentro dos módulos contratados pelo condomínio (RF-10), as funções do sistema são as mesmas nos três modos. O modo só muda **quem** executa a parte de IA: o Claude externo via MCP ou o sistema via API. O modo de IA **não liga módulo**: um condomínio em `API_KEY` sem o módulo Assistente não tem chat.
@@ -331,15 +334,18 @@ Termos usados abaixo:
   - modo: `API_KEY`, `MCP_EXTERNO`, `DESLIGADO` e, previsto, `LOCAL` (modelo rodando na infraestrutura do cliente, sem enviar texto para fora);
   - provedor e modelo, escolhidos de um **catálogo de provedores** mantido por configuração, sem mexer no código. O catálogo inicial e os modelos são decisão do usuário em ADR do arquiteto; este documento não escolhe nenhum;
   - chave do cliente, com as mesmas regras do RF-09.2.
+  - para **embeddings**, quando o modo do assistente é `MCP_EXTERNO` ou `DESLIGADO`, só é aceito provedor do catálogo marcado como **local** (sem enviar texto para fora); provedor externo é recusado ao salvar (decisão do usuário, 03/10/2026, Q12).
+  - Dado o modo do assistente `DESLIGADO`, quando o Admin tenta configurar embeddings com provedor externo, então a configuração é recusada com a mensagem de que nesse modo só embeddings locais são permitidos; com provedor local, é aceita.
   - Dado o modo geral `MCP_EXTERNO` e o modo do assistente `API_KEY` com chave cadastrada, quando o módulo Assistente está ligado, então o chat aparece na tela e a classificação automática de arquivos continua sem IA do sistema (segue o modo geral).
   - Dado um novo provedor acrescentado ao catálogo por configuração, quando o Admin o escolhe para o assistente, então as perguntas passam a usar esse provedor sem nova versão do sistema (desde que a ADR correspondente esteja aprovada).
   - Dado o modo do assistente sem configuração própria, quando o Admin muda o modo geral, então o assistente passa a seguir o novo modo geral.
   - Dado o modo do assistente alterado, quando a alteração é salva, então a trilha de auditoria (RF-07.4) registra quem, quando, o modo/provedor/modelo anterior e o novo (nunca a chave).
-- RF-09.7 **Registro de uso por condomínio** (base para cobrança futura): toda operação de IA e toda busca do módulo Assistente gera um registro com condomínio, módulo, função (pergunta, embeddings, busca por palavra, chamada MCP), usuário, data e hora, modo, provedor e modelo, tokens de entrada e saída e custo estimado quando houver. Em `MCP_EXTERNO` e `DESLIGADO`, sem tokens do sistema, registra a quantidade de buscas e chamadas a `buscar_documentos`. A indexação registra arquivos e páginas indexados.
+- RF-09.7 **Registro de uso por condomínio** (base para cobrança futura): toda operação de IA e toda busca do módulo Assistente gera um registro com condomínio, módulo, função (pergunta, embeddings, busca por palavra, chamada MCP), usuário, data e hora, modo, provedor e modelo, tokens de entrada e saída e custo estimado quando houver. Em `MCP_EXTERNO` e `DESLIGADO`, sem tokens de provedor externo, registra a quantidade de buscas e chamadas a `buscar_documentos` (e o uso de embeddings locais, quando houver, Q12). A indexação registra arquivos e páginas indexados.
   - Dado um mês com 30 perguntas no chat de um condomínio em `API_KEY`, quando o Super-admin consulta o uso daquele mês, então vê 30 perguntas, a soma de tokens e o custo estimado, por condomínio e por módulo, e pode exportar em Excel.
   - Dado um condomínio em `MCP_EXTERNO`, quando o Claude do usuário chama `buscar_documentos` 12 vezes no mês, então o uso do mês mostra 12 chamadas e nenhum token do sistema.
   - Dado qualquer registro de uso, quando inspecionado, então não contém a chave de API nem o texto completo dos documentos.
-  - *Proposta*: o Admin do condomínio vê o uso do próprio condomínio; o Super-admin vê de todos (Q17).
+  - O Admin do condomínio vê o uso do próprio condomínio; o Super-admin vê de todos (decisão do usuário, 03/10/2026, Q17).
+  - Dado um Admin do condomínio A, quando ele consulta o uso de IA, então vê só os registros de A e não vê registros de nenhum outro condomínio.
 
 ### RF-08 Integração via MCP
 - RF-08.1 Servidor MCP expondo ferramentas do sistema (consultar lançamentos, achados, POs, contratos, rodar conciliação, gerar relatório) para uso por agentes de IA (Claude Code, Claude Desktop), com as mesmas permissões dos perfis. Ferramentas que pertencem a um módulo (ex.: `buscar_documentos`, do módulo Assistente) só respondem para condomínios com o módulo ligado (RF-10).
@@ -349,7 +355,8 @@ Origem: "o cliente pode escolher se quer esse módulo ou não e podemos vender n
 - RF-10.1 **Catálogo de módulos**: lista mantida pelo sistema com, para cada módulo, código, nome, descrição, o que ele inclui (telas, operações da API, ferramentas MCP, processamentos em segundo plano), módulos de que depende e estado padrão para condomínio novo. Hoje o catálogo tem só o **Assistente** (inclui: tela "Assistente", API de perguntas e de busca, `buscar_documentos`, indexação para o assistente e registro de uso). As funções que não estão em nenhum módulo do catálogo formam o **núcleo**, sempre ligado.
   - Dado o catálogo, quando o Super-admin o consulta, então vê o Assistente com tudo o que ele inclui e o estado em cada condomínio.
   - Dado um módulo novo no futuro, quando ele é criado, então basta uma entrada nova no catálogo e a verificação do estado nos pontos que ele inclui, sem mudar o mecanismo de ligar e desligar (verificado pela ADR do arquiteto).
-- RF-10.2 **Ligar e desligar por condomínio**: só o **Super-admin da plataforma** liga ou desliga um módulo de um condomínio (é contrato comercial, não configuração do cliente), pela tela de administração da plataforma, sem mexer no código e sem reiniciar. Admin, Gestor e Usuário do condomínio veem quais módulos estão ligados, mas não alteram. *Proposta: condomínio novo começa com o Assistente desligado; o piloto começa ligado (Q15).*
+- RF-10.2 **Ligar e desligar por condomínio**: só o **Super-admin da plataforma** liga ou desliga um módulo de um condomínio (é contrato comercial, não configuração do cliente), pela tela de administração da plataforma, sem mexer no código e sem reiniciar. Admin, Gestor e Usuário do condomínio veem quais módulos estão ligados, mas não alteram. Condomínio novo começa com o Assistente desligado; o piloto começa ligado (decisão do usuário, 03/10/2026, Q15).
+  - Dado um condomínio recém-cadastrado, quando o cadastro termina, então o módulo Assistente está desligado e o menu "Assistente" não aparece.
   - Dado um Admin de condomínio, quando ele tenta ligar o módulo Assistente (tela ou API), então a ação é recusada.
   - Dado o Super-admin que liga o módulo de um condomínio, quando um usuário desse condomínio recarrega a tela, então o menu "Assistente" aparece, sem reinício de nenhum serviço.
 - RF-10.3 **Módulo desligado**: todos os pontos que o módulo inclui ficam inativos para aquele condomínio, em todos os serviços (frontend, backend, rag, mcp).
@@ -360,7 +367,7 @@ Origem: "o cliente pode escolher se quer esse módulo ou não e podemos vender n
   - Dado o Assistente ligado no condomínio B e desligado em A, quando um usuário com acesso aos dois pergunta no B, então funciona normalmente no B, e A nunca aparece na busca.
 - RF-10.4 **Ligar depois indexa o que já existe**: ao ligar o Assistente, o sistema dispara automaticamente a reindexação de todos os arquivos já enviados do condomínio (RF-04.6), a partir dos originais guardados, sem novo upload. O andamento aparece na tela Arquivos (RF-04.7).
   - Dado um condomínio com 40 arquivos enviados e o Assistente desligado, quando o Super-admin liga o módulo, então os 40 arquivos entram na fila de indexação e, ao fim, cada um está "indexado", "sem texto" ou "erro" com motivo, sem nenhum upload novo.
-- RF-10.5 **Desligar depois**: desligar não apaga arquivos originais nem dados do núcleo. *Proposta: o índice do assistente fica guardado e inacessível; ao religar, só os arquivos novos ou alterados são indexados (Q14).*
+- RF-10.5 **Desligar depois**: desligar não apaga arquivos originais nem dados do núcleo. O índice do assistente fica guardado e inacessível enquanto o módulo está desligado; ao religar, só os arquivos novos ou alterados são indexados (decisão do usuário, 03/10/2026, Q14). Isso complementa o RF-10.4: ao religar, a reindexação automática pula os arquivos já indexados e sem alteração (mesmo hash e mesma versão).
   - Dado um módulo desligado e religado sem mudança nos arquivos, quando a reindexação termina, então a quantidade de trechos por arquivo é a mesma de antes (sem duplicar, RF-04.5).
 - RF-10.6 **Trilha de ativação** (base para cobrança futura como adicional): cada ligar ou desligar fica na trilha de auditoria (RF-07.4) com condomínio, módulo, estado anterior e novo, data e hora, quem fez e motivo (opcional). O sistema calcula os **períodos ativos** de cada módulo por condomínio (início e fim) e os exporta em Excel, junto com o uso do período (RF-09.7). Nenhum valor de cobrança é calculado nesta fase.
   - Dado o Assistente ligado em 01/11/2026 e desligado em 15/12/2026 no condomínio A, quando o Super-admin consulta os períodos ativos de A, então vê um período de 01/11/2026 a 15/12/2026, com quem ligou e quem desligou.
@@ -425,17 +432,17 @@ Origem: "o cliente pode escolher se quer esse módulo ou não e podemos vender n
 | Q5 | Quantos anos de histórico (POs/balancetes anteriores) estão disponíveis? | Usuário |
 | Q6 | Aprovar as categorias propostas no §5 | Usuário |
 | P3 | Escrever com o agente de requisitos as perguntas do conjunto de avaliação do assistente (RF-04.19), com respostas e fontes esperadas do piloto | Usuário |
-| Q7 | A "Busca nos documentos" por palavra, sem IA, fica disponível em todos os modos, inclusive `DESLIGADO` (RF-04.18)? Sim/Não | Usuário |
-| Q8 | O assistente pode transcrever um valor escrito num documento, como trecho literal marcado "não conferido", sem cálculo (RF-04.13)? Sim/Não | Usuário |
-| Q9 | Aprovar a localização das citações: página (PDF), aba e linha (Excel), seção ou parágrafo (Word)? Sim/Não | Usuário |
-| Q10 | Guardar o histórico das conversas entre sessões (além da sessão atual, RF-04.11)? Sim/Não | Usuário |
-| Q11 | Aprovar a lista inicial de termos de conduta proibidos fora de citação ("desvio", "fraude", "roubo", "culpa")? Sim/Não | Usuário |
-| Q12 | Nos modos `MCP_EXTERNO` e `DESLIGADO`, permitir modelo de embeddings **local** (sem enviar texto para fora) para a busca por significado? Sim/Não | Usuário |
-| Q13 | A "Busca nos documentos" por palavra faz parte do módulo Assistente, e some quando ele está desligado (RF-10)? Sim/Não | Usuário |
-| Q14 | Ao desligar o módulo Assistente, manter o índice guardado para religar sem reindexar tudo (RF-10.5)? Sim/Não | Usuário |
-| Q15 | Condomínio novo começa com o módulo Assistente desligado (RF-10.2)? Sim/Não | Usuário |
-| Q16 | No modo de IA `DESLIGADO`, o servidor MCP continua respondendo (inclusive `buscar_documentos`, se o módulo estiver ligado)? Sim/Não | Usuário |
-| Q17 | O Admin do condomínio pode ver o uso de IA do próprio condomínio (RF-09.7)? Sim/Não | Usuário |
+| Q7 | ✔ Sim (usuário, 03/10/2026). A "Busca nos documentos" por palavra, sem IA, fica disponível em todos os modos, inclusive `DESLIGADO`, com o módulo Assistente ligado (RF-04.18) | Usuário |
+| Q8 | ✔ Sim (usuário, 03/10/2026). O assistente pode transcrever um valor escrito num documento, como trecho literal marcado "não conferido", sem cálculo (RF-04.13) | Usuário |
+| Q9 | ✔ Sim (usuário, 03/10/2026). Localização das citações: página (PDF), aba e linha (Excel), seção ou parágrafo (Word) | Usuário |
+| Q10 | ✔ Não, por enquanto (usuário, 03/10/2026). O histórico das conversas não é guardado entre sessões (RF-04.11) | Usuário |
+| Q11 | ✔ Sim (usuário, 03/10/2026). Lista inicial de termos de conduta proibidos fora de citação: "desvio", "fraude", "roubo", "culpa" (RF-04.15) | Usuário |
+| Q12 | ✔ Sim (usuário, 03/10/2026). Nos modos `MCP_EXTERNO` e `DESLIGADO`, embeddings só com modelo **local**, sem enviar texto para fora (RF-04.18, RF-09.1, RF-09.6) | Usuário |
+| Q13 | ✔ Sim (usuário, 03/10/2026). A "Busca nos documentos" por palavra faz parte do módulo Assistente e some quando ele está desligado (RF-04.18, RF-10) | Usuário |
+| Q14 | ✔ Sim (usuário, 03/10/2026). Ao desligar o módulo Assistente, o índice fica guardado; ao religar, só arquivos novos ou alterados são indexados (RF-10.5) | Usuário |
+| Q15 | ✔ Sim (usuário, 03/10/2026). Condomínio novo começa com o módulo Assistente desligado; o piloto começa ligado (RF-10.2) | Usuário |
+| Q16 | ✔ Sim (usuário, 03/10/2026). No modo de IA `DESLIGADO`, o servidor MCP continua respondendo, inclusive `buscar_documentos` com o módulo ligado (RF-04.16) | Usuário |
+| Q17 | ✔ Sim (usuário, 03/10/2026). O Admin do condomínio vê o uso de IA do próprio condomínio; o Super-admin vê de todos (RF-09.7) | Usuário |
 | T* | Decisões de tecnologia (ver 03-tecnologias.md) | Usuário |
 
 ---

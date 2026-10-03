@@ -160,6 +160,15 @@ Cada arquivo carrega: categoria, competência (mês/ano de referência), data de
 - RF-01.4 Normalizar em lançamentos estruturados: data, descrição, fornecedor/favorecido, CNPJ/CPF, conta contábil/rubrica, valor, documento de origem, página/linha.
 - RF-01.5 Detectar duplicidade de arquivo (hash) e de lançamento.
 - RF-01.6 Mostrar o status de cada arquivo: recebido → extraído → validado → indexado (ou erro com motivo).
+- RF-01.7 **Editar a categoria de um arquivo já enviado** (pedido do usuário, 03/10/2026): na tela Arquivos, cada arquivo tem um botão "Editar" que abre a escolha da nova categoria (lista do §5), com a categoria atual marcada. Só Gestor e Admin veem o botão (§4, "categorizar arquivos-fonte"). Ao salvar, o arquivo é **reprocessado com a nova categoria**: os dados extraídos sob a categoria antiga (lançamentos, saldos de fundo e conferências) são apagados e só voltam se a nova categoria produzir esses dados. Hoje só "Balancetes e fluxos de caixa" gera lançamentos. O original não é alterado, renomeado nem movido; muda só o registro no banco.
+  - Dado um Usuário (perfil sem permissão), quando abre a tela Arquivos, então o botão "Editar" não aparece, e a API recusa a troca de categoria com 403.
+  - Dado um Gestor ou Admin, quando clica em "Editar", então vê as categorias do §5 com a atual marcada e um aviso: "Trocar a categoria reprocessa o arquivo e substitui os dados extraídos dele."
+  - Dado um fluxo de caixa enviado por engano como "Contratos", quando o Gestor troca para "Balancetes e fluxos de caixa", então o arquivo é reprocessado e os lançamentos aparecem, sem duplicar.
+  - Dado um arquivo enviado por engano como "Balancetes e fluxos de caixa", com lançamentos gravados, quando o Gestor troca para outra categoria, então os lançamentos, saldos e conferências desse arquivo somem do banco e dos totais, e o arquivo passa a aparecer na nova categoria.
+  - Dado o mesmo valor de categoria já atual, quando o usuário salva, então nada é reprocessado.
+  - Dado um arquivo em processamento, quando alguém tenta trocar a categoria, então a troca é recusada com a mensagem "O arquivo já está sendo processado".
+  - Dada qualquer troca de categoria, quando ela é salva, então fica registrado quem, quando, a categoria anterior e a nova (§3.3, item 3). *Proposta: a trilha de auditoria (RF-07.4) ainda não existe no código; até lá, o registro fica numa tabela de histórico de categoria do arquivo, que depois migra para a trilha.*
+  - Dado o arquivo original, depois da troca, então o hash e o conteúdo baixado continuam idênticos aos do envio.
 
 ### RF-02 Auditoria e conciliação (núcleo)
 - RF-02.1 **Conciliação balancete × extrato**: cada lançamento do balancete casado com um movimento bancário (valor, data com tolerância, favorecido).

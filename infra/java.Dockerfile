@@ -10,6 +10,9 @@ COPY libs libs
 COPY backend backend
 COPY rag rag
 COPY mcp mcp
+# Remove CRLF e garante a permissão de execução: num clone do Windows o gradlew
+# pode chegar com CRLF ou sem o bit de execução, e aí o build para com código 127.
+RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
 RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon -q :${SERVICO}:bootJar -x test \
     && cp ${SERVICO}/build/libs/${SERVICO}-*.jar /app.jar
 

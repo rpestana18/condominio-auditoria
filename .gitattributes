@@ -1,0 +1,11 @@
+# Finais de linha fixos, qualquer que seja o core.autocrlf de quem clona (Windows inclusive).
+# Scripts que rodam dentro dos contêineres Linux precisam de LF: com CRLF o
+# "#!/bin/sh" vira "#!/bin/sh\r" e o build para com "not found" (código 127).
+* text=auto
+gradlew text eol=lf
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.jar binary

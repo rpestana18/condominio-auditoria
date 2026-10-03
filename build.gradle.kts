@@ -2,6 +2,7 @@ import org.springframework.boot.gradle.plugin.SpringBootPlugin
 
 plugins {
     alias(libs.plugins.spring.boot) apply false
+    alias(libs.plugins.protobuf) apply false
 }
 
 subprojects {
@@ -19,8 +20,9 @@ subprojects {
     repositories { mavenCentral() }
 
     dependencies {
-        // Todas as versões vêm do BOM do Spring Boot (e do Spring AI quando entrar)
+        // Versões vêm dos BOMs (Spring Boot e gRPC); nenhum serviço fixa versão solta
         "implementation"(platform(SpringBootPlugin.BOM_COORDINATES))
+        "implementation"(platform(rootProject.libs.grpc.bom))
         "testImplementation"(platform(SpringBootPlugin.BOM_COORDINATES))
         "testImplementation"("org.junit.jupiter:junit-jupiter")
         "testImplementation"("org.assertj:assertj-core")
@@ -36,5 +38,7 @@ subprojects {
         useJUnitPlatform()
         // Testes com o PDF real ficam em data/golden/privado (fora do git)
         systemProperty("golden.dir", rootProject.file("data/golden").absolutePath)
+        // Exemplos dos contratos (contracts/), usados nos testes de contrato dos dois lados
+        systemProperty("contratos.dir", rootProject.file("contracts").absolutePath)
     }
 }

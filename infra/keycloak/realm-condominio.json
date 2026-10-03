@@ -87,6 +87,32 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "mcp-local",
+      "name": "Token para conectar o Claude ao MCP na máquina local (dura 8 horas; só local)",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "condominios",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "condominios",
+            "claim.name": "condominios",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ],
+      "attributes": {
+        "access.token.lifespan": "28800"
+      }
     }
   ],
   "users": [

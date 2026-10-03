@@ -9,8 +9,8 @@ Documentos reais com o resultado esperado. Toda mudança em leitor ou regra roda
 Para regenerar o JSON depois de mudar o leitor Python:
 
 ```bash
-cd services/ingestion-py
+cd leitor
 .venv/bin/python -c "from fastapi.testclient import TestClient; from app.main import app; \
-r=TestClient(app).post('/v1/ler', files={'arquivo': open('../../data/golden/privado/fluxo-caixa-2026-09.pdf','rb')}); \
-open('../../data/golden/privado/fluxo-caixa-2026-09.documento-lido.json','w').write(r.text)"
+r=TestClient(app).post('/v1/ler', files={'arquivo': open('../data/golden/privado/fluxo-caixa-2026-09.pdf','rb')}); \
+open('../data/golden/privado/fluxo-caixa-2026-09.documento-lido.json','w').write(r.text)"
 ```

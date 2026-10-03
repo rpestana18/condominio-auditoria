@@ -1,0 +1,12 @@
+{
+  "versao": 1,
+  "indexacaoId": "3c9d1e2f-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+  "arquivoId": "5a1c9e3b-2f4d-4b8a-8c7e-1d2f3a4b5c6d",
+  "condominioId": "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001",
+  "situacao": "INDEXADO",
+  "motivo": null,
+  "paginas": 12,
+  "trechos": 15,
+  "modeloEmbeddings": "bge-m3",
+  "versaoIndexador": "1"
+}

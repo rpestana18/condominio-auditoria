@@ -10,7 +10,19 @@
 - O contrato da API é `contracts/openapi.yaml`. Mudou a API? Atualize o contrato e rode `pnpm gerar-api` no frontend.
 - Toda mudança em leitor ou regra roda contra `data/golden/` e não pode piorar nenhum caso.
 - O sistema aponta indícios com evidência; nunca escreve conclusões acusatórias.
-- Agentes especialistas em `.claude/agents/`. Requisitos em `docs/requisitos.md`, arquitetura em `docs/arquitetura.md`.
+- Agentes especialistas em `.claude/agents/`. Dono de cada parte:
+
+  | Parte | Agente |
+  |---|---|
+  | `backend/` (API, contábil, auditoria, relatórios) | `backend` |
+  | `rag/` leitura e interpretação (`rag.leitura`, `rag.dominio`) e `leitor/` | `ingestao` |
+  | `rag/` embeddings, busca e respostas | `rag` |
+  | `mcp/`, `infra/`, testes ponta a ponta e todo contrato entre serviços (`contracts/`) | `mcp` |
+  | `frontend/` | `frontend` |
+  | `docs/requisitos.md` | `requisitos` |
+  | `docs/arquitetura.md`, `docs/adr/`, `libs/` | `arquiteto` |
+
+- Fluxo de cada entrega: `requisitos` escreve os requisitos com critérios de aceite; `arquiteto` escreve a ADR quando há decisão de estrutura ou tecnologia; o usuário aprova os dois; só então os agentes de desenvolvimento entram. Requisitos em `docs/requisitos.md`, arquitetura em `docs/arquitetura.md`.
 
 ## Comandos
 

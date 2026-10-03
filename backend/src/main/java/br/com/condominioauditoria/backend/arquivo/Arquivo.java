@@ -68,6 +68,11 @@ public class Arquivo {
         tentativas = 1;
     }
 
+    /** Troca a categoria. O original na pasta não muda: o caminho continua o mesmo do envio. */
+    public void trocarCategoria(Categoria nova) {
+        this.categoria = nova;
+    }
+
     /** Reenvio da mesma leitura (mensagem perdida ou serviço reiniciado). */
     public void reenviar() {
         enfileiradoEm = Instant.now();

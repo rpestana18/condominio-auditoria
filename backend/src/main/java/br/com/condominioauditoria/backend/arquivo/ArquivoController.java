@@ -4,6 +4,7 @@ import br.com.condominioauditoria.backend.arquivo.ArquivoDtos.ArquivoDetalhe;
 import br.com.condominioauditoria.backend.arquivo.ArquivoDtos.ArquivoResumo;
 import br.com.condominioauditoria.backend.arquivo.ArquivoDtos.CategoriaDto;
 import br.com.condominioauditoria.backend.arquivo.ArquivoDtos.ConferenciaDto;
+import br.com.condominioauditoria.backend.arquivo.ArquivoDtos.NovaCategoria;
 import br.com.condominioauditoria.backend.arquivo.ArquivoDtos.SaldoDto;
 import br.com.condominioauditoria.backend.contabil.ConferenciaRepository;
 import br.com.condominioauditoria.backend.contabil.Fundo;
@@ -27,6 +28,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -126,6 +129,17 @@ class ArquivoController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     ArquivoResumo reprocessar(@PathVariable UUID condominioId, @PathVariable UUID id) {
         return ArquivoResumo.de(servico.reprocessar(buscar(condominioId, id)));
+    }
+
+    /** Troca a categoria de um arquivo já enviado e reprocessa com a nova (RF-01.7). */
+    @PutMapping("/condominios/{condominioId}/arquivos/{id}/categoria")
+    @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
+    ArquivoResumo alterarCategoria(@PathVariable UUID condominioId, @PathVariable UUID id,
+            @RequestBody NovaCategoria pedido) {
+        if (pedido == null || pedido.categoria() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe a categoria");
+        }
+        return ArquivoResumo.de(servico.alterarCategoria(buscar(condominioId, id), pedido.categoria(), acesso.usuario()));
     }
 
     private Arquivo buscar(UUID condominioId, UUID id) {

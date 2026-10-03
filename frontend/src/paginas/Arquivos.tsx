@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useArquivos, useCategorias } from "../api/consultas";
-import type { Categoria } from "../api/tipos";
+import type { ArquivoResumo, Categoria } from "../api/tipos";
 import { DetalheArquivo } from "../componentes/DetalheArquivo";
+import { EditarCategoria } from "../componentes/EditarCategoria";
 import { EnvioArquivo } from "../componentes/EnvioArquivo";
 import { StatusArquivo } from "../componentes/StatusArquivo";
 import { useSessao } from "../contexto";
@@ -13,6 +14,8 @@ export function Arquivos() {
   const { data: categorias = [] } = useCategorias();
   const [categoria, setCategoria] = useState<Categoria | undefined>();
   const [selecionado, setSelecionado] = useState<string | null>(null);
+  const [editando, setEditando] = useState<ArquivoResumo | null>(null);
+  const podeEditar = pode("GESTOR", "ADMIN");
   const { data: arquivos = [], isLoading } = useArquivos(condominioId, categoria);
 
   return (
@@ -21,7 +24,7 @@ export function Arquivos() {
         <header className="titulo-pagina">
           <h1>Arquivos</h1>
         </header>
-        {pode("GESTOR", "ADMIN") && <EnvioArquivo categoriaInicial={categoria} />}
+        {podeEditar && <EnvioArquivo categoriaInicial={categoria} />}
 
         <div className="abas" role="tablist">
           <button role="tab" aria-selected={!categoria} onClick={() => setCategoria(undefined)}>
@@ -47,6 +50,7 @@ export function Arquivos() {
                 <th>Período</th>
                 <th>Enviado em</th>
                 <th>Situação</th>
+                {podeEditar && <th aria-label="Ações" />}
               </tr>
             </thead>
             <tbody>
@@ -61,12 +65,28 @@ export function Arquivos() {
                   <td>
                     <StatusArquivo status={a.status} />
                   </td>
+                  {podeEditar && (
+                    <td>
+                      <button
+                        className="botao-link"
+                        disabled={a.status === "PROCESSANDO"}
+                        title={a.status === "PROCESSANDO" ? "O arquivo já está sendo processado" : "Mudar a categoria"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditando(a);
+                        }}
+                      >
+                        Editar
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+      {editando && <EditarCategoria arquivo={editando} aoFechar={() => setEditando(null)} />}
       {selecionado && <DetalheArquivo id={selecionado} aoFechar={() => setSelecionado(null)} />}
     </div>
   );

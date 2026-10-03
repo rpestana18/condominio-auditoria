@@ -84,6 +84,20 @@ paths:
       responses:
         "202": { description: Na fila, content: { application/json: { schema: { $ref: "#/components/schemas/ArquivoResumo" } } } }
         "409": { description: Já está em processamento }
+  /condominios/{condominioId}/arquivos/{id}/categoria:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/ArquivoId" }]
+    put:
+      summary: Troca a categoria e reprocessa o arquivo (GESTOR ou ADMIN, RF-01.7). Mesma categoria não faz nada.
+      operationId: alterarCategoriaArquivo
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/NovaCategoria" } } }
+      responses:
+        "200": { description: Categoria trocada (arquivo na fila de novo), content: { application/json: { schema: { $ref: "#/components/schemas/ArquivoResumo" } } } }
+        "400": { description: Categoria não informada ou inválida }
+        "403": { description: Perfil sem permissão }
+        "404": { description: Não encontrado }
+        "409": { description: Já está em processamento }
   /condominios/{condominioId}/painel:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }]
     get:
@@ -102,6 +116,11 @@ components:
     Categoria:
       type: string
       enum: [BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+    NovaCategoria:
+      type: object
+      required: [categoria]
+      properties:
+        categoria: { $ref: "#/components/schemas/Categoria" }
     StatusArquivo:
       type: string
       enum: [PENDENTE, PROCESSANDO, CONCLUIDO, PRECISA_REVISAO, FALHOU]

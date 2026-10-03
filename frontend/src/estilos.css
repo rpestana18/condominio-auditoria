@@ -109,6 +109,7 @@ select { padding: 7px 10px; border: 1px solid var(--borda); border-radius: 8px; 
 .botao:disabled { opacity: 0.5; cursor: default; }
 .botao.secundario { background: var(--primaria-clara); color: var(--primaria); }
 .botao-link { background: none; border: none; color: var(--primaria); cursor: pointer; font: inherit; padding: 0; }
+.botao-link:disabled { color: var(--texto-discreto); cursor: default; }
 
 .abas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 .abas button {
@@ -145,3 +146,12 @@ select { padding: 7px 10px; border: 1px solid var(--borda); border-radius: 8px; 
   background: var(--superficie); border: 1px solid var(--borda); border-radius: 99px; padding: 4px 10px;
   text-decoration: none; max-width: 60vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* Janela de editar categoria (RF-01.7) */
+.janela { border: 1px solid var(--borda); border-radius: var(--raio); background: var(--superficie); color: var(--texto); padding: 20px 24px; width: min(440px, calc(100vw - 32px)); }
+.janela::backdrop { background: rgb(0 0 0 / 0.35); }
+.janela h2 { margin: 0 0 4px; font-size: 1.1rem; }
+.janela fieldset { border: none; padding: 0; margin: 14px 0; display: grid; gap: 6px; }
+.janela legend { font-weight: 600; margin-bottom: 6px; }
+.janela label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.janela .acoes { justify-content: flex-end; }

@@ -1,5 +1,11 @@
 # Sobe o sistema inteiro na máquina local: docker compose up --build
 # Endereços: tela http://localhost:8080 · Keycloak http://localhost:8180 (admin/admin)
+#            RabbitMQ http://localhost:15672 (condominio/condominio) · MCP http://localhost:8083/mcp
+#
+# Serviços e como conversam:
+#   frontend ──REST──▶ backend ──fila──▶ rag ──HTTP──▶ leitor (Python)
+#                        ▲   ◀──fila────┘
+#   Claude ──MCP──▶ mcp ─┘ gRPC
 name: condominio-auditoria
 
 services:
@@ -16,13 +22,25 @@ services:
       interval: 5s
       retries: 20
 
+  fila:
+    image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: condominio
+      RABBITMQ_DEFAULT_PASS: condominio
+    ports: ["5672:5672", "15672:15672"]
+    volumes: [fila:/var/lib/rabbitmq]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      retries: 30
+
   keycloak:
     image: keycloak/keycloak:26.4
     command: ["start-dev", "--import-realm"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      # O token sempre sai com o endereço público como emissor; o backend busca as chaves pela rede interna
+      # O token sempre sai com o endereço público como emissor; os serviços buscam as chaves pela rede interna
       KC_HOSTNAME: http://localhost:8180
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KC_HEALTH_ENABLED: "true"
@@ -34,7 +52,7 @@ services:
       retries: 40
 
   leitor:
-    build: ../services/ingestion-py
+    build: ../leitor
     ports: ["8090:8090"]
     read_only: true
     tmpfs: [/tmp]
@@ -42,19 +60,54 @@ services:
   backend:
     build:
       context: ..
-      dockerfile: backend/Dockerfile
+      dockerfile: infra/java.Dockerfile
+      args: { SERVICO: backend }
     environment:
       BANCO_URL: jdbc:postgresql://banco:5432/condominio
+      RABBITMQ_HOST: fila
       KEYCLOAK_EMISSOR: http://localhost:8180/realms/condominio
       KEYCLOAK_CHAVES: http://keycloak:8080/realms/condominio/protocol/openid-connect/certs
-      LEITOR_URL: http://leitor:8090
       PASTA_DADOS: /dados
+      PORTA: 8080
     volumes: [../dados:/dados]
-    ports: ["8081:8080"]
+    # 8081 = API REST (tela); 9090 = gRPC (só para depuração local, o mcp usa a rede interna)
+    ports: ["8081:8080", "9090:9090"]
     depends_on:
       banco: { condition: service_healthy }
+      fila: { condition: service_healthy }
       keycloak: { condition: service_healthy }
+
+  rag:
+    build:
+      context: ..
+      dockerfile: infra/java.Dockerfile
+      args: { SERVICO: rag }
+    environment:
+      RABBITMQ_HOST: fila
+      LEITOR_URL: http://leitor:8090
+      PASTA_DADOS: /dados
+      PORTA: 8080
+    # Só lê os originais: a pasta entra como somente leitura
+    volumes: [../dados:/dados:ro]
+    ports: ["8082:8080"]
+    depends_on:
+      fila: { condition: service_healthy }
       leitor: { condition: service_started }
+
+  mcp:
+    build:
+      context: ..
+      dockerfile: infra/java.Dockerfile
+      args: { SERVICO: mcp }
+    environment:
+      BACKEND_GRPC: backend:9090
+      KEYCLOAK_EMISSOR: http://localhost:8180/realms/condominio
+      KEYCLOAK_CHAVES: http://keycloak:8080/realms/condominio/protocol/openid-connect/certs
+      PORTA: 8080
+    ports: ["8083:8080"]
+    depends_on:
+      keycloak: { condition: service_healthy }
+      backend: { condition: service_started }
 
   frontend:
     build: ../frontend
@@ -63,3 +116,4 @@ services:
 
 volumes:
   banco:
+  fila:

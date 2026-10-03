@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: mcp
+  ai:
+    mcp:
+      server:
+        name: condominio-auditoria
+        version: 0.2.0
+        instructions: >
+          Consulta a contabilidade de condomínios: fundos, arquivos enviados, conferências e lançamentos.
+          Comece por listar_condominios. Valores em reais vêm como texto com duas casas.
+          Cite o arquivo e a página quando mostrar um lançamento.
+        # Sem sessão: cada chamada é um POST independente, com o token no cabeçalho Authorization
+        protocol: STATELESS
+        type: SYNC
+        streamable-http:
+          mcp-endpoint: /mcp
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_EMISSOR:http://localhost:8180/realms/condominio}
+          jwk-set-uri: ${KEYCLOAK_CHAVES:http://localhost:8180/realms/condominio/protocol/openid-connect/certs}
+
+server:
+  port: ${PORTA:8083}
+
+mcp:
+  backend:
+    endereco: ${BACKEND_GRPC:localhost:9090}
+    prazo-segundos: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -15,7 +15,7 @@ Só dois programas. Java, Node e Python **não** são necessários para rodar, p
 
 No Docker Desktop, reserve pelo menos **4 GB de memória** (Settings → Resources) e deixe o Docker aberto.
 
-As portas **8080**, **8081**, **8090**, **8180** e **5432** precisam estar livres. Se você já tem um PostgreSQL local na 5432, pare o serviço antes.
+As portas **8080** a **8083**, **8090**, **8180**, **9090**, **5432**, **5672** e **15672** precisam estar livres. Se você já tem um PostgreSQL local na 5432 ou um RabbitMQ na 5672, pare o serviço antes.
 
 ### 2. Baixe o código
 
@@ -31,9 +31,9 @@ cd infra
 docker compose up --build
 ```
 
-A primeira vez leva de 5 a 10 minutos, porque baixa as imagens, as dependências do Gradle e do pnpm e compila tudo. Nas próximas vezes leva segundos.
+A primeira vez leva de 10 a 15 minutos, porque baixa as imagens, as dependências do Gradle e do pnpm e compila os três serviços Java. Nas próximas vezes leva segundos.
 
-O sistema está pronto quando o log do backend mostrar `Started AuditoriaApplication`. Deixe esse terminal aberto. Para rodar em segundo plano, use `docker compose up --build -d` e acompanhe com `docker compose logs -f backend`.
+O sistema está pronto quando o log mostrar `Started BackendApplication`, `Started RagApplication` e `Started McpApplication`. Deixe esse terminal aberto. Para rodar em segundo plano, use `docker compose up --build -d` e acompanhe com `docker compose logs -f backend rag`.
 
 ### 4. Entre no sistema
 
@@ -49,7 +49,7 @@ Abra **http://localhost:8080**. A tela de login é do Keycloak.
 
 1. Entre como `gestor` e vá em **Arquivos**.
 2. Escolha a categoria **Balancetes e fluxos de caixa** e envie o PDF do fluxo de caixa mensal da administradora.
-3. A situação passa por "Na fila", "Processando" e "Concluído", e a lista se atualiza sozinha. Clique no arquivo para ver as conferências.
+3. A situação passa por "Na fila", "Processando" e "Concluído", e a lista se atualiza sozinha. Por trás, o backend guarda o original e pede a leitura ao serviço **rag** pela fila; o rag lê, confere e devolve os dados, que o backend grava. Clique no arquivo para ver as conferências.
 4. Volte em **Início** para ver os números do mês.
 
 ### 6. Pare, reinicie ou recomece do zero
@@ -63,6 +63,8 @@ docker compose down -v       # apaga o banco também (recomeça do zero)
 
 Os arquivos enviados ficam na pasta `dados/` na raiz do projeto e não são apagados pelo `down -v`. Para zerar tudo, apague também o conteúdo de `dados/` (mantenha o `.gitkeep`).
 
+Já rodava a versão anterior (antes dos serviços separados)? O backend passou a usar o schema `backend` do banco e cria as tabelas de novo nele. Os arquivos da pasta `dados/` continuam lá: envie de novo ou rode `docker compose down -v` para começar limpo.
+
 ### Endereços úteis
 
 | O quê | Endereço | Acesso |
@@ -70,7 +72,9 @@ Os arquivos enviados ficam na pasta `dados/` na raiz do projeto e não são apag
 | Sistema | http://localhost:8080 | usuários acima |
 | Keycloak (administração de usuários) | http://localhost:8180 | `admin` / `admin` |
 | API (direto) | http://localhost:8081/api | token Bearer do Keycloak |
-| Saúde do backend | http://localhost:8081/actuator/health | livre |
+| Fila (painel do RabbitMQ) | http://localhost:15672 | `condominio` / `condominio` |
+| MCP (para o Claude) | http://localhost:8083/mcp | token Bearer do Keycloak |
+| Saúde dos serviços | http://localhost:8081/actuator/health (backend), :8082 (rag), :8083 (mcp) | livre |
 | Leitor de documentos | http://localhost:8090/saude | livre |
 
 ### Se algo der errado
@@ -80,9 +84,11 @@ Os arquivos enviados ficam na pasta `dados/` na raiz do projeto e não são apag
 | `port is already allocated` | Outra coisa usa a porta. Pare o programa ou mude a porta da esquerda em `infra/docker-compose.yml` (ex.: `"8085:80"`) |
 | A tela de login não abre logo após subir | O Keycloak leva cerca de 30 s para iniciar. Aguarde e recarregue |
 | O arquivo fica em "Falhou" com "O leitor de documentos não respondeu" | Confira com `docker compose ps` se o contêiner `leitor` está de pé e use **Reprocessar** |
+| O arquivo fica em "Na fila" | O serviço `rag` está parado. Suba com `docker compose start rag`: o pedido esperou na fila e é lido na hora |
+| Mensagens na fila `.erro` (painel do RabbitMQ) | Uma leitura ou gravação falhou três vezes. O log do `rag` ou do `backend` diz o motivo |
 | "Arquivo já enviado" | O sistema reconhece o mesmo conteúdo pelo hash. É proteção contra duplicidade |
-| Quer ver os logs | `docker compose logs -f backend` (ou `leitor`, `keycloak`, `banco`) |
-| Linux: "Falhou" com erro de permissão ao gravar em `/dados` | O backend roda com o usuário 1001. Libere a pasta: `chmod 777 dados` na raiz do projeto |
+| Quer ver os logs | `docker compose logs -f backend` (ou `rag`, `mcp`, `leitor`, `fila`, `keycloak`, `banco`) |
+| Linux: erro de permissão ao gravar ou ler em `/dados` | Backend e rag rodam com o usuário 1001. Libere a pasta: `chmod 777 dados` na raiz do projeto |
 | Mudou o código e quer ver na tela | `docker compose up --build` de novo |
 
 ## Criar usuários e dar acesso a um condomínio
@@ -94,34 +100,77 @@ Os arquivos enviados ficam na pasta `dados/` na raiz do projeto e não são apag
 
 Os usuários de exemplo e as regras de sessão (token de 5 min, sessão que cai após 30 min sem uso) estão em `infra/keycloak/realm-condominio.json`. Esse arquivo só é importado quando o Keycloak sobe com o banco dele vazio.
 
+## Conectar o Claude (MCP)
+
+O serviço **mcp** deixa o Claude consultar o sistema com as permissões do seu usuário: fundos, arquivos, conferências e lançamentos (com arquivo e página de origem). Ferramentas: `listar_condominios`, `resumo_fundos`, `listar_arquivos`, `conferencias_do_arquivo` e `buscar_lancamentos`.
+
+1. Gere um token do seu usuário (o cliente `mcp-local` dá um token de 8 horas; é só para uso local):
+
+   ```bash
+   TOKEN=$(curl -s -d client_id=mcp-local -d grant_type=password -d username=gestor -d password=gestor \
+     http://localhost:8180/realms/condominio/protocol/openid-connect/token | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+   ```
+
+2. No **Claude Code**:
+
+   ```bash
+   claude mcp add --transport http condominio http://localhost:8083/mcp --header "Authorization: Bearer $TOKEN"
+   ```
+
+   Em outro cliente MCP, use o endereço `http://localhost:8083/mcp` e o cabeçalho `Authorization: Bearer <token>`.
+
+3. Pergunte, por exemplo: "quanto saiu pelo Mercado Pago em setembro e em quais páginas?".
+
+Quando o token vence, repita os passos 1 e 2. O login pelo navegador (OAuth), sem copiar token, entra quando o sistema for para a nuvem.
+
 ## Perfis
 
 - **Usuário**: consulta e abre arquivos.
 - **Gestor**: também envia e reprocessa arquivos.
 - **Admin**: tudo, em todos os condomínios.
 
-## O que já funciona (primeira entrega)
+## O que já funciona
 
 1. Login pelo Keycloak; a sessão cai após 30 minutos sem uso.
 2. Envio de arquivo por categoria. O original vai para a pasta `dados/<condomínio>/<categoria>/<ano>/`, com hash SHA-256 para detectar envio repetido.
-3. Processamento em segundo plano com status (na fila, processando, concluído, precisa revisão, falhou). Gravação numa transação só; reprocessar não duplica; o que estava pela metade volta para a fila quando o sistema reinicia.
+3. Leitura em segundo plano pelo serviço **rag**, pedida pela fila (RabbitMQ), com status (na fila, processando, concluído, precisa revisão, falhou). Se um serviço reinicia, o trabalho espera na fila. Gravação numa transação só; reprocessar não duplica.
 4. Leitura do **fluxo de caixa por fundo** (layout da administradora do piloto) com quatro conferências: saldo linha a linha, totais por fundo, saldo final × Posição Financeira e soma dos fundos × total.
 5. Tela inicial com os números do mês, gráfico por fundo, fundos negativos e maiores despesas, mais o indicador discreto do último arquivo.
+6. Consulta pelo Claude via **MCP**, com o token do próprio usuário (ver acima).
 
 Outros documentos (PO, contratos, atas…) já podem ser enviados e ficam guardados; a leitura de cada tipo vem nas próximas entregas.
+
+## Arquitetura
+
+Cada serviço roda no seu contêiner e só conversa com os outros por contrato (decisão na `docs/adr/0002-servicos-separados.md`):
+
+```
+frontend ──REST──▶ backend ──fila (RabbitMQ)──▶ rag ──HTTP──▶ leitor (Python)
+                     ▲  ◀──────fila──────────────┘
+Claude ──MCP──▶ mcp ─┘ gRPC
+```
+
+| Serviço | Faz | Fala com |
+|---|---|---|
+| `frontend` | telas | backend (REST, `contracts/openapi.yaml`) |
+| `backend` | API, contábil, auditoria, relatórios, registro dos arquivos; banco no schema `backend` | rag (fila), mcp (gRPC) |
+| `rag` | lê, interpreta, confere e enriquece os documentos; depois, embeddings e busca | backend (fila), leitor (HTTP) |
+| `mcp` | porta de entrada do Claude, sem banco nem regra | backend (gRPC, `contracts/grpc/`) |
+| `leitor` | Python: arquivo → JSON com posições, sem estado | — |
 
 ## Estrutura
 
 ```
-backend/            Java 25 + Spring Boot (Gradle multi-módulo)
-  domain/           modelo e regras puras (sem Spring)
-  storage/          interface Armazenamento (disco local; S3 depois)
-  ingestion/        contrato do leitor + interpretação dos layouts
-  app/              API, segurança, processamento @Async, banco (Flyway)
-services/ingestion-py/  leitor de documentos: arquivo → JSON (sem estado)
+backend/            serviço backend (Java 25 + Spring Boot)
+rag/                serviço rag: leitura, interpretação e conferência dos documentos
+mcp/                serviço mcp: ferramentas MCP que chamam o backend por gRPC
+leitor/             leitor de documentos em Python (sem estado)
+libs/
+  armazenamento/    interface Armazenamento (pasta local; S3 depois), usada por backend e rag
+  contrato-grpc/    código gerado de contracts/grpc (usado por backend e mcp)
 frontend/           React + TypeScript + Vite
-contracts/          openapi.yaml e JSON Schema do leitor
-infra/              docker-compose e realm do Keycloak
+contracts/          openapi.yaml, leitor/v1, mensagens/v1 (fila) e grpc/ (.proto)
+infra/              docker-compose, Dockerfile dos serviços Java e realm do Keycloak
 docs/               requisitos, arquitetura, tecnologias e ADRs
 ```
 
@@ -131,10 +180,12 @@ Para mexer no código com recarga rápida. Precisa de **Java 25**, **Node 22 + p
 
 ```bash
 # 1. Só a infraestrutura no Docker
-cd infra && docker compose up -d banco keycloak leitor
+cd infra && docker compose up -d banco fila keycloak leitor
 
-# 2. Backend na porta 8081 (outro terminal, na raiz do projeto)
-PASTA_DADOS=$(pwd)/dados ./gradlew :backend:app:bootRun --args='--server.port=8081'
+# 2. Cada serviço Java no seu terminal, na raiz do projeto
+PASTA_DADOS=$(pwd)/dados ./gradlew :backend:bootRun     # API na 8081, gRPC na 9090
+PASTA_DADOS=$(pwd)/dados ./gradlew :rag:bootRun         # 8082
+./gradlew :mcp:bootRun                                  # 8083
 
 # 3. Frontend com recarga automática (outro terminal)
 cd frontend && pnpm install && pnpm dev     # http://localhost:5173
@@ -143,9 +194,9 @@ cd frontend && pnpm install && pnpm dev     # http://localhost:5173
 Testes:
 
 ```bash
-./gradlew test                                          # backend
-cd services/ingestion-py && python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt && .venv/bin/pytest
+./gradlew test                                          # backend, rag e libs
+cd leitor && python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt && .venv/bin/pytest
 cd frontend && pnpm build                               # checagem de tipos
 ```
 
-Mudou `contracts/openapi.yaml`? Rode `pnpm gerar-api` dentro de `frontend/` para atualizar os tipos.
+Mudou um contrato? `contracts/openapi.yaml`: rode `pnpm gerar-api` dentro de `frontend/`. `contracts/grpc/`: o Gradle gera o código de novo no build. `contracts/mensagens/`: crie uma nova versão e ajuste backend e rag no mesmo PR; o exemplo em `contracts/mensagens/v1/exemplos/` é testado pelos dois lados.

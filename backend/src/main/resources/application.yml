@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: backend
+  datasource:
+    # Cada serviço tem o seu schema no PostgreSQL; o backend usa "backend"
+    url: ${BANCO_URL:jdbc:postgresql://localhost:5432/condominio}?currentSchema=backend
+    username: ${BANCO_USUARIO:condominio}
+    password: ${BANCO_SENHA:condominio}
+  flyway:
+    schemas: backend
+    default-schema: backend
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.batch_size: 100
+      hibernate.order_inserts: true
+      hibernate.default_schema: backend
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORTA:5672}
+    username: ${RABBITMQ_USUARIO:condominio}
+    password: ${RABBITMQ_SENHA:condominio}
+    listener:
+      simple:
+        # Gravação que falha volta para a fila, tenta de novo e depois vai para backend.resultados.erro
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 2s
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Emissor que aparece no token (endereço que o navegador usa)
+          issuer-uri: ${KEYCLOAK_EMISSOR:http://localhost:8180/realms/condominio}
+          # Endereço para buscar as chaves (dentro do docker compose é http://keycloak:8080/...)
+          jwk-set-uri: ${KEYCLOAK_CHAVES:http://localhost:8180/realms/condominio/protocol/openid-connect/certs}
+
+server:
+  port: ${PORTA:8081}
+
+condominio:
+  armazenamento:
+    tipo: local
+    pasta: ${PASTA_DADOS:./dados}
+  processamento:
+    reenviar-apos-minutos: 15
+    max-tentativas: 3
+  grpc:
+    porta: ${GRPC_PORTA:9090}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

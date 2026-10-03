@@ -1,0 +1,11 @@
+# Contexto de build das imagens Java: só o que o Gradle precisa
+.git
+.gradle
+**/build
+**/node_modules
+frontend
+leitor
+dados
+data
+docs
+infra

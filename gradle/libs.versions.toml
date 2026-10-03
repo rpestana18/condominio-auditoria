@@ -1,14 +1,22 @@
-# Catálogo único de versões do backend
+# Catálogo único de versões dos serviços Java
 [versions]
 spring-boot = "4.1.1"
-spring-dependency-management = "1.1.7"
 spring-ai = "2.0.1"
 json-schema-validator = "3.0.8"
+grpc = "1.84.0"
+protobuf = "4.33.4"
+gradle-protobuf = "0.10.0"
 
 [libraries]
 spring-ai-bom = { module = "org.springframework.ai:spring-ai-bom", version.ref = "spring-ai" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
+grpc-bom = { module = "io.grpc:grpc-bom", version.ref = "grpc" }
+grpc-stub = { module = "io.grpc:grpc-stub" }
+grpc-protobuf = { module = "io.grpc:grpc-protobuf" }
+grpc-netty-shaded = { module = "io.grpc:grpc-netty-shaded" }
+grpc-inprocess = { module = "io.grpc:grpc-inprocess" }
+protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
-spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+protobuf = { id = "com.google.protobuf", version.ref = "gradle-protobuf" }

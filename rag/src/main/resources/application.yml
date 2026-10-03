@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: rag
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORTA:5672}
+    username: ${RABBITMQ_USUARIO:condominio}
+    password: ${RABBITMQ_SENHA:condominio}
+    listener:
+      simple:
+        # Quantos arquivos são lidos ao mesmo tempo; cada um pega uma mensagem por vez
+        concurrency: ${RAG_PARALELISMO:2}
+        prefetch: 1
+        # Erro inesperado (ex.: fila do backend fora do ar): tenta de novo e depois manda para a fila .erro
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 2s
+
+server:
+  port: ${PORTA:8082}
+
+rag:
+  armazenamento:
+    tipo: local
+    pasta: ${PASTA_DADOS:./dados}
+  leitor:
+    url: ${LEITOR_URL:http://localhost:8090}
+    timeout-segundos: 300
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

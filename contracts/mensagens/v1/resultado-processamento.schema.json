@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://condominio-auditoria/contracts/mensagens/v1/resultado-processamento.schema.json",
+  "title": "ResultadoProcessamento v1",
+  "description": "rag → backend (fila backend.resultados). INICIADO quando a leitura começa; CONCLUIDO com os dados extraídos; FALHOU com o motivo. Valores em dinheiro são texto com duas casas (\"1234.56\") para nunca passar por ponto flutuante.",
+  "type": "object",
+  "required": ["versao", "processamentoId", "arquivoId", "condominioId", "situacao"],
+  "additionalProperties": false,
+  "properties": {
+    "versao": { "const": 1 },
+    "processamentoId": { "type": "string", "format": "uuid" },
+    "arquivoId": { "type": "string", "format": "uuid" },
+    "condominioId": { "type": "string", "format": "uuid" },
+    "situacao": { "enum": ["INICIADO", "CONCLUIDO", "FALHOU"] },
+    "motivo": { "type": ["string", "null"], "description": "Só em FALHOU: explicação legível" },
+    "interpretador": { "type": ["string", "null"], "description": "Leitor de layout usado (ex.: fluxo-caixa-protest). Nulo quando o layout ainda não é reconhecido." },
+    "paginas": { "type": ["integer", "null"], "minimum": 0 },
+    "fluxoDeCaixa": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/fluxoDeCaixa" }] },
+    "conferencias": { "type": ["array", "null"], "items": { "$ref": "#/$defs/conferencia" } }
+  },
+  "allOf": [
+    { "if": { "properties": { "situacao": { "const": "FALHOU" } } }, "then": { "required": ["motivo"] } }
+  ],
+  "$defs": {
+    "dinheiro": { "type": "string", "pattern": "^-?[0-9]+\\.[0-9]{2}$" },
+    "data": { "type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "textoOpcional": { "type": ["string", "null"] },
+    "conferencia": {
+      "type": "object",
+      "required": ["codigo", "descricao", "ok", "detalhe"],
+      "additionalProperties": false,
+      "properties": {
+        "codigo": { "type": "string" },
+        "descricao": { "type": "string" },
+        "ok": { "type": "boolean" },
+        "detalhe": { "type": "string" }
+      }
+    },
+    "posicao": {
+      "type": "object",
+      "required": ["fundo", "saldoAnterior", "creditos", "debitos", "saldoAtual"],
+      "additionalProperties": false,
+      "properties": {
+        "fundo": { "type": "string" },
+        "saldoAnterior": { "$ref": "#/$defs/dinheiro" },
+        "creditos": { "$ref": "#/$defs/dinheiro" },
+        "debitos": { "$ref": "#/$defs/dinheiro" },
+        "saldoAtual": { "$ref": "#/$defs/dinheiro" }
+      }
+    },
+    "lancamento": {
+      "type": "object",
+      "required": ["pagina", "ordem", "data", "historico", "credito", "debito", "saldo", "enriquecimento"],
+      "additionalProperties": false,
+      "properties": {
+        "pagina": { "type": "integer", "minimum": 1 },
+        "ordem": { "type": "integer", "minimum": 1 },
+        "data": { "$ref": "#/$defs/data" },
+        "contaCodigo": { "$ref": "#/$defs/textoOpcional" },
+        "contaNome": { "$ref": "#/$defs/textoOpcional" },
+        "documento": { "$ref": "#/$defs/textoOpcional" },
+        "historico": { "type": "string" },
+        "credito": { "$ref": "#/$defs/dinheiro" },
+        "debito": { "$ref": "#/$defs/dinheiro" },
+        "saldo": { "$ref": "#/$defs/dinheiro" },
+        "enriquecimento": {
+          "type": "object",
+          "required": ["transferenciaEntreFundos"],
+          "additionalProperties": false,
+          "properties": {
+            "notaFiscal": { "$ref": "#/$defs/textoOpcional" },
+            "fornecedor": { "$ref": "#/$defs/textoOpcional" },
+            "meioPagamento": { "$ref": "#/$defs/textoOpcional" },
+            "transferenciaEntreFundos": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "secao": {
+      "type": "object",
+      "required": ["fundo", "saldoAnterior", "lancamentos", "totalCreditosInformado", "totalDebitosInformado"],
+      "additionalProperties": false,
+      "properties": {
+        "fundo": { "type": "string" },
+        "saldoAnterior": { "$ref": "#/$defs/dinheiro" },
+        "lancamentos": { "type": "array", "items": { "$ref": "#/$defs/lancamento" } },
+        "totalCreditosInformado": { "$ref": "#/$defs/dinheiro" },
+        "totalDebitosInformado": { "$ref": "#/$defs/dinheiro" }
+      }
+    },
+    "fluxoDeCaixa": {
+      "type": "object",
+      "required": ["periodoInicio", "periodoFim", "secoes", "posicaoFinanceira"],
+      "additionalProperties": false,
+      "properties": {
+        "empreendimento": { "$ref": "#/$defs/textoOpcional" },
+        "periodoInicio": { "$ref": "#/$defs/data" },
+        "periodoFim": { "$ref": "#/$defs/data" },
+        "secoes": { "type": "array", "items": { "$ref": "#/$defs/secao" } },
+        "posicaoFinanceira": { "type": "array", "items": { "$ref": "#/$defs/posicao" } },
+        "totalPosicao": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/posicao" }] }
+      }
+    }
+  }
+}

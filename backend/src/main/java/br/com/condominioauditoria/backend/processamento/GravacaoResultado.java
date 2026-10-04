@@ -16,11 +16,16 @@ import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento;
 import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.ConferenciaLida;
 import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.Fluxo;
 import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.Posicao;
+import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.PrevisaoLida;
 import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.Secao;
+import br.com.condominioauditoria.backend.orcamento.EstadoPrevisao;
+import br.com.condominioauditoria.backend.orcamento.GravacaoPrevisao;
+import br.com.condominioauditoria.backend.orcamento.PrevisaoOrcamentaria;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Grava tudo o que o rag extraiu de um arquivo numa transação só: ou entra tudo, ou nada (rollback).
- * Antes de inserir, apaga a extração anterior do mesmo arquivo: reprocessar nunca duplica lançamento.
+ * Antes de inserir, apaga a extração anterior do mesmo arquivo: reprocessar nunca duplica lançamento nem PO.
+ * A PO lida só é gravada se o arquivo é da categoria PO; PO já confirmada não é trocada por uma nova leitura.
  */
 @Service
 public class GravacaoResultado {
@@ -41,14 +47,16 @@ public class GravacaoResultado {
     private final LancamentoRepository lancamentos;
     private final SaldoFundoRepository saldos;
     private final ConferenciaRepository conferencias;
+    private final GravacaoPrevisao previsoes;
 
     GravacaoResultado(ArquivoRepository arquivos, FundoRepository fundos, LancamentoRepository lancamentos,
-            SaldoFundoRepository saldos, ConferenciaRepository conferencias) {
+            SaldoFundoRepository saldos, ConferenciaRepository conferencias, GravacaoPrevisao previsoes) {
         this.arquivos = arquivos;
         this.fundos = fundos;
         this.lancamentos = lancamentos;
         this.saldos = saldos;
         this.conferencias = conferencias;
+        this.previsoes = previsoes;
     }
 
     @Transactional
@@ -59,9 +67,26 @@ public class GravacaoResultado {
                     resultado.arquivoId());
             return;
         }
+        Optional<PrevisaoOrcamentaria> travada = previsoes.travada(arquivo);
+        if (travada.isPresent()) {
+            // ADR 0004, Decisão 3: números de PO confirmada podem já ter sido exportados; nada desta leitura entra
+            arquivo.concluir(StatusArquivo.CONCLUIDO, "A PO deste arquivo já foi confirmada e não foi alterada. "
+                    + "Para mudar a PO, envie o arquivo corrigido e confirme como nova versão.",
+                    travada.get().getInterpretador(), null, null, null);
+            return;
+        }
         lancamentos.apagarDoArquivo(arquivo.getId());
         saldos.apagarDoArquivo(arquivo.getId());
         conferencias.apagarDoArquivo(arquivo.getId());
+
+        PrevisaoLida po = resultado.previsaoOrcamentaria();
+        if (po == null || arquivo.getCategoria() != Categoria.PO) {
+            previsoes.removerNaoConfirmada(arquivo);
+        }
+        if (po != null) {
+            gravarPo(arquivo, resultado, po);
+            return;
+        }
 
         Fluxo fluxo = resultado.fluxoDeCaixa();
         if (fluxo != null && arquivo.getCategoria() != Categoria.BALANCETE) {
@@ -85,6 +110,30 @@ public class GravacaoResultado {
                 falhas == 0 ? "Todas as conferências passaram" : falhas + " conferência(s) não bateram",
                 resultado.interpretador(), fluxo.periodoInicio(), fluxo.periodoFim(), fluxo.totalLancamentos());
         log.info("Arquivo {} gravado: {} lançamentos", arquivo.getNomeOriginal(), fluxo.totalLancamentos());
+    }
+
+    private void gravarPo(Arquivo arquivo, ResultadoProcessamento resultado, PrevisaoLida po) {
+        if (arquivo.getCategoria() != Categoria.PO) {
+            // Mesma regra do RF-01.7 para o fluxo: só a categoria PO grava a previsão orçamentária
+            arquivo.concluir(StatusArquivo.CONCLUIDO,
+                    "Arquivo guardado. Ele parece uma previsão orçamentária: para gravar a PO, mude a categoria para \""
+                            + Categoria.PO.rotulo() + "\".",
+                    null, null, null, null);
+            return;
+        }
+        List<ConferenciaLida> verificacoes = resultado.conferencias() == null ? List.of() : resultado.conferencias();
+        for (int i = 0; i < verificacoes.size(); i++) {
+            conferencias.save(new Conferencia(arquivo.getId(), i + 1, verificacoes.get(i)));
+        }
+        PrevisaoOrcamentaria previsao = previsoes.gravar(arquivo, resultado.interpretador(), po, verificacoes);
+        boolean divergente = previsao.getEstado() == EstadoPrevisao.LIDA_COM_DIVERGENCIA;
+        arquivo.concluir(divergente ? StatusArquivo.PRECISA_REVISAO : StatusArquivo.CONCLUIDO,
+                divergente
+                        ? "PO lida com divergência: confira as somas antes de confirmar"
+                        : "PO lida: aguarda a confirmação do Admin",
+                resultado.interpretador(), null, null, null);
+        log.info("PO do arquivo {} gravada: {} linhas, estado {}", arquivo.getNomeOriginal(), po.linhas().size(),
+                previsao.getEstado());
     }
 
     private void gravarFluxo(Arquivo arquivo, Fluxo fluxo, List<ConferenciaLida> verificacoes) {

@@ -195,6 +195,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/previsoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /** POs lidas do condomínio, da mais recente para a mais antiga (todos os perfis, RF-03.1.1) */
+        get: operations["listarPrevisoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        /** PO com linhas, conferências, avisos e pendências (todos os perfis, RF-03.1.1 e RF-03.1.2) */
+        get: operations["detalhePrevisao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -303,6 +342,143 @@ export interface components {
                 pagina: number;
             }[];
         };
+        /**
+         * @description LIDA (aguarda confirmação), LIDA_COM_DIVERGENCIA (soma que não bate além da tolerância de arredondamento),
+         *     CONFIRMADA (vale para os meses do exercício) e SUBSTITUIDA (trocada por reaprovação a partir de um mês).
+         * @enum {string}
+         */
+        EstadoPrevisao: "LIDA" | "LIDA_COM_DIVERGENCIA" | "CONFIRMADA" | "SUBSTITUIDA";
+        PrevisaoResumo: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            arquivoId: string;
+            arquivoNome?: string | null;
+            sha256: string;
+            estado: components["schemas"]["EstadoPrevisao"];
+            /** @description Preenchida na confirmação (1 */
+            versao?: number | null;
+            titulo?: string | null;
+            /** @description Como impresso (ex. "2026 / 2027") */
+            exercicioImpresso?: string | null;
+            /** @description AAAA-MM */
+            exercicioInicio?: string | null;
+            exercicioFim?: string | null;
+            totalImpresso?: number | null;
+            /** @description Soma das linhas dos grupos que não são fundos (usada nos cálculos) */
+            previstoMes: number;
+            /** Format: date-time */
+            lidaEm: string;
+            confirmadaPor?: string | null;
+            /** Format: date-time */
+            confirmadaEm?: string | null;
+        };
+        PrevisaoDetalhe: {
+            previsao: components["schemas"]["PrevisaoResumo"];
+            colunaOrcadoAnterior?: string | null;
+            colunaOrcado?: string | null;
+            /** @description Total impresso menos fundos impressos */
+            previstoMesImpresso?: number | null;
+            /** @description Diferença máxima tratada como arredondamento nesta leitura */
+            toleranciaArredondamento: number;
+            /** @description Mês a partir do qual vale a nova versão */
+            substituidaDesde?: string | null;
+            /** @description Dados informados pelo Admin; nulo antes da confirmação */
+            confirmacao?: null | {
+                /** Format: uuid */
+                ataArquivoId?: string | null;
+                semAta: boolean;
+                /** Format: date */
+                dataAprovacao?: string | null;
+                cienteDivergencia: boolean;
+                justificativaDivergencia?: string | null;
+            };
+            linhas: components["schemas"]["LinhaPo"][];
+            conferencias: components["schemas"]["ConferenciaPo"][];
+            avisos: components["schemas"]["AvisoPo"][];
+            codigosRepetidos: {
+                codigoImpresso: string;
+                /** @description Os códigos efetivos dessas linhas já são distintos */
+                resolvido: boolean;
+                linhas: {
+                    /** Format: uuid */
+                    linhaId: string;
+                    ordem: number;
+                    descricao: string;
+                    codigoEfetivo: string;
+                }[];
+            }[];
+            /** @description Ligação das linhas de fundo (1.9.x) aos fundos do fluxo, feita na confirmação */
+            fundos: {
+                /** Format: uuid */
+                linhaId: string;
+                codigoEfetivo: string;
+                descricao: string;
+                orcado: number;
+                /** Format: uuid */
+                fundoId: string;
+                fundo: string;
+            }[];
+            achados: {
+                /** Format: uuid */
+                id: string;
+                regra: string;
+                versaoRegra: string;
+                /** @enum {string} */
+                severidade: "INFORMATIVO" | "ATENCAO" | "CRITICO";
+                competencia: string;
+                descricao: string;
+                /** @enum {string} */
+                estado: "ABERTO";
+            }[];
+        };
+        LinhaPo: {
+            /**
+             * Format: uuid
+             * @description Identificador estável da linha (destino do de-para)
+             */
+            id: string;
+            ordem: number;
+            pagina: number;
+            /** @enum {string} */
+            tipo: "TOTAL" | "GRUPO" | "LINHA";
+            codigoImpresso: string;
+            /** @description Igual ao impresso; o Admin muda só quando o código se repete */
+            codigoEfetivo: string;
+            conta?: string | null;
+            contaTexto?: string | null;
+            /** @enum {string|null} */
+            marca?: "RATEIO_A_PARTE" | "NEGOCIADA_ISENCAO" | "SEM_VALOR" | "VALOR_FIXO_SEM_REFERENCIA" | null;
+            descricao: string;
+            orcadoAnterior: number;
+            orcado: number;
+            /** @description Coluna "%" como lida; não entra em cálculo */
+            percentualTexto?: string | null;
+            observacoes?: string | null;
+            /** @description Linha do grupo de fundos (precisa ser ligada a um fundo na confirmação) */
+            linhaDeFundo: boolean;
+            /** Format: uuid */
+            arquivoId: string;
+            sha256: string;
+        };
+        ConferenciaPo: {
+            codigo: string;
+            descricao: string;
+            ok: boolean;
+            detalhe?: string | null;
+            /**
+             * @description OK; ARREDONDAMENTO (diferença até a tolerância, só aviso); DIVERGENCIA; CODIGO_REPETIDO (pendência)
+             * @enum {string}
+             */
+            classificacao: "OK" | "ARREDONDAMENTO" | "DIVERGENCIA" | "CODIGO_REPETIDO";
+            /** @description Quando falhou */
+            explicacao?: string | null;
+        };
+        AvisoPo: {
+            /** @enum {string} */
+            codigo: "ARREDONDAMENTO" | "DIVERGENCIA" | "CODIGO_REPETIDO" | "CONFIRMADA_COM_DIVERGENCIA" | "FORA_PRIMEIRO_TRIMESTRE" | "SEM_ATA" | "REGRA_NAO_AVALIADA";
+            texto: string;
+        };
         Problema: {
             title?: string;
             status?: number;
@@ -315,6 +491,7 @@ export interface components {
     parameters: {
         CondominioId: string;
         ArquivoId: string;
+        PoId: string;
     };
     requestBodies: never;
     headers: never;
@@ -662,6 +839,72 @@ export interface operations {
                 content?: never;
             };
             /** @description Fundo não é deste condomínio */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listarPrevisoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevisaoResumo"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    detalhePrevisao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevisaoDetalhe"];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Não encontrada */
             404: {
                 headers: {
                     [name: string]: unknown;

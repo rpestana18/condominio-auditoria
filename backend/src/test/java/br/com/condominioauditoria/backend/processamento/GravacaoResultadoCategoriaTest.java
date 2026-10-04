@@ -20,6 +20,7 @@ import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.Fluxo
 import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.LancamentoLido;
 import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.Secao;
 import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.Situacao;
+import br.com.condominioauditoria.backend.orcamento.GravacaoPrevisao;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -35,7 +36,7 @@ class GravacaoResultadoCategoriaTest {
     private final SaldoFundoRepository saldos = mock(SaldoFundoRepository.class);
     private final ConferenciaRepository conferencias = mock(ConferenciaRepository.class);
     private final GravacaoResultado gravacao = new GravacaoResultado(arquivos, mock(FundoRepository.class),
-            lancamentos, saldos, conferencias);
+            lancamentos, saldos, conferencias, mock(GravacaoPrevisao.class));
 
     @Test
     void fluxoEmOutraCategoriaApagaExtracaoENaoGravaLancamentos() {
@@ -60,27 +61,5 @@ class GravacaoResultadoCategoriaTest {
         assertThat(arquivo.getStatus()).isEqualTo(StatusArquivo.CONCLUIDO);
         assertThat(arquivo.getTotalLancamentos()).isNull();
         assertThat(arquivo.getMensagem()).contains("Balancetes e fluxos de caixa");
-    }
-
-    /** ADR 0004, passo 1: a PO lida (v2) é aceita e o arquivo conclui, mas a PO ainda não é gravada (passo 4). */
-    @Test
-    void poLidaEhAceitaSemGravarNada() {
-        Arquivo arquivo = new Arquivo(UUID.randomUUID(), Categoria.PO, "po.pdf", "c/po.pdf",
-                "d".repeat(64), 100, "application/pdf", "admin");
-        var linha = new ResultadoProcessamento.LinhaPoLida(1, 1, ResultadoProcessamento.TipoLinhaPo.TOTAL, "1", null,
-                "Soma das seções 1.1 a 1.9", null, "TOTAL DAS DESPESAS", new BigDecimal("441304.38"), new BigDecimal("474201.13"), "7,45%", null);
-        var po = new ResultadoProcessamento.PrevisaoLida("PROPOSTA ORÇAMENTÁRIA 2026 / 2027", "2026 / 2027",
-                List.of("2025/2026", "2026/2027"), List.of(linha));
-        var resultado = new ResultadoProcessamento(2, arquivo.getProcessamentoId(), arquivo.getId(),
-                arquivo.getCondominioId(), Situacao.CONCLUIDO, null, "po-protest", 1, null, po, List.of());
-        when(arquivos.findById(arquivo.getId())).thenReturn(Optional.of(arquivo));
-
-        gravacao.gravar(resultado);
-
-        verify(lancamentos, never()).saveAll(any());
-        verify(saldos, never()).saveAll(any());
-        verify(conferencias, never()).save(any());
-        assertThat(arquivo.getStatus()).isEqualTo(StatusArquivo.CONCLUIDO);
-        assertThat(arquivo.getTotalLancamentos()).isNull();
     }
 }

@@ -1,5 +1,5 @@
 // Textos da tela para os códigos da API. Só rótulos: nenhuma regra mora aqui.
-import type { EstadoDepara, EstadoPrevisao, MarcaLinha, OrigemDepara, PrevistoRealizado, TipoDestino } from "../../api/tipos";
+import type { Achado, EstadoAchado, EstadoDepara, EstadoPrevisao, MarcaLinha, OrigemDepara, PrevistoRealizado, TipoDestino } from "../../api/tipos";
 
 export const rotuloEstadoPo: Record<EstadoPrevisao, string> = {
   LIDA: "Lida, aguarda confirmação",
@@ -40,4 +40,18 @@ export const rotuloSituacaoFundo: Record<PrevistoRealizado["fundos"][number]["si
   SEM_PREVISTO_NA_PO: "Sem previsto na PO",
   LINHA_SEM_FUNDO: "Linha sem fundo ligado",
   REPROCESSAR_FLUXO: "Reprocesse o fluxo para ver a arrecadação",
+};
+
+export const rotuloSeveridade: Record<Achado["severidade"], string> = {
+  INFORMATIVO: "informativo",
+  ATENCAO: "atenção",
+  CRITICO: "crítico",
+};
+
+export const rotuloEstadoAchado: Record<EstadoAchado, string> = {
+  ABERTO: "aberto",
+  NAO_SE_APLICA_MAIS: "não se aplica mais",
+  JUSTIFICADO: "justificado",
+  RESOLVIDO: "resolvido",
+  FALSO_POSITIVO: "falso positivo",
 };

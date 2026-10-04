@@ -46,6 +46,12 @@ export async function enviarJson<T>(caminho: string, corpo?: unknown): Promise<T
   return (await resposta.json()) as T;
 }
 
+/** DELETE que devolve JSON (ex.: desfazer a realocação devolve o registro desfeito). */
+export async function excluir<T>(caminho: string): Promise<T> {
+  const resposta = await chamar(caminho, { method: "DELETE" });
+  return (await resposta.json()) as T;
+}
+
 /** PUT com corpo JSON e sem resposta (204). */
 export async function gravar(caminho: string, corpo: unknown): Promise<void> {
   await chamar(caminho, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });

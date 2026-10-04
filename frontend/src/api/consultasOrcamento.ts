@@ -1,9 +1,12 @@
 // Consultas e ações do previsto × realizado, da PO e do de-para (ADR 0004).
 // Todo número vem calculado do backend; aqui só se busca e se envia.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { enviar, enviarJson, atualizar, obter } from "./cliente";
+import { atualizar, enviar, enviarJson, excluir, obter } from "./cliente";
 import type {
+  Achado,
   ContaDepara,
+  EventoPrevisao,
+  FundoFluxo,
   DeparaLista,
   EventoDepara,
   EvidenciaLancamento,
@@ -13,7 +16,9 @@ import type {
   PedidoLote,
   PrevisaoDetalhe,
   PrevisaoResumo,
+  PedidoRealocacao,
   PrevistoRealizado,
+  Realocacao,
   ResultadoLote,
   ResultadoPlanilha,
   ResultadoSugestoes,
@@ -53,18 +58,19 @@ export function usePrevisao(condominioId: string, poId: string | undefined) {
 
 // ---------- Previsto × realizado ----------
 
-export function usePrevistoRealizado(condominioId: string, periodo: Periodo | null, poId?: string | null) {
+/** `fundoId` filtra no backend: o ordinário traz só o fundo Condomínio; outro fundo, só o painel dele; sem ele, tudo. */
+export function usePrevistoRealizado(condominioId: string, periodo: Periodo | null, poId?: string | null, fundoId?: string | null) {
   return useQuery({
-    queryKey: ["previsto-realizado", condominioId, periodo, poId ?? "vigente"],
+    queryKey: ["previsto-realizado", condominioId, periodo, poId ?? "vigente", fundoId ?? "todos"],
     queryFn: () =>
-      obter<PrevistoRealizado>(`${base(condominioId)}/previsto-realizado${consulta({ periodo, po: poId })}`),
+      obter<PrevistoRealizado>(`${base(condominioId)}/previsto-realizado${consulta({ periodo, po: poId, fundo: fundoId })}`),
     enabled: periodo !== null,
   });
 }
 
 /**
- * Lançamentos de um número da tela. Alvo: "linha:<id>", "fundo:<id>", AJUSTES, A_REALOCAR,
- * SEM_LINHA_PO ou TRANSFERENCIAS (contrato da API).
+ * Lançamentos de um número da tela. Alvo: "linha:<id>", "grupo:<id>", "total", "fundo:<id>", AJUSTES,
+ * A_REALOCAR, SEM_LINHA_PO ou TRANSFERENCIAS (contrato da API).
  */
 export function useEvidencia(condominioId: string, periodo: Periodo, poId: string | null | undefined, alvo: string | null) {
   return useQuery({
@@ -77,12 +83,49 @@ export function useEvidencia(condominioId: string, periodo: Periodo, poId: strin
   });
 }
 
-/**
- * Caminho da exportação (passo 9 da ADR 0004, ainda em construção no backend).
- * Usa o caminho previsto na ADR: GET /previsto-realizado/exportacao?formato=pdf|xlsx, com os filtros da tela.
- */
-export function caminhoExportacao(condominioId: string, formato: FormatoExportacao, periodo: Periodo, poId?: string | null) {
-  return `${base(condominioId)}/previsto-realizado/exportacao${consulta({ formato, periodo, po: poId })}`;
+/** Exportação da mesma visão da tela (mesmos filtros), gerada no backend (RF-03.1.14). */
+export function caminhoExportacao(
+  condominioId: string,
+  formato: FormatoExportacao,
+  periodo: Periodo,
+  poId?: string | null,
+  fundoId?: string | null,
+) {
+  return `${base(condominioId)}/previsto-realizado/exportacao${consulta({ formato, periodo, po: poId, fundo: fundoId })}`;
+}
+
+/** Fundos do fluxo pelo nome impresso (filtro de fundo e ligação das linhas 1.9). */
+export function useFundos(condominioId: string) {
+  return useQuery({
+    queryKey: ["fundos", condominioId],
+    queryFn: async () => (await obter<FundoFluxo[]>(`${base(condominioId)}/fundos`)) ?? [],
+  });
+}
+
+/** Achados de um mês (ou de todos, sem competência), só leitura. */
+export function useAchados(condominioId: string, competencia: string | null) {
+  return useQuery({
+    queryKey: ["achados", condominioId, competencia ?? "todos"],
+    queryFn: async () => (await obter<Achado[]>(`${base(condominioId)}/achados${consulta({ competencia })}`)) ?? [],
+  });
+}
+
+export function useEventosPrevisao(condominioId: string, poId: string | undefined) {
+  return useQuery({
+    queryKey: ["previsao-eventos", condominioId, poId],
+    queryFn: async () => (await obter<EventoPrevisao[]>(`${base(condominioId)}/previsoes/${poId}/eventos`)) ?? [],
+    enabled: !!poId,
+  });
+}
+
+// ---------- Realocação (RF-03.1.7) ----------
+
+export function useRealocacoes(condominioId: string, poId: string | undefined) {
+  return useQuery({
+    queryKey: ["realocacoes", condominioId, poId],
+    queryFn: async () => (await obter<Realocacao[]>(`${base(condominioId)}/realocacoes${consulta({ po: poId })}`)) ?? [],
+    enabled: !!poId,
+  });
 }
 
 // ---------- De-para ----------
@@ -110,7 +153,8 @@ export function useEventosDepara(condominioId: string, poId: string | undefined,
 function useRecarregarOrcamento() {
   const cliente = useQueryClient();
   return () => {
-    for (const chave of ["previsoes", "previsao", "depara", "depara-eventos", "previsto-realizado", "evidencia", "painel"]) {
+    const chaves = ["previsoes", "previsao", "previsao-eventos", "depara", "depara-eventos", "previsto-realizado", "evidencia", "painel", "realocacoes", "achados"];
+    for (const chave of chaves) {
       void cliente.invalidateQueries({ queryKey: [chave] });
     }
   };
@@ -159,6 +203,34 @@ export function usePlanilhaDepara(condominioId: string, poId: string) {
       corpo.append("arquivo", arquivo);
       return enviar<ResultadoPlanilha>(`${base(condominioId)}/previsoes/${poId}/depara/planilha`, corpo);
     },
+    onSuccess: recarregar,
+  });
+}
+
+/** Só Gestor e Admin (o backend responde 403 para o Usuário). */
+export function useRealocar(condominioId: string) {
+  const recarregar = useRecarregarOrcamento();
+  return useMutation({
+    mutationFn: (pedido: PedidoRealocacao) => enviarJson<Realocacao>(`${base(condominioId)}/realocacoes`, pedido),
+    onSuccess: recarregar,
+  });
+}
+
+/** Desfazer não apaga: a realocação fica registrada como desfeita e o valor volta a "a realocar". */
+export function useDesfazerRealocacao(condominioId: string) {
+  const recarregar = useRecarregarOrcamento();
+  return useMutation({
+    mutationFn: (realocacaoId: string) => excluir<Realocacao>(`${base(condominioId)}/realocacoes/${realocacaoId}`),
+    onSuccess: recarregar,
+  });
+}
+
+/** Só Admin: troca a ligação das linhas 1.9 aos fundos depois da confirmação (lista completa). */
+export function useAlterarFundosPo(condominioId: string, poId: string) {
+  const recarregar = useRecarregarOrcamento();
+  return useMutation({
+    mutationFn: (fundos: { linhaId: string; fundoId: string | null }[]) =>
+      atualizar<PrevisaoDetalhe>(`${base(condominioId)}/previsoes/${poId}/fundos`, { fundos }),
     onSuccess: recarregar,
   });
 }

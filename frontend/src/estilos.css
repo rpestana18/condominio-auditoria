@@ -120,6 +120,7 @@ select { padding: 7px 10px; border: 1px solid var(--borda); border-radius: 8px; 
 }
 .abas button[aria-selected="true"] { background: var(--primaria); border-color: var(--primaria); color: #fff; }
 
+.com-detalhe .bloco { overflow-x: auto; }
 .com-detalhe { display: grid; grid-template-columns: minmax(0, 1fr) 480px; gap: 20px; align-items: start; }
 .detalhe { padding: 18px; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; }
 .detalhe header { display: flex; justify-content: space-between; gap: 12px; }
@@ -219,3 +220,8 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea {
 .recharts-legend-item-text { color: var(--texto) !important; }
 .recharts-default-tooltip { background: var(--superficie) !important; border-color: var(--borda) !important; color: var(--texto); }
 .recharts-tooltip-cursor { fill: var(--primaria-clara); }
+.realocar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+.realocar select { max-width: 280px; }
+.tabela tr.desfeita td { color: var(--texto-discreto); text-decoration: line-through; }
+.lista-achados { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.lista-achados li { display: flex; flex-direction: column; gap: 4px; padding-bottom: 10px; border-bottom: 1px solid var(--borda); font-size: 0.88rem; }

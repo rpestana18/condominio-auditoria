@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { ErroApi } from "../../api/cliente";
-import { useArquivos, usePainel } from "../../api/consultas";
-import { useConfirmarPrevisao } from "../../api/consultasOrcamento";
+import { useArquivos } from "../../api/consultas";
+import { useConfirmarPrevisao, useFundos } from "../../api/consultasOrcamento";
 import type { PedidoConfirmacao, PrevisaoDetalhe } from "../../api/tipos";
 import { useSessao } from "../../contexto";
 import { formatarData, formatarMoeda } from "../../formato";
@@ -15,7 +15,7 @@ export function FormConfirmacaoPo({ detalhe }: { detalhe: PrevisaoDetalhe }) {
   const { condominioId } = useSessao();
   const confirmar = useConfirmarPrevisao(condominioId, detalhe.previsao.id);
   const { data: atas = [] } = useArquivos(condominioId, "ATA");
-  const { data: painel } = usePainel(condominioId);
+  const { data: fundosDoCondominio = [] } = useFundos(condominioId);
 
   const [inicio, setInicio] = useState(detalhe.previsao.exercicioInicio ?? "");
   const [fim, setFim] = useState(detalhe.previsao.exercicioFim ?? "");
@@ -35,8 +35,7 @@ export function FormConfirmacaoPo({ detalhe }: { detalhe: PrevisaoDetalhe }) {
   const comDivergencia = detalhe.previsao.estado === "LIDA_COM_DIVERGENCIA";
   const linhasDeFundo = detalhe.linhas.filter((l) => l.linhaDeFundo && l.tipo === "LINHA");
   // Fundos do fluxo pelo nome impresso. O fundo ordinário (fundo Condomínio) não pode ser ligado a 1.9.x.
-  const ordinario = painel?.fundoOrdinario?.confirmado ? painel.fundoOrdinario.fundoId : null;
-  const fundosDoFluxo = (painel?.fundos ?? []).filter((f) => f.fundoId !== ordinario);
+  const fundosDoFluxo = fundosDoCondominio.filter((f) => !f.ordinario);
 
   function enviar(evento: FormEvent) {
     evento.preventDefault();
@@ -136,8 +135,8 @@ export function FormConfirmacaoPo({ detalhe }: { detalhe: PrevisaoDetalhe }) {
               >
                 <option value="">Sem fundo ligado</option>
                 {fundosDoFluxo.map((f) => (
-                  <option key={f.fundoId} value={f.fundoId}>
-                    {f.fundo}
+                  <option key={f.id} value={f.id}>
+                    {f.nome}
                   </option>
                 ))}
               </select>

@@ -5,7 +5,9 @@ import type { PrevisaoDetalhe } from "../api/tipos";
 import { ConferenciasPo } from "../componentes/po/ConferenciasPo";
 import { FormConfirmacaoPo } from "../componentes/po/FormConfirmacaoPo";
 import { LinhasPo } from "../componentes/po/LinhasPo";
-import { rotuloEstadoPo } from "../componentes/previsto/rotulos";
+import { EditarFundosPo } from "../componentes/po/EditarFundosPo";
+import { EventosPo } from "../componentes/po/EventosPo";
+import { rotuloEstadoAchado, rotuloEstadoPo, rotuloSeveridade } from "../componentes/previsto/rotulos";
 import { useSessao } from "../contexto";
 import { formatarData, formatarDataHora, formatarMes, formatarMoeda } from "../formato";
 
@@ -38,8 +40,13 @@ export function PrevisaoPo() {
       {aguardando && !pode("ADMIN") && <p className="aviso alerta">Aguardando a confirmação do Admin.</p>}
       {aguardando && pode("ADMIN") && <FormConfirmacaoPo detalhe={detalhe} />}
       <ConferenciasPo conferencias={detalhe.conferencias} avisos={detalhe.avisos} />
-      {detalhe.fundos.length > 0 && <FundosLigados detalhe={detalhe} />}
+      {previsao.estado === "CONFIRMADA" && pode("ADMIN") ? (
+        <EditarFundosPo detalhe={detalhe} />
+      ) : (
+        detalhe.fundos.length > 0 && <FundosLigados detalhe={detalhe} />
+      )}
       {detalhe.achados.length > 0 && <Achados detalhe={detalhe} />}
+      <EventosPo poId={previsao.id} />
       <LinhasPo linhas={detalhe.linhas} colunaOrcadoAnterior={detalhe.colunaOrcadoAnterior} colunaOrcado={detalhe.colunaOrcado} />
     </>
   );
@@ -113,8 +120,6 @@ function FundosLigados({ detalhe }: { detalhe: PrevisaoDetalhe }) {
   );
 }
 
-const rotuloSeveridade = { INFORMATIVO: "informativo", ATENCAO: "atenção", CRITICO: "crítico" } as const;
-
 function Achados({ detalhe }: { detalhe: PrevisaoDetalhe }) {
   return (
     <section className="bloco">
@@ -123,7 +128,7 @@ function Achados({ detalhe }: { detalhe: PrevisaoDetalhe }) {
         {detalhe.achados.map((a) => (
           <li key={a.id}>
             <span className={a.severidade === "CRITICO" ? "selo critico" : "selo alerta"}>{rotuloSeveridade[a.severidade]}</span>{" "}
-            {formatarMes(a.competencia)} · {a.descricao}
+            <span className="selo neutro">{rotuloEstadoAchado[a.estado]}</span> {formatarMes(a.competencia)} · {a.descricao}
           </li>
         ))}
       </ul>

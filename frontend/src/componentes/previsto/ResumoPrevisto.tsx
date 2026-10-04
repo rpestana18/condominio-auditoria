@@ -1,23 +1,33 @@
 import type { PrevistoRealizado, TotaisPrevistoRealizado } from "../../api/tipos";
 import { classeDiferenca, formatarDiferenca, formatarMes, formatarMoeda, formatarPercentual } from "../../formato";
+import type { AbrirEvidencia } from "./evidencia";
+import { ValorComFonte } from "./ValorComFonte";
 
 interface Props {
   resultado: PrevistoRealizado;
   totais: TotaisPrevistoRealizado;
+  aoAbrirEvidencia: AbrirEvidencia;
 }
 
 /** Cartões do topo: previsto, despesa realizada, diferença e execução (todos calculados pelo backend). */
-export function ResumoPrevisto({ resultado, totais }: Props) {
+export function ResumoPrevisto({ resultado, totais, aoAbrirEvidencia }: Props) {
   const acumulado = resultado.periodo === "acumulado";
   return (
     <>
       <div className="cartoes">
         <Cartao titulo={acumulado ? "Previsto dos meses com fluxo" : "Previsto do mês"} valor={formatarMoeda(totais.previsto)} />
-        <Cartao
-          titulo="Despesa realizada"
-          valor={formatarMoeda(totais.despesaRealizada)}
-          dica={`Em linhas da PO: ${formatarMoeda(totais.emLinhas)}; o restante está em "a realocar" e "sem linha da PO"`}
-        />
+        <div
+          className="cartao-numero"
+          title={`Em linhas da PO: ${formatarMoeda(totais.emLinhas)}; o restante está em "a realocar" e "sem linha da PO"`}
+        >
+          <span className="cartao-titulo">Despesa realizada</span>
+          <strong>
+            <ValorComFonte
+              valor={totais.despesaRealizada}
+              aoAbrir={() => aoAbrirEvidencia({ alvo: "total", titulo: "Despesa realizada" })}
+            />
+          </strong>
+        </div>
         <Cartao titulo="Diferença" valor={formatarDiferenca(totais.diferenca)} classe={classeDiferenca(totais.diferenca)} />
         <Cartao titulo="Execução" valor={formatarPercentual(totais.execucao)} dica="Realizado ÷ previsto" />
         {acumulado && (

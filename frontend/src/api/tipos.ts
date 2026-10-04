@@ -52,3 +52,11 @@ export type LinhaPrevistoRealizado = GrupoPrevistoRealizado["linhas"][number];
 export type BlocoPrevistoRealizado = Esquemas["BlocoPrevistoRealizado"];
 export type EvidenciaLancamento = Esquemas["EvidenciaLancamento"];
 export type FluxoUsado = Esquemas["FluxoUsado"];
+
+// Fundos, realocação, trilha da PO e achados (passos 8 e 9)
+export type FundoFluxo = Esquemas["FundoFluxo"];
+export type EventoPrevisao = Esquemas["EventoPrevisao"];
+export type Realocacao = Esquemas["Realocacao"];
+export type PedidoRealocacao = Esquemas["PedidoRealocacao"];
+export type EstadoAchado = Esquemas["EstadoAchado"];
+export type Achado = Esquemas["Achado"];

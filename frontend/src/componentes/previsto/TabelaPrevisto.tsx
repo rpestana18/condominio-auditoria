@@ -12,7 +12,7 @@ interface Props {
   aoAbrirEvidencia: AbrirEvidencia;
 }
 
-/** Tabela por grupo, com subtotais (RF-03.1.13). Cada realizado leva aos lançamentos da linha. */
+/** Tabela por grupo, com subtotais (RF-03.1.13). Cada realizado, de linha ou de grupo, leva aos lançamentos. */
 export function TabelaPrevisto({ grupos, aoAbrirEvidencia }: Props) {
   const [ordem, setOrdem] = useState<Ordem>("PO");
   const [fechados, setFechados] = useState<Set<string>>(new Set());
@@ -62,7 +62,12 @@ export function TabelaPrevisto({ grupos, aoAbrirEvidencia }: Props) {
                 </td>
                 <td colSpan={2}>{g.descricao}</td>
                 <td className="numero">{formatarMoeda(g.previsto)}</td>
-                <td className="numero">{formatarMoeda(g.realizado)}</td>
+                <td className="numero">
+                  <ValorComFonte
+                    valor={g.realizado}
+                    aoAbrir={() => aoAbrirEvidencia({ alvo: `grupo:${g.linhaId}`, titulo: `${g.codigo} ${g.descricao}` })}
+                  />
+                </td>
                 <td className={`numero ${classeDiferenca(g.diferenca)}`}>{formatarDiferenca(g.diferenca)}</td>
                 <td className="numero">{formatarPercentual(g.execucao)}</td>
               </tr>

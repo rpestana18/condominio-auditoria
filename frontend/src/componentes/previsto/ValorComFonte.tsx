@@ -10,7 +10,10 @@ interface Props {
 /** Número em reais que leva aos lançamentos de origem. */
 export function ValorComFonte({ valor, aoAbrir, className }: Props) {
   return (
-    <button className={`valor-fonte ${className ?? ""}`} onClick={aoAbrir} title="Ver os lançamentos de origem">
+    <button className={`valor-fonte ${className ?? ""}`} onClick={(e) => {
+        e.stopPropagation(); // dentro de uma linha clicável, abre só a evidência
+        aoAbrir();
+      }} title="Ver os lançamentos de origem">
       {formatarMoeda(valor)}
     </button>
   );

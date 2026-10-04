@@ -1,8 +1,6 @@
-import type { MesPrevistoRealizado, PrevisaoResumo } from "../../api/tipos";
+import type { FundoFluxo, MesPrevistoRealizado, PrevisaoResumo } from "../../api/tipos";
 import { formatarMes } from "../../formato";
 import { rotuloEstadoPo } from "./rotulos";
-
-export type VisaoFundo = "CONDOMINIO" | "DEMAIS";
 
 interface Props {
   previsoes: PrevisaoResumo[];
@@ -12,8 +10,10 @@ interface Props {
   /** Os meses do exercício, vindos do acumulado (com a situação de cada um). */
   meses: MesPrevistoRealizado[];
   aoTrocarPeriodo: (periodo: string) => void;
-  fundo: VisaoFundo;
-  aoTrocarFundo: (fundo: VisaoFundo) => void;
+  /** Fundos do fluxo (GET /fundos). O filtro vai para a API; a tela não separa nada sozinha. */
+  fundos: FundoFluxo[];
+  fundoId: string | null;
+  aoTrocarFundo: (fundoId: string | null) => void;
 }
 
 const situacaoMes: Record<MesPrevistoRealizado["situacao"], string> = {
@@ -24,7 +24,9 @@ const situacaoMes: Record<MesPrevistoRealizado["situacao"], string> = {
 
 /** Filtros do RF-03.1.13: versão da PO, mês ou acumulado, e fundo. */
 export function FiltrosPrevisto(props: Props) {
-  const { previsoes, poId, aoTrocarPo, periodo, meses, aoTrocarPeriodo, fundo, aoTrocarFundo } = props;
+  const { previsoes, poId, aoTrocarPo, periodo, meses, aoTrocarPeriodo, fundos, fundoId, aoTrocarFundo } = props;
+  // O fundo ordinário (fundo Condomínio) vem primeiro; os demais, na ordem de nome da API
+  const ordenados = [...fundos.filter((f) => f.ordinario), ...fundos.filter((f) => !f.ordinario)];
   return (
     <div className="filtros">
       <label>
@@ -50,14 +52,17 @@ export function FiltrosPrevisto(props: Props) {
           ))}
         </select>
       </label>
-      <div className="abas" role="tablist" aria-label="Fundo">
-        <button role="tab" aria-selected={fundo === "CONDOMINIO"} onClick={() => aoTrocarFundo("CONDOMINIO")}>
-          Fundo Condomínio
-        </button>
-        <button role="tab" aria-selected={fundo === "DEMAIS"} onClick={() => aoTrocarFundo("DEMAIS")}>
-          Reserva, obras e demais fundos
-        </button>
-      </div>
+      <label>
+        Fundo
+        <select value={fundoId ?? ""} onChange={(e) => aoTrocarFundo(e.target.value || null)}>
+          <option value="">Todos os fundos</option>
+          {ordenados.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.ordinario ? `Fundo Condomínio (${f.nome})` : f.nome}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }

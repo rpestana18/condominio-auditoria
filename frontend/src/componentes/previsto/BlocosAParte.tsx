@@ -1,6 +1,9 @@
+import type { ReactNode } from "react";
+import { useSessao } from "../../contexto";
 import type { BlocoPrevistoRealizado, ConferenciaFluxo, PrevistoRealizado } from "../../api/tipos";
 import { formatarMoeda } from "../../formato";
 import type { AbrirEvidencia } from "./evidencia";
+import { ListaRealocacoes } from "./Realocacao";
 import { ValorComFonte } from "./ValorComFonte";
 
 interface Props {
@@ -13,6 +16,8 @@ interface Props {
  * conferência com o fluxo.
  */
 export function BlocosAParte({ resultado, aoAbrirEvidencia }: Props) {
+  const { pode } = useSessao();
+  const abrirARealocar = () => aoAbrirEvidencia({ alvo: "A_REALOCAR", titulo: "A realocar" });
   return (
     <div className="duas-colunas">
       <Bloco
@@ -25,8 +30,16 @@ export function BlocosAParte({ resultado, aoAbrirEvidencia }: Props) {
         titulo="A realocar"
         dica="Compras por meio de pagamento (RF-02B) que ainda não foram realocadas para uma linha da PO."
         bloco={resultado.aRealocar}
-        aoAbrir={() => aoAbrirEvidencia({ alvo: "A_REALOCAR", titulo: "A realocar" })}
-      />
+        aoAbrir={abrirARealocar}
+      >
+        {/* Gestor e Admin escolhem a linha de cada compra na evidência; o backend barra os demais */}
+        {pode("GESTOR", "ADMIN") && (resultado.aRealocar?.total ?? 0) !== 0 && (
+          <button className="botao secundario" onClick={abrirARealocar}>
+            Realocar compras
+          </button>
+        )}
+        {resultado.po && <ListaRealocacoes poId={resultado.po.id} />}
+      </Bloco>
       <Bloco
         titulo="Ajustes (não são despesa)"
         dica="Estornos e repasses: ficam fora da despesa realizada."
@@ -43,9 +56,10 @@ interface PropsBloco {
   dica: string;
   bloco: BlocoPrevistoRealizado | null | undefined;
   aoAbrir: () => void;
+  children?: ReactNode;
 }
 
-function Bloco({ titulo, dica, bloco, aoAbrir }: PropsBloco) {
+function Bloco({ titulo, dica, bloco, aoAbrir, children }: PropsBloco) {
   return (
     <section className="bloco">
       <header className="titulo-bloco">
@@ -77,6 +91,7 @@ function Bloco({ titulo, dica, bloco, aoAbrir }: PropsBloco) {
           </tbody>
         </table>
       )}
+      {children}
     </section>
   );
 }

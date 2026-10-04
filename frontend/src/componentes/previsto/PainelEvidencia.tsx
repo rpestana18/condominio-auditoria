@@ -4,6 +4,7 @@ import type { PrevistoRealizado } from "../../api/tipos";
 import { useSessao } from "../../contexto";
 import { formatarData, formatarMoeda, hashCurto } from "../../formato";
 import type { AlvoEvidencia } from "./evidencia";
+import { DesfazerRealocacao, RealocarLancamento } from "./Realocacao";
 
 interface Props {
   periodo: Periodo;
@@ -17,7 +18,8 @@ interface Props {
  * conta, arquivo, página e hash. Nenhum texto sobre a causa da diferença.
  */
 export function PainelEvidencia({ periodo, po, alvo, aoFechar }: Props) {
-  const { condominioId } = useSessao();
+  const { condominioId, pode } = useSessao();
+  const podeRealocar = pode("GESTOR", "ADMIN");
   const { data: lancamentos = [], isLoading, error } = useEvidencia(condominioId, periodo, po.id, alvo.alvo);
   const abrirNaPagina = (arquivoId: string, pagina: number) =>
     void abrirArquivo(`/condominios/${condominioId}/arquivos/${arquivoId}/conteudo`, pagina);
@@ -63,6 +65,8 @@ export function PainelEvidencia({ periodo, po, alvo, aoFechar }: Props) {
               {l.fundo && ` · ${l.fundo}`}
             </span>
             {l.realocacao && <span className="selo alerta">{l.realocacao}</span>}
+            {podeRealocar && l.realocacaoId && <DesfazerRealocacao realocacaoId={l.realocacaoId} />}
+            {podeRealocar && alvo.alvo === "A_REALOCAR" && !l.realocacaoId && <RealocarLancamento poId={po.id} lancamento={l} />}
             <span className="discreto">
               <button className="botao-link" onClick={() => abrirNaPagina(l.arquivoId, l.pagina)}>
                 {l.arquivoNome ?? "Fluxo"}, pág. {l.pagina}

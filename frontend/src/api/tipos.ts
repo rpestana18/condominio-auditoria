@@ -6,6 +6,7 @@ type Esquemas = components["schemas"];
 export type Categoria = Esquemas["Categoria"];
 export type StatusArquivo = Esquemas["StatusArquivo"];
 export type CategoriaDto = Esquemas["CategoriaDto"];
+export type NovaCategoria = Esquemas["NovaCategoria"];
 export type UsuarioLogado = Esquemas["UsuarioLogado"];
 export type ArquivoResumo = Esquemas["ArquivoResumo"];
 export type ArquivoDetalhe = Esquemas["ArquivoDetalhe"];

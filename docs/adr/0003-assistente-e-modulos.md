@@ -1,6 +1,6 @@
 # ADR 0003: Assistente (chat, embeddings, busca) e módulos contratáveis por condomínio
 
-- **Status:** proposta (03/10/2026). Nada aqui entra no código antes da aprovação do usuário, item a item.
+- **Status:** aprovada pelo usuário em 03/10/2026 (todas as recomendações, incluindo Claude via API para as respostas do chat)
 - **Complementa:** ADR 0001 (linhas "Modelo de IA" e "RAG e MCP") e ADR 0002 (tabela "Como conversam": acrescenta canais, não muda os existentes)
 - **Requisitos atendidos:** RF-04 (Assistente), RF-08.1, RF-09.3, RF-09.6, RF-09.7, RF-10 (módulos), com as respostas do usuário Q7 a Q17 de 03/10/2026 (Q10 = Não; demais = Sim)
 
@@ -221,7 +221,7 @@ sequenceDiagram
 
 ---
 
-## Novas peças propostas (nenhuma entra sem aprovação)
+## Novas peças (aprovadas pelo usuário em 03/10/2026)
 
 | Peça | Onde | Por quê | Situação no projeto |
 |---|---|---|---|

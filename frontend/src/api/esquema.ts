@@ -137,6 +137,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/arquivos/{id}/categoria": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                id: components["parameters"]["ArquivoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Troca a categoria e reprocessa o arquivo (GESTOR ou ADMIN, RF-01.7). Mesma categoria não faz nada. */
+        put: operations["alterarCategoriaArquivo"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/condominios/{condominioId}/painel": {
         parameters: {
             query?: never;
@@ -181,6 +201,9 @@ export interface components {
     schemas: {
         /** @enum {string} */
         Categoria: "BALANCETE" | "EXTRATO" | "PO" | "CONTRATO" | "FOLHA" | "COMPROVANTE" | "ATA" | "CONVENCAO_RI" | "OUTROS";
+        NovaCategoria: {
+            categoria: components["schemas"]["Categoria"];
+        };
         /** @enum {string} */
         StatusArquivo: "PENDENTE" | "PROCESSANDO" | "CONCLUIDO" | "PRECISA_REVISAO" | "FALHOU";
         CategoriaDto: {
@@ -512,6 +535,61 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ArquivoResumo"];
                 };
+            };
+            /** @description Já está em processamento */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    alterarCategoriaArquivo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                id: components["parameters"]["ArquivoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NovaCategoria"];
+            };
+        };
+        responses: {
+            /** @description Categoria trocada (arquivo na fila de novo) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArquivoResumo"];
+                };
+            };
+            /** @description Categoria não informada ou inválida */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Perfil sem permissão */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Já está em processamento */
             409: {

@@ -25,11 +25,14 @@ public class ArquivoService {
     private final ArquivoRepository arquivos;
     private final Armazenamento armazenamento;
     private final ApplicationEventPublisher eventos;
+    private final HistoricoCategoriaRepository historico;
 
-    ArquivoService(ArquivoRepository arquivos, Armazenamento armazenamento, ApplicationEventPublisher eventos) {
+    ArquivoService(ArquivoRepository arquivos, Armazenamento armazenamento, ApplicationEventPublisher eventos,
+            HistoricoCategoriaRepository historico) {
         this.arquivos = arquivos;
         this.armazenamento = armazenamento;
         this.eventos = eventos;
+        this.historico = historico;
     }
 
     @Transactional
@@ -70,6 +73,23 @@ public class ArquivoService {
         arquivo.novoProcessamento();
         eventos.publishEvent(new ArquivoParaLer(arquivo.getId()));
         return arquivos.save(arquivo);
+    }
+
+    /**
+     * Troca a categoria e reprocessa (RF-01.7): a gravação apaga a extração feita sob a categoria antiga.
+     * Mesma categoria não faz nada. A troca fica registrada com quem fez, quando, a anterior e a nova.
+     */
+    @Transactional
+    public Arquivo alterarCategoria(Arquivo arquivo, Categoria nova, String usuario) {
+        if (arquivo.getCategoria() == nova) {
+            return arquivo;
+        }
+        if (arquivo.getStatus() == StatusArquivo.PROCESSANDO) {
+            throw new IllegalStateException("O arquivo já está sendo processado");
+        }
+        historico.save(new HistoricoCategoria(arquivo.getId(), arquivo.getCategoria(), nova, usuario));
+        arquivo.trocarCategoria(nova);
+        return reprocessar(arquivo);
     }
 
     private static String copiarCalculandoHash(InputStream entrada, Path destino) throws IOException {

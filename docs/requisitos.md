@@ -1,6 +1,6 @@
 # Documento de Requisitos — Sistema de Auditoria e Contabilidade do Condomínio
 
-Versão 0.2 · 03/10/2026 (multi-condomínio) · Status: **rascunho para validação do usuário**
+Versão 0.3 · 03/10/2026 (previsto × realizado) · Status: **rascunho para validação do usuário**
 Elaborado em conjunto pelos papéis de *Agente de Requisitos* e *Agente Arquiteto*.
 
 ---
@@ -149,7 +149,7 @@ Cada arquivo carrega: categoria, competência (mês/ano de referência), data de
 - RF-00.5 Parsers por **layout de administradora**, reaproveitáveis entre condomínios da mesma administradora.
 - RF-00.6 Alteração de convenção ou RI gera nova versão dos parâmetros com data de vigência. Auditorias antigas continuam usando a versão da época.
 - RF-00.7 **Hierarquia de fontes**: uma deliberação de assembleia posterior prevalece sobre o texto da convenção ou do RI no mesmo tema (ex.: arrendamento do bar da piscina, decidido depois do RI de 2016). Cada parâmetro mostra qual fonte está valendo e desde quando.
-- RF-00.8 **De-para de contas**: a PO e o fluxo da administradora podem usar planos de contas diferentes (no piloto, o código 1621 é Interfones na PO e Material Hidráulico no fluxo). O casamento é feito por uma tabela de-para por condomínio, sugerida pela IA pelo nome e confirmada pelo Admin, nunca pelo número.
+- RF-00.8 **De-para de contas**: a PO e o fluxo da administradora podem usar planos de contas diferentes (no piloto, o código 1621 é Interfones na PO e Material Hidráulico no fluxo). O casamento é feito por uma tabela de-para por condomínio, confirmada pelo Admin, nunca pelo número. A sugestão automática pelo nome é opcional, e o fluxo funciona sem IA (modo `DESLIGADO`). Detalhado em RF-03.1.4 e RF-03.1.5.
 - RF-00.9 **Fundo em recomposição planejada**: o gestor pode marcar um fundo negativo como investimento deliberado. O sistema passa a acompanhar a tendência em vez de alertar pelo prazo de rateio.
 
 
@@ -160,6 +160,15 @@ Cada arquivo carrega: categoria, competência (mês/ano de referência), data de
 - RF-01.4 Normalizar em lançamentos estruturados: data, descrição, fornecedor/favorecido, CNPJ/CPF, conta contábil/rubrica, valor, documento de origem, página/linha.
 - RF-01.5 Detectar duplicidade de arquivo (hash) e de lançamento.
 - RF-01.6 Mostrar o status de cada arquivo: recebido → extraído → validado → indexado (ou erro com motivo).
+- RF-01.7 **Editar a categoria de um arquivo já enviado** (pedido do usuário, 03/10/2026): na tela Arquivos, cada arquivo tem um botão "Editar" que abre a escolha da nova categoria (lista do §5), com a categoria atual marcada. Só Gestor e Admin veem o botão (§4, "categorizar arquivos-fonte"). Ao salvar, o arquivo é **reprocessado com a nova categoria**: os dados extraídos sob a categoria antiga (lançamentos, saldos de fundo e conferências) são apagados e só voltam se a nova categoria produzir esses dados. Hoje só "Balancetes e fluxos de caixa" gera lançamentos. O original não é alterado, renomeado nem movido; muda só o registro no banco.
+  - Dado um Usuário (perfil sem permissão), quando abre a tela Arquivos, então o botão "Editar" não aparece, e a API recusa a troca de categoria com 403.
+  - Dado um Gestor ou Admin, quando clica em "Editar", então vê as categorias do §5 com a atual marcada e um aviso: "Trocar a categoria reprocessa o arquivo e substitui os dados extraídos dele."
+  - Dado um fluxo de caixa enviado por engano como "Contratos", quando o Gestor troca para "Balancetes e fluxos de caixa", então o arquivo é reprocessado e os lançamentos aparecem, sem duplicar.
+  - Dado um arquivo enviado por engano como "Balancetes e fluxos de caixa", com lançamentos gravados, quando o Gestor troca para outra categoria, então os lançamentos, saldos e conferências desse arquivo somem do banco e dos totais, e o arquivo passa a aparecer na nova categoria.
+  - Dado o mesmo valor de categoria já atual, quando o usuário salva, então nada é reprocessado.
+  - Dado um arquivo em processamento, quando alguém tenta trocar a categoria, então a troca é recusada com a mensagem "O arquivo já está sendo processado".
+  - Dada qualquer troca de categoria, quando ela é salva, então fica registrado quem, quando, a categoria anterior e a nova (§3.3, item 3). *Proposta: a trilha de auditoria (RF-07.4) ainda não existe no código; até lá, o registro fica numa tabela de histórico de categoria do arquivo, que depois migra para a trilha.*
+  - Dado o arquivo original, depois da troca, então o hash e o conteúdo baixado continuam idênticos aos do envio.
 
 ### RF-02 Auditoria e conciliação (núcleo)
 - RF-02.1 **Conciliação balancete × extrato**: cada lançamento do balancete casado com um movimento bancário (valor, data com tolerância, favorecido).
@@ -179,11 +188,11 @@ Alguns lançamentos chegam numa linha que é **meio de pagamento** e não nature
 - RF-02B.1 Admin marca quais contas/fornecedores são meio de pagamento (no piloto: Mercado Pago e 1064 Desp. Cartão Crédito).
 - RF-02B.2 Fila "a realocar" com todas as compras feitas por esses meios, com descrição, valor e comprovante.
 - RF-02B.3 Para cada compra, a IA **sugere a rubrica correta** com base no histórico e nas rubricas da PO. O gestor confirma, escolhe outra ou **cria uma nova rubrica** (que fica marcada como "fora da PO" até a próxima previsão).
-- RF-02B.4 A realocação é uma **camada do sistema**: não altera o lançamento original da administradora, que continua rastreável. O previsto × realizado usa a rubrica realocada.
+- RF-02B.4 A realocação é uma **camada do sistema**: não altera o lançamento original da administradora, que continua rastreável. O previsto × realizado usa a rubrica realocada; enquanto não é realocada, a compra fica no grupo "a realocar" e não entra em nenhuma linha da PO (detalhado em RF-03.1.7).
 - RF-02B.5 Realocações aprendidas viram regras (ex.: "tinta" vai para Material de Pintura) e são aplicadas sozinhas nos meses seguintes, com revisão do gestor.
 
 ### RF-03 Orçamento e previsão
-- RF-03.1 Previsto (PO) × realizado por rubrica, mês a mês e acumulado no ano.
+- RF-03.1 Previsto (PO) × realizado por linha da PO, mês a mês, por fundo e acumulado no exercício da PO. Detalhado em RF-03.1.1 a RF-03.1.15, ao fim desta seção.
 - RF-03.2 Série histórica com as POs e balancetes de anos anteriores.
 - RF-03.3 Projeção do próximo ano por rubrica considerando histórico, contratos vigentes (reajustes), dissídio dos funcionários e índices (IPCA/IGP-M) — com cenários (base, otimista, pessimista) e a premissa de cada número visível.
 - RF-03.4 Simulação da cota condominial por unidade resultante da projeção.
@@ -195,6 +204,126 @@ Alguns lançamentos chegam numa linha que é **meio de pagamento** e não nature
   - compara com a PO anterior (coluna "%"), como no documento aprovado;
   - exporta no formato de apresentação para a AGO e guarda versões (rascunho, apresentada, aprovada com a ata).
   - Pendente: o usuário vai enviar o catálogo completo de linhas, além das que estão na PO.
+
+#### Detalhamento do RF-03.1: Previsto × realizado (entrega aprovada pelo usuário, 03/10/2026)
+
+Origem: pedido do usuário de 03/10/2026 ("ler a PO aprovada, ligar cada conta da PO às contas do balancete (de-para) e mostrar, mês a mês e por fundo, o previsto contra o realizado, com as diferenças"); CC art. 1.348, VI (o síndico elabora o orçamento) e art. 1.350 (a assembleia aprova o orçamento), ver §3.1; Convenção do piloto, cláusulas 10.2, 16.1 IX, 16.2, 18.4 e 20.1; análise manual de setembro/2026 do piloto (`piloto-mio/06-previsto-realizado-2026-09.md` e `previsto-realizado-2026-09.csv`), que é o **caso de aceite**; de-para sugerido (`mapa-contas-fluxo-para-PO.csv`); implantação do piloto (`05-implantacao-parametros.md`). Este bloco detalha RF-00.8, RF-02B.4, RF-03.1, RF-05.6, RF-06.1 e o §8, item 5. Não cria funcionalidade além delas.
+
+Situação atual (03/10/2026): o `rag` já interpreta o Fluxo de Caixa da administradora em lançamentos por fundo e conta. A PO pode ser enviada como arquivo na categoria PO, mas **não é lida**: nenhum valor previsto está gravado. Não existe tabela de-para nem tela de previsão. O previsto × realizado de setembro foi feito à mão, fora do sistema.
+
+Fora destes requisitos (decisão do arquiteto em ADR, com aprovação do usuário): em qual serviço e com qual técnica a PO é lida (extração do PDF, reconhecimento do layout); onde e como ficam guardados a PO lida, o de-para e o resultado; o contrato entre os serviços para a PO lida (`contracts/`); o método da sugestão automática pelo nome; quando o cálculo roda (ao enviar, ao confirmar ou sob demanda); a técnica de geração de PDF e Excel e de gráficos. Ficam fora também, para requisito próprio: ferramenta MCP de previsto × realizado (RF-08.1); PO de outras administradoras (RF-00.5); projeção e "Criar nova PO" (RF-03.3 a RF-03.5); auditoria de energia, água e gás por arrecadado × conta paga (achados A2 e A3 da análise de setembro).
+
+Premissas (padrões adotados; o usuário pode mudar):
+1. A primeira PO lida é o PDF da administradora do piloto (`fontes/PO-2026-2027-aprovada.pdf`, uma página). O layout de outras administradoras entra depois (RF-00.5).
+2. O Admin cadastra e confirma o de-para. Uma sugestão automática pelo nome pode existir, mas todo o fluxo funciona sem IA (modo `DESLIGADO`, RF-09).
+3. Uma conta do fluxo sem de-para confirmado aparece como "sem linha da PO" e **nunca é somada em silêncio a outra linha**.
+4. As diferenças são **indícios com evidência** (lançamentos, arquivo, página e hash de origem), nunca conclusões (§3.3). O sistema não escreve a causa de uma diferença.
+5. Enquanto Q18 a Q26 não forem respondidas, valem as recomendações marcadas no §10. Elas reproduzem a análise manual de setembro: mês pela data do lançamento, valor como está no fluxo, acumulado do exercício da PO, fundos de reserva e de obras comparados pela arrecadação, "rateio à parte" fora da comparação e excesso da regra dos 20% somado linha a linha.
+
+Termos usados abaixo:
+- **PO**: previsão orçamentária aprovada, com arquivo, página e hash de origem, versão, exercício e ata de aprovação (quando enviada).
+- **Exercício**: os 12 meses de vigência da PO. É parâmetro da PO (mês inicial e final), não do calendário. No piloto: mai/2026 a abr/2027 (informado pelo gestor em 03/10/2026; a ata que aprovou a PO está pendente, P4).
+- **Linha da PO**: item impresso com código (ex.: 1.3.20), conta da PO (ex.: 1682 - Sindicatura Profissional), descrição, orçado do exercício anterior, orçado do exercício (valor **mensal**), coluna "%" e coluna "Observações".
+- **Grupo**: subtotal impresso na PO: 1.1 Pessoal, 1.2 Consumo/utilidades, 1.3 Serviços - contratos efetivos, 1.4 Tarifas públicas, 1.5 Aquisição de bens, 1.6 Despesas administrativas, 1.7 Materiais/suprimentos, 1.8 Serviços e 1.9 Fundos.
+- **Previsto do mês**: soma das linhas de despesa (grupos 1.1 a 1.8), sem os fundos (1.9). Piloto: R$ 451.620,12 (= total 474.201,13 − fundos 22.581,01).
+- **Conta do fluxo**: código e nome da conta usados pela administradora no fluxo de caixa (ex.: 1442 Vigia e Portaria). É outro plano de contas, diferente do da PO.
+- **De-para**: ligação de cada conta do fluxo a **um** destino: uma linha da PO; "Ajuste (não é despesa)"; "Meio de pagamento (a realocar, RF-02B)"; ou "Transferência entre fundos". Estados: sugerido, confirmado, recusado. Várias contas do fluxo podem ir para a mesma linha (ex.: 1225, 1227 e 1232 → 1.1.1 Salários).
+- **Realizado**: soma dos débitos do fundo Condomínio no mês, por linha da PO, pelo de-para confirmado e pelas realocações (RF-02B.4), sem ajustes e sem transferências entre fundos.
+- **Sem linha da PO**: conta do fluxo com lançamento no mês e sem de-para confirmado. Fica em grupo próprio.
+- **Diferença**: realizado − previsto. Positiva = acima do previsto; negativa = abaixo.
+- **Execução**: realizado ÷ previsto, em %.
+- **Excesso do mês**: soma das diferenças positivas, linha a linha, das linhas da PO (regra dos 20%, Conv. 16.2). Piloto, set/2026: R$ 38.880,19.
+- **Acumulado**: soma dos meses do exercício que já têm fluxo de caixa carregado.
+- Valores em reais com 2 casas, sem arredondamento intermediário. *Proposta: percentuais exibidos com 1 casa, arredondamento "meio para cima" (ex.: 8,609% → 8,6%).*
+
+**Leitura da PO**
+- RF-03.1.1 **Ler a PO aprovada** no layout da administradora do piloto, a partir do arquivo enviado na categoria PO. Cada linha é gravada com código, conta da PO, descrição, orçado anterior, orçado do exercício, "%" e Observações, mais arquivo, página e hash de origem. O arquivo original não é alterado. "%" e Observações são guardados como texto lido e não entram em cálculo. Linhas com "Rateio à parte", "Negociada isenção", "Sem valor" ou "Valor fixo (sem referência)" na coluna de conta são lidas com essa marca, e não como conta.
+  - Dado `PO-2026-2027-aprovada.pdf`, quando a leitura termina, então a linha 1.3.20 tem conta "1682 - Sindicatura Profissional", descrição "Obm - Sergio Diniz", orçado 2025/2026 R$ 17.195,00, orçado 2026/2027 R$ 8.000,00, "%" "-53,47%" e Observações "Pro-labore Síndico", com página 1 e o hash do arquivo.
+  - Dado a mesma PO, quando lida, então a linha 1.3.23 tem conta "1621 - Interfones", valor R$ 0,00 e Observações "Manutenção R$4.100,00 out/25".
+  - Dado a mesma PO, quando lida, então as linhas 1.4.1 (Força e Luz), 1.4.2 (Água e Esgoto), 1.4.3 (Gás) e 1.6.15 (Seguro predial) têm valor R$ 0,00 e a marca "rateio à parte".
+- RF-03.1.2 **Conferir a leitura** contra o próprio documento: a soma das linhas de cada grupo é igual ao subtotal impresso; a soma dos grupos é igual ao total impresso; o previsto do mês é o total menos os fundos. Também aponta código de linha repetido. Se algo não bate, a PO fica "lida com divergência", mostra onde está a diferença e não é usada no previsto × realizado até o Admin corrigir e confirmar.
+  - Dado a PO do piloto, quando a conferência roda, então batem: Pessoal 69.193,86; Consumo/utilidades 694,05; Contratos 336.274,17; Tarifas públicas 0,00; Aquisição de bens 2.850,00; Administrativas 17.388,04; Materiais 15.200,00; Serviços 10.020,00; Fundos 22.581,01; total 474.201,13; previsto do mês sem fundos 451.620,12.
+  - Dado uma cópia de teste da PO com um subtotal impresso diferente da soma das linhas, quando lida, então o estado é "lida com divergência", o grupo divergente é mostrado com as duas somas, e a tela de previsto × realizado mostra "PO não confirmada" em vez de números.
+  - Dado a PO do piloto, que imprime o código **1.3.2 duas vezes** (Bombas, R$ 3.000,00, e Caixa D'água, R$ 1.518,93), quando lida, então o sistema aponta "código repetido" e o Admin dá um código distinto à segunda linha antes de confirmar (a análise manual usou 1.3.25). Nenhuma das duas linhas é descartada nem somada à outra.
+- RF-03.1.3 **Confirmar a PO e o exercício**: o Admin confirma a leitura e informa o exercício (mês inicial e final) e a ata que aprovou a PO. O início do exercício vem da data da ata. Sem ata, o Admin informa o exercício, que fica marcado "sem ata" como pendência de implantação. PO aprovada depois do 1º trimestre gera só um **aviso informativo** (Conv. 10.2; decisão do gestor em 03/10/2026, `05-implantacao-parametros.md` §8), nunca achado. Reaprovação cria nova versão da PO; comparações já exportadas mantêm a versão usada (como no RF-00.6). Só uma PO vale para cada mês de cada condomínio.
+  - Dado a PO do piloto confirmada com exercício 05/2026 a 04/2027, quando o usuário abre o previsto × realizado de 09/2026, então essa PO é usada; e quando abre 04/2026, então aparece "sem PO aprovada para este mês".
+  - Dado a PO aprovada em maio/2026, quando confirmada, então aparece o aviso informativo "PO aprovada fora do 1º trimestre (Conv. 10.2)" e nenhum achado é criado.
+  - Dado a PO do piloto, quando confirmada, então os fundos lidos são reserva 3% (R$ 13.548,60/mês) e obras 2% (R$ 9.032,40/mês), conferidos como 3% e 2% de 451.620,12. Na coluna "%", as linhas 1.9.1 e 1.9.2 trazem a **taxa do fundo** (3,00% e 2,00%), não a variação contra a PO anterior como nas demais linhas; o sistema não as trata como variação.
+  - Dado um percentual do fundo de reserva na PO acima do máximo da convenção (Conv. 20.1: até 5%), quando a PO é confirmada, então é criado um achado "atenção". Piloto: 3%, sem achado.
+
+**De-para (detalha RF-00.8 e RF-07.2)**
+- RF-03.1.4 **Tabela de-para por condomínio e por versão da PO**: cada conta do fluxo vai para exatamente um destino (Termos). O casamento **nunca** usa o número da conta. Só o Admin cria, altera, confirma e recusa; Gestor e Usuário só consultam. Toda alteração vai para a trilha de auditoria (RF-07.4) com quem, quando, destino anterior e novo. Numa nova versão da PO, o de-para da versão anterior é oferecido como sugestão e precisa ser confirmado de novo nas linhas que mudaram. Alterar o de-para recalcula o previsto × realizado dos meses afetados.
+  - Dado a conta do fluxo 1621 "Material Hidráulico" e a linha da PO 1.3.23 "1621 - Interfones", quando o de-para é sugerido ou confirmado, então a ligação 1621 → 1.3.23 nunca é proposta por coincidência de número; no piloto, o destino sugerido é 1.7.8 Material Hidráulico.
+  - Dado as 73 contas do `mapa-contas-fluxo-para-PO.csv` carregadas, todas "sugerido", quando o usuário abre setembro/2026, então nenhuma conta entra em linha da PO: os 214 lançamentos (R$ 449.455,13) aparecem em "sem linha da PO", as linhas da PO aparecem com o previsto e realizado "de-para pendente", e o aviso "73 contas sem de-para confirmado" é exibido.
+  - Dado o Admin que confirma as 73 sugestões sem mudança, quando o usuário abre setembro/2026, então o resultado é o do RF-03.1.6.
+  - Dado um Gestor ou Usuário, quando tenta confirmar ou alterar o de-para (tela ou API), então a ação é recusada.
+  - Dado o Admin que muda a conta 1284 (M1 Auditoria Preventiva, R$ 990,00) de 1.3.15 para outra linha, quando salva, então a trilha registra o destino anterior (1.3.15) e o novo, e o realizado de 1.3.15 em setembro passa de 990,00 para 0,00.
+- RF-03.1.5 **Sugestão opcional, fluxo sem IA**: o sistema pode sugerir o destino pelo nome da conta (por IA, quando o modo permite, ou por comparação de texto). Sugestão **nunca** é confirmada sozinha e mostra o motivo (os nomes comparados). Sem sugestão, o Admin escolhe a linha numa lista das linhas da PO, com busca por código e por nome. *Proposta: o Admin pode carregar uma planilha de sugestões (conta do fluxo; linha da PO), como a do piloto; tudo entra como "sugerido".*
+  - Dado um condomínio em modo de IA `DESLIGADO`, quando o Admin faz o de-para das 73 contas escolhendo a linha na lista, então o de-para fica completo e nenhuma chamada de IA é registrada (RF-09.7).
+  - Dado uma sugestão pelo nome, quando exibida, então ela fica "sugerido" até o Admin confirmar ou recusar, e não altera nenhum número.
+
+**Realizado**
+- RF-03.1.6 **Realizado do fundo Condomínio no mês**: soma dos débitos do fundo Condomínio por linha da PO, conforme o de-para confirmado. São mostrados à parte, fora das linhas: ajustes ("não são despesa"), "a realocar" (RF-02B) e "sem linha da PO". Transferências entre fundos ficam fora. Linha da PO sem lançamento aparece com realizado R$ 0,00. A tela mostra também a **conferência com o fluxo**: total de débitos do fundo = despesa realizada + ajustes.
+  - Dado o fluxo de setembro/2026 do piloto, a PO confirmada e as 73 contas confirmadas como no mapa, quando o usuário abre 09/2026, fundo Condomínio, então: débitos do fundo = 214 lançamentos, R$ 449.455,13; ajustes R$ 3.278,24 (estorno de 3.987,12 na conta 1324 e repasse de −708,88 na conta 1327), fora da despesa; a realocar R$ 1.050,93 (conta 1064); despesa realizada R$ 446.176,89, dos quais R$ 445.125,96 em linhas da PO; previsto do mês R$ 451.620,12; diferença −5.443,23; execução **98,8%**; sem linha da PO R$ 0,00.
+  - Dado o mesmo caso, quando o usuário vê por grupo, então os valores são (previsto; realizado; diferença): Pessoal 69.193,86; 62.815,41; −6.378,45 · Consumo/utilidades 694,05; 754,94; +60,89 · Contratos 336.274,17; 341.277,13; +5.002,96 · Aquisição de bens 2.850,00; 8.958,32; +6.108,32 · Administrativas 17.388,04; 14.264,32; −3.123,72 · Materiais 15.200,00; 16.910,40; +1.710,40 · Serviços 10.020,00; 145,44; −9.874,56.
+  - Dado o mesmo caso, quando o usuário vê por linha, então cada linha de despesa (1.1.1 a 1.8.7) tem previsto, realizado e diferença iguais, centavo a centavo, aos do `previsto-realizado-2026-09.csv` (ex.: 1.1.5 Férias 1.585,14; 0,00; −1.585,14 · 1.3.10 Vigia e Portaria 80.022,96; 86.816,34; +6.793,38).
+  - Dado o mesmo caso mais um lançamento de teste de R$ 500,00 numa conta do fluxo fora do de-para, quando o usuário abre 09/2026, então os R$ 500,00 aparecem em "sem linha da PO" com a conta e o lançamento, entram na despesa realizada (446.676,89), não entram em nenhuma linha da PO e geram achado "atenção" de conta sem linha da PO (RF-02.7).
+- RF-03.1.7 **Realizado usa a rubrica realocada** (detalha RF-02B.4): uma compra por meio de pagamento conta no grupo "a realocar" até ser realocada; depois, conta na linha escolhida. O lançamento original da administradora continua intacto e aparece na evidência com a marca "realocado para <linha> por <usuário> em <data>". Desfazer a realocação devolve o valor a "a realocar". Rubrica nova criada na realocação (RF-02B.3) aparece no grupo "fora da PO", com previsto R$ 0,00.
+  - Dado setembro/2026 sem realocação, quando o usuário abre o mês, então R$ 1.050,93 aparecem em "a realocar" e em nenhuma linha da PO.
+  - Dado (exemplo hipotético) o Gestor que realoca todas as compras do cartão, R$ 1.050,93, para 1.7.9 Material de pintura, quando o usuário abre setembro, então 1.7.9 passa a realizado R$ 5.522,25 e diferença +3.222,25; "a realocar" fica R$ 0,00; a despesa realizada continua R$ 446.176,89; e o lançamento original na conta 1064 continua no fluxo e na evidência.
+- RF-03.1.8 **Mês e valor do realizado**: o mês é o da **data do lançamento** no fluxo (Q18) e o valor é o **valor do lançamento no fluxo** (Q19), sem converter líquido em bruto. O sistema não presume pagamento em outro mês nem retenção não lançada. Hoje o fluxo do piloto mistura as bases: a NF de portaria entra pelo bruto (86.816,34 = líquido 73.229,59 + INSS 9.549,79 + PIS/COFINS/CSLL 4.036,96) e o pró-labore pelo líquido.
+  - Dado o lançamento do Pró-labore de R$ 7.120,00 em 09/09/2026 (conta 1108), quando o usuário abre setembro, então a linha 1.3.20 mostra previsto 8.000,00, realizado 7.120,00 e diferença −880,00, e a evidência mostra o lançamento com arquivo e página.
+  - Dado a linha 1.1.1 Salários em setembro (previsto 35.934,15; realizado 26.377,53; diferença −9.556,62), quando exibida, então o sistema mostra a diferença e os lançamentos, sem texto sobre a causa (ex.: não escreve "salário pago no mês seguinte").
+
+**Comparação por fundo, mês a mês e acumulado**
+- RF-03.1.9 **Por fundo**: o fundo Condomínio compara despesas com as linhas 1.1 a 1.8. Os fundos de **Reserva** e de **Obras** comparam a **arrecadação** do mês com as linhas 1.9.1 e 1.9.2 (Q21); as linhas 1.9 nunca são comparadas com débitos. Fundos de "rateio à parte" (energia, água, gás e seguro predial) e demais fundos sem linha na PO aparecem como "sem previsto na PO", com a movimentação do mês, sem diferença (Q22). Os débitos desses fundos não entram no realizado do fundo Condomínio.
+  - Dado setembro/2026 do piloto, quando o usuário abre os fundos, então: Reserva previsto 13.548,60, arrecadado 14.260,79, diferença +712,19, execução 105,3%; Obras previsto 9.032,40, arrecadado 9.705,06, diferença +672,66, execução 107,4% (valores de arrecadação conforme a análise manual; ver Q25 e o conflito 4 abaixo).
+  - Dado o fundo de energia, quando o usuário abre setembro/2026, então ele aparece como "rateio à parte, sem previsto na PO", sem diferença, e nenhum débito dele entra no fundo Condomínio.
+- RF-03.1.10 **Mês a mês e acumulado do exercício** (Q20): a tela mostra os 12 meses do exercício. Mês sem fluxo carregado aparece "sem fluxo carregado", **nunca como zero**. O acumulado soma só os meses com fluxo, tanto no previsto quanto no realizado, e informa quais meses faltam. O previsto mensal de cada linha é o mesmo em todos os meses (Q24); as Observações da PO que indicam sazonalidade ficam visíveis ao lado da linha (ex.: 1.6.20 "média 3 assembléias no ano"; 1.6.21 "Pagamento anual R$ 2.650"; 1.8.1 "meses nov à fev"). O previsto do exercício (12 × previsto do mês) aparece como referência.
+  - Dado o exercício 05/2026 a 04/2027 com só o fluxo de setembro carregado, quando o usuário abre o acumulado, então ele mostra previsto 451.620,12 e realizado 446.176,89 (só setembro), informa "mai, jun, jul e ago/2026 sem fluxo carregado" e mostra o previsto do exercício de R$ 5.419.441,44.
+  - Dado os fluxos de setembro e outubro carregados, quando o usuário abre o acumulado, então o previsto acumulado é 903.240,24 e o realizado é a soma exata dos dois meses exibidos.
+- RF-03.1.11 **Regra dos 20% (Conv. 16.2)**, aplicada por mês ao fundo Condomínio. Texto da convenção (OCR de `fontes/convencao-texto-ocr.txt`, conferir no PDF registrado): *"16.2. A Administradora poderá, com prévia autorização do Síndico, proceder às despesas normais de custeio não previstas no orçamento inicial, e que excedam os valores totais orçados, desde que não ultrapassem 20% (vinte por cento) das despesas previstas para o mês em curso. Caso este valor ultrapasse este limite, o excedente deverá ser submetido à aprovação da Assembleia Extraordinária para esse fim convocada."* O sistema mostra o excesso do mês, o percentual sobre o previsto do mês, o limite em reais e as linhas que compõem o excesso (Q23). "A realocar" e "sem linha da PO" ficam fora do excesso, mostrados à parte com o **cenário máximo** (excesso + esses valores) (Q26). Enquanto houver conta sem linha da PO ou valor a realocar, o indicador fica "provisório". Excesso **acima** de 20% gera achado **crítico** com a evidência e o texto "excesso de X% do previsto do mês; a Conv. 16.2 exige aprovação em AGE para o excedente; verificar ata". O achado pode ser justificado com a ata (RF-02.9).
+  - Dado setembro/2026 do piloto, quando a regra roda, então: excesso R$ 38.880,19, somado em 25 linhas acima do previsto; 8,6% de 451.620,12; limite R$ 90.324,02; nenhum achado; "a realocar" 1.050,93 mostrado à parte, com cenário máximo de R$ 39.931,12 (8,8%); indicador "provisório" por haver valor a realocar.
+  - Dado um mês de teste com excesso de R$ 90.324,02 sobre previsto de 451.620,12 (exatamente 20%), quando a regra roda, então não há achado ("não ultrapassem 20%"); e dado excesso de R$ 90.324,03, então há achado crítico.
+- RF-03.1.12 **Diferenças como indícios com evidência** (§3.3): cada linha, grupo e total leva aos lançamentos que o compõem (data, descrição, favorecido, valor, conta do fluxo, arquivo, página e hash) e à linha da PO (arquivo e página). O sistema mostra fatos: Observações da PO, contas do de-para e realocações. Não escreve causa, intenção nem conclusão, e não usa os termos de conduta do RF-04.15. *Proposta: o Gestor pode deixar um comentário por linha e mês, com autor e data na trilha.*
+  - Dado a linha 1.3.10 Vigia e Portaria em setembro (+6.793,38; +8,5%), quando o usuário clica nela, então vê os lançamentos da conta 1442 que somam 86.816,34, cada um com a página do fluxo, e a linha da PO com a observação "Média jan 26/abr 26 + VIGILANTES RJ", sem nenhum texto sobre a causa da diferença.
+  - Dado qualquer tela ou exportação de previsto × realizado, quando inspecionada, então nenhum termo da lista de conduta (RF-04.15) aparece.
+
+**Tela e exportação**
+- RF-03.1.13 **Telas** (detalha RF-05.6):
+  - **"Previsto × realizado"**, para todos os perfis: filtros de PO (versão), mês ou acumulado, e fundo. Tabela por grupo, com subtotais; por linha: código, descrição, contas do fluxo ligadas, previsto, realizado, diferença em R$ e execução em %; ordenação pela diferença. Blocos à parte: "sem linha da PO", "a realocar", "fora da PO", "ajustes (não são despesa)" e "conferência com o fluxo". Indicador da regra dos 20%. Painel dos fundos de reserva e de obras. Estado da PO (confirmada, lida com divergência) e do de-para ("N de M contas confirmadas").
+  - **"De-para"**, só para o Admin editar (os demais perfis só consultam): contas do fluxo com lançamento no exercício, sugestão e motivo, destino, estado, filtro "pendentes" e ação de confirmar ou recusar em lote.
+  - A tela inicial (RF-05.1, "previsto × realizado no ano") usa o acumulado do exercício deste requisito.
+  - Dado um Usuário, quando abre setembro/2026 do fundo Condomínio, então vê os números do RF-03.1.6 e nenhuma ação de edição.
+  - Dado 3 contas sem de-para confirmado, quando qualquer perfil abre a tela, então aparece o aviso "3 contas sem linha da PO", e para o Admin o aviso leva à tela de de-para filtrada em "pendentes".
+- RF-03.1.14 **Exportação em PDF e Excel** (detalha RF-06.1) da visão escolhida (mês ou acumulado, fundo), com cabeçalho: condomínio, PO (arquivo, versão, hash, exercício), período, data e hora de geração, quem gerou e estado do de-para. Com conta sem linha da PO ou valor a realocar, o arquivo traz a marca "PROVISÓRIO" e a lista desses itens. O Excel tem uma aba com os lançamentos de cada linha (evidência, com arquivo e página). Os números são idênticos aos da tela.
+  - Dado a exportação de setembro/2026 do piloto em Excel e em PDF, quando comparada com a tela, então despesa realizada 446.176,89, previsto 451.620,12, execução 98,8%, excesso 38.880,19 (8,6%) e todas as linhas são iguais, centavo a centavo.
+  - Dado o mesmo mês com R$ 1.050,93 a realocar, quando exportado, então o arquivo traz "PROVISÓRIO" e a lista das compras a realocar.
+
+**Caso de aceite**
+- RF-03.1.15 **Setembro/2026 do piloto entra em `data/golden/`** (RNF-10): entradas = fluxo de setembro/2026, PO 2026/2027 e de-para das 73 contas; esperado = cada linha de despesa do `previsto-realizado-2026-09.csv`, os totais por grupo do RF-03.1.6, a regra dos 20% do RF-03.1.11 e os fundos do RF-03.1.9. A leitura da PO também tem caso próprio: todas as linhas e os subtotais do RF-03.1.2. Toda mudança no leitor, no `rag` ou nas regras roda esses casos e não pode piorar nenhum.
+  - Dado uma mudança que altera qualquer número esperado, quando os casos rodam, então a mudança é reprovada. Mudar o esperado exige aprovação do usuário (ex.: se Q19 for respondida "Bruto").
+
+**Matriz de regras deste bloco**
+
+| Regra | Base | Parâmetro | Severidade |
+|---|---|---|---|
+| Excesso do mês acima do limite sem AGE | Conv. 16.2 (texto citado no RF-03.1.11); CC 1.350 | 20% do previsto do mês (sem fundos); excesso somado linha a linha (Q23) | Crítico |
+| Conta do fluxo sem linha da PO | RF-02.7; CC 1.348, VI e 1.350 (PO aprovada é a referência) | De-para confirmado por condomínio e versão da PO | Atenção |
+| Fundo de reserva da PO acima do teto | Conv. 20.1 | Máximo 5% | Atenção |
+| PO aprovada fora do 1º trimestre | Conv. 10.2; decisão do gestor (03/10/2026) | Data da ata | Informativo (aviso, sem achado) |
+| PO lida com divergência nos subtotais ou com código repetido | Boa prática de conferência (RF-02.3) | Subtotais impressos | Bloqueia o uso da PO até o Admin confirmar (não é achado) |
+
+Arrecadação dos fundos abaixo do previsto não gera achado nesta entrega: não há fonte para o limite. Fica como pendência para o usuário, se quiser.
+
+**Conflitos encontrados (alertas, não decisões)**
+1. **Leitura da Conv. 16.2**: o texto fala em despesas "não previstas no orçamento inicial, e que excedam os valores totais orçados". Uma leitura soma o que passou do orçado linha a linha (a da análise manual: 8,6%); outra só considera o que passa do **total** do mês (em setembro o total ficou abaixo do previsto, então o excesso seria zero). O texto também fala em "despesas normais de custeio", o que pode excluir aquisição de bens. Decisão do usuário em Q23.
+2. **Total da análise manual**: a tabela do `06-previsto-realizado-2026-09.md` dá como total de despesas 449.455,13 (99,5%), somando os ajustes que ela mesma diz não serem despesa. O sistema adota a despesa sem ajustes, 446.176,89 (98,8%), e mostra os 449.455,13 só na conferência com o fluxo.
+3. **Bruto × líquido misturados** no fluxo e na análise: a NF de portaria entra pelo bruto, com retenções, e o pró-labore pelo líquido (7.120,00 = 8.000,00 − 11%). A análise também aponta que a DCTFWeb (14.349,88) na linha INSS/FGTS pode conter o INSS retido das NFs e do pró-labore, o que contaria a retenção duas vezes. Q19.
+4. **Arrecadação do fundo de reserva em setembro**: a análise de previsto × realizado usa 14.260,79 (105%); a implantação (`05-implantacao-parametros.md` §3) cita recibos do fundo de 13.087,65 (96,6% do previsto), marcados como estimativa. É preciso definir o que é "arrecadação" (Q25) e conferir no fluxo.
+5. **PO com código 1.3.2 repetido** (Bombas e Caixa D'água) e coluna "%" com sentido diferente nas linhas de fundos (taxa, não variação). Tratados no RF-03.1.2 e no RF-03.1.3.
+6. **PO aprovada em maio/2026**, fora do 1º trimestre da Conv. 10.2. Já decidido: só aviso informativo.
+7. **Observação da linha 1.6.21** ("Pagamento anual R$ 2.650") com previsto mensal de 150,00 (12 × 150,00 = 1.800,00). O valor de 2.650 corresponde à PO anterior (12 × 220,83). No mês do pagamento anual, a linha vai aparecer muito acima do previsto. Q24.
 
 ### RF-04 Assistente (RAG) — chat sobre os documentos (pedido do usuário, 03/10/2026)
 
@@ -314,15 +443,15 @@ Termos usados abaixo:
 - RF-05.3 **Indicador discreto em um canto**, em todas as telas: "Último arquivo: <nome> · <categoria> · <data>".
 - RF-05.4 **Tela de arquivos**: separada por categorias (abas ou filtro), **ordenada da data mais recente para a mais antiga**, com busca, status e download do original.
 - RF-05.5 Tela de achados de auditoria com filtros e detalhe da evidência (abre o documento na página certa).
-- RF-05.6 Tela de previsão orçamentária.
+- RF-05.6 Tela de previsão orçamentária: tela "Previsto × realizado" e tela de de-para (detalhadas em RF-03.1.13). A tela "Criar nova PO" é o RF-03.5.
 
 ### RF-06 Relatórios (sob demanda)
-- RF-06.1 Exportar PDF e Excel: relatório mensal de auditoria, previsto × realizado, relatório anual para assembleia/conselho, lista de achados.
+- RF-06.1 Exportar PDF e Excel: relatório mensal de auditoria, previsto × realizado (detalhado em RF-03.1.14), relatório anual para assembleia/conselho, lista de achados.
 - RF-06.2 Usuário escolhe período, categorias e seções.
 
 ### RF-07 Administração
 - RF-07.1 Usuários e perfis.
-- RF-07.2 Cadastro de unidades e frações ideais; plano de contas/rubricas e mapeamento entre os nomes usados no balancete e na PO.
+- RF-07.2 Cadastro de unidades e frações ideais; plano de contas/rubricas e mapeamento entre os nomes usados no balancete e na PO (de-para, detalhado em RF-03.1.4).
 - RF-07.3 Parâmetros de regras (tolerâncias, tetos de multa, índices) com vigência.
 - RF-07.4 Trilha de auditoria.
 
@@ -405,7 +534,7 @@ Origem: "o cliente pode escolher se quer esse módulo ou não e podemos vender n
 2. Upload e categorização de PO, balancete, extrato, contratos, folha e comprovantes.
 3. Extração de PDF digital, Excel e Word (OCR só se Q1 confirmar escaneados).
 4. Conciliação balancete × extrato e conferência aritmética (RF-02.1, 02.3).
-5. Previsto × realizado contra a PO do ano (RF-03.1).
+5. Previsto × realizado contra a PO do ano (RF-03.1.1 a RF-03.1.15): leitura da PO no layout da administradora do piloto, de-para confirmado pelo Admin, comparação mês a mês e acumulada do exercício por fundo (Condomínio, Reserva e Obras), regra dos 20% da Conv. 16.2, tela e exportação em PDF e Excel. Caso de aceite: setembro/2026 do piloto. Ficam para depois: PO de outras administradoras (RF-00.5), realizado por competência (Q18) e conversão para valor bruto (Q19).
 6. Dashboard inicial, indicador do último arquivo, tela de arquivos ordenada e por categoria.
 7. Lista de achados com evidência.
 8. Exportação PDF/Excel do relatório mensal.
@@ -449,6 +578,17 @@ Origem: "o cliente pode escolher se quer esse módulo ou não e podemos vender n
 | Q15 | ✔ Sim (usuário, 03/10/2026). Condomínio novo começa com o módulo Assistente desligado; o piloto começa ligado (RF-10.2) | Usuário |
 | Q16 | ✔ Sim (usuário, 03/10/2026). No modo de IA `DESLIGADO`, o servidor MCP continua respondendo, inclusive `buscar_documentos` com o módulo ligado (RF-04.16) | Usuário |
 | Q17 | ✔ Sim (usuário, 03/10/2026). O Admin do condomínio vê o uso de IA do próprio condomínio; o Super-admin vê de todos (RF-09.7) | Usuário |
+| P4 | Enviar a ata da assembleia de maio/2026 que aprovou a PO 2026/2027 (define o início do exercício, RF-03.1.3) | Usuário |
+| P5 | Enviar os fluxos de caixa de mai a ago/2026, para o acumulado do exercício (RF-03.1.10) | Usuário |
+| Q18 | Mês do realizado: data do lançamento ou competência? (ex.: salário de setembro pago em outubro). Responder **Caixa** ou Competência. Recomendado: **Caixa** (é o que o fluxo traz e reproduz a análise de setembro; competência exige outra fonte, como a folha) (RF-03.1.8) | Usuário |
+| Q19 | Retenções (INSS e impostos na NF, INSS do pró-labore): usar o valor como está no fluxo ou converter tudo para bruto? Responder **Fluxo** ou Bruto. Recomendado: **Fluxo** nesta entrega (reproduz a análise; converter exige guia e NF por lançamento e evitar contar a retenção duas vezes, conflito 3) (RF-03.1.8) | Usuário |
+| Q20 | O acumulado é do exercício da PO ou do ano civil? Responder **Exercício** ou Civil. Recomendado: **Exercício** (a PO vale de mai/2026 a abr/2027) (RF-03.1.10) | Usuário |
+| Q21 | Os fundos de reserva e de obras comparam a arrecadação do mês com o previsto da PO? Responder **Sim** ou Não. Recomendado: **Sim** (RF-03.1.9) | Usuário |
+| Q22 | Energia, água, gás e seguro predial ("rateio à parte" na PO) ficam fora do previsto × realizado? Responder **Sim** ou Não. Recomendado: **Sim** (são auditados por arrecadado × conta paga, em requisito próprio) (RF-03.1.9) | Usuário |
+| Q23 | Regra dos 20% (Conv. 16.2): somar o que passou do orçado linha a linha, ou só o que passou do total do mês? Responder **Linha** ou Total. Recomendado: **Linha** (mais conservadora e igual à análise manual: 8,6% em setembro; por Total seria 0%) (RF-03.1.11, conflito 1) | Usuário |
+| Q24 | O previsto mensal de cada linha é o mesmo em todos os meses, como está na PO (sem distribuir sazonalidade como assembleias e pagamentos anuais)? Responder **Sim** ou Não. Recomendado: **Sim** nesta entrega, com as Observações da PO visíveis (RF-03.1.10) | Usuário |
+| Q25 | "Arrecadação" de um fundo é só a cota recebida (recibos) ou todo crédito do fundo (com rendimentos e outros)? Responder **Recibos** ou Créditos. Recomendado: **Recibos**. Atenção: confirmar no fluxo qual dos valores de setembro corresponde a cada opção (14.260,79 ou 13.087,65, conflito 4) (RF-03.1.9) | Usuário |
+| Q26 | O valor "a realocar" (cartão, 1.050,93 em setembro) entra no excesso da regra dos 20% antes de ser realocado? Responder Sim ou **Não**. Recomendado: **Não**; fica à parte, com o cenário máximo (8,8%) visível (RF-03.1.11) | Usuário |
 | T* | Decisões de tecnologia (ver 03-tecnologias.md) | Usuário |
 
 ---
@@ -460,3 +600,4 @@ Origem: "o cliente pode escolher se quer esse módulo ou não e podemos vender n
 - PL 4.072/2019: [Paraíba Business](https://paraibabusiness.com.br/nova-lei-que-exige-balancete-mensal-de-condominios-e-populista/).
 - Lei 14.905/2024 (taxa legal do art. 406) e Lei 14.309/2022 (assembleia virtual, art. 1.354-A): conhecimento prévio, a confirmar no texto oficial.
 - Prazos de guarda de documentos: orientação geral, **confirmar com o contador**.
+- Previsto × realizado (RF-03.1.1 a RF-03.1.15): fontes do piloto em `/mnt/project-files/condominio/piloto-mio/`: `fontes/PO-2026-2027-aprovada.pdf` (página 1) e `fontes/PO-2026-2027-texto.txt`; `fontes/convencao-texto-ocr.txt` (cláusulas 10.2, 16.1 IX, 16.2, 18.4 e 20.1; texto de OCR, conferir no PDF registrado); `06-previsto-realizado-2026-09.md`; `previsto-realizado-2026-09.csv`; `mapa-contas-fluxo-para-PO.csv`; `05-implantacao-parametros.md`. Os artigos 1.348, VI e 1.350 do CC seguem as fontes do §3.1.

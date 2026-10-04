@@ -623,9 +623,9 @@ Origem: "o cliente pode escolher se quer esse módulo ou não e podemos vender n
 | Q24 | ✔ Sim: previsto mensal igual em todos os meses, com as Observações visíveis (RF-03.1.10) (usuário, 04/10/2026) | Usuário |
 | Q25 | ✔ Recibos: arrecadação é só a cota recebida (RF-03.1.9) (usuário, 04/10/2026). Conferido no fluxo de setembro (ADR 0004): "RECIBOS ACUMULADOS" somam 14.260,79 na reserva e 9.705,06 em obras; conflito 4 resolvido | Usuário |
 | Q26 | ✔ Não: o valor "a realocar" fica fora do excesso, com o cenário máximo visível (RF-03.1.11) (usuário, 04/10/2026) | Usuário |
-| Q27 | Achado cuja condição deixa de existir (ex.: o Admin confirma o de-para da conta) passa sozinho ao estado novo "não se aplica mais", com o evento que causou? **Sim (recomendado)** / Não (fica "aberto" até alguém marcar "resolvido") (RF-03.1.12) | Usuário |
-| Q28 | A justificativa de achado com ata (RF-02.9), que depende do RAG, fica fora desta entrega? **Sim (recomendado)** / Não (RF-03.1.11, RF-03.1.12) | Usuário |
-| Q29 | PO com subtotal impresso errado no próprio documento pode ser confirmada pelo Admin "ciente da divergência", com justificativa, usando a soma das linhas? **Sim (recomendado)** / Não (só com a PO corrigida) (RF-03.1.2) | Usuário |
+| Q27 | ✔ Sim: achado cuja condição deixa de existir passa a "não se aplica mais", com o evento que causou (RF-03.1.12) (usuário, 04/10/2026) | Usuário |
+| Q28 | ✔ Sim: a justificativa com ata (RF-02.9) fica fora desta entrega (RF-03.1.11, RF-03.1.12) (usuário, 04/10/2026) | Usuário |
+| Q29 | ✔ Sim: o Admin pode confirmar a PO "ciente da divergência", com justificativa, usando a soma das linhas (RF-03.1.2) (usuário, 04/10/2026) | Usuário |
 | T* | Decisões de tecnologia (ver 03-tecnologias.md) | Usuário |
 
 ---

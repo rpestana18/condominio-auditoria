@@ -1,6 +1,6 @@
 # Proposta de Arquitetura — Monorepo
 
-Versão 0.4 · 04/10/2026 · Status: **tecnologias do MVP decididas pelo usuário** (ver `tecnologias.md` e `adr/`); serviços separados pela ADR 0002; assistente e módulos pela ADR 0003; **previsto × realizado pela ADR 0004 (proposta, aguarda o usuário)**; T9 nuvem fica para depois
+Versão 0.4 · 04/10/2026 · Status: **tecnologias do MVP decididas pelo usuário** (ver `tecnologias.md` e `adr/`); serviços separados pela ADR 0002; assistente e módulos pela ADR 0003; **previsto × realizado pela ADR 0004 (aprovada em 04/10/2026)**; T9 nuvem fica para depois
 
 Stack: **Java 25 + Spring Boot + Spring AI** (serviços backend, rag e mcp), **RabbitMQ** (backend ↔ rag), **gRPC** (mcp → backend), **Gradle** multi-projeto (Kotlin DSL + catálogo de versões), **PostgreSQL + pgvector**, **Keycloak** (token Bearer), **React + TypeScript + Vite** (pnpm), **leitor de documentos em Python** isolado, relatórios com **Thymeleaf + OpenHTMLtoPDF + Apache POI**, processamento pela fila. Tudo sobe com um `docker compose up`.
 
@@ -59,7 +59,7 @@ condominio-auditoria/
 │   ├── openapi.yaml            # frontend ↔ backend
 │   ├── leitor/v1/              # rag ↔ leitor (JSON Schema)
 │   ├── mensagens/v1/           # backend ↔ rag pela fila (JSON Schema + exemplos testados dos dois lados)
-│   ├── mensagens/v2/           # ADR 0004 (proposta): resultado-processamento v2, com a PO lida e o recebimento de cota
+│   ├── mensagens/v2/           # ADR 0004: resultado-processamento v2, com a PO lida e o recebimento de cota
 │   └── grpc/consulta/v1/       # mcp → backend (.proto)
 ├── infra/
 │   ├── docker-compose.yml      # PostgreSQL, RabbitMQ, Keycloak, leitor, backend, rag, mcp, frontend
@@ -112,7 +112,7 @@ Pipeline por arquivo:
 
 Idempotente: reenviar o mesmo arquivo não duplica nada.
 
-**PO aprovada (ADR 0004, proposta):** o `rag` reconhece a PO da administradora do piloto pelo título e lê as linhas pela posição das palavras do leitor v1, sem IA e sem mudar o leitor (`rag.leitura.po`, `rag.dominio.po`). Confere subtotais, total, previsto do mês e código repetido, e devolve tudo no `ResultadoProcessamento` **v2** (`previsaoOrcamentaria`). No fluxo de caixa, o enriquecimento passa a marcar `recebimentoCota` nos créditos "RECIBOS ACUMULADOS", usados na arrecadação dos fundos de reserva e de obras.
+**PO aprovada (ADR 0004):** o `rag` reconhece a PO da administradora do piloto pelo título e lê as linhas pela posição das palavras do leitor v1, sem IA e sem mudar o leitor (`rag.leitura.po`, `rag.dominio.po`). Confere subtotais, total, previsto do mês e código repetido, e devolve tudo no `ResultadoProcessamento` **v2** (`previsaoOrcamentaria`). No fluxo de caixa, o enriquecimento passa a marcar `recebimentoCota` nos créditos "RECIBOS ACUMULADOS", usados na arrecadação dos fundos de reserva e de obras.
 
 ### 3.2 RAG (serviço `rag`, Spring AI)
 - Indexa **texto** dos documentos (contratos, **atas de assembleia**, convenção, RI, POs). Atas também geram registros estruturados de `Deliberacao` (assunto, valor, fundo, prazo) usados para justificar achados em *chunks* com metadados (categoria, competência, página).
@@ -127,15 +127,15 @@ Idempotente: reenviar o mesmo arquivo não duplica nada.
 - **Motor de auditoria**: executa as regras de auditoria por competência; gera `Achado` com evidência; versão das regras registrada.
 - **Conciliação**: algoritmo de casamento balancete × extrato × comprovante (valor exato, janela de datas, similaridade de favorecido; casamentos 1:N e N:1).
 - **Orçamento e previsão**: previsto × realizado; projeção por rubrica (estatística + contratos + índices).
-  - **ADR 0004 (proposta):** pacote `backend.orcamento`. Grava a PO lida (só para arquivo da categoria PO) e o Admin a confirma, com exercício, ata, código efetivo das linhas repetidas e ligação das linhas 1.9 aos fundos. De-para por versão da PO (conta do fluxo → linha da PO, ajuste, a realocar ou transferência), com sugestão por comparação de texto sem IA, cópia da versão anterior e planilha, sempre "sugerido" até o Admin confirmar, e trilha só de inserção. Realocação mínima (RF-03.1.7) com chave estável do lançamento. **Os números não são gravados:** uma função pura (`CalculoPrevistoRealizado`) calcula na consulta e alimenta a tela, o PDF e o Excel. Os achados (regra dos 20%, conta sem linha da PO, reserva acima do teto) são recalculados depois do commit de cada mudança e gravados por chave única.
-- **Relatórios**: PDF/Excel sob demanda, gerados no backend com Thymeleaf + OpenHTMLtoPDF e Apache POI a partir do mesmo objeto que a tela recebe (ADR 0004, proposta: sem gráfico no PDF e no Excel; barras de execução em CSS).
+  - **ADR 0004:** pacote `backend.orcamento`. Grava a PO lida (só para arquivo da categoria PO) e o Admin a confirma, com exercício, ata, código efetivo das linhas repetidas e ligação das linhas 1.9 aos fundos. De-para por versão da PO (conta do fluxo → linha da PO, ajuste, a realocar ou transferência), com sugestão por comparação de texto sem IA, cópia da versão anterior e planilha, sempre "sugerido" até o Admin confirmar, e trilha só de inserção. Realocação mínima (RF-03.1.7) com chave estável do lançamento. **Os números não são gravados:** uma função pura (`CalculoPrevistoRealizado`) calcula na consulta e alimenta a tela, o PDF e o Excel. Os achados (regra dos 20%, conta sem linha da PO, reserva acima do teto) são recalculados depois do commit de cada mudança e gravados por chave única.
+- **Relatórios**: PDF/Excel sob demanda, gerados no backend com Thymeleaf + OpenHTMLtoPDF e Apache POI a partir do mesmo objeto que a tela recebe (ADR 0004: sem gráfico no PDF e no Excel; barras de execução em CSS).
 - **Trilha de auditoria** de todas as mudanças.
 - **Registro dos arquivos** e pedidos de leitura ao rag pela fila.
 
 ### 3.4 Frontend (`frontend/`, React + TypeScript)
 Telas: Login · Início (KPIs + gráficos) · Arquivos (por categoria, mais recente primeiro, upload para Gestor/Admin) · Achados · Orçamento/Previsão · Assistente · Administração. Componente global "último arquivo" fixo em um canto.
 
-ADR 0004 (proposta): telas "Previsto × realizado" (todos os perfis), "De-para" e confirmação da PO (edição só do Admin). Gráficos com o Recharts, que já está no projeto. O cartão da tela inicial usa o acumulado do exercício.
+ADR 0004: telas "Previsto × realizado" (todos os perfis), "De-para" e confirmação da PO (edição só do Admin). Gráficos com o Recharts, que já está no projeto. O cartão da tela inicial usa o acumulado do exercício.
 
 ### 3.5 MCP (serviço `mcp`, Spring AI)
 - Expõe o sistema como **ferramentas MCP** (transporte HTTP sem sessão). Já existem: `listar_condominios`, `resumo_fundos`, `listar_arquivos`, `conferencias_do_arquivo`, `buscar_lancamentos`. Depois: `listar_achados`, `previsto_realizado` (requisito próprio, RF-08.1; fora da ADR 0004), `buscar_documentos` (RAG), `gerar_relatorio`.
@@ -178,7 +178,7 @@ Conciliacao(id, lancamento_a, lancamento_b, tipo, score, status)
 Contrato(id, arquivo_id, fornecedor, cnpj, objeto, valor_centavos, indice_reajuste,
          data_base, inicio, fim)
 PO(id, ano, arquivo_id, ata_id, aprovada_em)   POItem(po_id, rubrica_id, mes, valor_centavos)
-   -- ADR 0004 (proposta) substitui PO/POItem e MapeamentoRubrica por:
+   -- ADR 0004 substitui PO/POItem e MapeamentoRubrica por:
 PrevisaoOrcamentaria(id, arquivo_id, sha256, versao, estado[lida|lida_com_divergencia|confirmada|substituida],
            exercicio_inicio, exercicio_fim, ata_arquivo_id, sem_ata, total_impresso, previsto_mes, confirmada_por, confirmada_em)
 LinhaPO(id, po_id, ordem, pagina, tipo[total|grupo|linha], codigo_impresso, codigo_efetivo, conta, marca,
@@ -202,7 +202,7 @@ EventoAuditoria(id, usuario_id, acao, entidade, antes, depois, em)
 
 **Implantação de um condomínio** (Admin): cadastra o condomínio → envia convenção, RI e PO → ingestão + RAG extraem frações, fundos, rubricas e regras → Admin confirma parâmetro a parâmetro, vendo o trecho de origem → condomínio ativo → carga histórica opcional.
 
-**PO e de-para** (Admin, ADR 0004, proposta): envia a PO na categoria PO → `rag` lê e confere → backend grava "lida" ou "lida com divergência" → Admin confirma exercício, ata, códigos repetidos e fundos 1.9 → gera sugestões do de-para (texto, versão anterior ou planilha) e confirma → previsto × realizado disponível, calculado na consulta.
+**PO e de-para** (Admin, ADR 0004): envia a PO na categoria PO → `rag` lê e confere → backend grava "lida" ou "lida com divergência" → Admin confirma exercício, ata, códigos repetidos e fundos 1.9 → gera sugestões do de-para (texto, versão anterior ou planilha) e confirma → previsto × realizado disponível, calculado na consulta.
 
 **Upload mensal** (Gestor): envia balancete + extrato + comprovantes de setembro → ingestão extrai e valida → RAG indexa → motor de auditoria roda setembro → dashboard e achados atualizados → indicador "último arquivo" muda.
 

@@ -1,6 +1,6 @@
 # ADR 0004: Previsto × realizado (leitura da PO, de-para, cálculo e exportação)
 
-- **Status:** proposta (aguarda aprovação do usuário)
+- **Status:** aprovada pelo usuário em 04/10/2026 (todas as recomendações, perguntas 1 a 10)
 - **Complementa:** ADR 0002 (acrescenta a versão 2 da mensagem `ResultadoProcessamento`; não muda filas nem canais) e ADR 0001 (passa a usar Thymeleaf, OpenHTMLtoPDF e Apache POI, já aprovados, que ainda não estão no build)
 - **Requisitos atendidos:** RF-03.1.1 a RF-03.1.15 (detalham RF-00.8, RF-02B.4, RF-03.1, RF-05.6, RF-06.1 e o §8, item 5), com as respostas do usuário Q18 a Q26 de 04/10/2026
 - **Não decide (fica para requisito próprio, como no RF-03.1):** ferramenta MCP de previsto × realizado (RF-08.1), PO de outras administradoras (RF-00.5), projeção e "Criar nova PO" (RF-03.3 a RF-03.5), auditoria de energia, água e gás
@@ -293,7 +293,7 @@ Os passos 2 e 3 podem correr em paralelo. O passo 10 pode começar quando o `ope
 
 ## Perguntas para o usuário
 
-Cada uma se responde com uma palavra. A recomendação está marcada.
+Respondidas pelo usuário em 04/10/2026: **Sim** em todas, seguindo as recomendações.
 
 1. Decisão 1: ler a PO no `rag` pela posição das palavras, sem mudar o leitor? **Sim (recomendado)** / Não
 2. Decisão 2: nova versão da mensagem de resultado (v2), na mesma fila? **Sim (recomendado)** / Não

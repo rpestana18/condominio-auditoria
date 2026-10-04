@@ -47,7 +47,15 @@ class ClienteBackend {
             case PERMISSION_DENIED -> new IllegalStateException(Objects.requireNonNullElse(descricao, "Sem acesso"));
             case NOT_FOUND -> new IllegalArgumentException(Objects.requireNonNullElse(descricao, "Não encontrado"));
             case INVALID_ARGUMENT -> new IllegalArgumentException(Objects.requireNonNullElse(descricao, "Pedido inválido"));
-            case UNAVAILABLE, DEADLINE_EXCEEDED -> new IllegalStateException("Backend indisponível no momento");
+            case FAILED_PRECONDITION -> new IllegalStateException(
+                    Objects.requireNonNullElse(descricao, "Operação não disponível para este condomínio"));
+            // Backend de versão anterior, sem o rpc (ex.: BuscarDocumentos)
+            case UNIMPLEMENTED -> new IllegalStateException("Função indisponível nesta versão do backend");
+            // Com causa = falha de conexão aqui no mcp (descrição técnica, em inglês). Sem causa = o próprio backend
+            // respondeu UNAVAILABLE com a explicação em português (ex.: rag fora do ar na busca nos documentos).
+            case UNAVAILABLE -> new IllegalStateException(erro.getCause() == null && descricao != null
+                    ? descricao : "Backend indisponível no momento");
+            case DEADLINE_EXCEEDED -> new IllegalStateException("Backend indisponível no momento");
             default -> new IllegalStateException("Erro no backend");
         };
     }

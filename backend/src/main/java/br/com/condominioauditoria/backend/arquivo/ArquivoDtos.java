@@ -15,12 +15,24 @@ final class ArquivoDtos {
 
     record ArquivoResumo(UUID id, Categoria categoria, String categoriaRotulo, String nome, long tamanhoBytes,
             StatusArquivo status, String mensagem, LocalDate periodoInicio, LocalDate periodoFim,
-            Integer totalLancamentos, String enviadoPor, Instant enviadoEm, Instant processadoEm) {
+            Integer totalLancamentos, String enviadoPor, Instant enviadoEm, Instant processadoEm,
+            IndexacaoDto indexacao) {
 
         static ArquivoResumo de(Arquivo a) {
             return new ArquivoResumo(a.getId(), a.getCategoria(), a.getCategoria().rotulo(), a.getNomeOriginal(),
                     a.getTamanhoBytes(), a.getStatus(), a.getMensagem(), a.getPeriodoInicio(), a.getPeriodoFim(),
-                    a.getTotalLancamentos(), a.getEnviadoPor(), a.getEnviadoEm(), a.getProcessadoEm());
+                    a.getTotalLancamentos(), a.getEnviadoPor(), a.getEnviadoEm(), a.getProcessadoEm(),
+                    IndexacaoDto.de(a));
+        }
+    }
+
+    /** Estado da indexação para a busca nos documentos. Nulo = arquivo ainda não pedido ao índice. */
+    record IndexacaoDto(SituacaoIndexacao situacao, String motivo, Integer paginas, Integer trechos) {
+
+        static IndexacaoDto de(Arquivo a) {
+            return a.getIndexacaoSituacao() == null ? null
+                    : new IndexacaoDto(a.getIndexacaoSituacao(), a.getIndexacaoMotivo(), a.getIndexacaoPaginas(),
+                            a.getIndexacaoTrechos());
         }
     }
 

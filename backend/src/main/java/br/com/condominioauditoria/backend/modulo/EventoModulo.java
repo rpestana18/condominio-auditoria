@@ -8,7 +8,7 @@ import org.hibernate.annotations.Immutable;
 
 /**
  * Um ligar ou desligar na trilha de ativação (RF-10.6). Só inclusão: a entidade é imutável e o banco recusa update e
- * delete (gatilho da migração V7).
+ * delete (gatilho da migração V10).
  */
 @Entity
 @Immutable

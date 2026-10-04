@@ -17,5 +17,5 @@ catalogo-modulos:
         - Tela "Assistente" com chat sobre os documentos (previsto, entrega 3)
         - Registro de uso (indexação, buscas e chamadas)
       depende-de: []
-      # Condomínio novo começa com o Assistente desligado; o piloto foi ligado na migração V7 (Q15)
+      # Condomínio novo começa com o Assistente desligado; o piloto foi ligado na migração V10 (Q15)
       ligado-por-padrao: false

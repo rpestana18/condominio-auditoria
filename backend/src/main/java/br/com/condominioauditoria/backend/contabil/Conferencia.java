@@ -31,6 +31,10 @@ public class Conferencia {
         this.detalhe = v.detalhe();
     }
 
+    public UUID getArquivoId() {
+        return arquivoId;
+    }
+
     public String getCodigo() {
         return codigo;
     }

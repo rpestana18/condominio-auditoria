@@ -55,6 +55,10 @@ condominio:
     max-tentativas: 3
   grpc:
     porta: ${GRPC_PORTA:9090}
+  orcamento:
+    # Diferença até este valor entre o impresso na PO e a soma é aviso de arredondamento, não divergência.
+    # Os cálculos usam sempre a soma das linhas. 0.00 desliga (decisão do usuário, Q30).
+    tolerancia-arredondamento: ${PO_TOLERANCIA_ARREDONDAMENTO:0.01}
   # Assistente no rag (busca nos documentos, ADR 0003). O prazo vale para cada chamada ao rag.
   rag:
     grpc: ${RAG_GRPC:localhost:9091}

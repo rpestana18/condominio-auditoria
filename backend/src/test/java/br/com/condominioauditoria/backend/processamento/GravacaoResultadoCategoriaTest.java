@@ -47,8 +47,8 @@ class GravacaoResultadoCategoriaTest {
                 List.of(new Secao("Ordinário", new BigDecimal("1000.00"), List.of(lancamento),
                         new BigDecimal("0.00"), new BigDecimal("150.00"))),
                 List.of(), null);
-        var resultado = new ResultadoProcessamento(1, arquivo.getProcessamentoId(), arquivo.getId(),
-                arquivo.getCondominioId(), Situacao.CONCLUIDO, null, "fluxo-caixa-fundos", 1, fluxo, List.of());
+        var resultado = new ResultadoProcessamento(2, arquivo.getProcessamentoId(), arquivo.getId(),
+                arquivo.getCondominioId(), Situacao.CONCLUIDO, null, "fluxo-caixa-fundos", 1, fluxo, null, List.of());
         when(arquivos.findById(arquivo.getId())).thenReturn(Optional.of(arquivo));
 
         gravacao.gravar(resultado);
@@ -60,5 +60,27 @@ class GravacaoResultadoCategoriaTest {
         assertThat(arquivo.getStatus()).isEqualTo(StatusArquivo.CONCLUIDO);
         assertThat(arquivo.getTotalLancamentos()).isNull();
         assertThat(arquivo.getMensagem()).contains("Balancetes e fluxos de caixa");
+    }
+
+    /** ADR 0004, passo 1: a PO lida (v2) é aceita e o arquivo conclui, mas a PO ainda não é gravada (passo 4). */
+    @Test
+    void poLidaEhAceitaSemGravarNada() {
+        Arquivo arquivo = new Arquivo(UUID.randomUUID(), Categoria.PO, "po.pdf", "c/po.pdf",
+                "d".repeat(64), 100, "application/pdf", "admin");
+        var linha = new ResultadoProcessamento.LinhaPoLida(1, 1, ResultadoProcessamento.TipoLinhaPo.TOTAL, "1", null,
+                "Soma das seções 1.1 a 1.9", null, "TOTAL DAS DESPESAS", new BigDecimal("441304.38"), new BigDecimal("474201.13"), "7,45%", null);
+        var po = new ResultadoProcessamento.PrevisaoLida("PROPOSTA ORÇAMENTÁRIA 2026 / 2027", "2026 / 2027",
+                List.of("2025/2026", "2026/2027"), List.of(linha));
+        var resultado = new ResultadoProcessamento(2, arquivo.getProcessamentoId(), arquivo.getId(),
+                arquivo.getCondominioId(), Situacao.CONCLUIDO, null, "po-protest", 1, null, po, List.of());
+        when(arquivos.findById(arquivo.getId())).thenReturn(Optional.of(arquivo));
+
+        gravacao.gravar(resultado);
+
+        verify(lancamentos, never()).saveAll(any());
+        verify(saldos, never()).saveAll(any());
+        verify(conferencias, never()).save(any());
+        assertThat(arquivo.getStatus()).isEqualTo(StatusArquivo.CONCLUIDO);
+        assertThat(arquivo.getTotalLancamentos()).isNull();
     }
 }

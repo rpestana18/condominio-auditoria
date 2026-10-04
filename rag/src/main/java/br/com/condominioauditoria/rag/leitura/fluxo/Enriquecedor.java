@@ -20,7 +20,8 @@ final class Enriquecedor {
         Matcher meio = MEIO_PAGAMENTO.matcher(historico);
         boolean transferencia = contaNome.contains("TRANSFERENCIA CONTABIL") || contaNome.contains("AJUSTE CONTABIL")
                 || historico.startsWith("TRANSFERENCIA DE ");
-        return new Enriquecimento(nf, fornecedor, meio.find() ? meio.group() : null, transferencia);
+        // recebimentoCota: o campo já existe no contrato v2; a marcação dos "RECIBOS ACUMULADOS" é o passo 2 da ADR 0004
+        return new Enriquecimento(nf, fornecedor, meio.find() ? meio.group() : null, transferencia, false);
     }
 
     private static String primeiroGrupo(Pattern padrao, String texto) {

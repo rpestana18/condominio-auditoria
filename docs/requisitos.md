@@ -218,7 +218,7 @@ Premissas (padrões adotados; o usuário pode mudar):
 2. O Admin cadastra e confirma o de-para. Uma sugestão automática pelo nome pode existir, mas todo o fluxo funciona sem IA (modo `DESLIGADO`, RF-09).
 3. Uma conta do fluxo sem de-para confirmado aparece como "sem linha da PO" e **nunca é somada em silêncio a outra linha**.
 4. As diferenças são **indícios com evidência** (lançamentos, arquivo, página e hash de origem), nunca conclusões (§3.3). O sistema não escreve a causa de uma diferença.
-5. Enquanto Q18 a Q26 não forem respondidas, valem as recomendações marcadas no §10. Elas reproduzem a análise manual de setembro: mês pela data do lançamento, valor como está no fluxo, acumulado do exercício da PO, fundos de reserva e de obras comparados pela arrecadação, "rateio à parte" fora da comparação e excesso da regra dos 20% somado linha a linha.
+5. Q18 a Q26 foram respondidas pelo usuário em 04/10/2026, seguindo as recomendações (§10). As respostas reproduzem a análise manual de setembro: mês pela data do lançamento, valor como está no fluxo, acumulado do exercício da PO, fundos de reserva e de obras comparados pela arrecadação, "rateio à parte" fora da comparação e excesso da regra dos 20% somado linha a linha.
 
 Termos usados abaixo:
 - **PO**: previsão orçamentária aprovada, com arquivo, página e hash de origem, versão, exercício e ata de aprovação (quando enviada).
@@ -580,15 +580,15 @@ Origem: "o cliente pode escolher se quer esse módulo ou não e podemos vender n
 | Q17 | ✔ Sim (usuário, 03/10/2026). O Admin do condomínio vê o uso de IA do próprio condomínio; o Super-admin vê de todos (RF-09.7) | Usuário |
 | P4 | Enviar a ata da assembleia de maio/2026 que aprovou a PO 2026/2027 (define o início do exercício, RF-03.1.3) | Usuário |
 | P5 | Enviar os fluxos de caixa de mai a ago/2026, para o acumulado do exercício (RF-03.1.10) | Usuário |
-| Q18 | Mês do realizado: data do lançamento ou competência? (ex.: salário de setembro pago em outubro). Responder **Caixa** ou Competência. Recomendado: **Caixa** (é o que o fluxo traz e reproduz a análise de setembro; competência exige outra fonte, como a folha) (RF-03.1.8) | Usuário |
-| Q19 | Retenções (INSS e impostos na NF, INSS do pró-labore): usar o valor como está no fluxo ou converter tudo para bruto? Responder **Fluxo** ou Bruto. Recomendado: **Fluxo** nesta entrega (reproduz a análise; converter exige guia e NF por lançamento e evitar contar a retenção duas vezes, conflito 3) (RF-03.1.8) | Usuário |
-| Q20 | O acumulado é do exercício da PO ou do ano civil? Responder **Exercício** ou Civil. Recomendado: **Exercício** (a PO vale de mai/2026 a abr/2027) (RF-03.1.10) | Usuário |
-| Q21 | Os fundos de reserva e de obras comparam a arrecadação do mês com o previsto da PO? Responder **Sim** ou Não. Recomendado: **Sim** (RF-03.1.9) | Usuário |
-| Q22 | Energia, água, gás e seguro predial ("rateio à parte" na PO) ficam fora do previsto × realizado? Responder **Sim** ou Não. Recomendado: **Sim** (são auditados por arrecadado × conta paga, em requisito próprio) (RF-03.1.9) | Usuário |
-| Q23 | Regra dos 20% (Conv. 16.2): somar o que passou do orçado linha a linha, ou só o que passou do total do mês? Responder **Linha** ou Total. Recomendado: **Linha** (mais conservadora e igual à análise manual: 8,6% em setembro; por Total seria 0%) (RF-03.1.11, conflito 1) | Usuário |
-| Q24 | O previsto mensal de cada linha é o mesmo em todos os meses, como está na PO (sem distribuir sazonalidade como assembleias e pagamentos anuais)? Responder **Sim** ou Não. Recomendado: **Sim** nesta entrega, com as Observações da PO visíveis (RF-03.1.10) | Usuário |
-| Q25 | "Arrecadação" de um fundo é só a cota recebida (recibos) ou todo crédito do fundo (com rendimentos e outros)? Responder **Recibos** ou Créditos. Recomendado: **Recibos**. Atenção: confirmar no fluxo qual dos valores de setembro corresponde a cada opção (14.260,79 ou 13.087,65, conflito 4) (RF-03.1.9) | Usuário |
-| Q26 | O valor "a realocar" (cartão, 1.050,93 em setembro) entra no excesso da regra dos 20% antes de ser realocado? Responder Sim ou **Não**. Recomendado: **Não**; fica à parte, com o cenário máximo (8,8%) visível (RF-03.1.11) | Usuário |
+| Q18 | ✔ Caixa: mês pela data do lançamento no fluxo (RF-03.1.8) (usuário, 04/10/2026) | Usuário |
+| Q19 | ✔ Fluxo: valor como está no fluxo, sem converter para bruto (RF-03.1.8) (usuário, 04/10/2026) | Usuário |
+| Q20 | ✔ Exercício: acumulado do exercício da PO (RF-03.1.10) (usuário, 04/10/2026) | Usuário |
+| Q21 | ✔ Sim: reserva e obras comparam a arrecadação com o previsto (RF-03.1.9) (usuário, 04/10/2026) | Usuário |
+| Q22 | ✔ Sim: energia, água, gás e seguro predial ("rateio à parte") ficam fora (RF-03.1.9) (usuário, 04/10/2026) | Usuário |
+| Q23 | ✔ Linha: o excesso da regra dos 20% é somado linha a linha (RF-03.1.11) (usuário, 04/10/2026) | Usuário |
+| Q24 | ✔ Sim: previsto mensal igual em todos os meses, com as Observações visíveis (RF-03.1.10) (usuário, 04/10/2026) | Usuário |
+| Q25 | ✔ Recibos: arrecadação é só a cota recebida; confirmar no fluxo qual valor de setembro corresponde (conflito 4) (RF-03.1.9) (usuário, 04/10/2026) | Usuário |
+| Q26 | ✔ Não: o valor "a realocar" fica fora do excesso, com o cenário máximo visível (RF-03.1.11) (usuário, 04/10/2026) | Usuário |
 | T* | Decisões de tecnologia (ver 03-tecnologias.md) | Usuário |
 
 ---

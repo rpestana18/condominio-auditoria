@@ -261,6 +261,147 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/previsoes/{poId}/depara": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * De-para das contas do fluxo nesta versão da PO (todos os perfis, RF-03.1.4 e RF-03.1.13)
+         * @description Contas do fluxo com débito no fundo Condomínio no exercício da PO, mais as contas que já têm de-para.
+         *     Conta sem de-para tem estado nulo. Só CONFIRMADO entra no previsto × realizado.
+         */
+        get: operations["listarDepara"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/depara/{conta}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+                /** @description Código da conta do fluxo como impresso (ex. 0028) */
+                conta: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Admin escolhe o destino de uma conta (só ADMIN, RF-03.1.4 e RF-03.1.5)
+         * @description Destino LINHA_PO aponta para uma linha de despesa da PO (grupos 1.1 a 1.8) pelo id, nunca pela conta da PO.
+         *     Com confirmar nulo ou true, o de-para fica CONFIRMADO; com false, SUGERIDO. A trilha registra o destino e o
+         *     estado anteriores e novos.
+         */
+        put: operations["definirDepara"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/depara/lote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirma ou recusa várias contas de uma vez (só ADMIN, RF-03.1.13), um evento por conta */
+        post: operations["loteDepara"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/depara/sugestoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gera sugestões para as contas sem de-para (só ADMIN, RF-03.1.5), sem IA
+         * @description Primeiro a versão anterior da PO (só o que estava confirmado; linha igual = mesmo código efetivo, conta e
+         *     descrição), depois a comparação de nomes (sem dígitos, sem acento; nota mínima configurável; empate não
+         *     sugere). Tudo entra SUGERIDO, com o motivo. Nenhuma conta é confirmada e nenhum número muda.
+         */
+        post: operations["sugerirDepara"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/depara/planilha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Carrega a planilha de sugestões (CSV "conta do fluxo;linha da PO"), só ADMIN (RF-03.1.5)
+         * @description Formato do mapa do piloto, separado por ponto e vírgula, com ou sem cabeçalho, UTF-8 ou Windows-1252. Destino:
+         *     código efetivo de uma linha de despesa, "AJUSTE (...)", "REALOCAR (...)" ou "TRANSFERENCIA (...)". Tudo entra
+         *     SUGERIDO; conta já confirmada não muda; linha inválida é listada e não entra.
+         */
+        post: operations["planilhaDepara"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/depara/eventos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        /** Trilha do de-para (todos os perfis), só de inserção */
+        get: operations["eventosDepara"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -541,6 +682,128 @@ export interface components {
             cienteDivergencia: boolean;
             /** @description Obrigatória com cienteDivergencia */
             justificativa?: string | null;
+        };
+        /**
+         * @description Linha da PO; ajuste (não é despesa); meio de pagamento a realocar (RF-02B); transferência entre fundos
+         * @enum {string}
+         */
+        TipoDestino: "LINHA_PO" | "AJUSTE" | "A_REALOCAR" | "TRANSFERENCIA";
+        /** @enum {string} */
+        EstadoDepara: "SUGERIDO" | "CONFIRMADO" | "RECUSADO";
+        /** @enum {string} */
+        OrigemDepara: "VERSAO_ANTERIOR" | "PLANILHA" | "NOME" | "ADMIN";
+        /**
+         * @description PENDENTES = sem de-para confirmado (sem de-para, sugerido ou recusado)
+         * @enum {string}
+         */
+        FiltroDepara: "TODAS" | "PENDENTES" | "SUGERIDO" | "CONFIRMADO" | "RECUSADO" | "SEM_DEPARA" | "IGUAIS_VERSAO_ANTERIOR";
+        DestinoDepara: {
+            tipo: components["schemas"]["TipoDestino"];
+            /**
+             * Format: uuid
+             * @description Só com LINHA_PO
+             */
+            linhaId?: string | null;
+            /** @description Código efetivo da linha */
+            codigo?: string | null;
+            descricao?: string | null;
+            /** @description Texto do destino especial */
+            detalhe?: string | null;
+            /** @description Ex. "1.7.8 Material hidráulico" ou "AJUSTE (estorno)" */
+            texto: string;
+        };
+        ContaDepara: {
+            /** @description Código da conta do fluxo como impresso */
+            conta: string;
+            /** @description Nome como impresso no fluxo */
+            nome?: string | null;
+            /** @description Débitos do fundo Condomínio no exercício da PO */
+            lancamentos: number;
+            debitos: number;
+            destino?: null | components["schemas"]["DestinoDepara"];
+            /** @description Nulo = sem de-para */
+            estado?: null | components["schemas"]["EstadoDepara"];
+            origem?: null | components["schemas"]["OrigemDepara"];
+            /** @description Nomes comparados */
+            motivo?: string | null;
+            igualVersaoAnterior: boolean;
+            atualizadoPor?: string | null;
+            /** Format: date-time */
+            atualizadoEm?: string | null;
+        };
+        DeparaLista: {
+            /** Format: uuid */
+            previsaoId: string;
+            versao?: number | null;
+            /** @description Sempre sobre todas as contas, sem o filtro ("N de M contas confirmadas") */
+            resumo: {
+                contas: number;
+                confirmadas: number;
+                sugeridas: number;
+                recusadas: number;
+                semDepara: number;
+            };
+            contas: components["schemas"]["ContaDepara"][];
+        };
+        PedidoDestino: {
+            tipo: components["schemas"]["TipoDestino"];
+            /**
+             * Format: uuid
+             * @description Obrigatória com LINHA_PO
+             */
+            linhaId?: string | null;
+            detalhe?: string | null;
+            /** @description Nulo ou true confirma; false deixa SUGERIDO */
+            confirmar?: boolean | null;
+        };
+        PedidoLote: {
+            /** @enum {string} */
+            acao: "CONFIRMAR" | "RECUSAR";
+            contas: string[];
+        };
+        ContaIgnorada: {
+            conta: string;
+            motivo: string;
+        };
+        ResultadoLote: {
+            alteradas: number;
+            ignoradas: components["schemas"]["ContaIgnorada"][];
+        };
+        ResultadoSugestoes: {
+            criadas: number;
+            daVersaoAnterior: number;
+            peloNome: number;
+            semSugestao: {
+                conta: string;
+                nome?: string | null;
+                motivo: string;
+            }[];
+        };
+        ResultadoPlanilha: {
+            aceitas: number;
+            ignoradas: components["schemas"]["ContaIgnorada"][];
+            recusadas: {
+                linha: number;
+                conteudo: string;
+                motivo: string;
+            }[];
+        };
+        EventoDepara: {
+            /** Format: uuid */
+            id: string;
+            conta: string;
+            nome?: string | null;
+            /** @enum {string} */
+            acao: "SUGERIDO" | "CONFIRMADO" | "RECUSADO" | "ALTERADO";
+            usuario: string;
+            /** Format: date-time */
+            em: string;
+            destinoAnterior?: string | null;
+            estadoAnterior?: null | components["schemas"]["EstadoDepara"];
+            destinoNovo: string;
+            estadoNovo: components["schemas"]["EstadoDepara"];
+            origem: components["schemas"]["OrigemDepara"];
+            motivo?: string | null;
         };
         Problema: {
             title?: string;
@@ -1034,6 +1297,289 @@ export interface operations {
                 content: {
                     "application/problem+json": components["schemas"]["Problema"];
                 };
+            };
+        };
+    };
+    listarDepara: {
+        parameters: {
+            query?: {
+                filtro?: components["schemas"]["FiltroDepara"];
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeparaLista"];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    definirDepara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+                /** @description Código da conta do fluxo como impresso (ex. 0028) */
+                conta: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDestino"];
+            };
+        };
+        responses: {
+            /** @description Gravado */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContaDepara"];
+                };
+            };
+            /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Destino inválido (linha de outra PO */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    loteDepara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoLote"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoLote"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sugerirDepara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoSugestoes"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    planilhaDepara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    arquivo: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoPlanilha"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Planilha acima de 1 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    eventosDepara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventoDepara"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -162,6 +162,105 @@ paths:
         "404": { description: PO não encontrada }
         "409": { description: PO já confirmada ou outra PO confirmada vale nos mesmos meses, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
         "422": { description: Confirmação recusada (lista em motivos), content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+  /condominios/{condominioId}/previsoes/{poId}/depara:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    get:
+      summary: De-para das contas do fluxo nesta versão da PO (todos os perfis, RF-03.1.4 e RF-03.1.13)
+      description: |
+        Contas do fluxo com débito no fundo Condomínio no exercício da PO, mais as contas que já têm de-para.
+        Conta sem de-para tem estado nulo. Só CONFIRMADO entra no previsto × realizado.
+      operationId: listarDepara
+      parameters:
+        - name: filtro
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/FiltroDepara" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DeparaLista" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+  /condominios/{condominioId}/previsoes/{poId}/depara/{conta}:
+    parameters:
+      - { $ref: "#/components/parameters/CondominioId" }
+      - { $ref: "#/components/parameters/PoId" }
+      - { name: conta, in: path, required: true, description: Código da conta do fluxo como impresso (ex. 0028), schema: { type: string, pattern: "^[0-9]{1,20}$" } }
+    put:
+      summary: Admin escolhe o destino de uma conta (só ADMIN, RF-03.1.4 e RF-03.1.5)
+      description: |
+        Destino LINHA_PO aponta para uma linha de despesa da PO (grupos 1.1 a 1.8) pelo id, nunca pela conta da PO.
+        Com confirmar nulo ou true, o de-para fica CONFIRMADO; com false, SUGERIDO. A trilha registra o destino e o
+        estado anteriores e novos.
+      operationId: definirDepara
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoDestino" } } }
+      responses:
+        "200": { description: Gravado, content: { application/json: { schema: { $ref: "#/components/schemas/ContaDepara" } } } }
+        "403": { description: Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada }
+        "422": { description: Destino inválido (linha de outra PO, de fundo, de total ou de grupo) }
+  /condominios/{condominioId}/previsoes/{poId}/depara/lote:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    post:
+      summary: Confirma ou recusa várias contas de uma vez (só ADMIN, RF-03.1.13), um evento por conta
+      operationId: loteDepara
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoLote" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ResultadoLote" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada }
+  /condominios/{condominioId}/previsoes/{poId}/depara/sugestoes:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    post:
+      summary: Gera sugestões para as contas sem de-para (só ADMIN, RF-03.1.5), sem IA
+      description: |
+        Primeiro a versão anterior da PO (só o que estava confirmado; linha igual = mesmo código efetivo, conta e
+        descrição), depois a comparação de nomes (sem dígitos, sem acento; nota mínima configurável; empate não
+        sugere). Tudo entra SUGERIDO, com o motivo. Nenhuma conta é confirmada e nenhum número muda.
+      operationId: sugerirDepara
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ResultadoSugestoes" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada }
+  /condominios/{condominioId}/previsoes/{poId}/depara/planilha:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    post:
+      summary: Carrega a planilha de sugestões (CSV "conta do fluxo;linha da PO"), só ADMIN (RF-03.1.5)
+      description: |
+        Formato do mapa do piloto, separado por ponto e vírgula, com ou sem cabeçalho, UTF-8 ou Windows-1252. Destino:
+        código efetivo de uma linha de despesa, "AJUSTE (...)", "REALOCAR (...)" ou "TRANSFERENCIA (...)". Tudo entra
+        SUGERIDO; conta já confirmada não muda; linha inválida é listada e não entra.
+      operationId: planilhaDepara
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [arquivo]
+              properties: { arquivo: { type: string, format: binary } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ResultadoPlanilha" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada }
+        "413": { description: Planilha acima de 1 MB }
+  /condominios/{condominioId}/previsoes/{poId}/depara/eventos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    get:
+      summary: Trilha do de-para (todos os perfis), só de inserção
+      operationId: eventosDepara
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EventoDepara" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
 components:
   securitySchemes:
     bearer: { type: http, scheme: bearer, bearerFormat: JWT }
@@ -461,6 +560,127 @@ components:
         reaprovacao: { type: boolean, default: false }
         cienteDivergencia: { type: boolean, default: false }
         justificativa: { type: [string, "null"], description: Obrigatória com cienteDivergencia }
+    TipoDestino:
+      type: string
+      description: Linha da PO; ajuste (não é despesa); meio de pagamento a realocar (RF-02B); transferência entre fundos
+      enum: [LINHA_PO, AJUSTE, A_REALOCAR, TRANSFERENCIA]
+    EstadoDepara:
+      type: string
+      enum: [SUGERIDO, CONFIRMADO, RECUSADO]
+    OrigemDepara:
+      type: string
+      enum: [VERSAO_ANTERIOR, PLANILHA, NOME, ADMIN]
+    FiltroDepara:
+      type: string
+      description: PENDENTES = sem de-para confirmado (sem de-para, sugerido ou recusado)
+      enum: [TODAS, PENDENTES, SUGERIDO, CONFIRMADO, RECUSADO, SEM_DEPARA, IGUAIS_VERSAO_ANTERIOR]
+    DestinoDepara:
+      type: object
+      required: [tipo, texto]
+      properties:
+        tipo: { $ref: "#/components/schemas/TipoDestino" }
+        linhaId: { type: [string, "null"], format: uuid, description: Só com LINHA_PO }
+        codigo: { type: [string, "null"], description: Código efetivo da linha }
+        descricao: { type: [string, "null"] }
+        detalhe: { type: [string, "null"], description: Texto do destino especial, ex. "estorno" }
+        texto: { type: string, description: Ex. "1.7.8 Material hidráulico" ou "AJUSTE (estorno)" }
+    ContaDepara:
+      type: object
+      required: [conta, lancamentos, debitos, igualVersaoAnterior]
+      properties:
+        conta: { type: string, description: Código da conta do fluxo como impresso }
+        nome: { type: [string, "null"], description: Nome como impresso no fluxo }
+        lancamentos: { type: integer, description: Débitos do fundo Condomínio no exercício da PO }
+        debitos: { type: number }
+        destino: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/DestinoDepara" }] }
+        estado: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/EstadoDepara" }], description: Nulo = sem de-para }
+        origem: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/OrigemDepara" }] }
+        motivo: { type: [string, "null"], description: Nomes comparados, linha da planilha ou "igual à versão anterior" }
+        igualVersaoAnterior: { type: boolean }
+        atualizadoPor: { type: [string, "null"] }
+        atualizadoEm: { type: [string, "null"], format: date-time }
+    DeparaLista:
+      type: object
+      required: [previsaoId, resumo, contas]
+      properties:
+        previsaoId: { type: string, format: uuid }
+        versao: { type: [integer, "null"] }
+        resumo:
+          type: object
+          description: Sempre sobre todas as contas, sem o filtro ("N de M contas confirmadas")
+          required: [contas, confirmadas, sugeridas, recusadas, semDepara]
+          properties:
+            contas: { type: integer }
+            confirmadas: { type: integer }
+            sugeridas: { type: integer }
+            recusadas: { type: integer }
+            semDepara: { type: integer }
+        contas: { type: array, items: { $ref: "#/components/schemas/ContaDepara" } }
+    PedidoDestino:
+      type: object
+      required: [tipo]
+      properties:
+        tipo: { $ref: "#/components/schemas/TipoDestino" }
+        linhaId: { type: [string, "null"], format: uuid, description: Obrigatória com LINHA_PO }
+        detalhe: { type: [string, "null"] }
+        confirmar: { type: [boolean, "null"], description: Nulo ou true confirma; false deixa SUGERIDO }
+    PedidoLote:
+      type: object
+      required: [acao, contas]
+      properties:
+        acao: { type: string, enum: [CONFIRMAR, RECUSAR] }
+        contas: { type: array, minItems: 1, items: { type: string } }
+    ContaIgnorada:
+      type: object
+      required: [conta, motivo]
+      properties: { conta: { type: string }, motivo: { type: string } }
+    ResultadoLote:
+      type: object
+      required: [alteradas, ignoradas]
+      properties:
+        alteradas: { type: integer }
+        ignoradas: { type: array, items: { $ref: "#/components/schemas/ContaIgnorada" } }
+    ResultadoSugestoes:
+      type: object
+      required: [criadas, daVersaoAnterior, peloNome, semSugestao]
+      properties:
+        criadas: { type: integer }
+        daVersaoAnterior: { type: integer }
+        peloNome: { type: integer }
+        semSugestao:
+          type: array
+          items:
+            type: object
+            required: [conta, motivo]
+            properties: { conta: { type: string }, nome: { type: [string, "null"] }, motivo: { type: string } }
+    ResultadoPlanilha:
+      type: object
+      required: [aceitas, ignoradas, recusadas]
+      properties:
+        aceitas: { type: integer }
+        ignoradas: { type: array, items: { $ref: "#/components/schemas/ContaIgnorada" } }
+        recusadas:
+          type: array
+          items:
+            type: object
+            required: [linha, conteudo, motivo]
+            properties: { linha: { type: integer }, conteudo: { type: string }, motivo: { type: string } }
+    EventoDepara:
+      type: object
+      required: [id, conta, acao, usuario, em, destinoNovo, estadoNovo, origem]
+      properties:
+        id: { type: string, format: uuid }
+        conta: { type: string }
+        nome: { type: [string, "null"] }
+        acao: { type: string, enum: [SUGERIDO, CONFIRMADO, RECUSADO, ALTERADO] }
+        usuario: { type: string }
+        em: { type: string, format: date-time }
+        destinoAnterior: { type: [string, "null"] }
+        estadoAnterior: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/EstadoDepara" }] }
+        destinoNovo: { type: string }
+        estadoNovo: { $ref: "#/components/schemas/EstadoDepara" }
+        origem: { $ref: "#/components/schemas/OrigemDepara" }
+        motivo: { type: [string, "null"] }
     Problema:
       type: object
       properties:

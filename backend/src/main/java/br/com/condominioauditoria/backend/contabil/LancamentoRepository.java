@@ -45,6 +45,10 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
     List<Lancamento> debitosComConta(UUID condominioId, UUID fundoId, java.time.LocalDate inicio,
             java.time.LocalDate fim);
 
+    /** Lançamentos dos fluxos escolhidos no período, de todos os fundos (previsto × realizado). */
+    List<Lancamento> findByArquivoIdInAndDataBetween(java.util.Collection<UUID> arquivos, java.time.LocalDate inicio,
+            java.time.LocalDate fim);
+
     @Modifying
     @Query("delete from Lancamento l where l.arquivoId = :arquivoId")
     void apagarDoArquivo(UUID arquivoId);

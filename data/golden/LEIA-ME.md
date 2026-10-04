@@ -16,7 +16,9 @@ Documentos reais com o resultado esperado. Toda mudança em leitor ou regra roda
   - `mapa-contas-fluxo-para-PO.csv`: de-para das 73 contas do piloto (planilha de sugestões do RF-03.1.5), cópia de
     `piloto-mio/`. Caso do de-para em `backend/.../orcamento/DeparaGoldenTest`.
   - `previsto-realizado-2026-09.csv`: previsto × realizado de setembro/2026 da análise manual, cópia de `piloto-mio/`
-    (caso de aceite do RF-03.1.15).
+    (caso de aceite do RF-03.1.15). Conferido linha a linha, centavo a centavo, em
+    `backend/.../orcamento/PrevistoRealizadoGoldenTest`, com os totais, grupos, regra dos 20% e fundos do RF-03.1.6 a
+    RF-03.1.11.
 
 Para regenerar os JSON depois de mudar o leitor Python (troque o nome do arquivo para a PO):
 

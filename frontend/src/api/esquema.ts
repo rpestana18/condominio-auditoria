@@ -402,6 +402,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/previsto-realizado": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Previsto × realizado do mês ou acumulado do exercício (todos os perfis, RF-03.1.6 a RF-03.1.11)
+         * @description Calculado na consulta pela função pura CalculoPrevistoRealizado (versaoCalculo no resultado); nada é gravado.
+         *     Realizado = débitos do fundo Condomínio (fundo ordinário) pelo de-para CONFIRMADO; ajustes, a realocar e sem
+         *     linha da PO à parte; transferências entre fundos fora. Previsto do mês = soma das linhas 1.1 a 1.8 (Q30).
+         *     Fundos ligados às linhas 1.9: arrecadação (recebimento de cota) × previsto. Mês sem fluxo, com dois fluxos,
+         *     sem PO, com PO não confirmada ou sem fundo ordinário: situacao diz o porquê e os números ficam nulos.
+         */
+        get: operations["previstoRealizado"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsto-realizado/evidencia": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /** Lançamentos que compõem um número do previsto × realizado (todos os perfis, RF-03.1.12) */
+        get: operations["evidenciaPrevistoRealizado"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -804,6 +849,200 @@ export interface components {
             estadoNovo: components["schemas"]["EstadoDepara"];
             origem: components["schemas"]["OrigemDepara"];
             motivo?: string | null;
+        };
+        PrevistoRealizado: {
+            /** @description Versão das regras do cálculo usada nesta resposta */
+            versaoCalculo: string;
+            /** @description AAAA-MM ou "acumulado" */
+            periodo: string;
+            /** @enum {string} */
+            situacao: "CALCULADO" | "SEM_PO" | "PO_NAO_CONFIRMADA" | "SEM_FUNDO_ORDINARIO" | "SEM_FLUXO" | "DOIS_FLUXOS";
+            /** @description Por que não há números (situação diferente de CALCULADO) */
+            mensagem?: string | null;
+            po?: null | {
+                /** Format: uuid */
+                id: string;
+                versao?: number | null;
+                estado: components["schemas"]["EstadoPrevisao"];
+                /** Format: uuid */
+                arquivoId: string;
+                arquivoNome?: string | null;
+                sha256: string;
+                exercicioInicio?: string | null;
+                exercicioFim?: string | null;
+            };
+            /** @description No acumulado, os meses do exercício; no mês, só ele. Números só com COM_FLUXO */
+            meses: {
+                mes: string;
+                /** @enum {string} */
+                situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
+                fluxos: components["schemas"]["FluxoUsado"][];
+                previsto?: number | null;
+                despesaRealizada?: number | null;
+                excesso?: number | null;
+                percentualExcesso?: number | null;
+                acimaDoLimite?: boolean | null;
+            }[];
+            mesesSomados: string[];
+            /** @description Meses sem fluxo antes do último mês com fluxo */
+            mesesSemFluxo: string[];
+            mesesComDoisFluxos: string[];
+            depara?: null | {
+                /** @description Contas com débito no fundo Condomínio no período */
+                contas: number;
+                confirmadas: number;
+                semDeparaConfirmado: number;
+            };
+            /** @description Há valor a realocar ou sem linha da PO */
+            provisorio: boolean;
+            totais?: null | {
+                previstoMes: number;
+                /** @description Previsto do mês × meses somados */
+                previsto: number;
+                /** @description Em linhas + a realocar + sem linha da PO */
+                despesaRealizada: number;
+                emLinhas: number;
+                diferenca: number;
+                /** @description % com 1 casa; nulo com previsto zero */
+                execucao?: number | null;
+                /** @description Previsto do mês × meses do exercício (referência) */
+                previstoExercicio: number;
+            };
+            grupos: components["schemas"]["GrupoPrevistoRealizado"][];
+            ajustes?: null | components["schemas"]["BlocoPrevistoRealizado"];
+            aRealocar?: null | components["schemas"]["BlocoPrevistoRealizado"];
+            semLinhaPo?: null | components["schemas"]["BlocoPrevistoRealizado"];
+            conferencia?: null | {
+                debitosDoFundo: number;
+                lancamentos: number;
+                despesaRealizada: number;
+                ajustes: number;
+                transferencias: number;
+                confere: boolean;
+            };
+            /** @description Regra dos 20% (Conv. 16.2), só no mês */
+            regra20?: null | {
+                regra: string;
+                versaoRegra: string;
+                limitePercentual: number;
+                previstoMes: number;
+                /** @description Soma das diferenças positivas */
+                excesso: number;
+                percentual: number;
+                /** @description Em reais */
+                limite: number;
+                linhasAcima: number;
+                linhas: {
+                    /** Format: uuid */
+                    linhaId: string;
+                    codigo: string;
+                    descricao: string;
+                    excesso: number;
+                }[];
+                aRealocar: number;
+                semLinhaPo: number;
+                /** @description Excesso + a realocar + sem linha da PO */
+                cenarioMaximo: number;
+                percentualCenarioMaximo?: number | null;
+                provisorio: boolean;
+                acimaDoLimite: boolean;
+            };
+            fundos: {
+                /** Format: uuid */
+                fundoId?: string | null;
+                /** @description Nome impresso no fluxo */
+                fundo?: string | null;
+                /** Format: uuid */
+                linhaId?: string | null;
+                linhaCodigo?: string | null;
+                /** @enum {string} */
+                situacao: "COMPARADO" | "SEM_PREVISTO_NA_PO" | "LINHA_SEM_FUNDO" | "REPROCESSAR_FLUXO";
+                previsto?: number | null;
+                arrecadado?: number | null;
+                diferenca?: number | null;
+                execucao?: number | null;
+                creditos?: number | null;
+                debitos?: number | null;
+            }[];
+            avisos: {
+                codigo: string;
+                texto: string;
+            }[];
+        };
+        FluxoUsado: {
+            /** Format: uuid */
+            arquivoId: string;
+            nome: string;
+            sha256: string;
+            /** Format: date */
+            periodoInicio?: string | null;
+            /** Format: date */
+            periodoFim?: string | null;
+            /** Format: date-time */
+            enviadoEm?: string | null;
+            enviadoPor?: string | null;
+        };
+        GrupoPrevistoRealizado: {
+            /** Format: uuid */
+            linhaId: string;
+            codigo: string;
+            descricao: string;
+            /** @description Soma das linhas (Q30) */
+            previsto: number;
+            realizado: number;
+            diferenca: number;
+            execucao?: number | null;
+            linhas: {
+                /** Format: uuid */
+                linhaId: string;
+                codigo: string;
+                descricao: string;
+                conta?: string | null;
+                /** @enum {string|null} */
+                marca?: "RATEIO_A_PARTE" | "NEGOCIADA_ISENCAO" | "SEM_VALOR" | "VALOR_FIXO_SEM_REFERENCIA" | null;
+                observacoes?: string | null;
+                pagina: number;
+                previsto: number;
+                realizado: number;
+                diferenca: number;
+                execucao?: number | null;
+                /** @description Contas do fluxo com de-para confirmado para a linha */
+                contasFluxo: string[];
+                lancamentos: number;
+            }[];
+        };
+        BlocoPrevistoRealizado: {
+            total: number;
+            lancamentos: number;
+            contas: {
+                conta?: string | null;
+                nome?: string | null;
+                /** @description Ex. "AJUSTE (estorno)" */
+                detalhe?: string | null;
+                valor: number;
+                lancamentos: number;
+            }[];
+        };
+        EvidenciaLancamento: {
+            /** Format: uuid */
+            lancamentoId: string;
+            /** Format: date */
+            data: string;
+            conta?: string | null;
+            contaNome?: string | null;
+            historico: string;
+            fornecedor?: string | null;
+            documento?: string | null;
+            valor: number;
+            fundo?: string | null;
+            /** Format: uuid */
+            arquivoId: string;
+            arquivoNome?: string | null;
+            sha256: string;
+            pagina: number;
+            ordem: number;
+            /** @description "realocado para <linha> por <usuário> em <data>" */
+            realocacao?: string | null;
         };
         Problema: {
             title?: string;
@@ -1576,6 +1815,95 @@ export interface operations {
             };
             /** @description PO não encontrada */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    previstoRealizado: {
+        parameters: {
+            query: {
+                /** @description AAAA-MM ou "acumulado" */
+                periodo: string;
+                /** @description Versão da PO; sem ela */
+                po?: string;
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevistoRealizado"];
+                };
+            };
+            /** @description Período inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio ou PO não encontrados */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    evidenciaPrevistoRealizado: {
+        parameters: {
+            query: {
+                periodo: string;
+                po?: string;
+                /** @description "linha:<linhaId>", "fundo:<fundoId>" (arrecadação), AJUSTES, A_REALOCAR, SEM_LINHA_PO ou TRANSFERENCIAS */
+                alvo: string;
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK (lista vazia quando o alvo não tem lançamento) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenciaLancamento"][];
+                };
+            };
+            /** @description Período ou alvo inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

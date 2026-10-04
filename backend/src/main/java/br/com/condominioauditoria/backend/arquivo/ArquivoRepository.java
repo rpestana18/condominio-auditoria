@@ -18,6 +18,10 @@ public interface ArquivoRepository extends JpaRepository<Arquivo, UUID> {
 
     Optional<Arquivo> findByIdAndCondominioId(UUID id, UUID condominioId);
 
+    /** Arquivos lidos de uma categoria (ex.: fluxos de caixa concluídos, para o previsto × realizado). */
+    List<Arquivo> findByCondominioIdAndCategoriaAndStatusIn(UUID condominioId, Categoria categoria,
+            Collection<StatusArquivo> status);
+
     List<Arquivo> findByStatusInOrderByEnviadoEm(Collection<StatusArquivo> status);
 
     /** Parados na fila há mais tempo que o limite (mensagem perdida, serviço fora do ar). */

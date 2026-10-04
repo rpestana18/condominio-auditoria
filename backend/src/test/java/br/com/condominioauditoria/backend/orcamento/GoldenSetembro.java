@@ -55,6 +55,40 @@ final class GoldenSetembro {
         return MensagensGolden.texto("mapa-contas-fluxo-para-PO.csv");
     }
 
+    /** Carrega o mapa das 73 contas e confirma todas, como o Admin faria sem mudança (RF-03.1.4). */
+    void confirmarMapa() {
+        String mapa = mapa().orElseThrow(() -> new IllegalStateException("mapa do piloto ausente no golden privado"));
+        cenario.depara.carregarPlanilha(cenario.condominioId, po.getId(), "mapa-contas-fluxo-para-PO.csv", mapa, "admin");
+        cenario.depara.lote(cenario.condominioId, po.getId(), new DeparaDtos.PedidoLote(DeparaDtos.AcaoLote.CONFIRMAR,
+                cenario.deparas.stream().map(DeparaConta::getContaCodigo).toList()), "admin");
+    }
+
+    CalculoPrevistoRealizado.Fluxo fluxoDeSetembro() {
+        return new CalculoPrevistoRealizado.Fluxo(arquivoFluxo, "fluxo-caixa-2026-09.pdf", "f".repeat(64),
+                fluxo.fluxoDeCaixa().periodoInicio(), fluxo.fluxoDeCaixa().periodoFim(), java.time.Instant.EPOCH, "gestor");
+    }
+
+    /** Entrada da função pura para o período, com o limite da Conv. 16.2 (20%). */
+    CalculoPrevistoRealizado.Entrada entrada(CalculoPrevistoRealizado.Periodo periodo,
+            java.util.List<CalculoPrevistoRealizado.Fluxo> fluxos,
+            java.util.List<CalculoPrevistoRealizado.Realocacao> realocacoes) {
+        Map<UUID, UUID> fundoPorLinha = new LinkedHashMap<>();
+        cenario.poFundos.stream().filter(f -> f.getPrevisaoId().equals(po.getId()))
+                .forEach(f -> fundoPorLinha.put(f.getLinhaPoId(), f.getFundoId()));
+        Map<UUID, String> nomes = new LinkedHashMap<>();
+        fundos.values().forEach(f -> nomes.put(f.getId(), f.getNome()));
+        return new CalculoPrevistoRealizado.Entrada(po, "PO-2026-2027-aprovada.pdf",
+                cenario.linhas.stream().filter(l -> l.getPrevisaoId().equals(po.getId())).toList(),
+                cenario.deparas.stream().filter(d -> d.getPrevisaoId().equals(po.getId())).toList(), fundoPorLinha, nomes,
+                cenario.ordinario.getId(), fluxos, cenario.lancamentos, realocacoes, new java.math.BigDecimal("20.0000"),
+                java.util.List.of(), periodo);
+    }
+
+    CalculoPrevistoRealizado.Calculo setembro() {
+        return CalculoPrevistoRealizado.calcular(entrada(new CalculoPrevistoRealizado.Mes(java.time.YearMonth.of(2026, 9)),
+                java.util.List.of(fluxoDeSetembro()), java.util.List.of()));
+    }
+
     LinhaPo linha(String codigoEfetivo) {
         return cenario.linhas.stream().filter(l -> l.getPrevisaoId().equals(po.getId())
                 && l.getCodigoEfetivo().equals(codigoEfetivo)).findFirst().orElseThrow();

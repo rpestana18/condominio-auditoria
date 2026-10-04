@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,11 +24,37 @@ class PrevisaoController {
     private final AcessoCondominio acesso;
     private final ConsultaPrevisao consulta;
     private final ConfirmacaoPrevisao confirmacao;
+    private final LigacaoFundosPo ligacao;
+    private final EventoPrevisaoRepository eventos;
+    private final PrevisaoOrcamentariaRepository previsoes;
 
-    PrevisaoController(AcessoCondominio acesso, ConsultaPrevisao consulta, ConfirmacaoPrevisao confirmacao) {
+    PrevisaoController(AcessoCondominio acesso, ConsultaPrevisao consulta, ConfirmacaoPrevisao confirmacao,
+            LigacaoFundosPo ligacao, EventoPrevisaoRepository eventos, PrevisaoOrcamentariaRepository previsoes) {
         this.acesso = acesso;
         this.consulta = consulta;
         this.confirmacao = confirmacao;
+        this.ligacao = ligacao;
+        this.eventos = eventos;
+        this.previsoes = previsoes;
+    }
+
+    /** RF-03.1.9: só o Admin altera a ligação das linhas 1.9 depois da confirmação; Gestor e Usuário recebem 403. */
+    @PutMapping("/{poId}/fundos")
+    @PreAuthorize("hasRole('ADMIN')")
+    PrevisaoDetalhe alterarFundos(@PathVariable UUID condominioId, @PathVariable UUID poId,
+            @RequestBody LigacaoFundosPo.PedidoFundos pedido) {
+        acesso.exigir(condominioId);
+        return ligacao.alterar(condominioId, poId, pedido, acesso.usuario());
+    }
+
+    /** Trilha da PO (todos os perfis): confirmação, substituição e alterações da ligação dos fundos. */
+    @GetMapping("/{poId}/eventos")
+    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    List<PrevisaoDtos.EventoPrevisaoDto> eventos(@PathVariable UUID condominioId, @PathVariable UUID poId) {
+        acesso.exigir(condominioId);
+        PrevisaoOrcamentaria po = previsoes.findByIdAndCondominioId(poId, condominioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada"));
+        return eventos.findByPrevisaoIdOrderByEm(po.getId()).stream().map(PrevisaoDtos.EventoPrevisaoDto::de).toList();
     }
 
     @GetMapping

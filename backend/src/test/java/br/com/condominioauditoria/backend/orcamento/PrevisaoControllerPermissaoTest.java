@@ -60,9 +60,27 @@ class PrevisaoControllerPermissaoTest {
         }
 
         @Bean
+        LigacaoFundosPo ligacao() {
+            return mock(LigacaoFundosPo.class);
+        }
+
+        @Bean
+        EventoPrevisaoRepository eventos() {
+            return mock(EventoPrevisaoRepository.class);
+        }
+
+        @Bean
+        PrevisaoOrcamentariaRepository previsoes() {
+            PrevisaoOrcamentariaRepository r = mock(PrevisaoOrcamentariaRepository.class);
+            when(r.findByIdAndCondominioId(PO, CONDOMINIO)).thenReturn(Optional.of(mock(PrevisaoOrcamentaria.class)));
+            return r;
+        }
+
+        @Bean
         PrevisaoController controller(AcessoCondominio acesso, ConsultaPrevisao consulta,
-                ConfirmacaoPrevisao confirmacao) {
-            return new PrevisaoController(acesso, consulta, confirmacao);
+                ConfirmacaoPrevisao confirmacao, LigacaoFundosPo ligacao, EventoPrevisaoRepository eventos,
+                PrevisaoOrcamentariaRepository previsoes) {
+            return new PrevisaoController(acesso, consulta, confirmacao, ligacao, eventos, previsoes);
         }
     }
 
@@ -107,6 +125,32 @@ class PrevisaoControllerPermissaoTest {
         controller.confirmar(CONDOMINIO, PO, pedido());
 
         verify(confirmacao).confirmar(eq(CONDOMINIO), eq(PO), any(), eq("admin"));
+    }
+
+    @Test
+    void soOAdminAlteraALigacaoDosFundos() {
+        LigacaoFundosPo ligacao = contexto.getBean(LigacaoFundosPo.class);
+        var pedido = new LigacaoFundosPo.PedidoFundos(List.of());
+        for (String perfil : List.of("USUARIO", "GESTOR")) {
+            logar("pessoa-" + perfil, perfil);
+            assertThatThrownBy(() -> controller.alterarFundos(CONDOMINIO, PO, pedido))
+                    .isInstanceOf(AccessDeniedException.class);
+        }
+        verify(ligacao, never()).alterar(any(), any(), any(), any());
+
+        logar("admin", "ADMIN");
+        controller.alterarFundos(CONDOMINIO, PO, pedido);
+        verify(ligacao).alterar(eq(CONDOMINIO), eq(PO), eq(pedido), eq("admin"));
+    }
+
+    @Test
+    void todosOsPerfisConsultamATrilhaDaPo() {
+        for (String perfil : List.of("USUARIO", "GESTOR", "ADMIN")) {
+            logar("pessoa-" + perfil, perfil);
+            assertThat(controller.eventos(CONDOMINIO, PO)).isEmpty();
+        }
+        logarEm(UUID.randomUUID(), "gestor-de-outro", "GESTOR");
+        assertThatThrownBy(() -> controller.eventos(CONDOMINIO, PO)).isInstanceOf(AccessDeniedException.class);
     }
 
     @Test

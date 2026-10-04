@@ -68,4 +68,13 @@ public final class PrevisaoDtos {
     public record AchadoDto(UUID id, String regra, String versaoRegra, String severidade, String competencia,
             String descricao, String estado) {
     }
+
+    /** Trilha da PO: confirmação, substituição e alteração da ligação dos fundos. */
+    public record EventoPrevisaoDto(String tipo, String usuario, java.time.Instant em, String justificativa,
+            String detalhe) {
+
+        static EventoPrevisaoDto de(EventoPrevisao e) {
+            return new EventoPrevisaoDto(e.getTipo(), e.getUsuario(), e.getEm(), e.getJustificativa(), e.getDetalhe());
+        }
+    }
 }

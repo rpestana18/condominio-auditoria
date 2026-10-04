@@ -12,7 +12,7 @@ create table modulo_condominio (
     primary key (condominio_id, modulo)
 );
 
--- Trilha de ativação (RF-10.6): cada ligar ou desligar, com quem, quando e motivo. Só cresce.
+-- Trilha de ativação (RF-10.6): cada ligar ou desligar, com quem, quando e motivo (opcional). Só cresce.
 create table evento_modulo (
     id              uuid primary key,
     condominio_id   uuid not null references condominio (id),
@@ -21,9 +21,10 @@ create table evento_modulo (
     ligado_depois   boolean not null,
     usuario         varchar(120) not null,
     quando          timestamptz not null,
-    motivo          varchar(500) not null,
+    motivo          varchar(500),
     constraint ck_evento_modulo_mudanca check (ligado_antes <> ligado_depois),
-    constraint ck_evento_modulo_motivo check (length(btrim(motivo)) > 0)
+    -- Sem motivo = nulo (nunca texto em branco)
+    constraint ck_evento_modulo_motivo check (motivo is null or length(btrim(motivo)) > 0)
 );
 create index ix_evento_modulo on evento_modulo (condominio_id, modulo, quando);
 

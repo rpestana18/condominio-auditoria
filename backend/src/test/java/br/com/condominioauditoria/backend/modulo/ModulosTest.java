@@ -3,6 +3,7 @@ package br.com.condominioauditoria.backend.modulo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -97,15 +98,34 @@ class ModulosTest {
     }
 
     @Test
-    void motivoEhObrigatorio() {
-        assertThatThrownBy(() -> modulos.alterar(CONDOMINIO, Modulos.ASSISTENTE, true, "   ", "admin"))
-                .isInstanceOf(PedidoInvalidoException.class).hasMessageContaining("motivo");
-        assertThatThrownBy(() -> modulos.alterar(CONDOMINIO, Modulos.ASSISTENTE, true, null, "admin"))
-                .isInstanceOf(PedidoInvalidoException.class);
+    void motivoEhOpcionalEEmBrancoViraNulo() {
+        when(estados.travar(CHAVE)).thenReturn(Optional.empty());
+
+        modulos.alterar(CONDOMINIO, Modulos.ASSISTENTE, true, "   ", "admin");
+
+        var evento = ArgumentCaptor.forClass(EventoModulo.class);
+        verify(eventos).save(evento.capture());
+        assertThat(evento.getValue().getMotivo()).isNull();
+        assertThat(evento.getValue().isLigadoDepois()).isTrue();
+    }
+
+    @Test
+    void motivoAcimaDe500CaracteresEhRecusado() {
         assertThatThrownBy(() -> modulos.alterar(CONDOMINIO, Modulos.ASSISTENTE, true, "x".repeat(501), "admin"))
                 .isInstanceOf(PedidoInvalidoException.class).hasMessageContaining("500");
 
         verifyNoInteractions(estados, eventos, publicador);
+    }
+
+    @Test
+    void alteracaoEhSerializadaAntesDeLerOEstado() {
+        when(estados.travar(CHAVE)).thenReturn(Optional.empty());
+
+        modulos.alterar(CONDOMINIO, Modulos.ASSISTENTE, true, null, "admin");
+
+        var ordem = inOrder(estados);
+        ordem.verify(estados).serializarAlteracao(CONDOMINIO.toString(), Modulos.ASSISTENTE);
+        ordem.verify(estados).travar(CHAVE);
     }
 
     @Test

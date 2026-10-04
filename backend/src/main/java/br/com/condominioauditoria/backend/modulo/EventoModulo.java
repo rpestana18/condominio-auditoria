@@ -22,6 +22,7 @@ public class EventoModulo {
     private boolean ligadoDepois;
     private String usuario;
     private Instant quando;
+    /** Opcional (RF-10.6): nulo quando não informado. */
     private String motivo;
 
     protected EventoModulo() {

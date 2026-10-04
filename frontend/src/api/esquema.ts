@@ -251,7 +251,7 @@ export interface paths {
         get?: never;
         /**
          * Liga ou desliga um módulo no condomínio (só ADMIN, o administrador da plataforma no MVP; RF-10.2)
-         * @description Grava o estado e um evento na trilha de ativação (só de inclusão), com motivo obrigatório. Pedir o estado que
+         * @description Grava o estado e um evento na trilha de ativação (só de inclusão), com motivo opcional. Pedir o estado que
          *     já vale não faz nada (nenhum evento). Ligar o ASSISTENTE coloca todos os arquivos do condomínio na fila de
          *     indexação depois da resposta (RF-10.4); desligar não apaga índice nem originais (RF-10.5).
          */
@@ -337,9 +337,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Exporta os períodos ativos e o uso do período em CSV para abrir no Excel (só ADMIN; RF-10.6, RF-09.7)
-         * @description CSV em UTF-8 com BOM, separador ";" (Excel em português). Duas seções: "Períodos ativos" (os que tocam o
-         *     período pedido) e "Uso por mês". Formato .xlsx fica para quando o Apache POI entrar no backend.
+         * Exporta os períodos ativos e o uso do período em Excel (só ADMIN; RF-10.6, RF-09.7)
+         * @description Arquivo .xlsx com duas abas: "Períodos ativos" (os que tocam o período pedido) e "Uso por mês". Datas no
+         *     horário de Brasília. Sem valores de cobrança nesta fase.
          */
         get: operations["exportarUsoModulos"];
         put?: never;
@@ -380,8 +380,8 @@ export interface components {
         };
         AlteracaoModulo: {
             ligado: boolean;
-            /** @description Obrigatório; vai para a trilha de ativação */
-            motivo: string;
+            /** @description Opcional (RF-10.6); em branco = não informado. Vai para a trilha de ativação */
+            motivo?: string | null;
         };
         EventoModulo: {
             /** Format: uuid */
@@ -392,7 +392,8 @@ export interface components {
             usuario: string;
             /** Format: date-time */
             quando: string;
-            motivo: string;
+            /** @description Nulo quando não informado */
+            motivo?: string | null;
         };
         PeriodoAtivo: {
             modulo: string;
@@ -1027,7 +1028,7 @@ export interface operations {
                     "application/json": components["schemas"]["ModuloDoCondominio"];
                 };
             };
-            /** @description Motivo ou estado não informado */
+            /** @description Estado não informado ou motivo acima de 500 caracteres */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1181,13 +1182,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Arquivo CSV */
+            /** @description Planilha Excel */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/csv": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                 };
             };
             /** @description Datas ausentes ou início depois do fim */

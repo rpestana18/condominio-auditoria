@@ -89,21 +89,19 @@ public class Modulos {
     }
 
     /**
-     * Liga ou desliga (RF-10.2) e grava o evento na trilha com motivo obrigatório (RF-10.6). Pedir o estado que já
+     * Liga ou desliga (RF-10.2) e grava o evento na trilha com o motivo, opcional (RF-10.6). Pedir o estado que já
      * vale não grava nada. Ligar o Assistente reindexa os arquivos do condomínio depois do commit (RF-10.4, por quem
      * escuta {@link ModuloAlterado}); desligar não apaga índice nem originais (RF-10.5).
      */
     @Transactional
     public EstadoModulo alterar(UUID condominioId, String modulo, boolean ligar, String motivo, String usuario) {
         DefinicaoModulo definicao = catalogo.exigir(modulo);
-        String motivoLimpo = motivo == null ? "" : motivo.strip();
-        if (motivoLimpo.isEmpty()) {
-            throw new PedidoInvalidoException("Informe o motivo da alteração do módulo " + definicao.nome());
-        }
-        if (motivoLimpo.length() > MOTIVO_MAXIMO) {
+        String motivoLimpo = motivo == null || motivo.isBlank() ? null : motivo.strip();
+        if (motivoLimpo != null && motivoLimpo.length() > MOTIVO_MAXIMO) {
             throw new PedidoInvalidoException("O motivo passa de " + MOTIVO_MAXIMO + " caracteres");
         }
         var chave = new ModuloCondominio.Chave(condominioId, modulo);
+        estados.serializarAlteracao(condominioId.toString(), modulo);
         Optional<ModuloCondominio> atual = estados.travar(chave);
         boolean antes = atual.map(ModuloCondominio::isLigado).orElse(definicao.ligadoPorPadrao());
         if (antes == ligar) {
@@ -115,8 +113,8 @@ public class Modulos {
         linha = estados.save(linha);
         eventos.save(new EventoModulo(condominioId, modulo, antes, ligar, usuario, agora, motivoLimpo));
         publicador.publishEvent(new ModuloAlterado(condominioId, modulo, ligar, usuario));
-        log.info("Módulo {} {} no condomínio {} por {}: {}", modulo, ligar ? "ligado" : "desligado", condominioId,
-                usuario, motivoLimpo);
+        log.info("Módulo {} {} no condomínio {} por {} (motivo: {})", modulo, ligar ? "ligado" : "desligado",
+                condominioId, usuario, motivoLimpo == null ? "não informado" : motivoLimpo);
         return estado(definicao, Optional.of(linha));
     }
 

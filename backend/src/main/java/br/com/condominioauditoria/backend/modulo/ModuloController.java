@@ -7,7 +7,6 @@ import br.com.condominioauditoria.backend.modulo.RegistroUso.ResumoUso;
 import br.com.condominioauditoria.backend.seguranca.AcessoCondominio;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
@@ -101,7 +100,7 @@ class ModuloController {
         return UsoDto.de(registroUso.resumo(condominioId, inicio, fim));
     }
 
-    /** Períodos ativos (que tocam o período) e uso por mês, em CSV para o Excel (RF-10.6, RF-09.7). */
+    /** Períodos ativos (que tocam o período) e uso por mês, em Excel com duas abas (RF-10.6, RF-09.7). */
     @GetMapping("/uso/exportacao")
     @PreAuthorize("hasRole('ADMIN')")
     ResponseEntity<byte[]> exportar(@PathVariable UUID condominioId,
@@ -115,11 +114,11 @@ class ModuloController {
                 .flatMap(m -> modulos.periodos(condominioId, m.codigo()).stream())
                 .filter(p -> p.tocaIntervalo(de, ate))
                 .toList();
-        String nome = "uso-modulos-%s-a-%s.csv".formatted(inicio, fim);
+        String nome = "uso-modulos-%s-a-%s.xlsx".formatted(inicio, fim);
         return ResponseEntity.ok()
-                .contentType(new MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
+                .contentType(MediaType.parseMediaType(ExportacaoUsoExcel.TIPO))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(nome).build().toString())
-                .body(ExportacaoUsoCsv.gerar(condominio.getNome(), uso, periodos));
+                .body(ExportacaoUsoExcel.gerar(condominio.getNome(), uso, periodos));
     }
 
     private Condominio condominio(UUID condominioId) {
@@ -142,7 +141,7 @@ class ModuloController {
     }
 
     record AlteracaoModulo(@NotNull(message = "Informe se o módulo fica ligado") Boolean ligado,
-            @NotBlank(message = "Informe o motivo") @Size(max = Modulos.MOTIVO_MAXIMO) String motivo) {
+            @Size(max = Modulos.MOTIVO_MAXIMO) String motivo) {
     }
 
     record EventoDto(UUID id, String modulo, boolean ligadoAntes, boolean ligadoDepois, String usuario, Instant quando,

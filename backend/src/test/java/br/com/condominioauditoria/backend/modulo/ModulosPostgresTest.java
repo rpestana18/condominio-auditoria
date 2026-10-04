@@ -4,6 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -96,10 +103,13 @@ class ModulosPostgresTest {
     }
 
     @Test
-    void bancoRecusaMotivoVazioEFuncaoDesconhecida() {
+    void bancoAceitaMotivoNuloERecusaMotivoEmBrancoEFuncaoDesconhecida() {
         UUID novo = novoCondominio();
         assertThatThrownBy(() -> jdbc.update("insert into evento_modulo values (gen_random_uuid(), ?, 'ASSISTENTE',"
                 + " false, true, 'admin', now(), '   ')", novo)).isInstanceOf(DataAccessException.class);
+        modulos.alterar(novo, Modulos.ASSISTENTE, true, null, "admin");
+        assertThat(modulos.eventos(novo, Modulos.ASSISTENTE)).singleElement()
+                .satisfies(e -> assertThat(e.getMotivo()).isNull());
         assertThatThrownBy(() -> jdbc.update("insert into uso_modulo (id, condominio_id, modulo, funcao, quando)"
                 + " values (gen_random_uuid(), ?, 'ASSISTENTE', 'chat', now())", novo))
                 .isInstanceOf(DataAccessException.class);
@@ -121,6 +131,30 @@ class ModulosPostgresTest {
                 new TotalUso(null, Modulos.ASSISTENTE, FuncaoUso.INDEXACAO, 2, 0, 0, 2, 10));
         assertThat(resumo.porMes()).extracting(TotalUso::mes).containsOnly(hoje.toString().substring(0, 7));
         assertThat(registroUso.resumo(novo, hoje.minusYears(1), hoje.minusYears(1)).porMes()).isEmpty();
+    }
+
+    /** Primeira ligação de dois ADMINs ao mesmo tempo: sem erro, uma linha e um evento só. */
+    @Test
+    void primeiraLigacaoConcorrenteNaoDaErroNemDuplicaEvento() throws Exception {
+        UUID novo = novoCondominio();
+        int pedidos = 8;
+        var largada = new CountDownLatch(1);
+        try (ExecutorService threads = Executors.newFixedThreadPool(pedidos)) {
+            List<Future<?>> resultados = new ArrayList<>();
+            for (int i = 0; i < pedidos; i++) {
+                String usuario = "admin" + i;
+                resultados.add(threads.submit(() -> {
+                    largada.await();
+                    return modulos.alterar(novo, Modulos.ASSISTENTE, true, "ao mesmo tempo", usuario);
+                }));
+            }
+            largada.countDown();
+            for (Future<?> r : resultados) {
+                r.get(30, TimeUnit.SECONDS); // lança se algum pedido falhou
+            }
+        }
+        assertThat(modulos.ligado(novo, Modulos.ASSISTENTE)).isTrue();
+        assertThat(modulos.eventos(novo, Modulos.ASSISTENTE)).hasSize(1);
     }
 
     private UUID novoCondominio() {

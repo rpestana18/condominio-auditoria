@@ -179,9 +179,9 @@ class ModuloControllerPermissaoTest {
         assertThat(controller.uso(PILOTO, INICIO, FIM).condominioId()).isEqualTo(PILOTO);
         var exportacao = controller.exportar(PILOTO, INICIO, FIM);
 
-        assertThat(exportacao.getHeaders().getContentType().toString()).startsWith("text/csv");
+        assertThat(exportacao.getHeaders().getContentType().toString()).isEqualTo(ExportacaoUsoExcel.TIPO);
         assertThat(exportacao.getHeaders().getContentDisposition().getFilename())
-                .isEqualTo("uso-modulos-2026-10-01-a-2026-10-31.csv");
+                .isEqualTo("uso-modulos-2026-10-01-a-2026-10-31.xlsx");
     }
 
     /** Token como o do Keycloak: perfil no realm e lista de condomínios (o Admin vê todos). */

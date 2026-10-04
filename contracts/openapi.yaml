@@ -150,7 +150,7 @@ paths:
     put:
       summary: Liga ou desliga um módulo no condomínio (só ADMIN, o administrador da plataforma no MVP; RF-10.2)
       description: |
-        Grava o estado e um evento na trilha de ativação (só de inclusão), com motivo obrigatório. Pedir o estado que
+        Grava o estado e um evento na trilha de ativação (só de inclusão), com motivo opcional. Pedir o estado que
         já vale não faz nada (nenhum evento). Ligar o ASSISTENTE coloca todos os arquivos do condomínio na fila de
         indexação depois da resposta (RF-10.4); desligar não apaga índice nem originais (RF-10.5).
       operationId: alterarModulo
@@ -159,7 +159,7 @@ paths:
         content: { application/json: { schema: { $ref: "#/components/schemas/AlteracaoModulo" } } }
       responses:
         "200": { description: Estado depois da alteração, content: { application/json: { schema: { $ref: "#/components/schemas/ModuloDoCondominio" } } } }
-        "400": { description: Motivo ou estado não informado, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+        "400": { description: Estado não informado ou motivo acima de 500 caracteres, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
         "403": { description: Perfil sem permissão }
         "404": { description: Módulo fora do catálogo ou condomínio não encontrado }
   /condominios/{condominioId}/modulos/{codigo}/eventos:
@@ -200,16 +200,16 @@ paths:
   /condominios/{condominioId}/uso/exportacao:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }]
     get:
-      summary: Exporta os períodos ativos e o uso do período em CSV para abrir no Excel (só ADMIN; RF-10.6, RF-09.7)
+      summary: Exporta os períodos ativos e o uso do período em Excel (só ADMIN; RF-10.6, RF-09.7)
       description: |
-        CSV em UTF-8 com BOM, separador ";" (Excel em português). Duas seções: "Períodos ativos" (os que tocam o
-        período pedido) e "Uso por mês". Formato .xlsx fica para quando o Apache POI entrar no backend.
+        Arquivo .xlsx com duas abas: "Períodos ativos" (os que tocam o período pedido) e "Uso por mês". Datas no
+        horário de Brasília. Sem valores de cobrança nesta fase.
       operationId: exportarUsoModulos
       parameters:
         - { name: inicio, in: query, required: true, schema: { type: string, format: date } }
         - { name: fim, in: query, required: true, schema: { type: string, format: date } }
       responses:
-        "200": { description: Arquivo CSV, content: { text/csv: { schema: { type: string } } } }
+        "200": { description: Planilha Excel, content: { application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } } } }
         "400": { description: Datas ausentes ou início depois do fim }
         "403": { description: Perfil sem permissão }
 components:
@@ -242,13 +242,13 @@ components:
         versaoCatalogo: { type: integer }
     AlteracaoModulo:
       type: object
-      required: [ligado, motivo]
+      required: [ligado]
       properties:
         ligado: { type: boolean }
-        motivo: { type: string, minLength: 1, maxLength: 500, description: "Obrigatório; vai para a trilha de ativação" }
+        motivo: { type: [string, "null"], maxLength: 500, description: "Opcional (RF-10.6); em branco = não informado. Vai para a trilha de ativação" }
     EventoModulo:
       type: object
-      required: [id, modulo, ligadoAntes, ligadoDepois, usuario, quando, motivo]
+      required: [id, modulo, ligadoAntes, ligadoDepois, usuario, quando]
       properties:
         id: { type: string, format: uuid }
         modulo: { type: string }
@@ -256,7 +256,7 @@ components:
         ligadoDepois: { type: boolean }
         usuario: { type: string }
         quando: { type: string, format: date-time }
-        motivo: { type: string }
+        motivo: { type: [string, "null"], description: Nulo quando não informado }
     PeriodoAtivo:
       type: object
       required: [modulo]

@@ -88,8 +88,8 @@ function Conteudo({ resultado, periodo, aoEscolherMes }: PropsConteudo) {
     <div className={evidencia ? "com-detalhe" : undefined}>
       <div>
         <EstadoPrevisto resultado={resultado} />
-        {resultado.avisos.map((a) => (
-          <p key={a.codigo} className="aviso alerta">
+        {resultado.avisos.map((a, i) => (
+          <p key={`${a.codigo}-${i}`} className="aviso alerta">
             {a.texto}
           </p>
         ))}

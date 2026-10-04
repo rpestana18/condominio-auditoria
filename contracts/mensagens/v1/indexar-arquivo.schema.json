@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://condominio-auditoria/contracts/mensagens/v1/indexar-arquivo.schema.json",
+  "title": "IndexarArquivo v1",
+  "description": "backend → rag (fila rag.indexacao). INDEXAR: o rag lê o original pelo caminho, corta em trechos por localização (página; aba e linhas; seção e parágrafos) e grava trechos e vetores no schema rag. RETIRAR: exclusão lógica ou versão substituída; o rag marca o índice do arquivo como retirado, sem apagar. O conteúdo não vai na mensagem. Publicada depois do commit (ADR 0002). Idempotência (ADR 0003, Decisão 5.1): mesmo arquivo, sha256, modelo de embeddings e versão do indexador = o rag só confirma INDEXADO sem refazer.",
+  "type": "object",
+  "required": ["versao", "operacao", "indexacaoId", "arquivoId", "condominioId", "categoria", "nomeOriginal", "caminho", "sha256"],
+  "additionalProperties": false,
+  "properties": {
+    "versao": { "const": 1 },
+    "operacao": { "enum": ["INDEXAR", "RETIRAR"] },
+    "indexacaoId": { "type": "string", "format": "uuid", "description": "Muda a cada pedido (envio, reprocesso, nova versão, reindexar, retirar). Resultado com outro indexacaoId é descartado pelo backend." },
+    "arquivoId": { "type": "string", "format": "uuid" },
+    "condominioId": { "type": "string", "format": "uuid" },
+    "categoria": { "type": "string", "description": "Categoria do arquivo no backend (BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS). Texto, como em ArquivoRecebido, para categoria nova não quebrar o contrato." },
+    "nomeOriginal": { "type": "string" },
+    "caminho": { "type": "string", "description": "Caminho relativo dentro do armazenamento" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "competenciaInicio": { "type": ["string", "null"], "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "Opcional: início do período a que o documento se refere. Usado no filtro por data da busca." },
+    "competenciaFim": { "type": ["string", "null"], "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "Opcional: fim do período a que o documento se refere." },
+    "versaoArquivo": { "type": ["integer", "null"], "minimum": 1, "description": "Opcional: versão do arquivo (1, 2, ...). Só a versão vigente aparece na busca." },
+    "modoEmbeddings": { "enum": ["LOCAL", "DESLIGADO", null], "description": "Opcional, reservado para a entrega 2 (configuração de IA por condomínio). Ausente ou nulo = LOCAL. DESLIGADO = só trechos para a busca por palavra, sem vetores." },
+    "modeloEmbeddings": { "type": ["string", "null"], "description": "Opcional, reservado para a entrega 2. Ausente ou nulo = modelo padrão do rag (bge-m3, 1024 dimensões)." }
+  }
+}

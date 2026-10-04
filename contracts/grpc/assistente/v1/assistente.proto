@@ -1,0 +1,112 @@
+// Contrato gRPC do assistente (ADR 0003, Decisões 3 e 5). Quem chama: o backend. Quem atende: o rag.
+// O token do usuário (Keycloak) vai no metadado "authorization: Bearer ...", como no contrato de consulta. O backend já
+// verificou perfil, condomínio e módulo antes de chamar; o rag valida o token e filtra tudo pelo condominio_id recebido.
+// O backend ainda descarta, na volta, trechos de arquivos que o usuário não pode ver (segunda barreira).
+//
+// Entrega 1: só Buscar. Ficam para a entrega 3 (sem mudar o que existe aqui, só acrescentando):
+//   rpc Perguntar(PerguntarRequest) returns (stream PerguntarEvento);   // chat com citações, resposta em fluxo
+//   rpc ListarProvedores(ListarProvedoresRequest) returns (ListarProvedoresResponse);   // catálogo de IA do rag
+//
+// Datas são texto ISO ("2026-09-30"). Valores que aparecem nos trechos são transcrição literal do documento, não
+// conferidos; nenhum número sai daqui como dado contábil.
+syntax = "proto3";
+
+package condominio.assistente.v1;
+
+option java_multiple_files = true;
+option java_package = "br.com.condominioauditoria.contratos.assistente.v1";
+option java_outer_classname = "AssistenteProto";
+
+service Assistente {
+  // Busca trechos citáveis nos documentos indexados do condomínio. Só documentos vigentes e não retirados.
+  // PALAVRA: busca por palavra do PostgreSQL em português, sem IA (aceita "frase entre aspas" e exclusão com -).
+  // HIBRIDA: palavra + vetores (embeddings), unidas por fusão de posições (RRF, k = 60). Determinística para o mesmo
+  // índice e o mesmo texto.
+  // Erros: INVALID_ARGUMENT (texto vazio, limite negativo, data fora do formato), UNAUTHENTICATED (sem token).
+  rpc Buscar(BuscarRequest) returns (BuscarResponse);
+}
+
+enum ModoBusca {
+  MODO_BUSCA_NAO_INFORMADO = 0; // tratado como HIBRIDA
+  MODO_BUSCA_PALAVRA = 1;
+  MODO_BUSCA_HIBRIDA = 2;
+}
+
+message BuscarRequest {
+  string condominio_id = 1;
+  // Texto da busca ou da pergunta. Obrigatório.
+  string texto = 2;
+  ModoBusca modo = 3;
+  // Opcional: sem filtros = todos os documentos indexados do condomínio.
+  FiltrosBusca filtros = 4;
+  // Opcional: 0 = padrão 10. Acima de 50 é reduzido a 50.
+  int32 limite = 5;
+  // Opcional, reservado para a entrega 2 (configuração de IA por condomínio): modelo de embeddings resolvido pelo
+  // backend. Vazio = modelo padrão do rag (bge-m3, 1024 dimensões).
+  string modelo_embeddings = 6;
+}
+
+// Todos os filtros são opcionais e aplicados antes da busca (no WHERE), nunca depois.
+message FiltrosBusca {
+  // Categorias do arquivo (BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS).
+  // Vazio = todas.
+  repeated string categorias = 1;
+  // Período: documentos cuja competência cruza o intervalo. Documento sem competência não entra quando há filtro de
+  // data. Qualquer um dos dois pode ficar vazio (intervalo aberto).
+  string data_inicio = 2;
+  string data_fim = 3;
+  // Só estes arquivos. Vazio = todos.
+  repeated string arquivo_ids = 4;
+}
+
+message BuscarResponse {
+  // Do mais relevante para o menos relevante.
+  repeated Trecho trechos = 1;
+  // Modo realmente usado. Ex.: pedido HIBRIDA, mas o serviço de embeddings fora do ar = PALAVRA.
+  ModoBusca modo_usado = 2;
+}
+
+message Trecho {
+  // Identificador estável do trecho no índice; é o que as citações do chat referenciam.
+  string trecho_id = 1;
+  string arquivo_id = 2;
+  string nome_arquivo = 3;
+  string categoria = 4;
+  Localizacao localizacao = 5;
+  // Texto do trecho como está no documento.
+  string texto = 6;
+  // Só para ordenar (relevância ou fusão de posições); maior = mais relevante. Não é dinheiro nem é comparável entre
+  // buscas diferentes.
+  double pontuacao = 7;
+  // sha256 do arquivo original, para o usuário conferir que é o mesmo documento.
+  string sha256 = 8;
+}
+
+// Onde o trecho está no original (ADR 0003, Q9). Um trecho nunca atravessa página, aba ou seção.
+message Localizacao {
+  oneof tipo {
+    LocalPagina pagina = 1;          // PDF
+    LocalPlanilha planilha = 2;      // Excel
+    LocalParagrafos paragrafos = 3;  // Word
+  }
+}
+
+message LocalPagina {
+  // A partir de 1.
+  int32 pagina = 1;
+}
+
+message LocalPlanilha {
+  string aba = 1;
+  // Linhas da planilha, a partir de 1, inclusive.
+  int32 linha_inicio = 2;
+  int32 linha_fim = 3;
+}
+
+message LocalParagrafos {
+  // Parágrafos, a partir de 1, inclusive.
+  int32 paragrafo_inicio = 1;
+  int32 paragrafo_fim = 2;
+  // Opcional: título da seção. Vazio até existir contracts/leitor/v2 (estilo do parágrafo no Word).
+  string secao = 3;
+}

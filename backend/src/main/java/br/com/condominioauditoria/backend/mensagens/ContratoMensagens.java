@@ -23,6 +23,8 @@ class ContratoMensagens {
 
     private final Schema arquivoRecebido;
     private final Schema resultado;
+    private final Schema indexarArquivo;
+    private final Schema resultadoIndexacao;
     private final JsonMapper mapper = JsonMapper.builder()
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build();
@@ -31,6 +33,9 @@ class ContratoMensagens {
         SchemaRegistry registro = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
         this.arquivoRecebido = registro.getSchema(SchemaLocation.of("classpath:mensagens/v1/arquivo-recebido.schema.json"));
         this.resultado = registro.getSchema(SchemaLocation.of("classpath:mensagens/v2/resultado-processamento.schema.json"));
+        this.indexarArquivo = registro.getSchema(SchemaLocation.of("classpath:mensagens/v1/indexar-arquivo.schema.json"));
+        this.resultadoIndexacao = registro.getSchema(
+                SchemaLocation.of("classpath:mensagens/v1/resultado-indexacao.schema.json"));
     }
 
     byte[] escrever(ArquivoRecebido mensagem) {
@@ -43,6 +48,18 @@ class ContratoMensagens {
         String json = new String(corpo, StandardCharsets.UTF_8);
         validar(resultado, json, "ResultadoProcessamento v2");
         return mapper.readValue(json, ResultadoProcessamento.class);
+    }
+
+    byte[] escrever(IndexarArquivo mensagem) {
+        String json = mapper.writeValueAsString(mensagem);
+        validar(indexarArquivo, json, "IndexarArquivo");
+        return json.getBytes(StandardCharsets.UTF_8);
+    }
+
+    ResultadoIndexacao lerResultadoIndexacao(byte[] corpo) {
+        String json = new String(corpo, StandardCharsets.UTF_8);
+        validar(resultadoIndexacao, json, "ResultadoIndexacao");
+        return mapper.readValue(json, ResultadoIndexacao.class);
     }
 
     private static void validar(Schema esquema, String json, String nome) {

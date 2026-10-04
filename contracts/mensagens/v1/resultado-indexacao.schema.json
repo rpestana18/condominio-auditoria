@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://condominio-auditoria/contracts/mensagens/v1/resultado-indexacao.schema.json",
+  "title": "ResultadoIndexacao v1",
+  "description": "rag → backend (fila backend.indexacao). INDEXANDO quando o trabalho começa; INDEXADO com páginas e trechos; SEM_TEXTO quando o arquivo não tem texto extraível (ex.: PDF digitalizado sem OCR); RETIRADO em resposta a RETIRAR; ERRO com o motivo. Mesmas regras de retentativa, fila .erro e varredura da ADR 0002, com indexacaoId no papel do processamentoId.",
+  "type": "object",
+  "required": ["versao", "indexacaoId", "arquivoId", "condominioId", "situacao"],
+  "additionalProperties": false,
+  "properties": {
+    "versao": { "const": 1 },
+    "indexacaoId": { "type": "string", "format": "uuid", "description": "O mesmo do IndexarArquivo que originou este resultado." },
+    "arquivoId": { "type": "string", "format": "uuid" },
+    "condominioId": { "type": "string", "format": "uuid" },
+    "situacao": { "enum": ["INDEXANDO", "INDEXADO", "SEM_TEXTO", "RETIRADO", "ERRO"] },
+    "motivo": { "type": ["string", "null"], "description": "Obrigatório em SEM_TEXTO e ERRO: explicação legível para a tela de Arquivos." },
+    "paginas": { "type": ["integer", "null"], "minimum": 0, "description": "Páginas (PDF), abas (Excel) ou 1 (Word) lidas. Obrigatório em INDEXADO." },
+    "trechos": { "type": ["integer", "null"], "minimum": 0, "description": "Trechos gravados no índice. Obrigatório em INDEXADO." },
+    "modeloEmbeddings": { "type": ["string", "null"], "description": "Modelo que gerou os vetores (ex.: bge-m3). Nulo quando não há vetores (embeddings desligados ou sem texto)." },
+    "versaoIndexador": { "type": ["string", "null"], "description": "Versão das regras de corte de trechos do rag (ex.: 1). Obrigatório em INDEXADO; mudou a versão, o arquivo é reindexado." }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "situacao": { "enum": ["SEM_TEXTO", "ERRO"] } } },
+      "then": { "required": ["motivo"], "properties": { "motivo": { "type": "string", "minLength": 1 } } }
+    },
+    {
+      "if": { "properties": { "situacao": { "const": "INDEXADO" } } },
+      "then": {
+        "required": ["paginas", "trechos", "versaoIndexador"],
+        "properties": { "paginas": { "type": "integer" }, "trechos": { "type": "integer" }, "versaoIndexador": { "type": "string", "minLength": 1 } }
+      }
+    }
+  ]
+}

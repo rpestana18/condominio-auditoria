@@ -20,11 +20,19 @@ public class Filas {
     /** rag → backend: início, dados extraídos ou falha. */
     public static final String RESULTADOS = "backend.resultados";
 
+    /** backend → rag: indexar (ou retirar) um arquivo para a busca nos documentos (ADR 0003, Decisão 5.1). */
+    public static final String INDEXACAO = "rag.indexacao";
+
+    /** rag → backend: andamento e resultado da indexação. */
+    public static final String RESULTADOS_INDEXACAO = "backend.indexacao";
+
     @Bean
     Declarables declaracaoDasFilas() {
         return new Declarables(
                 fila(ARQUIVOS_RECEBIDOS), QueueBuilder.durable(ARQUIVOS_RECEBIDOS + ".erro").build(),
-                fila(RESULTADOS), QueueBuilder.durable(RESULTADOS + ".erro").build());
+                fila(RESULTADOS), QueueBuilder.durable(RESULTADOS + ".erro").build(),
+                fila(INDEXACAO), QueueBuilder.durable(INDEXACAO + ".erro").build(),
+                fila(RESULTADOS_INDEXACAO), QueueBuilder.durable(RESULTADOS_INDEXACAO + ".erro").build());
     }
 
     private static Queue fila(String nome) {

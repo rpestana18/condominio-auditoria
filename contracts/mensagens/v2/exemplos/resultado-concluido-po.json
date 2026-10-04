@@ -1,0 +1,389 @@
+{
+  "versao": 2,
+  "processamentoId": "2c7e4b1a-9d3f-4e6a-8b2c-5f1d0e9a7b31",
+  "arquivoId": "8d4f2a6c-1b3e-4c5d-9e7f-0a1b2c3d4e5f",
+  "condominioId": "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001",
+  "situacao": "CONCLUIDO",
+  "motivo": null,
+  "interpretador": "po-protest",
+  "paginas": 1,
+  "fluxoDeCaixa": null,
+  "previsaoOrcamentaria": {
+    "titulo": "PROPOSTA ORÇAMENTÁRIA 2026 / 2027",
+    "exercicioImpresso": "2026 / 2027",
+    "colunasOrcado": [
+      "2025/2026",
+      "2026/2027"
+    ],
+    "linhas": [
+      {
+        "ordem": 1,
+        "pagina": 1,
+        "tipo": "TOTAL",
+        "codigoImpresso": "1",
+        "conta": null,
+        "contaTexto": "Soma das seções 1.1 a 1.9",
+        "marca": null,
+        "descricao": "TOTAL DAS DESPESAS",
+        "orcadoAnterior": "441304.38",
+        "orcado": "474201.13",
+        "percentualTexto": "7,45%",
+        "observacoes": null
+      },
+      {
+        "ordem": 2,
+        "pagina": 1,
+        "tipo": "GRUPO",
+        "codigoImpresso": "1.1",
+        "conta": null,
+        "contaTexto": "Subtotal (soma linhas 5 a 18)",
+        "marca": null,
+        "descricao": "PESSOAL",
+        "orcadoAnterior": "37661.43",
+        "orcado": "69193.86",
+        "percentualTexto": "83,73%",
+        "observacoes": null
+      },
+      {
+        "ordem": 7,
+        "pagina": 1,
+        "tipo": "LINHA",
+        "codigoImpresso": "1.1.5",
+        "conta": "1553 - Férias",
+        "contaTexto": null,
+        "marca": null,
+        "descricao": "Provisão de Férias",
+        "orcadoAnterior": "339.45",
+        "orcado": "1585.14",
+        "percentualTexto": "366,97%",
+        "observacoes": "Média ago 25/abr 26 + Dissídio"
+      },
+      {
+        "ordem": 15,
+        "pagina": 1,
+        "tipo": "GRUPO",
+        "codigoImpresso": "1.2",
+        "conta": null,
+        "contaTexto": "Subtotal (soma linhas 20 a 21)",
+        "marca": null,
+        "descricao": "CONSUMO/UTILIDADES",
+        "orcadoAnterior": "565.00",
+        "orcado": "694.05",
+        "percentualTexto": "22,84%",
+        "observacoes": null
+      },
+      {
+        "ordem": 18,
+        "pagina": 1,
+        "tipo": "GRUPO",
+        "codigoImpresso": "1.3",
+        "conta": null,
+        "contaTexto": "Subtotal (soma linhas 23 a 46)",
+        "marca": null,
+        "descricao": "SERVIÇOS - CONTRATOS EFETIVOS",
+        "orcadoAnterior": "348631.55",
+        "orcado": "336274.17",
+        "percentualTexto": "-3,54%",
+        "observacoes": null
+      },
+      {
+        "ordem": 20,
+        "pagina": 1,
+        "tipo": "LINHA",
+        "codigoImpresso": "1.3.2",
+        "conta": "1598 - Bombas",
+        "contaTexto": null,
+        "marca": null,
+        "descricao": "Servirio Soluções Tecnicas Ltda",
+        "orcadoAnterior": "3200.00",
+        "orcado": "3000.00",
+        "percentualTexto": "-6,25%",
+        "observacoes": "Média jan 26/abr 26 + IGP-M"
+      },
+      {
+        "ordem": 38,
+        "pagina": 1,
+        "tipo": "LINHA",
+        "codigoImpresso": "1.3.20",
+        "conta": "1682 - Sindicatura Profissional",
+        "contaTexto": null,
+        "marca": null,
+        "descricao": "Obm - Sergio Diniz",
+        "orcadoAnterior": "17195.00",
+        "orcado": "8000.00",
+        "percentualTexto": "-53,47%",
+        "observacoes": "Pro-labore Síndico"
+      },
+      {
+        "ordem": 41,
+        "pagina": 1,
+        "tipo": "LINHA",
+        "codigoImpresso": "1.3.23",
+        "conta": "1621 - Interfones",
+        "contaTexto": null,
+        "marca": null,
+        "descricao": "Manutenção Preventiva De Interfones/Cftv",
+        "orcadoAnterior": "0.00",
+        "orcado": "0.00",
+        "percentualTexto": null,
+        "observacoes": "Manutenção R$4.100,00 out/25"
+      },
+      {
+        "ordem": 43,
+        "pagina": 1,
+        "tipo": "LINHA",
+        "codigoImpresso": "1.3.2",
+        "conta": "1624 - Caixa D'água",
+        "contaTexto": null,
+        "marca": null,
+        "descricao": "Caixa D'água",
+        "orcadoAnterior": "0.00",
+        "orcado": "1518.93",
+        "percentualTexto": null,
+        "observacoes": "Média jan 26/abr 26 + IPCA"
+      },
+      {
+        "ordem": 44,
+        "pagina": 1,
+        "tipo": "GRUPO",
+        "codigoImpresso": "1.4",
+        "conta": null,
+        "contaTexto": "Subtotal (soma linhas 49 a 51)",
+        "marca": null,
+        "descricao": "TARIFAS PÚBLICAS",
+        "orcadoAnterior": "0.00",
+        "orcado": "0.00",
+        "percentualTexto": null,
+        "observacoes": null
+      },
+      {
+        "ordem": 45,
+        "pagina": 1,
+        "tipo": "LINHA",
+        "codigoImpresso": "1.4.1",
+        "conta": null,
+        "contaTexto": null,
+        "marca": "RATEIO_A_PARTE",
+        "descricao": "Força e Luz",
+        "orcadoAnterior": "0.00",
+        "orcado": "0.00",
+        "percentualTexto": null,
+        "observacoes": "Rateio à parte"
+      },
+      {
+        "ordem": 46,
+        "pagina": 1,
+        "tipo": "LINHA",
+        "codigoImpresso": "1.4.2",
+        "conta": null,
+        "contaTexto": null,
+        "marca": "RATEIO_A_PARTE",
+        "descricao": "Água e Esgoto",
+        "orcadoAnterior": "0.00",
+        "orcado": "0.00",
+        "percentualTexto": null,
+        "observacoes": "Rateio à parte"
+      },
+      {
+        "ordem": 47,
+        "pagina": 1,
+        "tipo": "LINHA",
+        "codigoImpresso": "1.4.3",
+        "conta": null,
+        "contaTexto": "Débito em receitas eventuais",
+        "marca": "RATEIO_A_PARTE",
+        "descricao": "Gás",
+        "orcadoAnterior": "0.00",
+        "orcado": "0.00",
+        "percentualTexto": null,
+        "observacoes": "Rateio à parte"
+      },
+      {
+        "ordem": 48,
+        "pagina": 1,
+        "tipo": "GRUPO",
+        "codigoImpresso": "1.5",
+        "conta": null,
+        "contaTexto": "Subtotal (soma linhas 53 a 55)",
+        "marca": null,
+        "descricao": "AQUISIÇÃO DE BENS",
+        "orcadoAnterior": "2350.00",
+        "orcado": "2850.00",
+        "percentualTexto": "21,28%",
+        "observacoes": null
+      },
+      {
+        "ordem": 52,
+        "pagina": 1,
+        "tipo": "GRUPO",
+        "codigoImpresso": "1.6",
+        "conta": null,
+        "contaTexto": "Subtotal (soma linhas 57 a 77)",
+        "marca": null,
+        "descricao": "DESPESAS ADMINISTRATIVAS",
+        "orcadoAnterior": "18525.42",
+        "orcado": "17388.04",
+        "percentualTexto": "-6,14%",
+        "observacoes": null
+      },
+      {
+        "ordem": 67,
+        "pagina": 1,
+        "tipo": "LINHA",
+        "codigoImpresso": "1.6.15",
+        "conta": null,
+        "contaTexto": null,
+        "marca": "RATEIO_A_PARTE",
+        "descricao": "Seguro predial",
+        "orcadoAnterior": "0.00",
+        "orcado": "0.00",
+        "percentualTexto": null,
+        "observacoes": null
+      },
+      {
+        "ordem": 74,
+        "pagina": 1,
+        "tipo": "GRUPO",
+        "codigoImpresso": "1.7",
+        "conta": null,
+        "contaTexto": "Subtotal (soma linhas 79 a 90)",
+        "marca": null,
+        "descricao": "MATERIAIS/SUPRIMENTOS",
+        "orcadoAnterior": "19300.00",
+        "orcado": "15200.00",
+        "percentualTexto": "-21,24%",
+        "observacoes": null
+      },
+      {
+        "ordem": 87,
+        "pagina": 1,
+        "tipo": "GRUPO",
+        "codigoImpresso": "1.8",
+        "conta": null,
+        "contaTexto": "Subtotal (soma linhas 92 a 99)",
+        "marca": null,
+        "descricao": "SERVIÇOS",
+        "orcadoAnterior": "14270.99",
+        "orcado": "10020.00",
+        "percentualTexto": "-29,79%",
+        "observacoes": null
+      },
+      {
+        "ordem": 96,
+        "pagina": 1,
+        "tipo": "GRUPO",
+        "codigoImpresso": "1.9",
+        "conta": null,
+        "contaTexto": "Fundos",
+        "marca": null,
+        "descricao": "Fundos do Condomínio",
+        "orcadoAnterior": "22065.22",
+        "orcado": "22581.01",
+        "percentualTexto": "2,34%",
+        "observacoes": null
+      },
+      {
+        "ordem": 97,
+        "pagina": 1,
+        "tipo": "LINHA",
+        "codigoImpresso": "1.9.1",
+        "conta": null,
+        "contaTexto": "Fundo de Reserva",
+        "marca": null,
+        "descricao": "Fundo de Reserva",
+        "orcadoAnterior": "13239.13",
+        "orcado": "13548.60",
+        "percentualTexto": "3,00%",
+        "observacoes": null
+      },
+      {
+        "ordem": 98,
+        "pagina": 1,
+        "tipo": "LINHA",
+        "codigoImpresso": "1.9.2",
+        "conta": null,
+        "contaTexto": "Obras Reformas e Infraestrutura",
+        "marca": null,
+        "descricao": "Fundo de Obras",
+        "orcadoAnterior": "8826.09",
+        "orcado": "9032.40",
+        "percentualTexto": "2,00%",
+        "observacoes": null
+      }
+    ]
+  },
+  "conferencias": [
+    {
+      "codigo": "SUBTOTAL_GRUPO",
+      "descricao": "Soma das linhas do grupo 1.1 = subtotal impresso",
+      "ok": true,
+      "detalhe": "1.1 PESSOAL: soma das linhas 69.193,86; impresso 69.193,86"
+    },
+    {
+      "codigo": "SUBTOTAL_GRUPO",
+      "descricao": "Soma das linhas do grupo 1.2 = subtotal impresso",
+      "ok": true,
+      "detalhe": "1.2 CONSUMO/UTILIDADES: soma das linhas 694,05; impresso 694,05"
+    },
+    {
+      "codigo": "SUBTOTAL_GRUPO",
+      "descricao": "Soma das linhas do grupo 1.3 = subtotal impresso",
+      "ok": true,
+      "detalhe": "1.3 SERVIÇOS - CONTRATOS EFETIVOS: soma das linhas 336.274,17; impresso 336.274,17"
+    },
+    {
+      "codigo": "SUBTOTAL_GRUPO",
+      "descricao": "Soma das linhas do grupo 1.4 = subtotal impresso",
+      "ok": true,
+      "detalhe": "1.4 TARIFAS PÚBLICAS: soma das linhas 0,00; impresso 0,00"
+    },
+    {
+      "codigo": "SUBTOTAL_GRUPO",
+      "descricao": "Soma das linhas do grupo 1.5 = subtotal impresso",
+      "ok": true,
+      "detalhe": "1.5 AQUISIÇÃO DE BENS: soma das linhas 2.850,00; impresso 2.850,00"
+    },
+    {
+      "codigo": "SUBTOTAL_GRUPO",
+      "descricao": "Soma das linhas do grupo 1.6 = subtotal impresso",
+      "ok": true,
+      "detalhe": "1.6 DESPESAS ADMINISTRATIVAS: soma das linhas 17.388,04; impresso 17.388,04"
+    },
+    {
+      "codigo": "SUBTOTAL_GRUPO",
+      "descricao": "Soma das linhas do grupo 1.7 = subtotal impresso",
+      "ok": true,
+      "detalhe": "1.7 MATERIAIS/SUPRIMENTOS: soma das linhas 15.200,00; impresso 15.200,00"
+    },
+    {
+      "codigo": "SUBTOTAL_GRUPO",
+      "descricao": "Soma das linhas do grupo 1.8 = subtotal impresso",
+      "ok": true,
+      "detalhe": "1.8 SERVIÇOS: soma das linhas 10.020,00; impresso 10.020,00"
+    },
+    {
+      "codigo": "SUBTOTAL_GRUPO",
+      "descricao": "Soma das linhas do grupo 1.9 = subtotal impresso",
+      "ok": true,
+      "detalhe": "1.9 Fundos do Condomínio: soma das linhas 22.581,01; impresso 22.581,01"
+    },
+    {
+      "codigo": "TOTAL",
+      "descricao": "Soma dos grupos = total impresso",
+      "ok": true,
+      "detalhe": "soma dos grupos 474.201,13; impresso 474.201,13"
+    },
+    {
+      "codigo": "PREVISTO_MES",
+      "descricao": "Previsto do mês = total menos os fundos",
+      "ok": true,
+      "detalhe": "474.201,13 - 22.581,01 = 451.620,12"
+    },
+    {
+      "codigo": "CODIGO_REPETIDO",
+      "descricao": "Nenhum código de linha impresso mais de uma vez",
+      "ok": false,
+      "detalhe": "1.3.2 aparece 2 vezes (ordens 20 e 43)"
+    }
+  ]
+}

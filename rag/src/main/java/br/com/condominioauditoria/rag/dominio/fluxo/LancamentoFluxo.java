@@ -20,7 +20,11 @@ public record LancamentoFluxo(
         BigDecimal saldo,
         Enriquecimento enriquecimento) {
 
-    /** Informações deduzidas do histórico. Ficam separadas para ficar claro o que é original e o que é inferido. */
-    public record Enriquecimento(String notaFiscal, String fornecedor, String meioPagamento, boolean transferenciaEntreFundos) {
+    /**
+     * Informações deduzidas do histórico. Ficam separadas para ficar claro o que é original e o que é inferido.
+     * {@code recebimentoCota}: crédito "RECIBOS ACUMULADOS" do layout Protest (ADR 0004, Decisão 7).
+     */
+    public record Enriquecimento(String notaFiscal, String fornecedor, String meioPagamento, boolean transferenciaEntreFundos,
+            boolean recebimentoCota) {
     }
 }

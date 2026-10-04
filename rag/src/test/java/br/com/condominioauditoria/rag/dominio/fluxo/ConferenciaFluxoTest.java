@@ -14,7 +14,7 @@ class ConferenciaFluxoTest {
     private static LancamentoFluxo lancamento(String credito, String debito, String saldo) {
         return new LancamentoFluxo(1, 1, DIA, "1062", "MATERIAL DE LIMPEZA", "1", "COMPRA",
                 new BigDecimal(credito), new BigDecimal(debito), new BigDecimal(saldo),
-                new LancamentoFluxo.Enriquecimento(null, null, null, false));
+                new LancamentoFluxo.Enriquecimento(null, null, null, false, false));
     }
 
     private static FluxoDeCaixa fluxo(String saldoImpresso) {

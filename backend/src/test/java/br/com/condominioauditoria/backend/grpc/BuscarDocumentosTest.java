@@ -5,13 +5,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import br.com.condominioauditoria.backend.arquivo.Arquivo;
 import br.com.condominioauditoria.backend.arquivo.ArquivoRepository;
 import br.com.condominioauditoria.backend.arquivo.Categoria;
 import br.com.condominioauditoria.backend.config.PropriedadesCondominio;
+import br.com.condominioauditoria.backend.modulo.ModuloNaoContratadoException;
+import br.com.condominioauditoria.backend.modulo.Modulos;
+import br.com.condominioauditoria.backend.modulo.RegistroUso;
 import br.com.condominioauditoria.backend.seguranca.AcessoCondominio;
 import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
@@ -67,6 +74,9 @@ class BuscarDocumentosTest {
     private static final UUID CONDOMINIO_B = UUID.randomUUID();
 
     private final ArquivoRepository arquivos = mock(ArquivoRepository.class);
+    /** Mock: exigir não lança = módulo ligado. Os testes de módulo desligado configuram a recusa. */
+    private final Modulos modulos = mock(Modulos.class);
+    private final RegistroUso registroUso = mock(RegistroUso.class);
     private final Arquivo ataDoA = new Arquivo(CONDOMINIO_A, Categoria.ATA, "ata.pdf", "a/ATA/2026/x-ata.pdf",
             "a".repeat(64), 10, "application/pdf", "gestor");
     private final Arquivo poDoA = new Arquivo(CONDOMINIO_A, Categoria.PO, "po.xlsx", "a/PO/2026/x-po.xlsx",
@@ -123,7 +133,8 @@ class BuscarDocumentosTest {
 
         var propriedades = new PropriedadesCondominio(null, null, null, new PropriedadesCondominio.Rag("rag:9091", 5));
         var acesso = new AcessoCondominio();
-        var busca = new BuscaDocumentos(acesso, arquivos, new ClienteAssistente(canalRag, propriedades));
+        var busca = new BuscaDocumentos(acesso, arquivos, new ClienteAssistente(canalRag, propriedades), modulos,
+                registroUso);
         var consulta = new ConsultaGrpcServico(acesso, null, arquivos, null, null, null, null, busca);
 
         var conversor = new JwtAuthenticationConverter();
@@ -178,6 +189,49 @@ class BuscarDocumentosTest {
         assertThat(segundo.getAba()).isEqualTo("Previsto");
         assertThat(segundo.getLinhaInicio()).isEqualTo(10);
         assertThat(segundo.getLinhaFim()).isEqualTo(14);
+    }
+
+    @Test
+    void moduloDesligadoEhFailedPreconditionSemChamarORagNemRegistrarUso() {
+        doThrow(new ModuloNaoContratadoException(Modulos.ASSISTENTE, "Assistente"))
+                .when(modulos).exigir(CONDOMINIO_A, Modulos.ASSISTENTE);
+
+        assertThatThrownBy(() -> stub("usuario-a").buscarDocumentos(pedido(CONDOMINIO_A, "multa").build()))
+                .isInstanceOfSatisfying(StatusRuntimeException.class, e -> {
+                    assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.FAILED_PRECONDITION);
+                    assertThat(e.getStatus().getDescription())
+                            .isEqualTo("Módulo Assistente não contratado para este condomínio.");
+                });
+        assertThat(pedidosAoRag).isEmpty();
+        verifyNoInteractions(registroUso);
+    }
+
+    @Test
+    void semAcessoAoCondominioEhRecusadoAntesDeOlharOModulo() {
+        assertThatThrownBy(() -> stub("usuario-a").buscarDocumentos(pedido(CONDOMINIO_B, "multa").build()))
+                .isInstanceOfSatisfying(StatusRuntimeException.class,
+                        e -> assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED));
+        verifyNoInteractions(modulos);
+    }
+
+    @Test
+    void cadaBuscaRespondidaRegistraUmaChamadaMcpComOUsuario() {
+        respostaDoRag.add(trecho(ataDoA, Localizacao.newBuilder().setPagina(LocalPagina.newBuilder().setPagina(1)).build(),
+                0.9));
+
+        stub("usuario-a").buscarDocumentos(pedido(CONDOMINIO_A, "multa").build());
+        stub("usuario-a").buscarDocumentos(pedido(CONDOMINIO_A, "portão").build());
+
+        verify(registroUso, times(2)).chamadaMcp(CONDOMINIO_A, "usuario.a", true);
+    }
+
+    @Test
+    void buscaQueFalhaNoRagNaoRegistraUso() {
+        rag.shutdownNow();
+
+        assertThatThrownBy(() -> stub("usuario-a").buscarDocumentos(pedido(CONDOMINIO_A, "multa").build()))
+                .isInstanceOf(StatusRuntimeException.class);
+        verifyNoInteractions(registroUso);
     }
 
     @Test

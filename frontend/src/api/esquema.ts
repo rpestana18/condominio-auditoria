@@ -129,7 +129,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Coloca o arquivo de novo na fila de leitura e de indexação (GESTOR ou ADMIN). Não duplica dados. */
+        /** Coloca o arquivo de novo na fila de leitura e, com o módulo Assistente ligado, de indexação (GESTOR ou ADMIN). Não duplica dados. */
         post: operations["reprocessarArquivo"];
         delete?: never;
         options?: never;
@@ -195,10 +195,256 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/contexto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Contexto do condomínio para montar a tela (módulos ligados). Qualquer perfil com acesso ao condomínio.
+         * @description O menu "Assistente" depende de ASSISTENTE estar em modulosLigados (RF-10.2, RF-10.3). Ligar ou desligar vale
+         *     no próximo carregamento, sem reinício. O modo de IA do assistente entra aqui na configuração de IA (ADR 0003).
+         */
+        get: operations["contextoCondominio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/modulos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /** Catálogo de módulos com o estado no condomínio (RF-10.1). Qualquer perfil com acesso; só leitura. */
+        get: operations["listarModulos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/modulos/{codigo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
+                codigo: components["parameters"]["CodigoModulo"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Liga ou desliga um módulo no condomínio (só ADMIN, o administrador da plataforma no MVP; RF-10.2)
+         * @description Grava o estado e um evento na trilha de ativação (só de inclusão), com motivo obrigatório. Pedir o estado que
+         *     já vale não faz nada (nenhum evento). Ligar o ASSISTENTE coloca todos os arquivos do condomínio na fila de
+         *     indexação depois da resposta (RF-10.4); desligar não apaga índice nem originais (RF-10.5).
+         */
+        put: operations["alterarModulo"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/modulos/{codigo}/eventos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
+                codigo: components["parameters"]["CodigoModulo"];
+            };
+            cookie?: never;
+        };
+        /** Trilha de ativação do módulo no condomínio, da mais antiga para a mais recente (só ADMIN; RF-10.6) */
+        get: operations["eventosModulo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/modulos/{codigo}/periodos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
+                codigo: components["parameters"]["CodigoModulo"];
+            };
+            cookie?: never;
+        };
+        /** Períodos ativos do módulo no condomínio, calculados da trilha (só ADMIN; RF-10.6) */
+        get: operations["periodosModulo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/uso": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Uso dos módulos no período, por função e por mês (só ADMIN no MVP; RF-09.7, Q17)
+         * @description Datas no fuso de Brasília, fim incluído. Sem custo nesta fase.
+         */
+        get: operations["usoModulos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/uso/exportacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Exporta os períodos ativos e o uso do período em CSV para abrir no Excel (só ADMIN; RF-10.6, RF-09.7)
+         * @description CSV em UTF-8 com BOM, separador ";" (Excel em português). Duas seções: "Períodos ativos" (os que tocam o
+         *     período pedido) e "Uso por mês". Formato .xlsx fica para quando o Apache POI entrar no backend.
+         */
+        get: operations["exportarUsoModulos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ContextoCondominio: {
+            /** Format: uuid */
+            condominioId: string;
+            nome: string;
+            /** @description Códigos dos módulos ligados (ex.: [ASSISTENTE]) */
+            modulosLigados: string[];
+        };
+        ModuloDoCondominio: {
+            codigo: string;
+            nome: string;
+            descricao: string;
+            /** @description O que o módulo inclui (telas */
+            inclui: string[];
+            dependeDe: string[];
+            /** @description Estado de um condomínio novo */
+            ligadoPorPadrao: boolean;
+            ligado: boolean;
+            /**
+             * Format: date-time
+             * @description Desde quando está no estado atual. Nulo = nunca alterado (vale o padrão)
+             */
+            desde?: string | null;
+            versaoCatalogo: number;
+        };
+        AlteracaoModulo: {
+            ligado: boolean;
+            /** @description Obrigatório; vai para a trilha de ativação */
+            motivo: string;
+        };
+        EventoModulo: {
+            /** Format: uuid */
+            id: string;
+            modulo: string;
+            ligadoAntes: boolean;
+            ligadoDepois: boolean;
+            usuario: string;
+            /** Format: date-time */
+            quando: string;
+            motivo: string;
+        };
+        PeriodoAtivo: {
+            modulo: string;
+            /**
+             * Format: date-time
+             * @description Nulo só se o módulo nasceu ligado por padrão, antes da trilha
+             */
+            inicio?: string | null;
+            /**
+             * Format: date-time
+             * @description Nulo = ainda ligado
+             */
+            fim?: string | null;
+            ligadoPor?: string | null;
+            motivoLigar?: string | null;
+            desligadoPor?: string | null;
+            motivoDesligar?: string | null;
+        };
+        /**
+         * @description busca_documentos = busca pela tela; chamada_mcp = buscar_documentos pelo MCP; indexacao = arquivo indexado; embeddings e pergunta = chat (entrega 3)
+         * @enum {string}
+         */
+        FuncaoUso: "busca_documentos" | "chamada_mcp" | "indexacao" | "embeddings" | "pergunta";
+        TotalUso: {
+            /** @description AAAA-MM (só em porMes) */
+            mes?: string;
+            modulo: string;
+            funcao: components["schemas"]["FuncaoUso"];
+            /**
+             * Format: int64
+             * @description Número de registros (chamadas
+             */
+            quantidade: number;
+            /** Format: int64 */
+            tokensEntrada: number;
+            /** Format: int64 */
+            tokensSaida: number;
+            /** Format: int64 */
+            arquivos: number;
+            /** Format: int64 */
+            paginas: number;
+        };
+        UsoDoPeriodo: {
+            /** Format: uuid */
+            condominioId: string;
+            /** Format: date */
+            inicio: string;
+            /** Format: date */
+            fim: string;
+            porFuncao: components["schemas"]["TotalUso"][];
+            porMes: components["schemas"]["TotalUso"][];
+        };
         /** @enum {string} */
         Categoria: "BALANCETE" | "EXTRATO" | "PO" | "CONTRATO" | "FOLHA" | "COMPROVANTE" | "ATA" | "CONVENCAO_RI" | "OUTROS";
         NovaCategoria: {
@@ -240,7 +486,7 @@ export interface components {
             enviadoEm: string;
             /** Format: date-time */
             processadoEm?: string | null;
-            /** @description Estado da indexação para a busca nos documentos (ADR 0003). Nulo ou ausente = arquivo ainda não indexado (enviado antes da busca; reprocessar indexa). */
+            /** @description Estado da indexação para a busca nos documentos (ADR 0003). Nulo ou ausente = arquivo ainda não indexado (enviado antes da busca ou com o módulo Assistente desligado; reprocessar ou ligar o módulo indexa). */
             indexacao?: components["schemas"]["IndexacaoArquivo"] | null;
         };
         /**
@@ -325,12 +571,16 @@ export interface components {
             detail?: string;
             /** Format: uuid */
             arquivoExistenteId?: string;
+            /** @description Em recusa por módulo não contratado (403): código do módulo */
+            modulo?: string;
         };
     };
     responses: never;
     parameters: {
         CondominioId: string;
         ArquivoId: string;
+        /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
+        CodigoModulo: string;
     };
     requestBodies: never;
     headers: never;
@@ -679,6 +929,276 @@ export interface operations {
             };
             /** @description Fundo não é deste condomínio */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    contextoCondominio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextoCondominio"];
+                };
+            };
+            /** @description Sem acesso a este condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listarModulos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK, na ordem do catálogo */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModuloDoCondominio"][];
+                };
+            };
+            /** @description Sem acesso a este condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    alterarModulo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
+                codigo: components["parameters"]["CodigoModulo"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlteracaoModulo"];
+            };
+        };
+        responses: {
+            /** @description Estado depois da alteração */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModuloDoCondominio"];
+                };
+            };
+            /** @description Motivo ou estado não informado */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Perfil sem permissão */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Módulo fora do catálogo ou condomínio não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    eventosModulo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
+                codigo: components["parameters"]["CodigoModulo"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventoModulo"][];
+                };
+            };
+            /** @description Perfil sem permissão */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Módulo fora do catálogo */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    periodosModulo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
+                codigo: components["parameters"]["CodigoModulo"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK, do mais antigo para o mais recente */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodoAtivo"][];
+                };
+            };
+            /** @description Perfil sem permissão */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Módulo fora do catálogo */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    usoModulos: {
+        parameters: {
+            query: {
+                inicio: string;
+                fim: string;
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsoDoPeriodo"];
+                };
+            };
+            /** @description Datas ausentes ou início depois do fim */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Perfil sem permissão */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    exportarUsoModulos: {
+        parameters: {
+            query: {
+                inicio: string;
+                fim: string;
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Arquivo CSV */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Datas ausentes ou início depois do fim */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Perfil sem permissão */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

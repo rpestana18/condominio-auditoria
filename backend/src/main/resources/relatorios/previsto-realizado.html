@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<title th:text="${rel.titulo()}">Previsto × realizado</title>
+<style>
+  @page {
+    size: A4 landscape;
+    margin: 14mm 10mm 14mm 10mm;
+    @top-center { content: element(marca); }
+    @bottom-left { content: element(rodape); }
+    @bottom-right { content: "Página " counter(page) " de " counter(pages); font-family: 'DejaVu Sans'; font-size: 7pt; color: #555; }
+  }
+  body { font-family: 'DejaVu Sans'; font-size: 7.5pt; color: #111; }
+  h1 { font-size: 13pt; margin: 0 0 4pt 0; }
+  h2 { font-size: 9.5pt; margin: 10pt 0 3pt 0; border-bottom: 0.5pt solid #888; }
+  table { border-collapse: collapse; width: 100%; -fs-table-paginate: paginate; }
+  thead { display: table-header-group; }
+  th, td { border: 0.4pt solid #bbb; padding: 1.5pt 3pt; vertical-align: top; text-align: left; }
+  th { background: #eee; }
+  td.n, th.n, td.s { text-align: right; white-space: nowrap; }
+  td.s { text-align: left; }
+  tr.grupo td { background: #f3f3f3; font-weight: bold; }
+  table.cab td.r { width: 22%; font-weight: bold; }
+  .rodape { position: running(rodape); font-size: 7pt; color: #555; }
+  .marca { position: running(marca); font-weight: bold; color: #a00; font-size: 9pt; }
+  .provisorio { border: 1.2pt solid #a00; padding: 4pt; margin: 6pt 0; }
+  .provisorio .titulo { font-weight: bold; color: #a00; font-size: 11pt; }
+  .nota { color: #444; font-size: 7pt; }
+</style>
+</head>
+<body>
+<div class="rodape" th:text="${'Gerado em ' + rel.geradoEm() + ' por ' + rel.geradoPor()}"></div>
+<div class="marca" th:if="${rel.provisorio()}">PROVISÓRIO</div>
+
+<h1 th:text="${rel.titulo()}">Previsto × realizado</h1>
+<table class="cab">
+  <tr><td class="r">Condomínio</td><td th:text="${rel.condominio()}"></td></tr>
+  <tr><td class="r">PO</td><td th:text="${rel.po()}"></td></tr>
+  <tr><td class="r">Período</td><td th:text="${rel.periodo()}"></td></tr>
+  <tr><td class="r">Fundo</td><td th:text="${rel.fundo()}"></td></tr>
+  <tr><td class="r">Gerado em</td><td th:text="${rel.geradoEm()}"></td></tr>
+  <tr><td class="r">Gerado por</td><td th:text="${rel.geradoPor()}"></td></tr>
+  <tr><td class="r">Estado do de-para</td><td th:text="${rel.estadoDepara()}"></td></tr>
+  <tr><td class="r">Versão do cálculo</td><td th:text="${r.versaoCalculo()}"></td></tr>
+</table>
+
+<div class="provisorio" th:if="${rel.provisorio()}">
+  <div class="titulo">PROVISÓRIO</div>
+  <div>Há valores fora das linhas da PO. Os números podem mudar quando estes itens forem tratados:</div>
+  <table>
+    <thead><tr><th>Bloco</th><th>Data</th><th>Conta</th><th>Histórico</th><th class="n">Valor</th><th>Arquivo</th><th class="n">Página</th></tr></thead>
+    <tr th:each="p : ${rel.pendencias()}">
+      <td class="s" th:text="${p.bloco()}"></td>
+      <td class="s" th:text="${f.data(p.lancamento().data())}"></td>
+      <td th:text="${p.lancamento().conta() == null ? '—' : p.lancamento().conta() + ' ' + (p.lancamento().contaNome() ?: '')}"></td>
+      <td th:text="${p.lancamento().historico()}"></td>
+      <td class="n" th:text="${f.dinheiro(p.lancamento().valor())}"></td>
+      <td class="s" th:text="${p.lancamento().arquivoNome()}"></td>
+      <td class="n" th:text="${p.lancamento().pagina()}"></td>
+    </tr>
+  </table>
+</div>
+
+<div th:if="${!rel.calculado()}">
+  <h2>Sem números para este período</h2>
+  <p th:text="${r.mensagem()}"></p>
+</div>
+
+<th:block th:if="${rel.calculado()}">
+<h2>Totais do fundo Condomínio</h2>
+<table>
+  <thead><tr><th class="n">Previsto</th><th class="n">Despesa realizada</th><th class="n">Em linhas da PO</th><th class="n">Diferença</th><th class="n">Execução</th><th class="n">Previsto do mês</th><th class="n">Previsto do exercício (referência)</th></tr></thead>
+  <tr>
+    <td class="n" th:text="${f.dinheiro(r.totais().previsto())}"></td>
+    <td class="n" th:text="${f.dinheiro(r.totais().despesaRealizada())}"></td>
+    <td class="n" th:text="${f.dinheiro(r.totais().emLinhas())}"></td>
+    <td class="n" th:text="${f.dinheiro(r.totais().diferenca())}"></td>
+    <td class="n" th:text="${f.percentual(r.totais().execucao())}"></td>
+    <td class="n" th:text="${f.dinheiro(r.totais().previstoMes())}"></td>
+    <td class="n" th:text="${f.dinheiro(r.totais().previstoExercicio())}"></td>
+  </tr>
+</table>
+
+<th:block th:if="${r.regra20() != null}">
+<h2>Regra dos 20% (Conv. 16.2)</h2>
+<table>
+  <thead><tr><th class="n">Excesso</th><th class="n">% do previsto do mês</th><th class="n">Limite</th><th class="n">Linhas acima do previsto</th><th class="n">A realocar</th><th class="n">Sem linha da PO</th><th class="n">Cenário máximo</th><th class="n">% cenário máximo</th><th>Acima do limite</th><th>Provisório</th></tr></thead>
+  <tr>
+    <td class="n" th:text="${f.dinheiro(r.regra20().excesso())}"></td>
+    <td class="n" th:text="${f.percentual(r.regra20().percentual())}"></td>
+    <td class="n" th:text="${f.dinheiro(r.regra20().limite())}"></td>
+    <td class="n" th:text="${r.regra20().linhasAcima()}"></td>
+    <td class="n" th:text="${f.dinheiro(r.regra20().aRealocar())}"></td>
+    <td class="n" th:text="${f.dinheiro(r.regra20().semLinhaPo())}"></td>
+    <td class="n" th:text="${f.dinheiro(r.regra20().cenarioMaximo())}"></td>
+    <td class="n" th:text="${f.percentual(r.regra20().percentualCenarioMaximo())}"></td>
+    <td th:text="${f.simNao(r.regra20().acimaDoLimite())}"></td>
+    <td th:text="${f.simNao(r.regra20().provisorio())}"></td>
+  </tr>
+</table>
+</th:block>
+
+<h2>Por grupo e linha da PO</h2>
+<table>
+  <thead><tr><th>Código</th><th>Descrição</th><th>Contas do fluxo</th><th class="n">Previsto</th><th class="n">Realizado</th><th class="n">Diferença</th><th class="n">Execução</th><th>Observações da PO</th></tr></thead>
+  <th:block th:each="g : ${r.grupos()}">
+    <tr class="grupo">
+      <td th:text="${g.codigo()}"></td><td th:text="${g.descricao()}"></td><td></td>
+      <td class="n" th:text="${f.dinheiro(g.previsto())}"></td>
+      <td class="n" th:text="${f.dinheiro(g.realizado())}"></td>
+      <td class="n" th:text="${f.dinheiro(g.diferenca())}"></td>
+      <td class="n" th:text="${f.percentual(g.execucao())}"></td>
+      <td></td>
+    </tr>
+    <tr th:each="l : ${g.linhas()}">
+      <td th:text="${l.codigo()}"></td><td th:text="${l.descricao()}"></td>
+      <td th:text="${f.contas(l.contasFluxo())}"></td>
+      <td class="n" th:text="${f.dinheiro(l.previsto())}"></td>
+      <td class="n" th:text="${f.dinheiro(l.realizado())}"></td>
+      <td class="n" th:text="${f.dinheiro(l.diferenca())}"></td>
+      <td class="n" th:text="${f.percentual(l.execucao())}"></td>
+      <td th:text="${l.observacoes()}"></td>
+    </tr>
+  </th:block>
+</table>
+
+<h2>Blocos à parte (fora das linhas da PO)</h2>
+<table>
+  <thead><tr><th>Bloco</th><th>Conta</th><th>Nome</th><th>Detalhe</th><th class="n">Lançamentos</th><th class="n">Valor</th></tr></thead>
+  <th:block th:each="b : ${ {'Ajustes (não são despesa)', 'A realocar', 'Sem linha da PO'} }"
+            th:with="bloco=${b == 'A realocar' ? r.aRealocar() : (b == 'Sem linha da PO' ? r.semLinhaPo() : r.ajustes())}">
+    <tr class="grupo"><td th:text="${b}"></td><td></td><td></td><td></td>
+      <td class="n" th:text="${bloco.lancamentos()}"></td><td class="n" th:text="${f.dinheiro(bloco.total())}"></td></tr>
+    <tr th:each="c : ${bloco.contas()}">
+      <td></td><td th:text="${c.conta() ?: '—'}"></td><td th:text="${c.nome()}"></td><td th:text="${c.detalhe()}"></td>
+      <td class="n" th:text="${c.lancamentos()}"></td><td class="n" th:text="${f.dinheiro(c.valor())}"></td>
+    </tr>
+  </th:block>
+</table>
+
+<h2>Conferência com o fluxo</h2>
+<table>
+  <thead><tr><th class="n">Débitos do fundo</th><th class="n">Lançamentos</th><th class="n">Despesa realizada</th><th class="n">Ajustes</th><th class="n">Transferências</th><th>Confere</th></tr></thead>
+  <tr>
+    <td class="n" th:text="${f.dinheiro(r.conferencia().debitosDoFundo())}"></td>
+    <td class="n" th:text="${r.conferencia().lancamentos()}"></td>
+    <td class="n" th:text="${f.dinheiro(r.conferencia().despesaRealizada())}"></td>
+    <td class="n" th:text="${f.dinheiro(r.conferencia().ajustes())}"></td>
+    <td class="n" th:text="${f.dinheiro(r.conferencia().transferencias())}"></td>
+    <td th:text="${f.simNao(r.conferencia().confere())}"></td>
+  </tr>
+</table>
+
+<h2>Fundos</h2>
+<table>
+  <thead><tr><th>Fundo</th><th>Linha da PO</th><th>Situação</th><th class="n">Previsto</th><th class="n">Arrecadado</th><th class="n">Diferença</th><th class="n">Execução</th><th class="n">Créditos</th><th class="n">Débitos</th></tr></thead>
+  <tr th:each="x : ${r.fundos()}">
+    <td th:text="${x.fundo() ?: '—'}"></td><td th:text="${x.linhaCodigo() ?: '—'}"></td>
+    <td th:text="${x.situacao().name() == 'COMPARADO' ? 'arrecadação × previsto' : (x.situacao().name() == 'SEM_PREVISTO_NA_PO' ? 'sem previsto na PO' : (x.situacao().name() == 'LINHA_SEM_FUNDO' ? 'linha sem fundo ligado' : 'reprocesse o fluxo'))}"></td>
+    <td class="n" th:text="${f.dinheiro(x.previsto())}"></td>
+    <td class="n" th:text="${f.dinheiro(x.arrecadado())}"></td>
+    <td class="n" th:text="${f.dinheiro(x.diferenca())}"></td>
+    <td class="n" th:text="${f.percentual(x.execucao())}"></td>
+    <td class="n" th:text="${f.dinheiro(x.creditos())}"></td>
+    <td class="n" th:text="${f.dinheiro(x.debitos())}"></td>
+  </tr>
+</table>
+</th:block>
+
+<th:block th:if="${r.meses().size() > 1}">
+<h2>Meses do exercício</h2>
+<table>
+  <thead><tr><th>Mês</th><th>Situação</th><th class="n">Previsto</th><th class="n">Despesa realizada</th><th class="n">Excesso</th><th class="n">% excesso</th></tr></thead>
+  <tr th:each="m : ${r.meses()}">
+    <td th:text="${f.mes(m.mes())}"></td>
+    <td th:text="${m.situacao().name() == 'COM_FLUXO' ? 'com fluxo' : (m.situacao().name() == 'SEM_FLUXO' ? 'sem fluxo carregado' : 'dois fluxos')}"></td>
+    <td class="n" th:text="${f.dinheiro(m.previsto())}"></td>
+    <td class="n" th:text="${f.dinheiro(m.despesaRealizada())}"></td>
+    <td class="n" th:text="${f.dinheiro(m.excesso())}"></td>
+    <td class="n" th:text="${f.percentual(m.percentualExcesso())}"></td>
+  </tr>
+</table>
+</th:block>
+
+<th:block th:if="${!r.avisos().isEmpty()}">
+<h2>Avisos</h2>
+<ul><li th:each="a : ${r.avisos()}" th:text="${a.texto()}"></li></ul>
+</th:block>
+
+<p class="nota">Os números saem do mesmo cálculo da tela e do Excel. As diferenças são fatos a verificar com a
+evidência (lançamentos com arquivo, página e hash, na aba "Evidência" do Excel e na tela); este relatório não descreve
+causas.</p>
+</body>
+</html>

@@ -447,6 +447,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/previsto-realizado/exportacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Exporta a mesma visão do previsto × realizado em PDF ou Excel (todos os perfis, RF-03.1.14)
+         * @description Gerado do mesmo resultado do GET /previsto-realizado (mesma função, mesmos filtros): os números são os do
+         *     JSON. Cabeçalho com condomínio, PO (arquivo, versão, hash e exercício), período, data e hora, quem gerou e
+         *     estado do de-para. Com valor a realocar ou sem linha da PO, traz "PROVISÓRIO" e a lista desses lançamentos.
+         *     Sem gráfico. Excel com as abas "Resumo" e "Evidência" (um lançamento por linha, com arquivo, página e hash).
+         *     Mês sem números (sem fluxo, dois fluxos etc.) exporta a mensagem no lugar dos números.
+         */
+        get: operations["exportarPrevistoRealizado"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/condominios/{condominioId}/realocacoes": {
         parameters: {
             query?: never;
@@ -2079,6 +2105,55 @@ export interface operations {
             };
             /** @description Sem acesso ao condomínio */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    exportarPrevistoRealizado: {
+        parameters: {
+            query: {
+                formato: "pdf" | "xlsx";
+                /** @description AAAA-MM ou "acumulado" */
+                periodo: string;
+                po?: string;
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Arquivo (Content-Disposition attachment; previsto-realizado-<periodo>.pdf ou .xlsx) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            /** @description Formato ou período inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio ou PO não encontrados */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

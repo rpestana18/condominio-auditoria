@@ -3,6 +3,10 @@ package br.com.condominioauditoria.backend.orcamento;
 import br.com.condominioauditoria.backend.orcamento.PrevistoRealizado.Evidencia;
 import br.com.condominioauditoria.backend.seguranca.AcessoCondominio;
 import java.util.List;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,10 +25,29 @@ class PrevistoRealizadoController {
 
     private final AcessoCondominio acesso;
     private final ConsultaPrevistoRealizado consulta;
+    private final ExportacaoPrevistoRealizado exportacao;
 
-    PrevistoRealizadoController(AcessoCondominio acesso, ConsultaPrevistoRealizado consulta) {
+    PrevistoRealizadoController(AcessoCondominio acesso, ConsultaPrevistoRealizado consulta,
+            ExportacaoPrevistoRealizado exportacao) {
         this.acesso = acesso;
         this.consulta = consulta;
+        this.exportacao = exportacao;
+    }
+
+    /** PDF ou Excel da mesma visão (RF-03.1.14): todos os perfis do condomínio exportam. */
+    @GetMapping("/exportacao")
+    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    ResponseEntity<byte[]> exportar(@PathVariable UUID condominioId, @RequestParam String formato,
+            @RequestParam String periodo, @RequestParam(name = "po", required = false) UUID poId) {
+        acesso.exigir(condominioId);
+        String quem = acesso.nomeCompleto().equals(acesso.usuario()) ? acesso.usuario()
+                : acesso.nomeCompleto() + " (" + acesso.usuario() + ")";
+        var arquivo = exportacao.exportar(condominioId, periodo, poId, formato, quem);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(arquivo.tipo()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(arquivo.nome())
+                        .build().toString())
+                .body(arquivo.conteudo());
     }
 
     /** {@code periodo}: AAAA-MM ou "acumulado". {@code po}: versão da PO; sem ela, a que vale no mês. */

@@ -295,6 +295,30 @@ paths:
           content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EvidenciaLancamento" } } } }
         "400": { description: Período ou alvo inválido }
         "403": { description: Sem acesso ao condomínio }
+  /condominios/{condominioId}/previsto-realizado/exportacao:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Exporta a mesma visão do previsto × realizado em PDF ou Excel (todos os perfis, RF-03.1.14)
+      description: |
+        Gerado do mesmo resultado do GET /previsto-realizado (mesma função, mesmos filtros): os números são os do
+        JSON. Cabeçalho com condomínio, PO (arquivo, versão, hash e exercício), período, data e hora, quem gerou e
+        estado do de-para. Com valor a realocar ou sem linha da PO, traz "PROVISÓRIO" e a lista desses lançamentos.
+        Sem gráfico. Excel com as abas "Resumo" e "Evidência" (um lançamento por linha, com arquivo, página e hash).
+        Mês sem números (sem fluxo, dois fluxos etc.) exporta a mensagem no lugar dos números.
+      operationId: exportarPrevistoRealizado
+      parameters:
+        - { name: formato, in: query, required: true, schema: { type: string, enum: [pdf, xlsx] } }
+        - { name: periodo, in: query, required: true, description: AAAA-MM ou "acumulado", schema: { type: string, pattern: "^([0-9]{4}-[0-9]{2}|acumulado)$" } }
+        - { name: po, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Arquivo (Content-Disposition attachment; previsto-realizado-<periodo>.pdf ou .xlsx)
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } }
+        "400": { description: Formato ou período inválido }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Condomínio ou PO não encontrados }
   /condominios/{condominioId}/realocacoes:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }]
     get:

@@ -19,6 +19,11 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation(libs.json.schema.validator)
     implementation(libs.grpc.netty.shaded)
+    // Exportação do previsto × realizado (RF-03.1.14): PDF por Thymeleaf + OpenHTMLtoPDF, Excel por Apache POI.
+    // O PDFBox, que o OpenHTMLtoPDF já traz, é usado nos testes para ler o texto do PDF gerado.
+    implementation(libs.spring.boot.starter.thymeleaf)
+    implementation(libs.openhtmltopdf.pdfbox)
+    implementation(libs.poi.ooxml)
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")

@@ -18,6 +18,7 @@ public final class PoDoPiloto {
 
     private final List<LinhaPoLida> linhas = new ArrayList<>();
     private String subtotalPessoal = "69193.86";
+    private String fundoReserva = null;
 
     public static PoDoPiloto padrao() {
         return new PoDoPiloto();
@@ -29,9 +30,18 @@ public final class PoDoPiloto {
         return this;
     }
 
+    /** Cópia de teste com outro fundo de reserva; o subtotal de fundos e o total acompanham (somas batem). */
+    public PoDoPiloto comFundoReserva(String valor) {
+        this.fundoReserva = valor;
+        return this;
+    }
+
     public PrevisaoLida previsao() {
         linhas.clear();
-        add(TipoLinhaPo.TOTAL, "1", null, "Soma das seções 1.1 a 1.9", null, "TOTAL DAS DESPESAS", "474201.13", null);
+        String reserva = fundoReserva == null ? "13548.60" : fundoReserva;
+        String fundos = fundoReserva == null ? "22581.01" : new BigDecimal(fundoReserva).add(new BigDecimal("9032.40")).toPlainString();
+        String total = fundoReserva == null ? "474201.13" : new BigDecimal("451620.12").add(new BigDecimal(fundos)).toPlainString();
+        add(TipoLinhaPo.TOTAL, "1", null, "Soma das seções 1.1 a 1.9", null, "TOTAL DAS DESPESAS", total, null);
         add(TipoLinhaPo.GRUPO, "1.1", null, "Subtotal (soma linhas 5 a 18)", null, "PESSOAL", subtotalPessoal, null);
         add(TipoLinhaPo.LINHA, "1.1.5", "1553 - Férias", null, null, "Provisão de Férias", "1585.14", "366,97%");
         add(TipoLinhaPo.LINHA, "1.1.1", "1500 - Demais", null, null, "Demais linhas de pessoal", "67608.72", null);
@@ -56,8 +66,8 @@ public final class PoDoPiloto {
         add(TipoLinhaPo.LINHA, "1.7.8", "1606 - Material Hidráulico", null, null, "Material Hidráulico", "15200.00", null);
         add(TipoLinhaPo.GRUPO, "1.8", null, "Subtotal (soma linhas 92 a 99)", null, "SERVIÇOS", "10020.00", null);
         add(TipoLinhaPo.LINHA, "1.8.1", "1693 - Serviços", null, null, "Serviços", "10020.00", null);
-        add(TipoLinhaPo.GRUPO, "1.9", null, "Fundos", null, "Fundos do Condomínio", "22581.01", null);
-        add(TipoLinhaPo.LINHA, "1.9.1", null, "Fundo de Reserva", null, "Fundo de Reserva", "13548.60", "3,00%");
+        add(TipoLinhaPo.GRUPO, "1.9", null, "Fundos", null, "Fundos do Condomínio", fundos, null);
+        add(TipoLinhaPo.LINHA, "1.9.1", null, "Fundo de Reserva", null, "Fundo de Reserva", reserva, "3,00%");
         add(TipoLinhaPo.LINHA, "1.9.2", null, "Obras Reformas e Infraestrutura", null, "Fundo de Obras", "9032.40", "2,00%");
         return new PrevisaoLida("PROPOSTA ORÇAMENTÁRIA 2026 / 2027", "2026 / 2027", List.of("2025/2026", "2026/2027"),
                 List.copyOf(linhas));
@@ -70,14 +80,14 @@ public final class PoDoPiloto {
                 new ConferenciaLida("SUBTOTAL_GRUPO", "Soma das linhas do grupo 1.1 = subtotal impresso", pessoalOk,
                         "1.1 PESSOAL: soma das linhas 69.193,86; impresso " + subtotalPessoal),
                 ok("1.2"), falha("1.3", "336.274,18", "336.274,17"), ok("1.4"), ok("1.5"), ok("1.6"), ok("1.7"),
-                ok("1.8"), falha("1.9", "22.581,00", "22.581,01"),
+                ok("1.8"), fundoReserva == null ? falha("1.9", "22.581,00", "22.581,01") : ok("1.9"),
                 new ConferenciaLida("TOTAL", "Soma dos grupos = total impresso", pessoalOk, "soma dos grupos x impresso"),
                 new ConferenciaLida("PREVISTO_MES", "Previsto do mês = total menos os fundos", pessoalOk,
                         "474.201,13 - 22.581,01 = 451.620,12"),
                 new ConferenciaLida("FUNDO_TAXA", "Cada fundo = taxa da coluna % sobre o previsto do mês", true,
                         "1.9.1: 3,00% de 451.620,12 = 13.548,60"),
                 new ConferenciaLida("CODIGO_REPETIDO", "Nenhum código de linha impresso mais de uma vez", false,
-                        "1.3.2 aparece 2 vezes (ordens 9 e 13)"));
+                        "1.3.2 aparece 2 vezes (ordens 8 e 12)"));
     }
 
     /** Linhas como o backend grava, para testar as funções puras sem banco. */

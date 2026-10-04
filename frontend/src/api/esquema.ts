@@ -234,6 +234,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/previsoes/{poId}/confirmacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirma a PO e o exercício (só ADMIN, RF-03.1.3; ciente da divergência, Q29)
+         * @description Registra exercício, ata (ou "sem ata"), código efetivo das linhas com código impresso repetido e a ligação de
+         *     cada linha de fundo (1.9.x) a um fundo do fluxo. Os valores lidos nunca são editados. PO lida com divergência
+         *     de soma só é confirmada com cienteDivergencia e justificativa. Só uma PO vale para cada mês: sobreposição com
+         *     PO confirmada exige reaprovacao (a anterior passa a SUBSTITUIDA a partir do início da nova).
+         *     Fundo de reserva acima do teto (Conv. 20.1) gera achado ATENCAO; aprovação fora do 1º trimestre gera só aviso.
+         */
+        post: operations["confirmarPrevisao"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -479,12 +506,50 @@ export interface components {
             codigo: "ARREDONDAMENTO" | "DIVERGENCIA" | "CODIGO_REPETIDO" | "CONFIRMADA_COM_DIVERGENCIA" | "FORA_PRIMEIRO_TRIMESTRE" | "SEM_ATA" | "REGRA_NAO_AVALIADA";
             texto: string;
         };
+        PedidoConfirmacao: {
+            /** @description AAAA-MM */
+            exercicioInicio: string;
+            /** @description AAAA-MM */
+            exercicioFim: string;
+            /**
+             * Format: uuid
+             * @description Arquivo da categoria ATA; nulo com semAta
+             */
+            ataArquivoId?: string | null;
+            semAta: boolean;
+            /**
+             * Format: date
+             * @description Data da assembleia; obrigatória com ata
+             */
+            dataAprovacao?: string | null;
+            /** @description Código distinto para linhas cujo código impresso se repete (mesmo grupo, ex. 1.3.2 → 1.3.25) */
+            codigosEfetivos?: {
+                /** Format: uuid */
+                linhaId: string;
+                codigo: string;
+            }[];
+            /** @description Cada linha de fundo (linhaDeFundo) ligada a um fundo do fluxo, distinto e que não seja o ordinário */
+            fundos?: {
+                /** Format: uuid */
+                linhaId: string;
+                /** Format: uuid */
+                fundoId: string;
+            }[];
+            /** @default false */
+            reaprovacao: boolean;
+            /** @default false */
+            cienteDivergencia: boolean;
+            /** @description Obrigatória com cienteDivergencia */
+            justificativa?: string | null;
+        };
         Problema: {
             title?: string;
             status?: number;
             detail?: string;
             /** Format: uuid */
             arquivoExistenteId?: string;
+            /** @description Motivos da recusa da confirmação da PO */
+            motivos?: string[];
         };
     };
     responses: never;
@@ -910,6 +975,65 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    confirmarPrevisao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoConfirmacao"];
+            };
+        };
+        responses: {
+            /** @description Confirmada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevisaoDetalhe"];
+                };
+            };
+            /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO já confirmada ou outra PO confirmada vale nos mesmos meses */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Confirmação recusada (lista em motivos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
             };
         };
     };

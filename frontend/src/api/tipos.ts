@@ -13,3 +13,42 @@ export type ArquivoDetalhe = Esquemas["ArquivoDetalhe"];
 export type Painel = Esquemas["Painel"];
 export type Problema = Esquemas["Problema"];
 export type Perfil = UsuarioLogado["perfis"][number];
+
+// Previsto × realizado (ADR 0004)
+export type EstadoPrevisao = Esquemas["EstadoPrevisao"];
+export type PrevisaoResumo = Esquemas["PrevisaoResumo"];
+export type PrevisaoDetalhe = Esquemas["PrevisaoDetalhe"];
+export type LinhaPo = Esquemas["LinhaPo"];
+export type ConferenciaPo = Esquemas["ConferenciaPo"];
+export type AvisoPo = Esquemas["AvisoPo"];
+export type PedidoConfirmacao = Esquemas["PedidoConfirmacao"];
+export type MarcaLinha = NonNullable<LinhaPo["marca"]>;
+
+// De-para
+export type TipoDestino = Esquemas["TipoDestino"];
+export type EstadoDepara = Esquemas["EstadoDepara"];
+export type OrigemDepara = Esquemas["OrigemDepara"];
+export type FiltroDepara = Esquemas["FiltroDepara"];
+export type DestinoDepara = Esquemas["DestinoDepara"];
+export type ContaDepara = Esquemas["ContaDepara"];
+export type DeparaLista = Esquemas["DeparaLista"];
+export type PedidoDestino = Esquemas["PedidoDestino"];
+export type PedidoLote = Esquemas["PedidoLote"];
+export type ResultadoLote = Esquemas["ResultadoLote"];
+export type ContaIgnorada = Esquemas["ContaIgnorada"];
+export type ResultadoSugestoes = Esquemas["ResultadoSugestoes"];
+export type ResultadoPlanilha = Esquemas["ResultadoPlanilha"];
+export type EventoDepara = Esquemas["EventoDepara"];
+
+// Resultado do cálculo (vem pronto do backend; a tela só mostra)
+export type PrevistoRealizado = Esquemas["PrevistoRealizado"];
+export type MesPrevistoRealizado = PrevistoRealizado["meses"][number];
+export type TotaisPrevistoRealizado = NonNullable<PrevistoRealizado["totais"]>;
+export type Regra20 = NonNullable<PrevistoRealizado["regra20"]>;
+export type ConferenciaFluxo = NonNullable<PrevistoRealizado["conferencia"]>;
+export type FundoPrevistoRealizado = PrevistoRealizado["fundos"][number];
+export type GrupoPrevistoRealizado = Esquemas["GrupoPrevistoRealizado"];
+export type LinhaPrevistoRealizado = GrupoPrevistoRealizado["linhas"][number];
+export type BlocoPrevistoRealizado = Esquemas["BlocoPrevistoRealizado"];
+export type EvidenciaLancamento = Esquemas["EvidenciaLancamento"];
+export type FluxoUsado = Esquemas["FluxoUsado"];

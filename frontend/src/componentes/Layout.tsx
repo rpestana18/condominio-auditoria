@@ -17,6 +17,10 @@ export function Layout() {
             Início
           </NavLink>
           <NavLink to="/arquivos">Arquivos</NavLink>
+          <span className="menu-secao">Orçamento</span>
+          <NavLink to="/previsto-realizado">Previsto × realizado</NavLink>
+          <NavLink to="/depara">De-para</NavLink>
+          <NavLink to="/previsoes">PO</NavLink>
         </nav>
       </aside>
       <div className="conteudo">

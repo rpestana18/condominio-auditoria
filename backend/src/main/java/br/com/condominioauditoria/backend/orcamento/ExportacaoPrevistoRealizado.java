@@ -56,13 +56,16 @@ public class ExportacaoPrevistoRealizado {
     }
 
     @Transactional(readOnly = true)
-    public ArquivoExportado exportar(UUID condominioId, String periodo, UUID poId, String formatoTexto,
+    public ArquivoExportado exportar(UUID condominioId, String periodo, UUID poId, UUID fundoId, String formatoTexto,
             String geradoPor) {
         Formato formato = Formato.de(formatoTexto);
         Condominio condominio = condominios.findById(condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
-        var calculo = consulta.calcular(condominioId, periodo, poId);
-        RelatorioPrevistoRealizado rel = RelatorioPrevistoRealizado.montar(condominio.getNome(), null, calculo,
+        var calculo = consulta.calcular(condominioId, periodo, poId, fundoId);
+        String fundo = fundoId == null ? null : fundoId.equals(condominio.getFundoOrdinarioId())
+                ? "Condomínio (fundo ordinário: " + consulta.fundoDoFiltro(condominioId, fundoId).getNome() + ")"
+                : consulta.fundoDoFiltro(condominioId, fundoId).getNome();
+        RelatorioPrevistoRealizado rel = RelatorioPrevistoRealizado.montar(condominio.getNome(), fundo, calculo,
                 geradoPor, Instant.now());
         byte[] conteudo = formato == Formato.PDF ? pdf.gerar(rel) : excel.gerar(rel);
         String nome = "previsto-realizado-" + calculo.resultado().periodo() + "." + formato.extensao;

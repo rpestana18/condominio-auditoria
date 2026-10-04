@@ -72,6 +72,8 @@ public final class CalculoPrevistoRealizado {
     public static final String ALVO_A_REALOCAR = "A_REALOCAR";
     public static final String ALVO_SEM_LINHA_PO = "SEM_LINHA_PO";
     public static final String ALVO_TRANSFERENCIAS = "TRANSFERENCIAS";
+    /** Evidência da despesa realizada inteira: linhas da PO + a realocar + sem linha da PO (RF-03.1.12). */
+    public static final String ALVO_TOTAL = "total";
 
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2);
     private static final BigDecimal CEM = new BigDecimal("100");
@@ -155,6 +157,40 @@ public final class CalculoPrevistoRealizado {
 
     public static String alvoFundo(UUID fundoId) {
         return "fundo:" + fundoId;
+    }
+
+    /** Evidência de um grupo da PO: os lançamentos das linhas dele (pelo id da linha de grupo). */
+    public static String alvoGrupo(UUID linhaDoGrupoId) {
+        return "grupo:" + linhaDoGrupoId;
+    }
+
+    /**
+     * Lançamentos que compõem um número (RF-03.1.12): "linha:&lt;id&gt;", "grupo:&lt;id&gt;" (as linhas do grupo, na
+     * ordem da PO), "total" (despesa realizada: as linhas de todos os grupos, depois a realocar e sem linha da PO),
+     * "fundo:&lt;id&gt;" e os blocos (AJUSTES, A_REALOCAR, SEM_LINHA_PO, TRANSFERENCIAS). Alvo sem lançamento: lista
+     * vazia. Só lê o que o cálculo já apurou.
+     */
+    public static List<Evidencia> evidencia(Calculo c, String alvo) {
+        String a = alvo == null ? "" : alvo.trim();
+        PrevistoRealizado r = c.resultado();
+        if (a.startsWith("grupo:")) {
+            return r.grupos().stream().filter(g -> alvoGrupo(g.linhaId()).equals(a)).findFirst()
+                    .map(g -> doGrupo(c, g)).orElse(List.of());
+        }
+        if (a.equals(ALVO_TOTAL)) {
+            List<Evidencia> todas = new ArrayList<>();
+            r.grupos().forEach(g -> todas.addAll(doGrupo(c, g)));
+            todas.addAll(c.evidencias().getOrDefault(ALVO_A_REALOCAR, List.of()));
+            todas.addAll(c.evidencias().getOrDefault(ALVO_SEM_LINHA_PO, List.of()));
+            return List.copyOf(todas);
+        }
+        return c.evidencias().getOrDefault(a, List.of());
+    }
+
+    private static List<Evidencia> doGrupo(Calculo c, GrupoResultado g) {
+        List<Evidencia> lista = new ArrayList<>();
+        g.linhas().forEach(l -> lista.addAll(c.evidencias().getOrDefault(alvoLinha(l.linhaId()), List.of())));
+        return List.copyOf(lista);
     }
 
     public static Calculo calcular(Entrada e) {

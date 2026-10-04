@@ -74,8 +74,7 @@ public record RelatorioPrevistoRealizado(String condominio, String periodo, Stri
         String depara = r.depara() == null ? "—" : r.depara().confirmadas() + " de " + r.depara().contas()
                 + " contas confirmadas" + (r.depara().semDeparaConfirmado() == 0 ? ""
                 : "; " + r.depara().semDeparaConfirmado() + " sem de-para confirmado");
-        return new RelatorioPrevistoRealizado(condominio, periodo(r), fundo == null ? "Condomínio (fundo ordinário)"
-                : fundo, DATA_HORA.format(geradoEm), geradoPor, depara, r, calculado, calculado && r.provisorio(),
+        return new RelatorioPrevistoRealizado(condominio, periodo(r), fundo == null ? "Todos" : fundo, DATA_HORA.format(geradoEm), geradoPor, depara, r, calculado, calculado && r.provisorio(),
                 List.copyOf(pendencias), List.copyOf(evidencias));
     }
 
@@ -93,6 +92,16 @@ public record RelatorioPrevistoRealizado(String condominio, String periodo, Stri
         String somados = r.mesesSomados().isEmpty() ? "nenhum"
                 : CalculoPrevistoRealizado.listaDeMeses(r.mesesSomados());
         return "Acumulado do exercício (meses somados: " + somados + ")";
+    }
+
+    /** Há números do fundo Condomínio (falso quando o filtro é outro fundo). */
+    public boolean comFundoCondominio() {
+        return calculado && resultado.totais() != null;
+    }
+
+    /** Há painel de fundos (falso quando o filtro é só o fundo Condomínio). */
+    public boolean comFundos() {
+        return calculado && !resultado.fundos().isEmpty();
     }
 
     /** Texto da PO no cabeçalho: arquivo, versão, hash e exercício. */

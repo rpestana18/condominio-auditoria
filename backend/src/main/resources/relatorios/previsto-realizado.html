@@ -67,7 +67,7 @@
   <p th:text="${r.mensagem()}"></p>
 </div>
 
-<th:block th:if="${rel.calculado()}">
+<th:block th:if="${rel.comFundoCondominio()}">
 <h2>Totais do fundo Condomínio</h2>
 <table>
   <thead><tr><th class="n">Previsto</th><th class="n">Despesa realizada</th><th class="n">Em linhas da PO</th><th class="n">Diferença</th><th class="n">Execução</th><th class="n">Previsto do mês</th><th class="n">Previsto do exercício (referência)</th></tr></thead>
@@ -152,6 +152,9 @@
   </tr>
 </table>
 
+</th:block>
+
+<th:block th:if="${rel.comFundos()}">
 <h2>Fundos</h2>
 <table>
   <thead><tr><th>Fundo</th><th>Linha da PO</th><th>Situação</th><th class="n">Previsto</th><th class="n">Arrecadado</th><th class="n">Diferença</th><th class="n">Execução</th><th class="n">Créditos</th><th class="n">Débitos</th></tr></thead>

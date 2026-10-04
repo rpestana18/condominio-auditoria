@@ -191,6 +191,22 @@ public class RelatorioExcel {
             return;
         }
 
+        if (rel.comFundoCondominio()) {
+            condominio(w, r);
+        }
+        if (rel.comFundos()) {
+            fundos(w, r);
+        }
+        meses(w, r);
+        avisos(w, r);
+        w.pular();
+        w.textos(null, "Os números saem do mesmo cálculo da tela e do PDF. As diferenças são fatos a verificar com a"
+                + " evidência (aba \"" + ABA_EVIDENCIA + "\"); este arquivo não descreve causas.");
+        larguras(aba);
+    }
+
+    private static void condominio(Escrita w, PrevistoRealizado r) {
+        Estilos e = w.e;
         w.textos(e.cabecalho, "Totais do fundo Condomínio");
         totais(w, r);
         w.pular();
@@ -255,6 +271,10 @@ public class RelatorioExcel {
         Escrita.texto(cr, 5, c.confere() ? "sim" : "não", null);
         w.pular();
 
+    }
+
+    private static void fundos(Escrita w, PrevistoRealizado r) {
+        Estilos e = w.e;
         w.textos(e.cabecalho, "Fundos");
         w.textos(e.cabecalho, "Fundo", "Linha da PO", "Situação", "Previsto", "Arrecadado", "Diferença", "Execução",
                 "Créditos", "Débitos");
@@ -275,6 +295,10 @@ public class RelatorioExcel {
         }
         w.pular();
 
+    }
+
+    private static void meses(Escrita w, PrevistoRealizado r) {
+        Estilos e = w.e;
         if (r.meses().size() > 1) {
             w.textos(e.cabecalho, "Meses do exercício");
             w.textos(e.cabecalho, "Mês", "Situação", "Previsto", "Despesa realizada", "Excesso", "% excesso");
@@ -291,11 +315,6 @@ public class RelatorioExcel {
             }
             w.pular();
         }
-        avisos(w, r);
-        w.pular();
-        w.textos(null, "Os números saem do mesmo cálculo da tela e do PDF. As diferenças são fatos a verificar com a"
-                + " evidência (aba \"" + ABA_EVIDENCIA + "\"); este arquivo não descreve causas.");
-        larguras(aba);
     }
 
     private static void totais(Escrita w, PrevistoRealizado r) {

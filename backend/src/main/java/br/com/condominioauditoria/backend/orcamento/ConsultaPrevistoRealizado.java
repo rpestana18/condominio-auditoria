@@ -86,13 +86,38 @@ public class ConsultaPrevistoRealizado {
         return calcular(condominioId, periodo, poId).resultado();
     }
 
-    /** Lançamentos que compõem um número: "linha:&lt;id&gt;", "fundo:&lt;id&gt;", AJUSTES, A_REALOCAR, SEM_LINHA_PO. */
+    /** Com o filtro de fundo (RF-03.1.13); {@code fundoId} nulo = todos. */
+    @Transactional(readOnly = true)
+    public PrevistoRealizado consultar(UUID condominioId, String periodo, UUID poId, UUID fundoId) {
+        return calcular(condominioId, periodo, poId, fundoId).resultado();
+    }
+
+    /** O fundo do filtro, que tem de ser deste condomínio (404 se não for). */
+    Fundo fundoDoFiltro(UUID condominioId, UUID fundoId) {
+        return fundos.findByCondominioId(condominioId).stream().filter(f -> f.getId().equals(fundoId)).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Fundo não encontrado"));
+    }
+
+    /** Cálculo com o filtro de fundo aplicado depois (só esconde; ver {@link VisaoPorFundo}). */
+    Calculo calcular(UUID condominioId, String periodo, UUID poId, UUID fundoId) {
+        if (fundoId == null) {
+            return calcular(condominioId, periodo, poId);
+        }
+        fundoDoFiltro(condominioId, fundoId);
+        UUID ordinario = condominios.findById(condominioId).map(Condominio::getFundoOrdinarioId).orElse(null);
+        return VisaoPorFundo.filtrar(calcular(condominioId, periodo, poId), fundoId, ordinario);
+    }
+
+    /**
+     * Lançamentos que compõem um número: "linha:&lt;id&gt;", "grupo:&lt;id&gt;", "total", "fundo:&lt;id&gt;", AJUSTES,
+     * A_REALOCAR, SEM_LINHA_PO, TRANSFERENCIAS.
+     */
     @Transactional(readOnly = true)
     public List<Evidencia> evidencia(UUID condominioId, String periodo, UUID poId, String alvo) {
         if (alvo == null || alvo.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe o alvo da evidência");
         }
-        return calcular(condominioId, periodo, poId).evidencias().getOrDefault(alvo.trim(), List.of());
+        return CalculoPrevistoRealizado.evidencia(calcular(condominioId, periodo, poId), alvo);
     }
 
     Calculo calcular(UUID condominioId, String periodoTexto, UUID poId) {

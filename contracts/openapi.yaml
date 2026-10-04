@@ -275,11 +275,12 @@ paths:
       parameters:
         - { name: periodo, in: query, required: true, description: AAAA-MM ou "acumulado", schema: { type: string, pattern: "^([0-9]{4}-[0-9]{2}|acumulado)$" } }
         - { name: po, in: query, required: false, description: Versão da PO; sem ela, a que vale no mês (no acumulado, a confirmada mais recente), schema: { type: string, format: uuid } }
+        - { name: fundo, in: query, required: false, description: 'Filtro de fundo (RF-03.1.13). O fundo ordinário mostra só o fundo Condomínio (sem o painel dos fundos); outro fundo mostra só o painel dele, com totais, grupos, blocos, conferência e regra dos 20% nulos ou vazios e provisorio = false. Sem ele, tudo', schema: { type: string, format: uuid } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PrevistoRealizado" } } } }
         "400": { description: Período inválido }
         "403": { description: Sem acesso ao condomínio }
-        "404": { description: Condomínio ou PO não encontrados }
+        "404": { description: Condomínio, PO ou fundo não encontrados }
   /condominios/{condominioId}/previsto-realizado/evidencia:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }]
     get:
@@ -288,7 +289,7 @@ paths:
       parameters:
         - { name: periodo, in: query, required: true, schema: { type: string, pattern: "^([0-9]{4}-[0-9]{2}|acumulado)$" } }
         - { name: po, in: query, required: false, schema: { type: string, format: uuid } }
-        - { name: alvo, in: query, required: true, description: '"linha:<linhaId>", "fundo:<fundoId>" (arrecadação), AJUSTES, A_REALOCAR, SEM_LINHA_PO ou TRANSFERENCIAS', schema: { type: string } }
+        - { name: alvo, in: query, required: true, description: '"linha:<linhaId>", "grupo:<linhaId do grupo>" (as linhas do grupo, na ordem da PO), "total" (despesa realizada: linhas de todos os grupos, depois A_REALOCAR e SEM_LINHA_PO), "fundo:<fundoId>" (arrecadação), AJUSTES, A_REALOCAR, SEM_LINHA_PO ou TRANSFERENCIAS', schema: { type: string } }
       responses:
         "200":
           description: OK (lista vazia quando o alvo não tem lançamento)
@@ -310,6 +311,7 @@ paths:
         - { name: formato, in: query, required: true, schema: { type: string, enum: [pdf, xlsx] } }
         - { name: periodo, in: query, required: true, description: AAAA-MM ou "acumulado", schema: { type: string, pattern: "^([0-9]{4}-[0-9]{2}|acumulado)$" } }
         - { name: po, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: fundo, in: query, required: false, description: 'Filtro de fundo (RF-03.1.13). O fundo ordinário mostra só o fundo Condomínio (sem o painel dos fundos); outro fundo mostra só o painel dele, com totais, grupos, blocos, conferência e regra dos 20% nulos ou vazios e provisorio = false. Sem ele, tudo', schema: { type: string, format: uuid } }
       responses:
         "200":
           description: Arquivo (Content-Disposition attachment; previsto-realizado-<periodo>.pdf ou .xlsx)
@@ -318,7 +320,63 @@ paths:
             application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } }
         "400": { description: Formato ou período inválido }
         "403": { description: Sem acesso ao condomínio }
-        "404": { description: Condomínio ou PO não encontrados }
+        "404": { description: Condomínio, PO ou fundo não encontrados }
+  /condominios/{condominioId}/fundos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Fundos do fluxo do condomínio, pelo nome impresso (todos os perfis; RF-03.1.9 e RF-03.1.13)
+      description: Lista para ligar as linhas 1.9 e para o filtro de fundo, em ordem de nome. "OBRAS" e "OBRAS / REFORMAS / INFRA" são itens separados.
+      operationId: fundos
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/FundoFluxo" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Condomínio não encontrado }
+  /condominios/{condominioId}/previsoes/{poId}/fundos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    put:
+      summary: Altera a ligação das linhas 1.9 aos fundos depois da confirmação (só Admin; RF-03.1.9)
+      description: |
+        A lista é a ligação completa: linha 1.9.x ausente ou com fundoId nulo fica sem fundo. Cada linha com no máximo
+        um fundo, cada fundo em no máximo uma linha, nunca o fundo ordinário. A trilha da PO (GET .../eventos) recebe um
+        evento FUNDOS_ALTERADOS com o fundo anterior e o novo de cada linha, quem e quando. Sem mudança, nada é gravado.
+        Os achados são recalculados depois do commit.
+      operationId: alterarFundosPo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fundos]
+              properties:
+                fundos:
+                  type: array
+                  items:
+                    type: object
+                    required: [linhaId]
+                    properties:
+                      linhaId: { type: string, format: uuid }
+                      fundoId: { type: [string, "null"], format: uuid }
+      responses:
+        "200": { description: PO com a nova ligação, content: { application/json: { schema: { $ref: "#/components/schemas/PrevisaoDetalhe" } } } }
+        "403": { description: Gestor, Usuário ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada }
+        "422": { description: Ligação recusada, com os motivos, content: { application/json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+  /condominios/{condominioId}/previsoes/{poId}/eventos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    get:
+      summary: Trilha da PO (todos os perfis), só de inserção
+      description: Confirmação (CONFIRMADA), substituição (SUBSTITUIDA) e alterações da ligação dos fundos (FUNDOS_ALTERADOS).
+      operationId: eventosPrevisao
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EventoPrevisao" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
   /condominios/{condominioId}/realocacoes:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }]
     get:
@@ -1071,6 +1129,22 @@ components:
               motivo: { type: string }
               usuario: { type: string }
               em: { type: string, format: date-time }
+    FundoFluxo:
+      type: object
+      required: [id, nome, ordinario]
+      properties:
+        id: { type: string, format: uuid }
+        nome: { type: string, description: Nome exato impresso no fluxo }
+        ordinario: { type: boolean, description: É o fundo ordinário (fundo Condomínio) confirmado }
+    EventoPrevisao:
+      type: object
+      required: [tipo, usuario, em, detalhe]
+      properties:
+        tipo: { type: string, enum: [CONFIRMADA, SUBSTITUIDA, FUNDOS_ALTERADOS] }
+        usuario: { type: string }
+        em: { type: string, format: date-time }
+        justificativa: { type: [string, "null"] }
+        detalhe: { type: string }
     PedidoRealocacao:
       type: object
       required: [lancamentoId, linhaId]

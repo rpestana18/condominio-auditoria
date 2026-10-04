@@ -38,11 +38,12 @@ class PrevistoRealizadoController {
     @GetMapping("/exportacao")
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     ResponseEntity<byte[]> exportar(@PathVariable UUID condominioId, @RequestParam String formato,
-            @RequestParam String periodo, @RequestParam(name = "po", required = false) UUID poId) {
+            @RequestParam String periodo, @RequestParam(name = "po", required = false) UUID poId,
+            @RequestParam(name = "fundo", required = false) UUID fundoId) {
         acesso.exigir(condominioId);
         String quem = acesso.nomeCompleto().equals(acesso.usuario()) ? acesso.usuario()
                 : acesso.nomeCompleto() + " (" + acesso.usuario() + ")";
-        var arquivo = exportacao.exportar(condominioId, periodo, poId, formato, quem);
+        var arquivo = exportacao.exportar(condominioId, periodo, poId, fundoId, formato, quem);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(arquivo.tipo()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(arquivo.nome())
@@ -50,13 +51,18 @@ class PrevistoRealizadoController {
                 .body(arquivo.conteudo());
     }
 
-    /** {@code periodo}: AAAA-MM ou "acumulado". {@code po}: versão da PO; sem ela, a que vale no mês. */
+    /**
+     * {@code periodo}: AAAA-MM ou "acumulado". {@code po}: versão da PO; sem ela, a que vale no mês. {@code fundo}:
+     * o fundo ordinário (só o fundo Condomínio) ou outro fundo (só o painel dele); sem ele, tudo.
+     */
     @GetMapping
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     PrevistoRealizado consultar(@PathVariable UUID condominioId, @RequestParam String periodo,
-            @RequestParam(name = "po", required = false) UUID poId) {
+            @RequestParam(name = "po", required = false) UUID poId,
+            @RequestParam(name = "fundo", required = false) UUID fundoId) {
         acesso.exigir(condominioId);
-        return consulta.consultar(condominioId, periodo, poId);
+        return fundoId == null ? consulta.consultar(condominioId, periodo, poId)
+                : consulta.consultar(condominioId, periodo, poId, fundoId);
     }
 
     @GetMapping("/evidencia")

@@ -84,6 +84,7 @@ final class CenarioPo {
     final ServicoRealocacao realocacao;
     final RecalculoAchadosOrcamento recalculo;
     final RegistroAchados registro;
+    final LigacaoFundosPo ligacaoFundos;
     private final GravacaoPrevisao gravacao;
 
     CenarioPo() {
@@ -146,6 +147,8 @@ final class CenarioPo {
         });
         when(poFundoRepo.findByPrevisaoId(any())).thenAnswer(i -> poFundos.stream()
                 .filter(f -> f.getPrevisaoId().equals(i.getArgument(0))).toList());
+        org.mockito.Mockito.doAnswer(i -> poFundos.removeIf(f -> f.getPrevisaoId().equals(i.getArgument(0))))
+                .when(poFundoRepo).apagarDaPrevisao(any());
 
         EventoPrevisaoRepository eventoRepo = mock(EventoPrevisaoRepository.class);
         when(eventoRepo.save(any())).thenAnswer(i -> {
@@ -265,6 +268,8 @@ final class CenarioPo {
         realocacao = new ServicoRealocacao(condominios, lancamentoRepo, arquivoRepo, consulta, previsaoRepo,
                 linhaRepo, deparaRepo, realocacaoRepo, eventoRealocacaoRepo, publicados::add);
         recalculo = new RecalculoAchadosOrcamento(condominios, previsaoRepo, previstoRealizado, registro);
+        ligacaoFundos = new LigacaoFundosPo(condominios, previsaoRepo, linhaRepo, poFundoRepo, fundoRepo, eventoRepo,
+                consulta, publicados::add);
 
         ata = arquivo(Categoria.ATA, "ata-ago-2026-05.pdf");
     }

@@ -473,6 +473,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/fundos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Fundos do fluxo do condomínio, pelo nome impresso (todos os perfis; RF-03.1.9 e RF-03.1.13)
+         * @description Lista para ligar as linhas 1.9 e para o filtro de fundo, em ordem de nome. "OBRAS" e "OBRAS / REFORMAS / INFRA" são itens separados.
+         */
+        get: operations["fundos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/fundos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Altera a ligação das linhas 1.9 aos fundos depois da confirmação (só Admin; RF-03.1.9)
+         * @description A lista é a ligação completa: linha 1.9.x ausente ou com fundoId nulo fica sem fundo. Cada linha com no máximo
+         *     um fundo, cada fundo em no máximo uma linha, nunca o fundo ordinário. A trilha da PO (GET .../eventos) recebe um
+         *     evento FUNDOS_ALTERADOS com o fundo anterior e o novo de cada linha, quem e quando. Sem mudança, nada é gravado.
+         *     Os achados são recalculados depois do commit.
+         */
+        put: operations["alterarFundosPo"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/eventos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Trilha da PO (todos os perfis), só de inserção
+         * @description Confirmação (CONFIRMADA), substituição (SUBSTITUIDA) e alterações da ligação dos fundos (FUNDOS_ALTERADOS).
+         */
+        get: operations["eventosPrevisao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/condominios/{condominioId}/realocacoes": {
         parameters: {
             query?: never;
@@ -1203,6 +1274,23 @@ export interface components {
                 /** Format: date-time */
                 em: string;
             }[];
+        };
+        FundoFluxo: {
+            /** Format: uuid */
+            id: string;
+            /** @description Nome exato impresso no fluxo */
+            nome: string;
+            /** @description É o fundo ordinário (fundo Condomínio) confirmado */
+            ordinario: boolean;
+        };
+        EventoPrevisao: {
+            /** @enum {string} */
+            tipo: "CONFIRMADA" | "SUBSTITUIDA" | "FUNDOS_ALTERADOS";
+            usuario: string;
+            /** Format: date-time */
+            em: string;
+            justificativa?: string | null;
+            detalhe: string;
         };
         PedidoRealocacao: {
             /**
@@ -2030,6 +2118,8 @@ export interface operations {
                 periodo: string;
                 /** @description Versão da PO; sem ela */
                 po?: string;
+                /** @description Filtro de fundo (RF-03.1.13). O fundo ordinário mostra só o fundo Condomínio (sem o painel dos fundos); outro fundo mostra só o painel dele, com totais, grupos, blocos, conferência e regra dos 20% nulos ou vazios e provisorio = false. Sem ele, tudo */
+                fundo?: string;
             };
             header?: never;
             path: {
@@ -2062,7 +2152,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Condomínio ou PO não encontrados */
+            /** @description Condomínio */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2076,7 +2166,7 @@ export interface operations {
             query: {
                 periodo: string;
                 po?: string;
-                /** @description "linha:<linhaId>", "fundo:<fundoId>" (arrecadação), AJUSTES, A_REALOCAR, SEM_LINHA_PO ou TRANSFERENCIAS */
+                /** @description "linha:<linhaId>", "grupo:<linhaId do grupo>" (as linhas do grupo, na ordem da PO), "total" (despesa realizada: linhas de todos os grupos, depois A_REALOCAR e SEM_LINHA_PO), "fundo:<fundoId>" (arrecadação), AJUSTES, A_REALOCAR, SEM_LINHA_PO ou TRANSFERENCIAS */
                 alvo: string;
             };
             header?: never;
@@ -2119,6 +2209,8 @@ export interface operations {
                 /** @description AAAA-MM ou "acumulado" */
                 periodo: string;
                 po?: string;
+                /** @description Filtro de fundo (RF-03.1.13). O fundo ordinário mostra só o fundo Condomínio (sem o painel dos fundos); outro fundo mostra só o painel dele, com totais, grupos, blocos, conferência e regra dos 20% nulos ou vazios e provisorio = false. Sem ele, tudo */
+                fundo?: string;
             };
             header?: never;
             path: {
@@ -2152,7 +2244,144 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Condomínio ou PO não encontrados */
+            /** @description Condomínio */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    fundos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundoFluxo"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    alterarFundosPo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fundos: {
+                        /** Format: uuid */
+                        linhaId: string;
+                        /** Format: uuid */
+                        fundoId?: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description PO com a nova ligação */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevisaoDetalhe"];
+                };
+            };
+            /** @description Gestor */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ligação recusada */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    eventosPrevisao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventoPrevisao"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
             404: {
                 headers: {
                     [name: string]: unknown;

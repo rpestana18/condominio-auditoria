@@ -22,6 +22,12 @@ import br.com.condominioauditoria.backend.contabil.Conferencia;
 import br.com.condominioauditoria.backend.contabil.ConferenciaRepository;
 import br.com.condominioauditoria.backend.contabil.Fundo;
 import br.com.condominioauditoria.backend.contabil.FundoRepository;
+import br.com.condominioauditoria.backend.contabil.Lancamento;
+import br.com.condominioauditoria.backend.contabil.LancamentoRepository;
+import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.ConferenciaLida;
+import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.Enriquecimento;
+import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.LancamentoLido;
+import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.PrevisaoLida;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -53,9 +59,17 @@ final class CenarioPo {
     final List<Achado> achados = new ArrayList<>();
     final List<AchadoEvidencia> evidencias = new ArrayList<>();
     final List<ParametroRegra> parametros = new ArrayList<>();
+    final List<DeparaConta> deparas = new ArrayList<>();
+    final List<EventoDepara> eventosDepara = new ArrayList<>();
+    final List<Lancamento> lancamentos = new ArrayList<>();
 
     final ConfirmacaoPrevisao confirmacao;
     final ConsultaPrevisao consulta;
+    final ServicoDepara depara;
+    final PrevisaoOrcamentariaRepository previsaoRepo;
+    final LinhaPoRepository linhaRepo;
+    final DeparaContaRepository deparaRepo;
+    final EventoDeparaRepository eventoDeparaRepo;
     private final GravacaoPrevisao gravacao;
 
     CenarioPo() {
@@ -63,13 +77,14 @@ final class CenarioPo {
         when(condominio.getFundoOrdinarioId()).thenReturn(ordinario.getId());
         CondominioRepository condominios = mock(CondominioRepository.class);
         when(condominios.travar(condominioId)).thenReturn(Optional.of(condominio));
+        when(condominios.findById(condominioId)).thenReturn(Optional.of(condominio));
 
         ArquivoRepository arquivoRepo = mock(ArquivoRepository.class);
         when(arquivoRepo.findById(any())).thenAnswer(i -> Optional.ofNullable(arquivos.get(i.<UUID>getArgument(0))));
         when(arquivoRepo.findByIdAndCondominioId(any(), any())).thenAnswer(i -> Optional
                 .ofNullable(arquivos.get(i.<UUID>getArgument(0))).filter(a -> a.getCondominioId().equals(i.getArgument(1))));
 
-        PrevisaoOrcamentariaRepository previsaoRepo = mock(PrevisaoOrcamentariaRepository.class);
+        previsaoRepo = mock(PrevisaoOrcamentariaRepository.class);
         when(previsaoRepo.save(any())).thenAnswer(i -> {
             PrevisaoOrcamentaria p = i.getArgument(0);
             previsoes.put(p.getId(), p);
@@ -84,7 +99,7 @@ final class CenarioPo {
                         && i.<Collection<EstadoPrevisao>>getArgument(1).contains(p.getEstado()))
                 .toList());
 
-        LinhaPoRepository linhaRepo = mock(LinhaPoRepository.class);
+        linhaRepo = mock(LinhaPoRepository.class);
         when(linhaRepo.saveAll(any())).thenAnswer(i -> {
             for (LinhaPo l : i.<Iterable<LinhaPo>>getArgument(0)) {
                 if (!linhas.contains(l)) {
@@ -152,6 +167,36 @@ final class CenarioPo {
                 arquivoRepo, fundoRepo, consulta, reservaDaPo, new RegistroAchados(achadoRepo, evidenciaRepo));
         gravacao = new GravacaoPrevisao(previsaoRepo, linhaRepo, new PropriedadesOrcamento(new BigDecimal("0.01")));
 
+        deparaRepo = mock(DeparaContaRepository.class);
+        when(deparaRepo.save(any())).thenAnswer(i -> {
+            DeparaConta d = i.getArgument(0);
+            if (!deparas.contains(d)) {
+                deparas.add(d);
+            }
+            return d;
+        });
+        when(deparaRepo.findByPrevisaoIdOrderByContaCodigo(any())).thenAnswer(i -> deparas.stream()
+                .filter(d -> d.getPrevisaoId().equals(i.getArgument(0)))
+                .sorted(Comparator.comparing(DeparaConta::getContaCodigo)).toList());
+        when(deparaRepo.findByPrevisaoIdAndContaCodigo(any(), anyString())).thenAnswer(i -> deparas.stream()
+                .filter(d -> d.getPrevisaoId().equals(i.getArgument(0)) && d.getContaCodigo().equals(i.getArgument(1)))
+                .findFirst());
+        eventoDeparaRepo = mock(EventoDeparaRepository.class);
+        when(eventoDeparaRepo.save(any())).thenAnswer(i -> {
+            eventosDepara.add(i.getArgument(0));
+            return i.getArgument(0);
+        });
+        when(eventoDeparaRepo.findByPrevisaoIdOrderByEmAscContaCodigoAsc(any())).thenAnswer(i -> eventosDepara.stream()
+                .filter(e -> e.getPrevisaoId().equals(i.getArgument(0))).toList());
+        LancamentoRepository lancamentoRepo = mock(LancamentoRepository.class);
+        when(lancamentoRepo.debitosComConta(any(), any(), any(), any())).thenAnswer(i -> lancamentos.stream()
+                .filter(l -> l.getFundoId().equals(i.getArgument(1)) && !l.getData().isBefore(i.getArgument(2))
+                        && !l.getData().isAfter(i.getArgument(3)) && l.getDebito().signum() != 0
+                        && !l.isTransferenciaEntreFundos() && l.getContaCodigo() != null)
+                .sorted(Comparator.comparing(Lancamento::getData)).toList());
+        depara = new ServicoDepara(condominios, previsaoRepo, linhaRepo, deparaRepo, eventoDeparaRepo, lancamentoRepo,
+                PropriedadesDepara.padrao());
+
         ata = arquivo(Categoria.ATA, "ata-ago-2026-05.pdf");
     }
 
@@ -163,6 +208,32 @@ final class CenarioPo {
             conferencias.add(new Conferencia(arquivo.getId(), i + 1, lidas.get(i)));
         }
         return gravacao.gravar(arquivo, "po-protest", po.previsao(), lidas);
+    }
+
+    /** Lê uma PO qualquer (ex.: a do golden privado) como a GravacaoResultado faria. */
+    PrevisaoOrcamentaria lerPo(PrevisaoLida lida, List<ConferenciaLida> lidas) {
+        Arquivo arquivo = arquivo(Categoria.PO, "PO-" + UUID.randomUUID() + ".pdf");
+        for (int i = 0; i < lidas.size(); i++) {
+            conferencias.add(new Conferencia(arquivo.getId(), i + 1, lidas.get(i)));
+        }
+        return gravacao.gravar(arquivo, "po-protest", lida, lidas);
+    }
+
+    /** PO do piloto lida e confirmada (exercício 05/2026 a 04/2027, 1.3.25 e os dois fundos). */
+    PrevisaoOrcamentaria poConfirmada() {
+        PrevisaoOrcamentaria po = lerPo(PoDoPiloto.padrao());
+        confirmacao.confirmar(condominioId, po.getId(), pedidoDoPiloto(po), "admin");
+        return po;
+    }
+
+    /** Débito no fundo Condomínio (fundo ordinário), num fluxo da categoria de balancetes. */
+    Lancamento debito(String conta, String nome, String valor, LocalDate data) {
+        var lido = new LancamentoLido(1, lancamentos.size() + 1, data, conta, nome, "", "Teste " + nome,
+                BigDecimal.ZERO.setScale(2), new BigDecimal(valor), BigDecimal.ZERO.setScale(2),
+                new Enriquecimento(null, null, null, false, false));
+        Lancamento l = new Lancamento(condominioId, UUID.randomUUID(), ordinario.getId(), lido);
+        lancamentos.add(l);
+        return l;
     }
 
     Arquivo arquivo(Categoria categoria, String nome) {

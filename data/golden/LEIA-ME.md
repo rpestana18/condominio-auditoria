@@ -8,6 +8,17 @@ Documentos reais com o resultado esperado. Toda mudança em leitor ou regra roda
   - `po-2026-2027.pdf`: PO 2026/2027 aprovada do piloto (1 página, 98 linhas: total, 9 grupos e 88 linhas).
   - `po-2026-2027.documento-lido.json`: saída do leitor Python para essa PO (contrato v1). Caso da leitura da PO
     (RF-03.1.1, RF-03.1.2 e RF-03.1.15) em `rag/.../leitura/po/InterpretadorPoProtestGoldenTest`.
+  - `fluxo-caixa-2026-09.resultado-v2.json` e `po-2026-2027.resultado-v2.json`: mensagens `ResultadoProcessamento` v2
+    que o rag publica para esses dois arquivos (ids fixos). São a entrada do golden do backend, que as lê pelo contrato
+    (`contracts/mensagens/v2`), sem usar classe do rag. Gravadas e conferidas por `rag/.../processamento/ResultadoGoldenTest`:
+    sem o arquivo, o teste grava; com ele, exige saída idêntica. Mudou a leitura do rag? Apague as duas, rode
+    `./gradlew :rag:test` e depois `./gradlew :backend:test`.
+  - `mapa-contas-fluxo-para-PO.csv`: de-para das 73 contas do piloto (planilha de sugestões do RF-03.1.5), cópia de
+    `piloto-mio/`. Caso do de-para em `backend/.../orcamento/DeparaGoldenTest`.
+  - `previsto-realizado-2026-09.csv`: previsto × realizado de setembro/2026 da análise manual, cópia de `piloto-mio/`
+    (caso de aceite do RF-03.1.15). Conferido linha a linha, centavo a centavo, em
+    `backend/.../orcamento/PrevistoRealizadoGoldenTest`, com os totais, grupos, regra dos 20% e fundos do RF-03.1.6 a
+    RF-03.1.11.
 
 Para regenerar os JSON depois de mudar o leitor Python (troque o nome do arquivo para a PO):
 

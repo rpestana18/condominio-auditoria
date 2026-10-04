@@ -107,6 +107,12 @@ public class RepositorioIndice {
      * Sem trechos = estado sem_texto. {@code vetores} nulo = embeddings desligados (só busca por palavra).
      */
     public void substituir(IndexarArquivo p, DocumentoCortado cortado, List<float[]> vetores, String modelo) {
+        substituir(p, cortado, vetores, modelo, null);
+    }
+
+    /** {@code aviso}: guardado em motivo quando indexado (ex.: sem vetores porque o Ollama estava fora). */
+    public void substituir(IndexarArquivo p, DocumentoCortado cortado, List<float[]> vetores, String modelo,
+            String aviso) {
         if (vetores != null && vetores.size() != cortado.trechos().size()) {
             throw new IllegalArgumentException("Vetores (" + vetores.size() + ") e trechos ("
                     + cortado.trechos().size() + ") não batem");
@@ -114,7 +120,7 @@ public class RepositorioIndice {
         transacao.executeWithoutResult(status -> {
             Map<String, Object> dados = dadosDoPedido(p);
             dados.put("estado", cortado.semTexto() ? "sem_texto" : "indexado");
-            dados.put("motivo", cortado.semTexto() ? cortado.motivoSemTexto() : null);
+            dados.put("motivo", cortado.semTexto() ? cortado.motivoSemTexto() : aviso);
             dados.put("paginas", cortado.paginas());
             dados.put("trechos", cortado.trechos().size());
             dados.put("modelo", vetores == null || cortado.semTexto() ? null : modelo);
@@ -213,6 +219,7 @@ public class RepositorioIndice {
 
     /**
      * Busca por palavra (português sem acento). websearch_to_tsquery aceita "frase entre aspas" e exclusão com -.
+     * A barra vale como espaço, como na coluna gerada (V2): "Transporte/Combustível" casa com "transporte".
      * Empate de relevância desempata pelo arquivo e pela ordem do trecho (resultado determinístico).
      */
     public List<Achado> buscarPorPalavra(FiltrosBusca filtros, String texto, int limite) {
@@ -223,7 +230,7 @@ public class RepositorioIndice {
                 select t.id, ts_rank(t.busca, q) as relevancia
                   from trecho t
                   join documento_indexado d on d.arquivo_id = t.arquivo_id,
-                       websearch_to_tsquery('rag.portuguese_unaccent', :texto) q
+                       websearch_to_tsquery('rag.portuguese_unaccent', translate(:texto, '/', ' ')) q
                  where t.busca @@ q and %s
                  order by relevancia desc, t.arquivo_id, t.ordem
                  limit :limite""".formatted(where.sql))
@@ -237,21 +244,37 @@ public class RepositorioIndice {
      * que um filtro muito seletivo devolva menos resultados que o pedido.
      */
     public List<UUID> buscarPorVetor(FiltrosBusca filtros, float[] vetor, String modelo, int limite) {
+        return buscarPorVetor(filtros, vetor, modelo, limite, null);
+    }
+
+    /**
+     * {@code restricoes}: frases obrigatórias e termos negados da pergunta ({@link RestricoesBusca}), aplicados aos
+     * candidatos vetoriais como na busca por palavra. Nulo = sem restrição.
+     */
+    public List<UUID> buscarPorVetor(FiltrosBusca filtros, float[] vetor, String modelo, int limite,
+            String restricoes) {
         if (!NOME_MODELO.matcher(modelo).matches()) {
             throw new IllegalArgumentException("Nome de modelo inválido: " + modelo);
         }
         var where = new Filtro(filtros);
         where.parametros.put("vetor", GeradorEmbeddings.comoTexto(vetor));
         where.parametros.put("limite", limite);
+        String condicaoRestricoes = "";
+        if (restricoes != null && !restricoes.isBlank()) {
+            // Restrição só com palavras vazias (ex.: -de) vira tsquery vazia: não restringe nada
+            String consulta = "websearch_to_tsquery('rag.portuguese_unaccent', translate(:restricoes, '/', ' '))";
+            condicaoRestricoes = " and (numnode(" + consulta + ") = 0 or t.busca @@ " + consulta + ")";
+            where.parametros.put("restricoes", restricoes);
+        }
         // Modelo literal (validado acima) para o planejador poder usar o índice HNSW parcial daquele modelo
         String sql = """
                 select t.id
                   from trecho t
                   join documento_indexado d on d.arquivo_id = t.arquivo_id
                   join trecho_vetor v on v.trecho_id = t.id and v.modelo = '%s'
-                 where %s
+                 where %s%s
                  order by v.vetor <=> cast(:vetor as public.vector)
-                 limit :limite""".formatted(modelo, where.sql);
+                 limit :limite""".formatted(modelo, where.sql, condicaoRestricoes);
         return transacao.execute(status -> {
             jdbc.sql("select set_config('hnsw.iterative_scan', 'strict_order', true)").query().singleValue();
             jdbc.sql("select set_config('hnsw.ef_search', '100', true)").query().singleValue();

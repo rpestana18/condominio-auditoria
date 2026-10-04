@@ -137,6 +137,53 @@ class RepositorioIndiceBancoTest {
                 .hasSize(1);
     }
 
+    @Test
+    void barraValeComoEspacoEExclusaoEFraseValemNoLadoVetorial() {
+        UUID condominio = UUID.randomUUID();
+        IndexarArquivo folha = pedido(condominio, "FOLHA", null, null);
+        gravar(folha, List.of(
+                trecho(1, new Localizacao.Pagina(1), "Salário base do zelador"),
+                trecho(2, new Localizacao.Pagina(2), "Salário e Vale Transporte"),
+                trecho(3, new Localizacao.Pagina(3), "Despesas Transporte/Combustível do salário"),
+                trecho(4, new Localizacao.Pagina(4), "Folha de pagamento: encargos")), 0);
+        var todos = new FiltrosBusca(condominio, null, null, null, null);
+
+        // Palavra: "Transporte/Combustível" agora casa com transporte e com combustivel
+        assertThat(repositorio.buscarPorPalavra(todos, "combustivel", 10)).hasSize(1);
+        assertThat(repositorio.buscarPorPalavra(todos, "transporte", 10)).hasSize(2);
+        assertThat(repositorio.buscarPorPalavra(todos, "salário -transporte", 10)).hasSize(1);
+
+        // Vetor: sem restrição vêm os 4; com exclusão, os que têm transporte saem; com frase, só quem a contém
+        assertThat(repositorio.buscarPorVetor(todos, eixo(1), "bge-m3", 10)).hasSize(4);
+        List<UUID> semTransporte = repositorio.buscarPorVetor(todos, eixo(1), "bge-m3", 10,
+                RestricoesBusca.extrair("salário -transporte"));
+        assertThat(repositorio.carregar(semTransporte)).extracting(TrechoEncontrado::localizacao)
+                .containsExactlyInAnyOrder(new Localizacao.Pagina(1), new Localizacao.Pagina(4));
+        List<UUID> frase = repositorio.buscarPorVetor(todos, eixo(1), "bge-m3", 10,
+                RestricoesBusca.extrair("\"folha de pagamento\" encargos"));
+        assertThat(repositorio.carregar(frase)).extracting(TrechoEncontrado::localizacao)
+                .containsExactly(new Localizacao.Pagina(4));
+        // Restrição só com palavra vazia não zera a busca
+        assertThat(repositorio.buscarPorVetor(todos, eixo(1), "bge-m3", 10, "-de")).hasSize(4);
+    }
+
+    @Test
+    void indexadoSemVetorEntraNaBuscaPorPalavraComAviso() {
+        UUID condominio = UUID.randomUUID();
+        IndexarArquivo ata = pedido(condominio, "ATA", null, null);
+        repositorio.marcarIndexando(ata);
+        repositorio.substituir(ata, new DocumentoCortado(1, List.of(trecho(1, new Localizacao.Pagina(1),
+                "Multa por atraso")), null), null, null, "Indexado só para a busca por palavra: Ollama fora");
+
+        var doc = repositorio.buscar(ata.arquivoId()).orElseThrow();
+        assertThat(doc.estado()).isEqualTo("indexado");
+        assertThat(doc.modeloEmbeddings()).isNull();
+        assertThat(doc.motivo()).contains("Ollama fora");
+        var todos = new FiltrosBusca(condominio, null, null, null, null);
+        assertThat(repositorio.buscarPorPalavra(todos, "multa", 10)).hasSize(1);
+        assertThat(repositorio.buscarPorVetor(todos, eixo(0), "bge-m3", 10)).isEmpty();
+    }
+
     private static void gravar(IndexarArquivo pedido, List<TrechoCortado> trechos, int primeiroEixo) {
         repositorio.marcarIndexando(pedido);
         List<float[]> vetores = new java.util.ArrayList<>();

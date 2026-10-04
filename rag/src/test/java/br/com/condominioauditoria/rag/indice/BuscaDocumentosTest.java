@@ -36,7 +36,7 @@ class BuscaDocumentosTest {
         when(embeddings.modelo()).thenReturn("bge-m3");
         when(repositorio.buscarPorPalavra(FILTROS, "multa", 50)).thenReturn(List.of(new Achado(A, 0.9),
                 new Achado(B, 0.5)));
-        when(repositorio.buscarPorVetor(eq(FILTROS), any(), eq("bge-m3"), eq(50))).thenReturn(List.of(C, B));
+        when(repositorio.buscarPorVetor(eq(FILTROS), any(), eq("bge-m3"), eq(50), eq(null))).thenReturn(List.of(C, B));
         when(repositorio.carregar(any())).thenAnswer(i -> ((List<UUID>) i.getArgument(0)).stream()
                 .map(BuscaDocumentosTest::trecho).toList());
 
@@ -58,7 +58,7 @@ class BuscaDocumentosTest {
 
         assertThat(resultado.modoUsado()).isEqualTo(BuscaDocumentos.Modo.PALAVRA);
         assertThat(resultado.trechos()).singleElement().satisfies(t -> assertThat(t.pontuacao()).isEqualTo(0.7));
-        verify(repositorio, never()).buscarPorVetor(any(), any(), anyString(), anyInt());
+        verify(repositorio, never()).buscarPorVetor(any(), any(), anyString(), anyInt(), any());
     }
 
     @Test
@@ -72,6 +72,20 @@ class BuscaDocumentosTest {
         verify(repositorio).buscarPorPalavra(eq(FILTROS), eq("ata"), limite.capture());
         assertThat(limite.getValue()).isEqualTo(50);
         verify(embeddings, never()).gerar(anyString());
+    }
+
+    @Test
+    void exclusaoEFraseVaoParaOLadoVetorial() {
+        when(embeddings.gerar(anyString())).thenReturn(new float[1024]);
+        when(embeddings.modelo()).thenReturn("bge-m3");
+        when(repositorio.buscarPorPalavra(any(), anyString(), anyInt())).thenReturn(List.of());
+        when(repositorio.buscarPorVetor(any(), any(), anyString(), anyInt(), any())).thenReturn(List.of());
+        when(repositorio.carregar(any())).thenReturn(List.of());
+
+        busca.buscar(FILTROS, "\"folha de pagamento\" salário -transporte", BuscaDocumentos.Modo.HIBRIDA, 0);
+
+        verify(repositorio).buscarPorVetor(eq(FILTROS), any(), eq("bge-m3"), eq(50),
+                eq("\"folha de pagamento\" -transporte"));
     }
 
     private static TrechoEncontrado trecho(UUID id) {

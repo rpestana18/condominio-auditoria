@@ -90,6 +90,14 @@ class ContratoIndexacaoTest {
     }
 
     @Test
+    void indexadoSemVetoresComAvisoSaiNoContrato() throws Exception {
+        IndexarArquivo pedido = contrato.lerIndexarArquivo(exemplo("indexar-arquivo-indexar.json"));
+        String json = texto(contrato.escrever(ResultadoIndexacao.indexado(pedido, 3, 2, null, "1",
+                "Indexado só para a busca por palavra, sem busca por significado: Ollama fora")));
+        assertThat(json).contains("\"INDEXADO\"").contains("\"modeloEmbeddings\":null").contains("Ollama fora");
+    }
+
+    @Test
     void erroSemMotivoEhRecusadoNaSaida() throws Exception {
         IndexarArquivo pedido = contrato.lerIndexarArquivo(exemplo("indexar-arquivo-indexar.json"));
         assertThatThrownBy(() -> contrato.escrever(ResultadoIndexacao.erro(pedido, null)))

@@ -134,12 +134,22 @@ class IndexadorArquivo {
         }
         List<float[]> vetores = null;
         String modelo = modeloDoPedido(pedido);
+        String aviso = null;
         if (modelo != null) {
-            vetores = embeddings.gerar(cortado.trechos().stream().map(TrechoCortado::texto).toList());
+            try {
+                vetores = embeddings.gerar(cortado.trechos().stream().map(TrechoCortado::texto).toList());
+            } catch (EmbeddingsIndisponiveisException erro) {
+                // Sem vetores o arquivo ainda entra na busca por palavra. Fica gravado sem modelo, então o próximo
+                // pedido com o Ollama de pé não é tratado como repetido e gera os vetores.
+                aviso = limitar("Indexado só para a busca por palavra, sem busca por significado: "
+                        + erro.getMessage());
+                log.warn("Arquivo {} indexado sem vetores: {}", pedido.nomeOriginal(), erro.getMessage());
+                modelo = null;
+            }
         }
-        repositorio.substituir(pedido, cortado, vetores, modelo);
+        repositorio.substituir(pedido, cortado, vetores, modelo, aviso);
         return ResultadoIndexacao.indexado(pedido, cortado.paginas(), cortado.trechos().size(), modelo,
-                CortadorTrechos.VERSAO);
+                CortadorTrechos.VERSAO, aviso);
     }
 
     private void publicar(ResultadoIndexacao resultado) {

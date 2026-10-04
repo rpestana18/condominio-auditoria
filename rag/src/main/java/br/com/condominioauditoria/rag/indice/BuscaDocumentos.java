@@ -59,7 +59,9 @@ public class BuscaDocumentos {
         }
         List<UUID> palavras = repositorio.buscarPorPalavra(filtros, texto, CANDIDATOS).stream().map(Achado::id)
                 .toList();
-        List<UUID> vetores = repositorio.buscarPorVetor(filtros, vetor, embeddings.modelo(), CANDIDATOS);
+        // Frases e exclusões da pergunta valem também para os candidatos vetoriais
+        List<UUID> vetores = repositorio.buscarPorVetor(filtros, vetor, embeddings.modelo(), CANDIDATOS,
+                RestricoesBusca.extrair(texto));
         List<FusaoPosicoes.Pontuado> fundidos = FusaoPosicoes.fundir(List.of(palavras, vetores), FusaoPosicoes.K, n);
         return new Resultado(comPontuacao(fundidos.stream().map(FusaoPosicoes.Pontuado::id).toList(),
                 pontuacoes(fundidos)), Modo.HIBRIDA);

@@ -17,7 +17,13 @@ public record ResultadoIndexacao(int versao, UUID indexacaoId, UUID arquivoId, U
 
     public static ResultadoIndexacao indexado(IndexarArquivo p, int paginas, int trechos, String modelo,
             String versaoIndexador) {
-        return new ResultadoIndexacao(1, p.indexacaoId(), p.arquivoId(), p.condominioId(), Situacao.INDEXADO, null,
+        return indexado(p, paginas, trechos, modelo, versaoIndexador, null);
+    }
+
+    /** {@code aviso}: ex.: indexado só para a busca por palavra porque o Ollama estava fora (vai em motivo). */
+    public static ResultadoIndexacao indexado(IndexarArquivo p, int paginas, int trechos, String modelo,
+            String versaoIndexador, String aviso) {
+        return new ResultadoIndexacao(1, p.indexacaoId(), p.arquivoId(), p.condominioId(), Situacao.INDEXADO, aviso,
                 paginas, trechos, modelo, versaoIndexador);
     }
 

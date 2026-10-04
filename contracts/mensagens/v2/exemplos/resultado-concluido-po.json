@@ -328,8 +328,8 @@
     {
       "codigo": "SUBTOTAL_GRUPO",
       "descricao": "Soma das linhas do grupo 1.3 = subtotal impresso",
-      "ok": true,
-      "detalhe": "1.3 SERVIÇOS - CONTRATOS EFETIVOS: soma das linhas 336.274,17; impresso 336.274,17"
+      "ok": false,
+      "detalhe": "1.3 SERVIÇOS - CONTRATOS EFETIVOS: soma das linhas 336.274,18; impresso 336.274,17"
     },
     {
       "codigo": "SUBTOTAL_GRUPO",
@@ -364,8 +364,8 @@
     {
       "codigo": "SUBTOTAL_GRUPO",
       "descricao": "Soma das linhas do grupo 1.9 = subtotal impresso",
-      "ok": true,
-      "detalhe": "1.9 Fundos do Condomínio: soma das linhas 22.581,01; impresso 22.581,01"
+      "ok": false,
+      "detalhe": "1.9 Fundos do Condomínio: soma das linhas 22.581,00; impresso 22.581,01"
     },
     {
       "codigo": "TOTAL",

@@ -80,6 +80,42 @@ class InterpretadorFluxoCaixaGoldenTest {
                 .isEqualByComparingTo("18215.37");
     }
 
+    /** ADR 0004, Decisão 7 e RF-03.1.9: arrecadação dos fundos = créditos "RECIBOS ACUMULADOS". */
+    @Test
+    void recebimentosDeCotaDosFundosBatemComAAnaliseManual() {
+        assertThat(somaRecebimentosDeCota("FUNDO DE RESERVA")).isEqualByComparingTo("14260.79");
+        assertThat(somaRecebimentosDeCota("OBRAS / REFORMAS / INFRA")).isEqualByComparingTo("9705.06");
+        assertThat(somaRecebimentosDeCota("OBRAS")).isEqualByComparingTo("25.13");
+    }
+
+    @Test
+    void todosOsCreditosDoFundoDeReservaSaoRecebimentoDeCota() {
+        assertThat(secao("FUNDO DE RESERVA").lancamentos()).filteredOn(l -> l.credito().signum() != 0)
+                .hasSize(24)
+                .allSatisfy(l -> assertThat(l.enriquecimento().recebimentoCota()).isTrue());
+    }
+
+    @Test
+    void nenhumDebitoMarcadoComoRecebimentoDeCota() {
+        var marcados = fluxo.secoes().stream().flatMap(s -> s.lancamentos().stream())
+                .filter(l -> l.enriquecimento().recebimentoCota()).toList();
+        assertThat(marcados).isNotEmpty().allSatisfy(l -> {
+            assertThat(l.debito().signum()).isZero();
+            assertThat(l.historico()).isEqualTo("RECIBOS ACUMULADOS");
+        });
+        assertThat(fluxo.secoes().stream().flatMap(s -> s.lancamentos().stream())
+                .filter(l -> l.debito().signum() != 0 && l.enriquecimento().recebimentoCota())).isEmpty();
+    }
+
+    private static br.com.condominioauditoria.rag.dominio.fluxo.SecaoFundo secao(String fundo) {
+        return fluxo.secoes().stream().filter(s -> s.fundo().equals(fundo)).findFirst().orElseThrow();
+    }
+
+    private static BigDecimal somaRecebimentosDeCota(String fundo) {
+        return secao(fundo).lancamentos().stream().filter(l -> l.enriquecimento().recebimentoCota())
+                .map(LancamentoFluxo::credito).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
     @Test
     void contaEmDuasLinhas() {
         var issCaixaGordura = fluxo.secoes().getFirst().lancamentos().stream()

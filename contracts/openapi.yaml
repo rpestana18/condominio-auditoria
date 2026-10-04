@@ -79,7 +79,7 @@ paths:
   /condominios/{condominioId}/arquivos/{id}/reprocessar:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/ArquivoId" }]
     post:
-      summary: Coloca o arquivo de novo na fila (GESTOR ou ADMIN). Não duplica dados.
+      summary: Coloca o arquivo de novo na fila de leitura e de indexação (GESTOR ou ADMIN). Não duplica dados.
       operationId: reprocessarArquivo
       responses:
         "202": { description: Na fila, content: { application/json: { schema: { $ref: "#/components/schemas/ArquivoResumo" } } } }
@@ -350,6 +350,23 @@ components:
         enviadoPor: { type: string }
         enviadoEm: { type: string, format: date-time }
         processadoEm: { type: [string, "null"], format: date-time }
+        indexacao:
+          description: Estado da indexação para a busca nos documentos (ADR 0003). Nulo ou ausente = arquivo ainda não indexado (enviado antes da busca; reprocessar indexa).
+          anyOf:
+            - { $ref: "#/components/schemas/IndexacaoArquivo" }
+            - { type: "null" }
+    SituacaoIndexacao:
+      type: string
+      description: NA_FILA e INDEXANDO = em andamento; INDEXADO = aparece na busca; SEM_TEXTO = sem texto extraível (ex. PDF digitalizado); RETIRADO = fora da busca (exclusão lógica ou versão substituída); ERRO = falhou (ver motivo).
+      enum: [NA_FILA, INDEXANDO, INDEXADO, SEM_TEXTO, RETIRADO, ERRO]
+    IndexacaoArquivo:
+      type: object
+      required: [situacao]
+      properties:
+        situacao: { $ref: "#/components/schemas/SituacaoIndexacao" }
+        motivo: { type: [string, "null"], description: "Preenchido em SEM_TEXTO e ERRO" }
+        paginas: { type: [integer, "null"], description: "Páginas (PDF), abas (Excel) ou 1 (Word) lidas" }
+        trechos: { type: [integer, "null"], description: "Trechos gravados no índice" }
     ArquivoDetalhe:
       type: object
       required: [arquivo, sha256, conferencias, fundos]

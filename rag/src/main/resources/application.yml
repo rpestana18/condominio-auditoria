@@ -1,6 +1,29 @@
 spring:
   application:
     name: rag
+  datasource:
+    # Mesmo PostgreSQL do backend, schema próprio "rag" (ADR 0002); public entra no caminho por causa do tipo vector
+    url: ${BANCO_URL:jdbc:postgresql://localhost:5432/condominio}?currentSchema=rag,public
+    username: ${BANCO_USUARIO:condominio}
+    password: ${BANCO_SENHA:condominio}
+  flyway:
+    schemas: rag
+    default-schema: rag
+  ai:
+    model:
+      # Só embeddings nesta entrega; o chat do Ollama fica desligado (respostas são da entrega 3, ADR 0003)
+      chat: none
+      embedding: ollama
+    ollama:
+      base-url: ${OLLAMA_URL:http://localhost:11434}
+      embedding:
+        model: ${OLLAMA_MODELO_EMBEDDINGS:bge-m3}
+        # Texto acima do contexto do modelo (8 mil tokens no bge-m3) é cortado pelo Ollama em vez de falhar
+        truncate: true
+      init:
+        # O modelo é baixado por um passo do compose para um volume (ADR 0003, Decisão 2). Aqui nunca baixa sozinho,
+        # a não ser que OLLAMA_BAIXAR_MODELO=when_missing (útil só em desenvolvimento)
+        pull-model-strategy: ${OLLAMA_BAIXAR_MODELO:never}
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORTA:5672}
@@ -22,6 +45,17 @@ server:
   port: ${PORTA:8082}
 
 rag:
+  grpc:
+    porta: ${GRPC_PORTA:9091}
+  indexacao:
+    # Arquivos indexados ao mesmo tempo; fila própria, não disputa com a leitura contábil
+    paralelismo: ${RAG_PARALELISMO_INDEXACAO:1}
+  embeddings:
+    # Prazo de cada chamada ao Ollama; fora do ar = erro legível em segundos, sem travar a fila
+    timeout-conexao-segundos: ${OLLAMA_TIMEOUT_CONEXAO:5}
+    timeout-segundos: ${OLLAMA_TIMEOUT:300}
+    # Trechos por chamada ao Ollama
+    lote: 16
   armazenamento:
     tipo: local
     pasta: ${PASTA_DADOS:./dados}

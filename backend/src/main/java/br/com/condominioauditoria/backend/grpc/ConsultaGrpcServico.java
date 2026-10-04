@@ -11,6 +11,8 @@ import br.com.condominioauditoria.backend.contabil.LancamentoRepository;
 import br.com.condominioauditoria.backend.painel.PainelService;
 import br.com.condominioauditoria.backend.seguranca.AcessoCondominio;
 import br.com.condominioauditoria.contratos.consulta.v1.ArquivoResumo;
+import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosRequest;
+import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosResponse;
 import br.com.condominioauditoria.contratos.consulta.v1.CondominioResumo;
 import br.com.condominioauditoria.contratos.consulta.v1.Conferencia;
 import br.com.condominioauditoria.contratos.consulta.v1.ConferenciasDoArquivoRequest;
@@ -60,10 +62,11 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
     private final FundoRepository fundos;
     private final LancamentoRepository lancamentos;
     private final PainelService painel;
+    private final BuscaDocumentos buscaDocumentos;
 
     ConsultaGrpcServico(AcessoCondominio acesso, CondominioRepository condominios, ArquivoRepository arquivos,
             ConferenciaRepository conferencias, FundoRepository fundos, LancamentoRepository lancamentos,
-            PainelService painel) {
+            PainelService painel, BuscaDocumentos buscaDocumentos) {
         this.acesso = acesso;
         this.condominios = condominios;
         this.arquivos = arquivos;
@@ -71,6 +74,7 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
         this.fundos = fundos;
         this.lancamentos = lancamentos;
         this.painel = painel;
+        this.buscaDocumentos = buscaDocumentos;
     }
 
     @Override
@@ -185,6 +189,16 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
         } catch (RuntimeException erro) {
             resposta.onError(traduzir(erro));
         }
+    }
+
+    /**
+     * Busca trechos nos documentos do condomínio, pelo rag (ADR 0003, Decisão 5.3). Mesma verificação de token, perfil
+     * e condomínio dos outros rpcs; o rag ainda filtra pelo condomínio e o backend descarta, na volta, trechos de
+     * arquivos que não são do condomínio.
+     */
+    @Override
+    public void buscarDocumentos(BuscarDocumentosRequest pedido, StreamObserver<BuscarDocumentosResponse> resposta) {
+        responder(resposta, () -> buscaDocumentos.buscar(condominio(pedido.getCondominioId()), pedido));
     }
 
     // ---- apoio ----

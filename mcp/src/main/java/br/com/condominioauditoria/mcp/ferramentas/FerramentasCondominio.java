@@ -1,10 +1,14 @@
 package br.com.condominioauditoria.mcp.ferramentas;
 
+import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosRequest;
 import br.com.condominioauditoria.contratos.consulta.v1.ConferenciasDoArquivoRequest;
+import br.com.condominioauditoria.contratos.consulta.v1.FiltrosDocumentos;
 import br.com.condominioauditoria.contratos.consulta.v1.ListarArquivosRequest;
 import br.com.condominioauditoria.contratos.consulta.v1.ListarCondominiosRequest;
 import br.com.condominioauditoria.contratos.consulta.v1.ListarLancamentosRequest;
+import br.com.condominioauditoria.contratos.consulta.v1.LocalizacaoTrecho;
 import br.com.condominioauditoria.contratos.consulta.v1.ResumoFundosRequest;
+import br.com.condominioauditoria.contratos.consulta.v1.TrechoDocumento;
 import io.grpc.StatusRuntimeException;
 import io.modelcontextprotocol.common.McpTransportContext;
 import java.util.ArrayList;
@@ -18,7 +22,7 @@ import org.springframework.stereotype.Component;
 /**
  * Ferramentas que a IA externa enxerga. Todas são só de leitura e respondem com os números já gravados e conferidos
  * pelo backend, com a origem (arquivo e página) para o usuário conferir. Valores em reais vêm como texto com duas
- * casas ("1234.56").
+ * casas ("1234.56"). A exceção é buscar_documentos, que devolve texto dos documentos para citar (ADR 0003, 5.3).
  */
 @Component
 class FerramentasCondominio {
@@ -126,6 +130,94 @@ class FerramentasCondominio {
         });
     }
 
+    @McpTool(name = "buscar_documentos",
+            description = "Busca trechos nos documentos enviados do condomínio (atas, contratos, convenção, extratos, "
+                    + "balancetes, planilhas e outros) para responder o que está escrito neles. Cada trecho vem com o "
+                    + "nome do documento, a categoria e a localização no original (\"página 3\", \"aba Plan1, linhas "
+                    + "2–31\" ou \"parágrafos 4–7\"): cite sempre essa localização ao usar o trecho. O texto é "
+                    + "transcrição literal e não foi conferido: valores que aparecem nele não servem para somar ou "
+                    + "comparar; para números use resumo_fundos, buscar_lancamentos e conferencias_do_arquivo. "
+                    + "Sem resultado não prova que algo não existe: só que não foi achado nos documentos indexados. "
+                    + "Só aparecem arquivos já indexados (situação da indexação na lista de arquivos).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false))
+    BuscaDocumentos buscarDocumentos(McpTransportContext contexto,
+            @McpToolParam(description = "Id do condomínio (veja listar_condominios)") String condominioId,
+            @McpToolParam(description = "O que procurar, em português. Palavras soltas acham qualquer forma "
+                    + "(com ou sem acento); \"frase entre aspas\" exige a frase exata; -palavra exclui trechos com "
+                    + "ela. Ex.: \"reajuste da taxa\" -2023") String texto,
+            @McpToolParam(required = false, description = "Só estas categorias: BALANCETE, EXTRATO, PO, CONTRATO, "
+                    + "FOLHA, COMPROVANTE, ATA, CONVENCAO_RI ou OUTROS. Vazio = todas") List<String> categorias,
+            @McpToolParam(required = false, description = "Só documentos com competência a partir desta data, "
+                    + "AAAA-MM-DD") String dataInicio,
+            @McpToolParam(required = false, description = "Só documentos com competência até esta data, AAAA-MM-DD")
+            String dataFim,
+            @McpToolParam(required = false, description = "Só estes arquivos (ids de listar_arquivos). Vazio = todos")
+            List<String> arquivoIds,
+            @McpToolParam(required = false, description = "Quantos trechos no máximo, de 1 a 50 (padrão 10)")
+            Integer limite) {
+        if (texto == null || texto.isBlank()) {
+            throw new IllegalArgumentException("Informe o texto da busca");
+        }
+        if (limite != null && limite < 1) {
+            throw new IllegalArgumentException("O limite vai de 1 a 50; recebido " + limite);
+        }
+        var filtros = FiltrosDocumentos.newBuilder()
+                .addAllCategorias(semVazios(categorias))
+                .setDataInicio(Objects.toString(dataInicio, "").strip())
+                .setDataFim(Objects.toString(dataFim, "").strip())
+                .addAllArquivoIds(semVazios(arquivoIds))
+                .build();
+        var pedido = BuscarDocumentosRequest.newBuilder()
+                .setCondominioId(Objects.toString(condominioId, "").strip())
+                .setTexto(texto.strip())
+                .setFiltros(filtros)
+                .setLimite(limite == null ? LIMITE_PADRAO_BUSCA : Math.min(limite, LIMITE_MAXIMO_BUSCA))
+                .build();
+        return chamar(() -> {
+            var r = backend.consulta(contexto).buscarDocumentos(pedido);
+            String modo = switch (r.getModoUsado()) {
+                case MODO_BUSCA_DOCUMENTOS_PALAVRA -> "PALAVRA";
+                case MODO_BUSCA_DOCUMENTOS_HIBRIDA -> "HIBRIDA";
+                default -> "NAO_INFORMADO";
+            };
+            List<TrechoEncontrado> trechos = r.getTrechosList().stream().map(FerramentasCondominio::trecho).toList();
+            return new BuscaDocumentos(modo, trechos.size(), trechos, AVISO_BUSCA);
+        });
+    }
+
+    private static final int LIMITE_PADRAO_BUSCA = 10;
+    private static final int LIMITE_MAXIMO_BUSCA = 50;
+    private static final String AVISO_BUSCA = "Texto transcrito dos documentos, não conferido. Cite documento e "
+            + "localização. Para valores, use as ferramentas numéricas.";
+
+    private static List<String> semVazios(List<String> valores) {
+        return valores == null ? List.of()
+                : valores.stream().filter(Objects::nonNull).map(String::strip).filter(v -> !v.isEmpty()).toList();
+    }
+
+    static TrechoEncontrado trecho(TrechoDocumento t) {
+        Integer pagina = t.getLocalizacao().hasPagina() ? t.getLocalizacao().getPagina().getPagina() : null;
+        return new TrechoEncontrado(t.getNomeArquivo(), t.getArquivoId(), t.getCategoria(),
+                localizacaoLegivel(t.getLocalizacao()), pagina, t.getTexto(), t.getSha256(), t.getTrechoId());
+    }
+
+    /** "página 3", "aba Plan1, linhas 2–31" ou "parágrafos 4–7, seção Cláusula 5". */
+    static String localizacaoLegivel(LocalizacaoTrecho l) {
+        return switch (l.getTipoCase()) {
+            case PAGINA -> "página " + l.getPagina().getPagina();
+            case PLANILHA -> "aba " + l.getPlanilha().getAba() + ", "
+                    + intervalo("linha", "linhas", l.getPlanilha().getLinhaInicio(), l.getPlanilha().getLinhaFim());
+            case PARAGRAFOS -> intervalo("parágrafo", "parágrafos", l.getParagrafos().getParagrafoInicio(),
+                    l.getParagrafos().getParagrafoFim())
+                    + (l.getParagrafos().getSecao().isBlank() ? "" : ", seção " + l.getParagrafos().getSecao());
+            case TIPO_NOT_SET -> "localização não informada";
+        };
+    }
+
+    private static String intervalo(String singular, String plural, int inicio, int fim) {
+        return fim <= inicio ? singular + " " + inicio : plural + " " + inicio + "–" + fim;
+    }
+
     private static <T> T chamar(Supplier<T> chamada) {
         try {
             return chamada.get();
@@ -151,6 +243,15 @@ class FerramentasCondominio {
     }
 
     record Conferencia(String codigo, String descricao, boolean ok, String detalhe) {
+    }
+
+    /** Resultado de buscar_documentos. modoUsado: PALAVRA (só por palavra) ou HIBRIDA (palavra e sentido). */
+    record BuscaDocumentos(String modoUsado, int total, List<TrechoEncontrado> trechos, String aviso) {
+    }
+
+    /** pagina só vem preenchida em PDF; localizacao sempre vem em texto legível para citar. */
+    record TrechoEncontrado(String documento, String arquivoId, String categoria, String localizacao, Integer pagina,
+            String texto, String sha256, String trechoId) {
     }
 
     record Lancamento(String data, String fundo, String contaCodigo, String contaNome, String historico,

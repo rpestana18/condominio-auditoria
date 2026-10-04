@@ -27,6 +27,13 @@ public interface ArquivoRepository extends JpaRepository<Arquivo, UUID> {
     /** Parados na fila há mais tempo que o limite (mensagem perdida, serviço fora do ar). */
     List<Arquivo> findByStatusInAndEnfileiradoEmBeforeOrderByEnviadoEm(Collection<StatusArquivo> status, java.time.Instant limite);
 
+    /** Pedidos de indexação parados há mais tempo que o limite (mensagem perdida, rag fora do ar). */
+    List<Arquivo> findByIndexacaoSituacaoInAndIndexacaoEnfileiradaEmBeforeOrderByEnviadoEm(
+            Collection<SituacaoIndexacao> situacoes, java.time.Instant limite);
+
+    /** Dos ids informados, só os que existem e são do condomínio (segunda barreira da busca nos documentos). */
+    List<Arquivo> findByCondominioIdAndIdIn(UUID condominioId, Collection<UUID> ids);
+
     /** Último fluxo de caixa lido (com ou sem pendência de revisão), pelo período mais recente. */
     Optional<Arquivo> findFirstByCondominioIdAndInterpretadorAndStatusInOrderByPeriodoFimDescEnviadoEmDesc(
             UUID condominioId, String interpretador, Collection<StatusArquivo> status);

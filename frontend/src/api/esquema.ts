@@ -176,6 +176,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/fundo-ordinario": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Confirma qual fundo é o ordinário do condomínio (GESTOR ou ADMIN) */
+        put: operations["confirmarFundoOrdinario"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -252,7 +271,21 @@ export interface components {
             saidas: number;
             saldoAtual: number;
             conferenciasComFalha: number;
+            /**
+             * @description Saldo acumulado do fundo ordinário (cartão "Saldo acumulado"). Com confirmado=false é só a sugestão
+             *     (fundo com mais entradas no mês), que a tela mostra para o Gestor confirmar. Nulo quando não há sugestão.
+             */
+            fundoOrdinario: null | {
+                /** Format: uuid */
+                fundoId: string;
+                fundo: string;
+                confirmado: boolean;
+                /** @description Nulo quando o fundo confirmado não está no relatório */
+                saldoAtual: number | null;
+            };
             fundos: {
+                /** Format: uuid */
+                fundoId: string;
                 fundo: string;
                 saldoAnterior: number;
                 entradas: number;
@@ -589,6 +622,47 @@ export interface operations {
             };
             /** @description Ainda não há fluxo de caixa processado */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    confirmarFundoOrdinario: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    fundoId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Confirmado */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Perfil sem permissão */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fundo não é deste condomínio */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

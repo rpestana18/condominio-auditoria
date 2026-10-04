@@ -13,9 +13,9 @@ Só dois programas. Java, Node e Python **não** são necessários para rodar, p
 | **Git** | https://git-scm.com/downloads | `git --version` |
 | **Docker Desktop** (Windows/Mac) ou **Docker Engine + Compose** (Linux) | https://www.docker.com/products/docker-desktop | `docker compose version` |
 
-No Docker Desktop, reserve pelo menos **4 GB de memória** (Settings → Resources) e deixe o Docker aberto.
+No Docker Desktop, reserve pelo menos **6 GB de memória** (o Ollama, que gera os embeddings da busca nos documentos, usa cerca de 1,5 GB) e **3 GB de disco** livres para o modelo (Settings → Resources) e deixe o Docker aberto.
 
-As portas **8080** a **8083**, **8090**, **8180**, **9090**, **5432**, **5672** e **15672** precisam estar livres. Se você já tem um PostgreSQL local na 5432 ou um RabbitMQ na 5672, pare o serviço antes.
+As portas **8080** a **8083**, **8090**, **8180**, **9090**, **5432**, **5672**, **11434** (só no endereço local) e **15672** precisam estar livres. Se você já tem um PostgreSQL local na 5432 ou um RabbitMQ na 5672, pare o serviço antes.
 
 ### 2. Baixe o código
 
@@ -65,6 +65,14 @@ Os arquivos enviados ficam na pasta `dados/` na raiz do projeto e não são apag
 
 Já rodava a versão anterior (antes dos serviços separados)? O backend passou a usar o schema `backend` do banco e cria as tabelas de novo nele. Os arquivos da pasta `dados/` continuam lá: envie de novo ou rode `docker compose down -v` para começar limpo.
 
+### Busca nos documentos (modelo bge-m3 e índice)
+
+A busca nos documentos usa embeddings locais gerados pelo **Ollama** com o modelo **bge-m3** (nada sai da sua máquina). Na **primeira** subida, o passo `ollama-modelo` baixa o modelo (cerca de **1,2 GB**) para o volume `ollama`, e o `rag` só sobe depois que o download termina: conte alguns minutos a mais. Acompanhe com `docker compose logs -f ollama-modelo`. Nas próximas subidas o modelo já está no volume e nada é baixado (`docker compose down -v` apaga o volume e o modelo é baixado de novo).
+
+Cada arquivo enviado entra no índice em segundo plano, separado da leitura contábil. A situação da indexação (`NA_FILA`, `INDEXANDO`, `INDEXADO`, `SEM_TEXTO`, `ERRO`) vem no campo `indexacao` de cada arquivo na API (`GET /api/condominios/{id}/arquivos`). Arquivos enviados **antes desta versão** não estão no índice: use **Reprocessar** em cada um para que entrem na busca.
+
+Sem o Ollama, a busca continua funcionando só por palavra para o que já foi indexado; arquivos novos ficam com a indexação em `ERRO` até o Ollama voltar e o arquivo ser reprocessado.
+
 ### Endereços úteis
 
 | O quê | Endereço | Acesso |
@@ -90,6 +98,9 @@ Já rodava a versão anterior (antes dos serviços separados)? O backend passou 
 | Quer ver os logs | `docker compose logs -f backend` (ou `rag`, `mcp`, `leitor`, `fila`, `keycloak`, `banco`) |
 | Linux: erro de permissão ao gravar ou ler em `/dados` | Backend e rag rodam com o usuário 1001. Libere a pasta: `chmod 777 dados` na raiz do projeto |
 | Build para em `./gradlew ... bootJar` com `exit code: 127` (comum no Windows) | O `gradlew` foi baixado com final de linha do Windows (CRLF). Rode `git pull` e suba de novo: o Dockerfile e o `.gitattributes` já corrigem isso. Se ainda falhar, clone o projeto de novo |
+| A subida para em `ollama-modelo` (`service "ollama-modelo" didn't complete successfully`) | O modelo bge-m3 não foi baixado: sem internet ou acesso bloqueado a `registry.ollama.ai`. Veja o motivo em `docker compose logs ollama-modelo`, libere o acesso e rode `docker compose up` de novo (o download continua de onde parou). O `rag` não sobe sem o modelo |
+| Indexação do arquivo em `ERRO` com motivo sobre embeddings ou Ollama | O contêiner `ollama` está parado ou sem o modelo. Confira com `docker compose ps ollama` e `docker compose logs ollama-modelo`, suba com `docker compose up -d ollama ollama-modelo` e use **Reprocessar** no arquivo |
+| `buscar_documentos` responde "Busca nos documentos indisponível no momento" | O serviço `rag` está parado. Suba com `docker compose start rag` |
 | Mudou o código e quer ver na tela | `docker compose up --build` de novo |
 
 ## Criar usuários e dar acesso a um condomínio
@@ -103,7 +114,9 @@ Os usuários de exemplo e as regras de sessão (token de 5 min, sessão que cai 
 
 ## Conectar o Claude (MCP)
 
-O serviço **mcp** deixa o Claude consultar o sistema com as permissões do seu usuário: fundos, arquivos, conferências e lançamentos (com arquivo e página de origem). Ferramentas: `listar_condominios`, `resumo_fundos`, `listar_arquivos`, `conferencias_do_arquivo` e `buscar_lancamentos`.
+O serviço **mcp** deixa o Claude consultar o sistema com as permissões do seu usuário: fundos, arquivos, conferências e lançamentos (com arquivo e página de origem) e trechos dos documentos enviados. Ferramentas: `listar_condominios`, `resumo_fundos`, `listar_arquivos`, `conferencias_do_arquivo`, `buscar_lancamentos` e `buscar_documentos`.
+
+`buscar_documentos` procura no texto dos documentos indexados (atas, contratos, convenção, extratos, planilhas…) e devolve cada trecho com o documento, a categoria e onde ele está no original ("página 3", "aba Plan1, linhas 2–31" ou "parágrafos 4–7"). Aceita `"frase entre aspas"`, `-palavra` para excluir, e filtros por categoria, período e arquivo. O texto dos trechos é transcrição, não conferida: para somar ou comparar valores, o Claude usa as ferramentas numéricas.
 
 1. Gere um token do seu usuário (o cliente `mcp-local` dá um token de 8 horas; é só para uso local):
 
@@ -120,7 +133,7 @@ O serviço **mcp** deixa o Claude consultar o sistema com as permissões do seu 
 
    Em outro cliente MCP, use o endereço `http://localhost:8083/mcp` e o cabeçalho `Authorization: Bearer <token>`.
 
-3. Pergunte, por exemplo: "quanto saiu pelo Mercado Pago em setembro e em quais páginas?".
+3. Pergunte, por exemplo: "quanto saiu pelo Mercado Pago em setembro e em quais páginas?" ou "o que a ata da última assembleia diz sobre o reajuste da taxa condominial? cite a página".
 
 Quando o token vence, repita os passos 1 e 2. O login pelo navegador (OAuth), sem copiar token, entra quando o sistema for para a nuvem.
 
@@ -147,15 +160,16 @@ Cada serviço roda no seu contêiner e só conversa com os outros por contrato (
 
 ```
 frontend ──REST──▶ backend ──fila (RabbitMQ)──▶ rag ──HTTP──▶ leitor (Python)
-                     ▲  ◀──────fila──────────────┘
-Claude ──MCP──▶ mcp ─┘ gRPC
+                     ▲  ◀──────fila──────────────┘ │
+Claude ──MCP──▶ mcp ─┘ gRPC   backend ──gRPC──▶ rag └─HTTP──▶ ollama (embeddings)
 ```
 
 | Serviço | Faz | Fala com |
 |---|---|---|
 | `frontend` | telas | backend (REST, `contracts/openapi.yaml`) |
 | `backend` | API, contábil, auditoria, relatórios, registro dos arquivos; banco no schema `backend` | rag (fila), mcp (gRPC) |
-| `rag` | lê, interpreta, confere e enriquece os documentos; depois, embeddings e busca | backend (fila), leitor (HTTP) |
+| `rag` | lê, interpreta, confere e enriquece os documentos; índice e busca nos documentos (schema `rag`) | backend (fila e gRPC), leitor (HTTP), ollama (HTTP) |
+| `ollama` | gera os embeddings (modelo bge-m3) para a busca nos documentos | — |
 | `mcp` | porta de entrada do Claude, sem banco nem regra | backend (gRPC, `contracts/grpc/`) |
 | `leitor` | Python: arquivo → JSON com posições, sem estado | — |
 
@@ -168,7 +182,7 @@ mcp/                serviço mcp: ferramentas MCP que chamam o backend por gRPC
 leitor/             leitor de documentos em Python (sem estado)
 libs/
   armazenamento/    interface Armazenamento (pasta local; S3 depois), usada por backend e rag
-  contrato-grpc/    código gerado de contracts/grpc (usado por backend e mcp)
+  contrato-grpc/    código gerado de contracts/grpc (usado por backend, rag e mcp)
 frontend/           React + TypeScript + Vite
 contracts/          openapi.yaml, leitor/v1, mensagens/v1 e v2 (fila) e grpc/ (.proto)
 infra/              docker-compose, Dockerfile dos serviços Java e realm do Keycloak
@@ -181,11 +195,11 @@ Para mexer no código com recarga rápida. Precisa de **Java 25**, **Node 22 + p
 
 ```bash
 # 1. Só a infraestrutura no Docker
-cd infra && docker compose up -d banco fila keycloak leitor
+cd infra && docker compose up -d banco fila keycloak leitor ollama ollama-modelo
 
 # 2. Cada serviço Java no seu terminal, na raiz do projeto
 PASTA_DADOS=$(pwd)/dados ./gradlew :backend:bootRun     # API na 8081, gRPC na 9090
-PASTA_DADOS=$(pwd)/dados ./gradlew :rag:bootRun         # 8082
+PASTA_DADOS=$(pwd)/dados ./gradlew :rag:bootRun         # 8082, gRPC na 9091
 ./gradlew :mcp:bootRun                                  # 8083
 
 # 3. Frontend com recarga automática (outro terminal)
@@ -195,7 +209,7 @@ cd frontend && pnpm install && pnpm dev     # http://localhost:5173
 Testes:
 
 ```bash
-./gradlew test                                          # backend, rag e libs
+./gradlew test                                          # backend, rag, mcp e libs
 cd leitor && python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt && .venv/bin/pytest
 cd frontend && pnpm build                               # checagem de tipos
 ```

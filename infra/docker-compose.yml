@@ -4,8 +4,18 @@
 #
 # Serviços e como conversam:
 #   frontend ──REST──▶ backend ──fila──▶ rag ──HTTP──▶ leitor (Python)
-#                        ▲   ◀──fila────┘
-#   Claude ──MCP──▶ mcp ─┘ gRPC
+#                        ▲   ◀──fila────┘ │
+#   Claude ──MCP──▶ mcp ─┘ gRPC           └──HTTP──▶ ollama (embeddings bge-m3)
+#
+# Fluxos:
+#   leitura contábil: backend ─ArquivoRecebido (rag.arquivos-recebidos)─▶ rag ─resultado (backend.resultados)─▶ backend
+#   indexação (ADR 0003): backend ─IndexarArquivo (rag.indexacao)─▶ rag ─▶ leitor + ollama ─▶ schema rag no banco
+#                         rag ─ResultadoIndexacao (backend.indexacao)─▶ backend (situação da indexação do arquivo na API)
+#   busca nos documentos: Claude ─buscar_documentos─▶ mcp ─gRPC Consulta.BuscarDocumentos─▶ backend
+#                         backend ─gRPC Assistente.Buscar (rag:9091)─▶ rag (híbrida; só por palavra sem Ollama)
+#
+# Primeira subida: o passo ollama-modelo baixa o modelo bge-m3 (~1,2 GB) para o volume "ollama"; o rag só sobe
+# depois que ele termina. Nas próximas subidas o modelo já está no volume e o passo termina em segundos.
 name: condominio-auditoria
 
 services:
@@ -57,6 +67,29 @@ services:
     read_only: true
     tmpfs: [/tmp]
 
+  # Embeddings locais (ADR 0003, Decisão 2). Versão fixada: trocar só com teste da busca nos documentos.
+  ollama:
+    image: ollama/ollama:0.35.1
+    volumes: [ollama:/root/.ollama]
+    # Dentro do compose só o rag usa, pela rede interna. A porta fica publicada só no endereço local da máquina
+    # (nunca na rede) para o rag rodar fora do Docker no desenvolvimento; quem não precisa pode remover a linha.
+    ports: ["127.0.0.1:11434:11434"]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      retries: 30
+
+  # Passo de inicialização: baixa o bge-m3 para o volume do ollama e termina. Se o modelo já está lá, não baixa de
+  # novo (e a subida funciona sem internet).
+  ollama-modelo:
+    image: ollama/ollama:0.35.1
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama show bge-m3 > /dev/null 2>&1 || ollama pull bge-m3"]
+    restart: "no"
+    depends_on:
+      ollama: { condition: service_healthy }
+
   backend:
     build:
       context: ..
@@ -69,6 +102,9 @@ services:
       KEYCLOAK_CHAVES: http://keycloak:8080/realms/condominio/protocol/openid-connect/certs
       PASTA_DADOS: /dados
       PORTA: 8080
+      # Busca nos documentos (rpc BuscarDocumentos) repassada ao rag
+      RAG_GRPC: rag:9091
+      RAG_GRPC_PRAZO_SEGUNDOS: 30
     volumes: [../dados:/dados]
     # 8081 = API REST (tela); 9090 = gRPC (só para depuração local, o mcp usa a rede interna)
     ports: ["8081:8080", "9090:9090"]
@@ -87,12 +123,25 @@ services:
       LEITOR_URL: http://leitor:8090
       PASTA_DADOS: /dados
       PORTA: 8080
+      # Índice dos documentos no schema "rag" do mesmo PostgreSQL (o rag acrescenta currentSchema=rag,public)
+      BANCO_URL: jdbc:postgresql://banco:5432/condominio
+      BANCO_USUARIO: condominio
+      BANCO_SENHA: condominio
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODELO_EMBEDDINGS: bge-m3
+      # O modelo vem do passo ollama-modelo; o rag nunca baixa sozinho
+      OLLAMA_BAIXAR_MODELO: never
+      # gRPC do assistente (Assistente.Buscar), só na rede interna; quem chama é o backend
+      GRPC_PORTA: 9091
+      RAG_PARALELISMO_INDEXACAO: 1
     # Só lê os originais: a pasta entra como somente leitura
     volumes: [../dados:/dados:ro]
     ports: ["8082:8080"]
     depends_on:
+      banco: { condition: service_healthy }
       fila: { condition: service_healthy }
       leitor: { condition: service_started }
+      ollama-modelo: { condition: service_completed_successfully }
 
   mcp:
     build:
@@ -117,3 +166,4 @@ services:
 volumes:
   banco:
   fila:
+  ollama:

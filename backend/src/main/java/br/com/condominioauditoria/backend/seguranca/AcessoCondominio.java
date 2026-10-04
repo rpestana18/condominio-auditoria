@@ -1,6 +1,7 @@
 package br.com.condominioauditoria.backend.seguranca;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -46,6 +47,18 @@ public class AcessoCondominio {
             return jwt.getClaimAsString("name");
         }
         return usuario();
+    }
+
+    /**
+     * Token do usuário da chamada, pronto para o cabeçalho "authorization" ("Bearer ..."). Usado para repassar o
+     * mesmo usuário ao rag, que valida o token de novo.
+     */
+    public Optional<String> tokenBearer() {
+        Authentication autenticacao = autenticacao();
+        if (autenticacao != null && autenticacao.getPrincipal() instanceof Jwt jwt) {
+            return Optional.of("Bearer " + jwt.getTokenValue());
+        }
+        return Optional.empty();
     }
 
     public List<String> perfis() {

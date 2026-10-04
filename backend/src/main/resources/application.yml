@@ -55,6 +55,10 @@ condominio:
     max-tentativas: 3
   grpc:
     porta: ${GRPC_PORTA:9090}
+  # Assistente no rag (busca nos documentos, ADR 0003). O prazo vale para cada chamada ao rag.
+  rag:
+    grpc: ${RAG_GRPC:localhost:9091}
+    prazo-segundos: ${RAG_GRPC_PRAZO_SEGUNDOS:30}
 
 management:
   endpoints:

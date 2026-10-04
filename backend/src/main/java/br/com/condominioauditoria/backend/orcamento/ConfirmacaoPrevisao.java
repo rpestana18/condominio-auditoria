@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,11 +60,12 @@ public class ConfirmacaoPrevisao {
     private final ConsultaPrevisao consulta;
     private final ReservaDaPo reserva;
     private final RegistroAchados achados;
+    private final ApplicationEventPublisher publicador;
 
     ConfirmacaoPrevisao(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             LinhaPoRepository linhas, PoFundoRepository poFundos, EventoPrevisaoRepository eventos,
             ArquivoRepository arquivos, FundoRepository fundos, ConsultaPrevisao consulta, ReservaDaPo reserva,
-            RegistroAchados achados) {
+            RegistroAchados achados, ApplicationEventPublisher publicador) {
         this.condominios = condominios;
         this.previsoes = previsoes;
         this.linhas = linhas;
@@ -74,6 +76,7 @@ public class ConfirmacaoPrevisao {
         this.consulta = consulta;
         this.reserva = reserva;
         this.achados = achados;
+        this.publicador = publicador;
     }
 
     @Transactional
@@ -133,6 +136,9 @@ public class ConfirmacaoPrevisao {
                 detalheDoEvento(po, ata, trocas, ligacoes, avaliacao, substituidas)));
 
         registrarAchadoDaReserva(po, estrutura);
+        // PO confirmada e fundos ligados: os achados dos meses do exercício são recalculados depois do commit
+        publicador.publishEvent(MudancaOrcamento.de(condominioId, "PO versão " + versao + " confirmada (exercício "
+                + inicio + " a " + fim + ")", usuario, agora));
         log.info("PO {} confirmada: condominio={} versao={} exercicio={} a {} por={} ciente={}", po.getId(),
                 condominioId, versao, inicio, fim, usuario, ciente);
         return consulta.detalhe(po);

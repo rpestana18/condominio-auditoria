@@ -61,11 +61,13 @@ public class ConsultaPrevistoRealizado {
     private final LancamentoRepository lancamentos;
     private final ParametroRegraRepository parametros;
     private final ConsultaPrevisao consultaPrevisao;
+    private final RealocacaoLancamentoRepository realocacoes;
 
     ConsultaPrevistoRealizado(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             LinhaPoRepository linhas, DeparaContaRepository deparas, PoFundoRepository poFundos,
             FundoRepository fundos, ArquivoRepository arquivos, LancamentoRepository lancamentos,
-            ParametroRegraRepository parametros, ConsultaPrevisao consultaPrevisao) {
+            ParametroRegraRepository parametros, ConsultaPrevisao consultaPrevisao,
+            RealocacaoLancamentoRepository realocacoes) {
         this.condominios = condominios;
         this.previsoes = previsoes;
         this.linhas = linhas;
@@ -76,6 +78,7 @@ public class ConsultaPrevistoRealizado {
         this.lancamentos = lancamentos;
         this.parametros = parametros;
         this.consultaPrevisao = consultaPrevisao;
+        this.realocacoes = realocacoes;
     }
 
     @Transactional(readOnly = true)
@@ -136,10 +139,12 @@ public class ConsultaPrevistoRealizado {
                 .filter(a -> AVISOS_DA_PO.contains(a.codigo())).map(a -> new Aviso(a.codigo().name(), a.texto()))
                 .toList();
         String nomeArquivo = arquivos.findById(po.getArquivoId()).map(Arquivo::getNomeOriginal).orElse(null);
-        // Realocações entram no passo 8 (RF-03.1.7): até lá, tudo o que é "a realocar" fica no bloco à parte
+        // Realocações ativas desta versão da PO (RF-03.1.7), religadas aos lançamentos pela chave estável
+        List<CalculoPrevistoRealizado.Realocacao> ativas = realocacoes.findByPrevisaoIdAndDesfeitaEmIsNull(po.getId())
+                .stream().map(RealocacaoLancamento::paraCalculo).toList();
         return CalculoPrevistoRealizado.calcular(new Entrada(po, nomeArquivo, lidas,
                 deparas.findByPrevisaoIdOrderByContaCodigo(po.getId()), fundoPorLinha, nomes,
-                condominio.getFundoOrdinarioId(), fluxos, doPeriodo, List.of(), limite, avisosDaPo, periodo));
+                condominio.getFundoOrdinarioId(), fluxos, doPeriodo, ativas, limite, avisosDaPo, periodo));
     }
 
     private Optional<PrevisaoOrcamentaria> escolherPo(UUID condominioId, Periodo periodo, UUID poId) {

@@ -447,6 +447,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/realocacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /** Realocações de uma versão da PO, ativas e desfeitas (todos os perfis, RF-03.1.7) */
+        get: operations["realocacoes"];
+        put?: never;
+        /**
+         * Realoca um lançamento "a realocar" para uma linha de despesa da PO (Gestor e Admin, RF-03.1.7)
+         * @description Só débitos do fundo Condomínio cuja conta tem de-para CONFIRMADO para REALOCAR, e só para linhas 1.1 a 1.8 da
+         *     PO que vale no mês do lançamento. O lançamento original não muda. A realocação guarda a impressão do lançamento
+         *     (arquivo, página, ordem, data, conta, documento e valor) e sobrevive ao reprocesso do mesmo fluxo. Os achados
+         *     são recalculados depois do commit.
+         */
+        post: operations["realocar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/realocacoes/{realocacaoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                realocacaoId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Desfaz a realocação (Gestor e Admin); o valor volta a "a realocar" e nada é apagado */
+        delete: operations["desfazerRealocacao"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/achados": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Achados com a evidência original e o histórico (todos os perfis, só leitura; RF-03.1.12)
+         * @description Os achados do orçamento são recalculados depois de cada mudança (fluxo gravado, PO confirmada, de-para,
+         *     fundos, realocação). Um achado por regra, mês e alvo; nunca apagado. Quando a condição deixa de existir, o
+         *     achado aberto passa a NAO_SE_APLICA_MAIS, com o motivo (Q27); se a condição volta, o mesmo achado volta a
+         *     ABERTO. Estados marcados por pessoa (RF-02.8) não mudam pelo recálculo.
+         */
+        get: operations["achados"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -657,8 +728,7 @@ export interface components {
                 severidade: "INFORMATIVO" | "ATENCAO" | "CRITICO";
                 competencia: string;
                 descricao: string;
-                /** @enum {string} */
-                estado: "ABERTO";
+                estado: components["schemas"]["EstadoAchado"];
             }[];
         };
         LinhaPo: {
@@ -1059,6 +1129,95 @@ export interface components {
             ordem: number;
             /** @description "realocado para <linha> por <usuário> em <data>" */
             realocacao?: string | null;
+            /**
+             * Format: uuid
+             * @description Realocação ativa que levou o lançamento à linha (para desfazer)
+             */
+            realocacaoId?: string | null;
+        };
+        /** @enum {string} */
+        EstadoAchado: "ABERTO" | "NAO_SE_APLICA_MAIS" | "JUSTIFICADO" | "RESOLVIDO" | "FALSO_POSITIVO";
+        Achado: {
+            /** Format: uuid */
+            id: string;
+            /** @description Ex. EXCESSO_MES_ACIMA_LIMITE */
+            regra: string;
+            versaoRegra: string;
+            /** @enum {string} */
+            severidade: "INFORMATIVO" | "ATENCAO" | "CRITICO";
+            competencia: string;
+            /** @description Ex. "fundo-condominio", "conta:8888" */
+            alvo: string;
+            descricao: string;
+            estado: components["schemas"]["EstadoAchado"];
+            /** @description Ex. "de-para da conta 8888 confirmado por admin em 04/10/2026" */
+            estadoMotivo?: string | null;
+            /** Format: date-time */
+            estadoEm?: string | null;
+            /** @description A condição da regra existia no último recálculo */
+            condicaoPresente: boolean;
+            /** Format: date-time */
+            criadoEm: string;
+            evidencias: {
+                ordem: number;
+                /** Format: uuid */
+                arquivoId: string;
+                sha256: string;
+                pagina?: number | null;
+                referencia: string;
+                /** Format: uuid */
+                linhaPoId?: string | null;
+            }[];
+            historico: {
+                estadoAnterior?: components["schemas"]["EstadoAchado"] | null;
+                estadoNovo: components["schemas"]["EstadoAchado"];
+                condicaoPresente: boolean;
+                motivo: string;
+                usuario: string;
+                /** Format: date-time */
+                em: string;
+            }[];
+        };
+        PedidoRealocacao: {
+            /**
+             * Format: uuid
+             * @description lancamentoId da evidência "A_REALOCAR"
+             */
+            lancamentoId: string;
+            /**
+             * Format: uuid
+             * @description Linha de despesa (1.1 a 1.8) da PO que vale no mês
+             */
+            linhaId: string;
+        };
+        Realocacao: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            previsaoId: string;
+            /** Format: date */
+            data: string;
+            conta?: string | null;
+            contaNome?: string | null;
+            documento?: string | null;
+            historico: string;
+            valor: number;
+            /** Format: uuid */
+            arquivoId: string;
+            sha256: string;
+            pagina: number;
+            ordem: number;
+            /** Format: uuid */
+            linhaId: string;
+            linhaCodigo?: string | null;
+            linhaDescricao?: string | null;
+            realocadaPor: string;
+            /** Format: date-time */
+            realocadaEm: string;
+            desfeitaPor?: string | null;
+            /** Format: date-time */
+            desfeitaEm?: string | null;
+            ativa: boolean;
         };
         Problema: {
             title?: string;
@@ -1912,6 +2071,181 @@ export interface operations {
                 };
             };
             /** @description Período ou alvo inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realocacoes: {
+        parameters: {
+            query: {
+                po: string;
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Realocacao"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realocar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoRealocacao"];
+            };
+        };
+        responses: {
+            /** @description Realocado */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Realocacao"];
+                };
+            };
+            /** @description Usuário (só consulta) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio ou lançamento não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem PO aprovada no mês */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Lançamento não está em "a realocar" */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    desfazerRealocacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                realocacaoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Desfeita (ativa = false) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Realocacao"];
+                };
+            };
+            /** @description Usuário (só consulta) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Realocação não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Já desfeita */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    achados: {
+        parameters: {
+            query?: {
+                /** @description AAAA-MM; sem ela */
+                competencia?: string;
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Achado"][];
+                };
+            };
+            /** @description Competência inválida */
             400: {
                 headers: {
                     [name: string]: unknown;

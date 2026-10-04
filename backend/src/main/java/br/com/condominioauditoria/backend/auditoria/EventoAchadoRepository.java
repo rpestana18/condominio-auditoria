@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface AchadoEvidenciaRepository extends JpaRepository<AchadoEvidencia, UUID> {
+public interface EventoAchadoRepository extends JpaRepository<EventoAchado, UUID> {
 
-    List<AchadoEvidencia> findByAchadoIdInOrderByOrdemAsc(Collection<UUID> achados);
+    List<EventoAchado> findByAchadoIdInOrderByEmAsc(Collection<UUID> achados);
 }

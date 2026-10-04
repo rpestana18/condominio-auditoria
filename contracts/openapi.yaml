@@ -295,6 +295,66 @@ paths:
           content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EvidenciaLancamento" } } } }
         "400": { description: Período ou alvo inválido }
         "403": { description: Sem acesso ao condomínio }
+  /condominios/{condominioId}/realocacoes:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Realocações de uma versão da PO, ativas e desfeitas (todos os perfis, RF-03.1.7)
+      operationId: realocacoes
+      parameters:
+        - { name: po, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Realocacao" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+    post:
+      summary: Realoca um lançamento "a realocar" para uma linha de despesa da PO (Gestor e Admin, RF-03.1.7)
+      description: |
+        Só débitos do fundo Condomínio cuja conta tem de-para CONFIRMADO para REALOCAR, e só para linhas 1.1 a 1.8 da
+        PO que vale no mês do lançamento. O lançamento original não muda. A realocação guarda a impressão do lançamento
+        (arquivo, página, ordem, data, conta, documento e valor) e sobrevive ao reprocesso do mesmo fluxo. Os achados
+        são recalculados depois do commit.
+      operationId: realocar
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoRealocacao" } } }
+      responses:
+        "200": { description: Realocado, content: { application/json: { schema: { $ref: "#/components/schemas/Realocacao" } } } }
+        "403": { description: Usuário (só consulta) ou sem acesso ao condomínio }
+        "404": { description: Condomínio ou lançamento não encontrado }
+        "409": { description: Sem PO aprovada no mês, ou lançamento já realocado }
+        "422": { description: Lançamento não está em "a realocar", não é do fundo Condomínio, ou linha inválida }
+  /condominios/{condominioId}/realocacoes/{realocacaoId}:
+    parameters:
+      - { $ref: "#/components/parameters/CondominioId" }
+      - { name: realocacaoId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      summary: Desfaz a realocação (Gestor e Admin); o valor volta a "a realocar" e nada é apagado
+      operationId: desfazerRealocacao
+      responses:
+        "200": { description: Desfeita (ativa = false), content: { application/json: { schema: { $ref: "#/components/schemas/Realocacao" } } } }
+        "403": { description: Usuário (só consulta) ou sem acesso ao condomínio }
+        "404": { description: Realocação não encontrada }
+        "409": { description: Já desfeita }
+  /condominios/{condominioId}/achados:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Achados com a evidência original e o histórico (todos os perfis, só leitura; RF-03.1.12)
+      description: |
+        Os achados do orçamento são recalculados depois de cada mudança (fluxo gravado, PO confirmada, de-para,
+        fundos, realocação). Um achado por regra, mês e alvo; nunca apagado. Quando a condição deixa de existir, o
+        achado aberto passa a NAO_SE_APLICA_MAIS, com o motivo (Q27); se a condição volta, o mesmo achado volta a
+        ABERTO. Estados marcados por pessoa (RF-02.8) não mudam pelo recálculo.
+      operationId: achados
+      parameters:
+        - { name: competencia, in: query, required: false, description: AAAA-MM; sem ela, todos os meses, schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Achado" } } } }
+        "400": { description: Competência inválida }
+        "403": { description: Sem acesso ao condomínio }
 components:
   securitySchemes:
     bearer: { type: http, scheme: bearer, bearerFormat: JWT }
@@ -538,7 +598,7 @@ components:
               severidade: { type: string, enum: [INFORMATIVO, ATENCAO, CRITICO] }
               competencia: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" }
               descricao: { type: string }
-              estado: { type: string, enum: [ABERTO] }
+              estado: { $ref: "#/components/schemas/EstadoAchado" }
     LinhaPo:
       type: object
       required: [id, ordem, pagina, tipo, codigoImpresso, codigoEfetivo, descricao, orcadoAnterior, orcado, linhaDeFundo, arquivoId, sha256]
@@ -943,6 +1003,80 @@ components:
         pagina: { type: integer }
         ordem: { type: integer }
         realocacao: { type: [string, "null"], description: '"realocado para <linha> por <usuário> em <data>"' }
+        realocacaoId: { type: [string, "null"], format: uuid, description: Realocação ativa que levou o lançamento à linha (para desfazer) }
+    EstadoAchado:
+      type: string
+      enum: [ABERTO, NAO_SE_APLICA_MAIS, JUSTIFICADO, RESOLVIDO, FALSO_POSITIVO]
+    Achado:
+      type: object
+      required: [id, regra, versaoRegra, severidade, competencia, alvo, descricao, estado, condicaoPresente, criadoEm, evidencias, historico]
+      properties:
+        id: { type: string, format: uuid }
+        regra: { type: string, description: Ex. EXCESSO_MES_ACIMA_LIMITE, CONTA_SEM_LINHA_PO, FUNDO_RESERVA_ACIMA_TETO }
+        versaoRegra: { type: string }
+        severidade: { type: string, enum: [INFORMATIVO, ATENCAO, CRITICO] }
+        competencia: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" }
+        alvo: { type: string, description: 'Ex. "fundo-condominio", "conta:8888"' }
+        descricao: { type: string }
+        estado: { $ref: "#/components/schemas/EstadoAchado" }
+        estadoMotivo: { type: [string, "null"], description: 'Ex. "de-para da conta 8888 confirmado por admin em 04/10/2026"' }
+        estadoEm: { type: [string, "null"], format: date-time }
+        condicaoPresente: { type: boolean, description: A condição da regra existia no último recálculo }
+        criadoEm: { type: string, format: date-time }
+        evidencias:
+          type: array
+          items:
+            type: object
+            required: [ordem, arquivoId, sha256, referencia]
+            properties:
+              ordem: { type: integer }
+              arquivoId: { type: string, format: uuid }
+              sha256: { type: string }
+              pagina: { type: [integer, "null"] }
+              referencia: { type: string }
+              linhaPoId: { type: [string, "null"], format: uuid }
+        historico:
+          type: array
+          items:
+            type: object
+            required: [estadoNovo, condicaoPresente, motivo, usuario, em]
+            properties:
+              estadoAnterior: { oneOf: [{ $ref: "#/components/schemas/EstadoAchado" }, { type: "null" }] }
+              estadoNovo: { $ref: "#/components/schemas/EstadoAchado" }
+              condicaoPresente: { type: boolean }
+              motivo: { type: string }
+              usuario: { type: string }
+              em: { type: string, format: date-time }
+    PedidoRealocacao:
+      type: object
+      required: [lancamentoId, linhaId]
+      properties:
+        lancamentoId: { type: string, format: uuid, description: lancamentoId da evidência "A_REALOCAR" }
+        linhaId: { type: string, format: uuid, description: Linha de despesa (1.1 a 1.8) da PO que vale no mês }
+    Realocacao:
+      type: object
+      required: [id, previsaoId, data, historico, valor, arquivoId, sha256, pagina, ordem, linhaId, realocadaPor, realocadaEm, ativa]
+      properties:
+        id: { type: string, format: uuid }
+        previsaoId: { type: string, format: uuid }
+        data: { type: string, format: date }
+        conta: { type: [string, "null"] }
+        contaNome: { type: [string, "null"] }
+        documento: { type: [string, "null"] }
+        historico: { type: string }
+        valor: { type: number }
+        arquivoId: { type: string, format: uuid }
+        sha256: { type: string }
+        pagina: { type: integer }
+        ordem: { type: integer }
+        linhaId: { type: string, format: uuid }
+        linhaCodigo: { type: [string, "null"] }
+        linhaDescricao: { type: [string, "null"] }
+        realocadaPor: { type: string }
+        realocadaEm: { type: string, format: date-time }
+        desfeitaPor: { type: [string, "null"] }
+        desfeitaEm: { type: [string, "null"], format: date-time }
+        ativa: { type: boolean }
     Problema:
       type: object
       properties:

@@ -19,7 +19,8 @@ final class GoldenSetembro {
     final CenarioPo cenario;
     final PrevisaoOrcamentaria po;
     final ResultadoProcessamento fluxo;
-    final UUID arquivoFluxo = UUID.randomUUID();
+    final br.com.condominioauditoria.backend.arquivo.Arquivo arquivo;
+    final UUID arquivoFluxo;
     /** Fundos do fluxo pelo nome impresso (os quatro do cenário mais os demais, criados aqui). */
     final Map<String, Fundo> fundos = new LinkedHashMap<>();
 
@@ -30,11 +31,38 @@ final class GoldenSetembro {
         for (Fundo f : java.util.List.of(cenario.ordinario, cenario.reserva, cenario.obrasInfra, cenario.obras)) {
             fundos.put(f.getNome(), f);
         }
+        var lido = fluxo.fluxoDeCaixa();
+        this.arquivo = cenario.fluxo("fluxo-caixa-2026-09.pdf", lido.periodoInicio(), lido.periodoFim(),
+                lido.totalLancamentos());
+        this.arquivoFluxo = arquivo.getId();
+        for (var secao : lido.secoes()) {
+            fundos.computeIfAbsent(secao.fundo(), n -> {
+                Fundo novo = new Fundo(cenario.condominioId, n);
+                cenario.fundos.add(novo);
+                return novo;
+            });
+        }
+        gravarLancamentos();
+    }
+
+    /** Grava os lançamentos do fluxo como a GravacaoResultado: cada gravação cria lançamentos com id novo. */
+    private void gravarLancamentos() {
         for (var secao : fluxo.fluxoDeCaixa().secoes()) {
-            Fundo f = fundos.computeIfAbsent(secao.fundo(), n -> new Fundo(cenario.condominioId, n));
+            Fundo f = fundos.get(secao.fundo());
             secao.lancamentos().forEach(l -> cenario.lancamentos.add(new Lancamento(cenario.condominioId, arquivoFluxo,
                     f.getId(), l)));
         }
+    }
+
+    /**
+     * Reprocesso do mesmo fluxo (ArquivoService.reprocessar + GravacaoResultado): apaga os lançamentos do arquivo e
+     * grava de novo a mesma leitura, com ids novos. Publica a mudança, como a gravação.
+     */
+    void reprocessarFluxo() {
+        cenario.lancamentos.removeIf(l -> l.getArquivoId().equals(arquivoFluxo));
+        gravarLancamentos();
+        cenario.publicados.add(MudancaOrcamento.de(cenario.condominioId, "leitura do arquivo "
+                + arquivo.getNomeOriginal() + " gravada", "sistema", java.time.Instant.now()));
     }
 
     static Optional<GoldenSetembro> carregar() {
@@ -64,8 +92,8 @@ final class GoldenSetembro {
     }
 
     CalculoPrevistoRealizado.Fluxo fluxoDeSetembro() {
-        return new CalculoPrevistoRealizado.Fluxo(arquivoFluxo, "fluxo-caixa-2026-09.pdf", "f".repeat(64),
-                fluxo.fluxoDeCaixa().periodoInicio(), fluxo.fluxoDeCaixa().periodoFim(), java.time.Instant.EPOCH, "gestor");
+        return new CalculoPrevistoRealizado.Fluxo(arquivoFluxo, arquivo.getNomeOriginal(), arquivo.getSha256(),
+                arquivo.getPeriodoInicio(), arquivo.getPeriodoFim(), arquivo.getEnviadoEm(), arquivo.getEnviadoPor());
     }
 
     /** Entrada da função pura para o período, com o limite da Conv. 16.2 (20%). */

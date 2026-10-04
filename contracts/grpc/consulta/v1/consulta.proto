@@ -27,6 +27,20 @@ service Consulta {
 
   // Lançamentos com filtros. Resposta em fluxo (stream): milhares de linhas sem montar tudo na memória.
   rpc ListarLancamentos(ListarLancamentosRequest) returns (stream Lancamento);
+
+  // Busca trechos citáveis nos documentos do condomínio (ferramenta MCP buscar_documentos, ADR 0003, Decisão 5.3).
+  // O backend verifica token, perfil e condomínio e repassa ao rag (contrato assistente/v1). O modo (por palavra ou
+  // híbrido) é decidido pelo backend conforme a configuração de embeddings; funciona em qualquer modo de IA.
+  // Erros: INVALID_ARGUMENT (texto vazio, limite negativo, data fora do formato), PERMISSION_DENIED (condomínio sem
+  // acesso), FAILED_PRECONDITION (a partir da entrega 2: "módulo Assistente não contratado para este condomínio"),
+  // UNAVAILABLE (rag fora do ar).
+  //
+  // Acréscimo compatível na v1 (03/10/2026): só entram um rpc e mensagens novas; nenhum campo, número ou rpc
+  // existente muda. Clientes gerados com a versão anterior continuam funcionando, e um backend antigo responde
+  // UNIMPLEMENTED a este rpc, o que o mcp trata como "busca indisponível". Por isso não foi aberta uma v2.
+  // As mensagens abaixo são próprias deste pacote (sem importar assistente.proto) para os dois contratos
+  // evoluírem de forma independente; o formato é o mesmo de assistente.v1.Trecho.
+  rpc BuscarDocumentos(BuscarDocumentosRequest) returns (BuscarDocumentosResponse);
 }
 
 message ListarCondominiosRequest {}
@@ -140,4 +154,78 @@ message Lancamento {
   // Origem: arquivo e página, para o usuário conferir no PDF.
   string arquivo_id = 14;
   int32 pagina = 15;
+}
+
+message BuscarDocumentosRequest {
+  string condominio_id = 1;
+  // Texto da busca. Obrigatório. Aceita "frase entre aspas" e exclusão com -.
+  string texto = 2;
+  // Opcional: sem filtros = todos os documentos indexados do condomínio.
+  FiltrosDocumentos filtros = 3;
+  // Opcional: 0 = padrão 10. Acima de 50 é reduzido a 50.
+  int32 limite = 4;
+}
+
+// Todos opcionais, aplicados antes da busca.
+message FiltrosDocumentos {
+  // BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS. Vazio = todas.
+  repeated string categorias = 1;
+  // Documentos cuja competência cruza o intervalo; qualquer um dos dois pode ficar vazio.
+  string data_inicio = 2;
+  string data_fim = 3;
+  // Só estes arquivos. Vazio = todos.
+  repeated string arquivo_ids = 4;
+}
+
+message BuscarDocumentosResponse {
+  // Do mais relevante para o menos relevante.
+  repeated TrechoDocumento trechos = 1;
+  // Modo usado de fato: "PALAVRA" ou "HIBRIDA".
+  ModoBuscaDocumentos modo_usado = 2;
+}
+
+enum ModoBuscaDocumentos {
+  MODO_BUSCA_DOCUMENTOS_NAO_INFORMADO = 0;
+  MODO_BUSCA_DOCUMENTOS_PALAVRA = 1;
+  MODO_BUSCA_DOCUMENTOS_HIBRIDA = 2;
+}
+
+message TrechoDocumento {
+  string trecho_id = 1;
+  string arquivo_id = 2;
+  string nome_arquivo = 3;
+  string categoria = 4;
+  LocalizacaoTrecho localizacao = 5;
+  // Texto como está no documento. Valores citados são transcrição literal, não conferidos.
+  string texto = 6;
+  // Só para ordenar; maior = mais relevante. Não é dinheiro.
+  double pontuacao = 7;
+  // sha256 do arquivo original.
+  string sha256 = 8;
+}
+
+// Onde o trecho está no original: página (PDF), aba e linhas (Excel) ou parágrafos e seção (Word).
+message LocalizacaoTrecho {
+  oneof tipo {
+    LocalPagina pagina = 1;
+    LocalPlanilha planilha = 2;
+    LocalParagrafos paragrafos = 3;
+  }
+}
+
+message LocalPagina {
+  int32 pagina = 1;
+}
+
+message LocalPlanilha {
+  string aba = 1;
+  int32 linha_inicio = 2;
+  int32 linha_fim = 3;
+}
+
+message LocalParagrafos {
+  int32 paragrafo_inicio = 1;
+  int32 paragrafo_fim = 2;
+  // Opcional: vazio até existir contracts/leitor/v2.
+  string secao = 3;
 }

@@ -4,7 +4,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /** Parâmetros do backend (bloco "condominio" do application.yml). */
 @ConfigurationProperties(prefix = "condominio")
-public record PropriedadesCondominio(Armazenamento armazenamento, Processamento processamento, Grpc grpc) {
+public record PropriedadesCondominio(Armazenamento armazenamento, Processamento processamento, Grpc grpc,
+        Rag rag) {
 
     /** tipo = local no MVP; na nuvem entra outro tipo (ex.: s3) sem mudar o código de quem usa. */
     public record Armazenamento(String tipo, String pasta) {
@@ -16,5 +17,12 @@ public record PropriedadesCondominio(Armazenamento armazenamento, Processamento 
 
     /** Porta do servidor gRPC de consulta (usado pelo serviço mcp). */
     public record Grpc(int porta) {
+    }
+
+    /**
+     * Cliente gRPC do assistente no rag (contracts/grpc/assistente/v1): endereço host:porta e prazo de cada chamada.
+     * Usado pela busca nos documentos (rpc BuscarDocumentos).
+     */
+    public record Rag(String grpc, int prazoSegundos) {
     }
 }

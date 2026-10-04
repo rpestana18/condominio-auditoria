@@ -129,7 +129,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Coloca o arquivo de novo na fila (GESTOR ou ADMIN). Não duplica dados. */
+        /** Coloca o arquivo de novo na fila de leitura e de indexação (GESTOR ou ADMIN). Não duplica dados. */
         post: operations["reprocessarArquivo"];
         delete?: never;
         options?: never;
@@ -306,6 +306,22 @@ export interface components {
             enviadoEm: string;
             /** Format: date-time */
             processadoEm?: string | null;
+            /** @description Estado da indexação para a busca nos documentos (ADR 0003). Nulo ou ausente = arquivo ainda não indexado (enviado antes da busca; reprocessar indexa). */
+            indexacao?: components["schemas"]["IndexacaoArquivo"] | null;
+        };
+        /**
+         * @description NA_FILA e INDEXANDO = em andamento; INDEXADO = aparece na busca; SEM_TEXTO = sem texto extraível (ex. PDF digitalizado); RETIRADO = fora da busca (exclusão lógica ou versão substituída); ERRO = falhou (ver motivo).
+         * @enum {string}
+         */
+        SituacaoIndexacao: "NA_FILA" | "INDEXANDO" | "INDEXADO" | "SEM_TEXTO" | "RETIRADO" | "ERRO";
+        IndexacaoArquivo: {
+            situacao: components["schemas"]["SituacaoIndexacao"];
+            /** @description Preenchido em SEM_TEXTO e ERRO */
+            motivo?: string | null;
+            /** @description Páginas (PDF), abas (Excel) ou 1 (Word) lidas */
+            paginas?: number | null;
+            /** @description Trechos gravados no índice */
+            trechos?: number | null;
         };
         ArquivoDetalhe: {
             arquivo: components["schemas"]["ArquivoResumo"];

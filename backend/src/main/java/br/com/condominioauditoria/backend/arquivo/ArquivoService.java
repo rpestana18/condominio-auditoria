@@ -1,6 +1,7 @@
 package br.com.condominioauditoria.backend.arquivo;
 
 import br.com.condominioauditoria.backend.mensagens.PublicadorArquivos.ArquivoParaLer;
+import br.com.condominioauditoria.backend.mensagens.PublicadorIndexacao.ArquivoParaIndexar;
 import br.com.condominioauditoria.armazenamento.Armazenamento;
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,7 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-/** Recebe arquivos: guarda o original na pasta, registra no banco e, depois do commit, pede a leitura ao rag pela fila. */
+/**
+ * Recebe arquivos: guarda o original na pasta, registra no banco e, depois do commit, pede ao rag pela fila a leitura
+ * e a indexação para a busca nos documentos (filas separadas, ADR 0003, Decisão 5.1).
+ */
 @Service
 public class ArquivoService {
 
@@ -58,20 +62,26 @@ public class ArquivoService {
             Arquivo arquivo = arquivos.save(new Arquivo(condominioId, categoria, nome, caminho, sha256,
                     Files.size(temporario), envio.getContentType(), usuario));
             eventos.publishEvent(new ArquivoParaLer(arquivo.getId()));
+            eventos.publishEvent(new ArquivoParaIndexar(arquivo.getId()));
             return arquivo;
         } finally {
             Files.deleteIfExists(temporario);
         }
     }
 
-    /** Reprocessar é seguro: a gravação apaga a extração anterior do arquivo antes de inserir a nova. */
+    /**
+     * Reprocessar é seguro: a gravação apaga a extração anterior do arquivo antes de inserir a nova. Também reindexa
+     * (é assim que arquivos enviados antes da busca entram no índice, RF-04.6); o rag não refaz o que já está igual.
+     */
     @Transactional
     public Arquivo reprocessar(Arquivo arquivo) {
         if (arquivo.getStatus() == StatusArquivo.PROCESSANDO) {
             throw new IllegalStateException("O arquivo já está sendo processado");
         }
         arquivo.novoProcessamento();
+        arquivo.novaIndexacao();
         eventos.publishEvent(new ArquivoParaLer(arquivo.getId()));
+        eventos.publishEvent(new ArquivoParaIndexar(arquivo.getId()));
         return arquivos.save(arquivo);
     }
 

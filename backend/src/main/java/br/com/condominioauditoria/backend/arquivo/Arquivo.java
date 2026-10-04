@@ -38,6 +38,19 @@ public class Arquivo {
     private Instant enfileiradoEm;
     private int tentativas;
 
+    // Indexação para a busca nos documentos (ADR 0003). Tudo nulo = arquivo ainda não pedido ao índice.
+    @Enumerated(EnumType.STRING)
+    private SituacaoIndexacao indexacaoSituacao;
+    private String indexacaoMotivo;
+    private Integer indexacaoPaginas;
+    private Integer indexacaoTrechos;
+    /** Identifica o pedido de indexação em andamento. Resultado com outro id (velho ou repetido) é descartado. */
+    private UUID indexacaoId;
+    /** Quando o pedido de indexação foi colocado na fila pela última vez; a varredura reenvia o que ficou parado. */
+    private Instant indexacaoEnfileiradaEm;
+    private int indexacaoTentativas;
+    private Instant indexacaoAtualizadaEm;
+
     protected Arquivo() {
     }
 
@@ -57,6 +70,7 @@ public class Arquivo {
         this.processamentoId = UUID.randomUUID();
         this.enfileiradoEm = this.enviadoEm;
         this.tentativas = 1;
+        novaIndexacao();
     }
 
     /** Nova leitura do zero (reprocessar): resultados de leituras anteriores passam a ser ignorados. */
@@ -81,6 +95,52 @@ public class Arquivo {
 
     public boolean ehDoProcessamento(UUID id) {
         return processamentoId != null && processamentoId.equals(id);
+    }
+
+    /** Novo pedido de indexação (envio, reprocesso, reindexar): resultados de pedidos anteriores passam a ser ignorados. */
+    public void novaIndexacao() {
+        indexacaoSituacao = SituacaoIndexacao.NA_FILA;
+        indexacaoMotivo = null;
+        indexacaoPaginas = null;
+        indexacaoTrechos = null;
+        indexacaoId = UUID.randomUUID();
+        indexacaoEnfileiradaEm = Instant.now();
+        indexacaoTentativas = 1;
+        indexacaoAtualizadaEm = indexacaoEnfileiradaEm;
+    }
+
+    /** Reenvio do mesmo pedido de indexação (mensagem perdida ou serviço reiniciado). O rag é idempotente. */
+    public void reenviarIndexacao() {
+        indexacaoEnfileiradaEm = Instant.now();
+        indexacaoTentativas++;
+    }
+
+    public boolean ehDaIndexacao(UUID id) {
+        return indexacaoId != null && indexacaoId.equals(id);
+    }
+
+    /** O rag começou. Só sai de Na fila: um "indexando" atrasado não desfaz um resultado que já chegou. */
+    public void iniciarIndexacao() {
+        if (indexacaoSituacao == SituacaoIndexacao.NA_FILA) {
+            indexacaoSituacao = SituacaoIndexacao.INDEXANDO;
+            indexacaoAtualizadaEm = Instant.now();
+        }
+    }
+
+    /** Resultado final da indexação (Indexado, Sem texto, Retirado ou Erro), com o que o rag informou. */
+    public void concluirIndexacao(SituacaoIndexacao situacao, String motivo, Integer paginas, Integer trechos) {
+        if (situacao == SituacaoIndexacao.NA_FILA || situacao == SituacaoIndexacao.INDEXANDO) {
+            throw new IllegalArgumentException("Situação não é final: " + situacao);
+        }
+        indexacaoSituacao = situacao;
+        indexacaoMotivo = motivo;
+        indexacaoPaginas = paginas;
+        indexacaoTrechos = trechos;
+        indexacaoAtualizadaEm = Instant.now();
+    }
+
+    public void falharIndexacao(String motivo) {
+        concluirIndexacao(SituacaoIndexacao.ERRO, motivo, null, null);
     }
 
     public void iniciarProcessamento() {
@@ -183,5 +243,37 @@ public class Arquivo {
 
     public int getTentativas() {
         return tentativas;
+    }
+
+    public SituacaoIndexacao getIndexacaoSituacao() {
+        return indexacaoSituacao;
+    }
+
+    public String getIndexacaoMotivo() {
+        return indexacaoMotivo;
+    }
+
+    public Integer getIndexacaoPaginas() {
+        return indexacaoPaginas;
+    }
+
+    public Integer getIndexacaoTrechos() {
+        return indexacaoTrechos;
+    }
+
+    public UUID getIndexacaoId() {
+        return indexacaoId;
+    }
+
+    public Instant getIndexacaoEnfileiradaEm() {
+        return indexacaoEnfileiradaEm;
+    }
+
+    public int getIndexacaoTentativas() {
+        return indexacaoTentativas;
+    }
+
+    public Instant getIndexacaoAtualizadaEm() {
+        return indexacaoAtualizadaEm;
     }
 }

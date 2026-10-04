@@ -5,6 +5,7 @@ import br.com.condominioauditoria.rag.dominio.fluxo.FluxoDeCaixa;
 import br.com.condominioauditoria.rag.dominio.fluxo.LancamentoFluxo;
 import br.com.condominioauditoria.rag.dominio.fluxo.PosicaoFundo;
 import br.com.condominioauditoria.rag.dominio.fluxo.SecaoFundo;
+import br.com.condominioauditoria.rag.leitura.Linha;
 import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido;
 import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Pagina;
 import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Palavra;

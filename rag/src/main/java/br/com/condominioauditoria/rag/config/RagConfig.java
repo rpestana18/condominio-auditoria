@@ -4,6 +4,7 @@ import br.com.condominioauditoria.armazenamento.Armazenamento;
 import br.com.condominioauditoria.armazenamento.ArmazenamentoLocal;
 import br.com.condominioauditoria.rag.leitura.contrato.ContratoLeitor;
 import br.com.condominioauditoria.rag.leitura.fluxo.InterpretadorFluxoCaixa;
+import br.com.condominioauditoria.rag.leitura.po.InterpretadorPoProtest;
 import java.io.IOException;
 import java.nio.file.Path;
 import org.springframework.context.annotation.Bean;
@@ -29,5 +30,10 @@ class RagConfig {
     @Bean
     InterpretadorFluxoCaixa interpretadorFluxoCaixa() {
         return new InterpretadorFluxoCaixa();
+    }
+
+    @Bean
+    InterpretadorPoProtest interpretadorPoProtest() {
+        return new InterpretadorPoProtest();
     }
 }

@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.rag.leitura.fluxo;
 
+import br.com.condominioauditoria.rag.leitura.Linha;
 import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Palavra;
 import java.util.Optional;
 

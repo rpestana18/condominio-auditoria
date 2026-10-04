@@ -24,6 +24,8 @@ public class ContratoMensagens {
 
     private final Schema arquivoRecebido;
     private final Schema resultado;
+    private final Schema indexarArquivo;
+    private final Schema resultadoIndexacao;
     private final JsonMapper mapper = JsonMapper.builder()
             .addModule(new SimpleModule().addSerializer(BigDecimal.class, ToStringSerializer.instance))
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
@@ -33,6 +35,9 @@ public class ContratoMensagens {
         SchemaRegistry registro = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
         this.arquivoRecebido = registro.getSchema(SchemaLocation.of("classpath:mensagens/v1/arquivo-recebido.schema.json"));
         this.resultado = registro.getSchema(SchemaLocation.of("classpath:mensagens/v1/resultado-processamento.schema.json"));
+        this.indexarArquivo = registro.getSchema(SchemaLocation.of("classpath:mensagens/v1/indexar-arquivo.schema.json"));
+        this.resultadoIndexacao = registro.getSchema(
+                SchemaLocation.of("classpath:mensagens/v1/resultado-indexacao.schema.json"));
     }
 
     public ArquivoRecebido lerArquivoRecebido(byte[] corpo) {
@@ -44,6 +49,18 @@ public class ContratoMensagens {
     public byte[] escrever(ResultadoProcessamento mensagem) {
         String json = mapper.writeValueAsString(mensagem);
         validar(resultado, json, "ResultadoProcessamento");
+        return json.getBytes(StandardCharsets.UTF_8);
+    }
+
+    public IndexarArquivo lerIndexarArquivo(byte[] corpo) {
+        String json = new String(corpo, StandardCharsets.UTF_8);
+        validar(indexarArquivo, json, "IndexarArquivo");
+        return mapper.readValue(json, IndexarArquivo.class);
+    }
+
+    public byte[] escrever(ResultadoIndexacao mensagem) {
+        String json = mapper.writeValueAsString(mensagem);
+        validar(resultadoIndexacao, json, "ResultadoIndexacao");
         return json.getBytes(StandardCharsets.UTF_8);
     }
 

@@ -73,4 +73,38 @@ class ExportacaoUsoExcelTest {
             assertThat(planilha.getSheet("Uso por mês").getLastRowNum()).isEqualTo(ExportacaoUsoExcel.LINHA_CABECALHO);
         }
     }
+
+    @Test
+    void custoEstimadoEmDolarComTotalETextoFormatadoDoBigDecimal() throws Exception {
+        var uso = new ResumoUso(UUID.randomUUID(), LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31), List.of(),
+                List.of(new TotalUso("2026-10", Modulos.ASSISTENTE, FuncaoUso.BUSCA_DOCUMENTOS, 5, 0, 0, 0, 0),
+                        new TotalUso("2026-10", Modulos.ASSISTENTE, FuncaoUso.PERGUNTA, 30, 1_500_000, 100_000, 0, 0)));
+        var custo = new CustoUso.CustoDoPeriodo(java.util.Map.of("2026-10|ASSISTENTE|pergunta",
+                new java.math.BigDecimal("1234.50")), java.util.Map.of(), new java.math.BigDecimal("1234.50"),
+                java.util.Set.of());
+
+        try (var planilha = new XSSFWorkbook(new ByteArrayInputStream(
+                ExportacaoUsoExcel.gerar("C", uso, List.of(), custo)))) {
+            Sheet aba = planilha.getSheet("Uso por mês");
+            assertThat(aba.getRow(ExportacaoUsoExcel.LINHA_CABECALHO).getCell(8).getStringCellValue())
+                    .isEqualTo("Custo estimado (US$)");
+            assertThat(aba.getRow(DADOS).getCell(8)).isNull(); // busca: sem tokens, sem custo
+            assertThat(aba.getRow(DADOS + 1).getCell(8).getStringCellValue()).isEqualTo("1.234,50");
+            Row total = aba.getRow(DADOS + 3);
+            assertThat(total.getCell(0).getStringCellValue()).isEqualTo("Total do período");
+            assertThat(total.getCell(8).getStringCellValue()).isEqualTo("1.234,50");
+        }
+    }
+
+    @Test
+    void semCatalogoAvisaQueOCustoEstaIndisponivel() throws Exception {
+        var uso = new ResumoUso(UUID.randomUUID(), LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31), List.of(),
+                List.of(new TotalUso("2026-10", Modulos.ASSISTENTE, FuncaoUso.PERGUNTA, 1, 10, 10, 0, 0)));
+
+        try (var planilha = new XSSFWorkbook(new ByteArrayInputStream(
+                ExportacaoUsoExcel.gerar("C", uso, List.of(), null)))) {
+            Sheet aba = planilha.getSheet("Uso por mês");
+            assertThat(aba.getRow(DADOS + 2).getCell(0).getStringCellValue()).contains("indisponível");
+        }
+    }
 }

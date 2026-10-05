@@ -2,6 +2,9 @@ package br.com.condominioauditoria.backend.modulo;
 
 import br.com.condominioauditoria.backend.condominio.Condominio;
 import br.com.condominioauditoria.backend.condominio.CondominioRepository;
+import br.com.condominioauditoria.backend.ia.CatalogoIa;
+import br.com.condominioauditoria.backend.ia.ConfiguracaoIaServico;
+import br.com.condominioauditoria.backend.ia.ConfiguracaoIaServico.ContextoAssistente;
 import br.com.condominioauditoria.backend.modulo.Modulos.EstadoModulo;
 import br.com.condominioauditoria.backend.modulo.RegistroUso.ResumoUso;
 import br.com.condominioauditoria.backend.seguranca.AcessoCondominio;
@@ -46,20 +49,28 @@ class ModuloController {
     private final RegistroUso registroUso;
     private final AcessoCondominio acesso;
     private final CondominioRepository condominios;
+    private final ConfiguracaoIaServico configuracaoIa;
+    private final CatalogoIa catalogoIa;
 
     ModuloController(Modulos modulos, RegistroUso registroUso, AcessoCondominio acesso,
-            CondominioRepository condominios) {
+            CondominioRepository condominios, ConfiguracaoIaServico configuracaoIa, CatalogoIa catalogoIa) {
         this.modulos = modulos;
         this.registroUso = registroUso;
         this.acesso = acesso;
         this.condominios = condominios;
+        this.configuracaoIa = configuracaoIa;
+        this.catalogoIa = catalogoIa;
     }
 
-    /** O que a tela precisa para montar o menu: módulos ligados (RF-10.2, RF-10.3). */
+    /**
+     * O que a tela precisa para montar o menu: módulos ligados (RF-10.2, RF-10.3) e, com o Assistente ligado, o modo
+     * de IA efetivo dele (RF-04.16), sem chave.
+     */
     @GetMapping("/contexto")
     ContextoCondominio contexto(@PathVariable UUID condominioId) {
         Condominio condominio = condominio(condominioId);
-        return new ContextoCondominio(condominio.getId(), condominio.getNome(), modulos.ligados(condominioId));
+        return new ContextoCondominio(condominio.getId(), condominio.getNome(), modulos.ligados(condominioId),
+                configuracaoIa.contexto(condominioId));
     }
 
     @GetMapping("/modulos")
@@ -97,10 +108,21 @@ class ModuloController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim) {
         acesso.exigir(condominioId);
-        return UsoDto.de(registroUso.resumo(condominioId, inicio, fim));
+        ResumoUso resumo = registroUso.resumo(condominioId, inicio, fim);
+        return UsoDto.de(resumo, custo(condominioId, inicio, fim));
     }
 
-    /** Períodos ativos (que tocam o período) e uso por mês, em Excel com duas abas (RF-10.6, RF-09.7). */
+    /** Custo estimado do período; nulo se o rag não respondeu o catálogo de preços (o uso sai mesmo assim). */
+    private CustoUso.CustoDoPeriodo custo(UUID condominioId, LocalDate inicio, LocalDate fim) {
+        return acesso.tokenBearer().flatMap(catalogoIa::precos)
+                .map(precos -> registroUso.custo(condominioId, inicio, fim, precos))
+                .orElse(null);
+    }
+
+    /**
+     * Períodos ativos (que tocam o período) e uso por mês, em Excel com duas abas (RF-10.6, RF-09.7), com o custo
+     * estimado em US$ (tokens × preço do catálogo do rag). Rag fora do ar: a planilha sai sem custo, com aviso.
+     */
     @GetMapping("/uso/exportacao")
     @PreAuthorize("hasRole('ADMIN')")
     ResponseEntity<byte[]> exportar(@PathVariable UUID condominioId,
@@ -114,11 +136,12 @@ class ModuloController {
                 .flatMap(m -> modulos.periodos(condominioId, m.codigo()).stream())
                 .filter(p -> p.tocaIntervalo(de, ate))
                 .toList();
+        CustoUso.CustoDoPeriodo custo = custo(condominioId, inicio, fim);
         String nome = "uso-modulos-%s-a-%s.xlsx".formatted(inicio, fim);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(ExportacaoUsoExcel.TIPO))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(nome).build().toString())
-                .body(ExportacaoUsoExcel.gerar(condominio.getNome(), uso, periodos));
+                .body(ExportacaoUsoExcel.gerar(condominio.getNome(), uso, periodos, custo));
     }
 
     private Condominio condominio(UUID condominioId) {
@@ -127,7 +150,9 @@ class ModuloController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
     }
 
-    record ContextoCondominio(UUID condominioId, String nome, List<String> modulosLigados) {
+    /** assistente nulo = módulo Assistente desligado (contracts/openapi.yaml, ContextoCondominio). */
+    record ContextoCondominio(UUID condominioId, String nome, List<String> modulosLigados,
+            ContextoAssistente assistente) {
     }
 
     record ModuloDoCondominio(String codigo, String nome, String descricao, List<String> inclui, List<String> dependeDe,
@@ -153,20 +178,68 @@ class ModuloController {
         }
     }
 
-    record TotalDto(@JsonInclude(JsonInclude.Include.NON_NULL) String mes, String modulo, String funcao, long quantidade, long tokensEntrada, long tokensSaida,
-            long arquivos, long paginas) {
+    /**
+     * Linha de uso. custoEstimadoUsd: ausente sem tokens ou com o custo indisponível; nulo com modelo sem preço;
+     * senão texto decimal com 2 casas ("3.50"), formatado do BigDecimal.
+     */
+    record TotalDto(@JsonInclude(JsonInclude.Include.NON_NULL) String mes, String modulo, String funcao,
+            long quantidade, long tokensEntrada, long tokensSaida, long arquivos, long paginas,
+            @JsonInclude(value = JsonInclude.Include.CUSTOM, valueFilter = Ausente.class) String custoEstimadoUsd) {
 
-        static TotalDto de(TotalUso t) {
+        static TotalDto de(TotalUso t, String custo) {
             return new TotalDto(t.mes(), t.modulo(), t.funcao().codigo(), t.quantidade(), t.tokensEntrada(),
-                    t.tokensSaida(), t.arquivos(), t.paginas());
+                    t.tokensSaida(), t.arquivos(), t.paginas(), custo);
         }
     }
 
-    record UsoDto(UUID condominioId, LocalDate inicio, LocalDate fim, List<TotalDto> porFuncao, List<TotalDto> porMes) {
+    /**
+     * Marca de "campo ausente" no JSON (diferente de nulo): o Jackson pula o campo quando o valor é esta instância.
+     * Comparação por identidade, de propósito.
+     */
+    static final class Ausente {
+        @SuppressWarnings("StringOperationCanBeSimplified")
+        static final String VALOR = new String("ausente");
+
+        @Override
+        @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
+        public boolean equals(Object outro) {
+            return outro == VALOR;
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
+        }
+    }
+
+    /** custoDisponivel = false: o rag não respondeu o catálogo de preços; nenhum valor de custo vai no JSON. */
+    record UsoDto(UUID condominioId, LocalDate inicio, LocalDate fim, List<TotalDto> porFuncao, List<TotalDto> porMes,
+            boolean custoDisponivel,
+            @JsonInclude(value = JsonInclude.Include.CUSTOM, valueFilter = Ausente.class) String custoEstimadoTotalUsd,
+            List<String> modelosSemPreco) {
 
         static UsoDto de(ResumoUso u) {
-            return new UsoDto(u.condominioId(), u.inicio(), u.fim(), u.porFuncao().stream().map(TotalDto::de).toList(),
-                    u.porMes().stream().map(TotalDto::de).toList());
+            return de(u, null);
+        }
+
+        static UsoDto de(ResumoUso u, CustoUso.CustoDoPeriodo custo) {
+            return new UsoDto(u.condominioId(), u.inicio(), u.fim(),
+                    u.porFuncao().stream().map(t -> TotalDto.de(t, custoDaLinha(t, custo, false))).toList(),
+                    u.porMes().stream().map(t -> TotalDto.de(t, custoDaLinha(t, custo, true))).toList(),
+                    custo != null,
+                    custo == null ? Ausente.VALOR : texto(custo.total()),
+                    custo == null ? List.of() : List.copyOf(custo.modelosSemPreco()));
+        }
+
+        private static String custoDaLinha(TotalUso t, CustoUso.CustoDoPeriodo custo, boolean porMes) {
+            if (custo == null || (t.tokensEntrada() == 0 && t.tokensSaida() == 0)) {
+                return Ausente.VALOR;
+            }
+            return texto(porMes ? custo.doMes(t) : custo.daFuncao(t));
+        }
+
+        private static String texto(java.math.BigDecimal valor) {
+            return valor == null ? null : valor.toPlainString();
         }
     }
 }

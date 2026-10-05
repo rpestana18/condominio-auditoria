@@ -80,3 +80,14 @@ export function hojeIso(): string {
   const doisDigitos = (n: number) => String(n).padStart(2, "0");
   return `${hoje.getFullYear()}-${doisDigitos(hoje.getMonth() + 1)}-${doisDigitos(hoje.getDate())}`;
 }
+
+/**
+ * "1234.50" vira "US$ 1.234,50" mexendo só no texto: o valor decimal exato da API nunca passa por número
+ * de ponto flutuante (dinheiro não pode perder centavos).
+ */
+export function formatarDolarTexto(decimal: string): string {
+  const negativo = decimal.startsWith("-");
+  const [inteiros, centavos = ""] = (negativo ? decimal.slice(1) : decimal).split(".");
+  const agrupado = inteiros.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${negativo ? "-" : ""}US$ ${agrupado},${centavos.padEnd(2, "0")}`;
+}

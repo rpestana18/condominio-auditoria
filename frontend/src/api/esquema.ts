@@ -207,7 +207,8 @@ export interface paths {
         /**
          * Contexto do condomínio para montar a tela (módulos ligados). Qualquer perfil com acesso ao condomínio.
          * @description O menu "Assistente" depende de ASSISTENTE estar em modulosLigados (RF-10.2, RF-10.3). Ligar ou desligar vale
-         *     no próximo carregamento, sem reinício. O modo de IA do assistente entra aqui na configuração de IA (ADR 0003).
+         *     no próximo carregamento, sem reinício. Com o módulo ligado, "assistente" traz o modo de IA efetivo (RF-04.16),
+         *     para a tela escolher entre chat + busca, aviso do MCP + busca ou só busca; nunca traz a chave.
          */
         get: operations["contextoCondominio"];
         put?: never;
@@ -316,7 +317,10 @@ export interface paths {
         };
         /**
          * Uso dos módulos no período, por função e por mês (só ADMIN no MVP; RF-09.7, Q17)
-         * @description Datas no fuso de Brasília, fim incluído. Sem custo nesta fase.
+         * @description Datas no fuso de Brasília, fim incluído. Custo estimado em US$ (RF-09.7; ADR 0003, Decisão 4): tokens × preço
+         *     por milhão de tokens do catálogo de IA do rag, calculado na hora (nada de custo é gravado), em decimal exato e
+         *     arredondado a 2 casas (meio para cima) só em cada total. Não é valor de cobrança. Rag fora do ar: o uso sai
+         *     normalmente, com custoDisponivel = false e sem valores de custo.
          */
         get: operations["usoModulos"];
         put?: never;
@@ -339,7 +343,9 @@ export interface paths {
         /**
          * Exporta os períodos ativos e o uso do período em Excel (só ADMIN; RF-10.6, RF-09.7)
          * @description Arquivo .xlsx com duas abas: "Períodos ativos" (os que tocam o período pedido) e "Uso por mês". Datas no
-         *     horário de Brasília. Sem valores de cobrança nesta fase.
+         *     horário de Brasília. A aba "Uso por mês" traz a coluna "Custo estimado (US$)" (texto 1.234,56, 2 casas só nos
+         *     totais), uma linha "Total do período" e, com o rag fora do ar, um aviso de custo indisponível. Custo estimado
+         *     não é valor de cobrança; nenhum valor de cobrança é calculado nesta fase.
          */
         get: operations["exportarUsoModulos"];
         put?: never;
@@ -602,6 +608,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ia/provedores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Catálogo de provedores e modelos de IA, lido do rag (só ADMIN; RF-09.6, ADR 0003)
+         * @description Para os campos de provedor e modelo da tela "IA do condomínio". O catálogo é mantido na configuração do rag;
+         *     a chave pública do rag não sai por aqui. Preços em dólar por milhão de tokens, só para o custo estimado.
+         */
+        get: operations["listarProvedoresIa"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/ia": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Configuração de IA do condomínio, geral e do Assistente (só ADMIN; RF-09.1, RF-09.2, RF-09.6)
+         * @description Sem configuração gravada: modo geral MCP_EXTERNO (padrão do piloto), respostas do Assistente herdando o modo
+         *     geral e embeddings LOCAL com ollama-local/bge-m3. A chave nunca volta: só chaveCadastrada e chaveFinal.
+         */
+        get: operations["obterConfiguracaoIa"];
+        /**
+         * Grava a configuração de IA do condomínio (só ADMIN; RF-09.1, RF-09.2, RF-09.6)
+         * @description Substitui a configuração inteira (modo geral e Assistente). A chave é só de escrita: ausente ou nula mantém a
+         *     guardada; preenchida troca; removerChave apaga. O backend cifra a chave com a chave pública do rag e não
+         *     consegue lê-la depois. Cada gravação que muda algo entra na trilha da configuração de IA (só de inserção) com
+         *     quem, quando, valores anteriores e novos; da chave, só "chave trocada" e os 4 últimos caracteres.
+         *     Recusas (422, lista em motivos): modo de respostas LOCAL (previsto, ainda sem provedor); API_KEY sem chave
+         *     guardada nem nova; provedor ou modelo fora do catálogo ou de uso errado; embeddings diferente de LOCAL ou
+         *     DESLIGADO, ou com provedor que não é local (Q12).
+         */
+        put: operations["gravarConfiguracaoIa"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/assistente/perguntas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pergunta ao assistente, com citações dos documentos e números das ferramentas (USUARIO, GESTOR ou ADMIN; RF-04.8 a RF-04.16)
+         * @description Só com o módulo Assistente ligado e o modo de respostas efetivo API_KEY. O backend chama o rag (gRPC Perguntar,
+         *     prazo de 120 s), junta o fluxo e devolve a resposta inteira, já validada. O histórico só existe na tela
+         *     (RF-04.11): o frontend manda as trocas anteriores e o backend usa as últimas 6. Citações de arquivos que o
+         *     usuário não pode ver ou que foram excluídos são descartadas na volta. Gera o registro de uso "pergunta".
+         */
+        post: operations["perguntarAssistente"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/assistente/busca": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Busca por palavra nos documentos, sem IA (todos os perfis; RF-04.18)
+         * @description Só com o módulo Assistente ligado, em qualquer modo de IA (inclusive DESLIGADO, Q7). Devolve trechos citáveis
+         *     do mais relevante para o menos relevante, sem resposta redigida. Aceita "frase entre aspas" e exclusão com -.
+         *     Gera o registro de uso "busca_documentos".
+         */
+        post: operations["buscarDocumentos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/condominios/{condominioId}/previsto-realizado/exportacao": {
         parameters: {
             query?: never;
@@ -780,6 +889,199 @@ export interface components {
             nome: string;
             /** @description Códigos dos módulos ligados (ex.: [ASSISTENTE]) */
             modulosLigados: string[];
+            /** @description Modo de IA efetivo do Assistente (RF-04.16). Nulo ou ausente com o módulo Assistente desligado. */
+            assistente?: components["schemas"]["ContextoAssistente"] | null;
+        };
+        ContextoAssistente: {
+            modoRespostas: components["schemas"]["ModoIa"];
+            modoEmbeddings: components["schemas"]["ModoIa"];
+            /** @description Modo de respostas API_KEY com chave cadastrada: a tela mostra o chat */
+            chatDisponivel: boolean;
+        };
+        /**
+         * @description Quem executa a IA (RF-09.1, RF-09.6). MCP_EXTERNO = o Claude do usuário conectado ao MCP (padrão do piloto);
+         *     API_KEY = o sistema chama o provedor com a chave do condomínio; DESLIGADO = nenhuma IA; LOCAL = modelo na
+         *     infraestrutura do cliente (nesta fase só para embeddings).
+         * @enum {string}
+         */
+        ModoIa: "MCP_EXTERNO" | "API_KEY" | "DESLIGADO" | "LOCAL";
+        /**
+         * @description RESPOSTAS = chat; EMBEDDINGS = busca por significado e indexação
+         * @enum {string}
+         */
+        UsoProvedorIa: "RESPOSTAS" | "EMBEDDINGS";
+        ProvedorIa: {
+            /** @description Código usado na configuração (ex.: anthropic, ollama-local) */
+            codigo: string;
+            nome: string;
+            /** @description Implementação no rag (ex.: anthropic, ollama) */
+            tipo: string;
+            uso: components["schemas"]["UsoProvedorIa"];
+            /** @description Roda na infraestrutura do sistema, sem enviar texto para fora (único aceito para embeddings, Q12) */
+            local: boolean;
+            precisaChave: boolean;
+            /** @description Só embeddings */
+            dimensao?: number | null;
+            modelos: components["schemas"]["ModeloIa"][];
+        };
+        ModeloIa: {
+            /** @description Ex.: claude-sonnet-5-5 */
+            id: string;
+            nome: string;
+            padrao: boolean;
+            /** @description US$ por milhão de tokens de entrada, texto decimal exato (ex. "2.00") */
+            precoEntradaMilhaoUsd: string;
+            /** @description US$ por milhão de tokens de saída, texto decimal exato (ex. "10.00") */
+            precoSaidaMilhaoUsd: string;
+        };
+        ConfiguracaoIa: {
+            modoGeral: components["schemas"]["ModoIa"];
+            assistente: {
+                respostas: components["schemas"]["ConfiguracaoRespostasIa"];
+                embeddings: components["schemas"]["ConfiguracaoEmbeddingsIa"];
+            };
+            /** @description Nulo = nunca gravada (valem os padrões) */
+            atualizadoPor?: string | null;
+            /** Format: date-time */
+            atualizadoEm?: string | null;
+        };
+        ConfiguracaoRespostasIa: {
+            /** @description Nulo = herda o modo geral */
+            modo?: null | components["schemas"]["ModoIa"];
+            modoEfetivo: components["schemas"]["ModoIa"];
+            /** @description Código do provedor no catálogo */
+            provedor?: string | null;
+            /** @description Id do modelo no catálogo */
+            modelo?: string | null;
+            chaveCadastrada: boolean;
+            /** @description Os 4 últimos caracteres da chave (ex.: "x9Qa"); nulo sem chave */
+            chaveFinal?: string | null;
+        };
+        ConfiguracaoEmbeddingsIa: {
+            modo: components["schemas"]["ModoIa"];
+            /** @description Nulo com DESLIGADO */
+            provedor: string | null;
+            modelo: string | null;
+        };
+        PedidoConfiguracaoIa: {
+            modoGeral: components["schemas"]["ModoIa"];
+            assistente: {
+                respostas: {
+                    /** @description Nulo = herda o modo geral */
+                    modo?: null | components["schemas"]["ModoIa"];
+                    /** @description Obrigatório quando o modo efetivo é API_KEY */
+                    provedor?: string | null;
+                    /** @description Nulo = modelo padrão do provedor */
+                    modelo?: string | null;
+                    /** @description Só de escrita. Ausente ou nula mantém a chave guardada; nunca volta em resposta nem vai para log */
+                    chave?: string | null;
+                    /**
+                     * @description Apaga a chave guardada (não pode vir junto com chave)
+                     * @default false
+                     */
+                    removerChave: boolean;
+                };
+                embeddings: {
+                    modo: components["schemas"]["ModoIa"];
+                    /** @description Obrigatório com LOCAL; só provedor local do catálogo (ex.: ollama-local) */
+                    provedor?: string | null;
+                    /** @description Nulo = modelo padrão do provedor */
+                    modelo?: string | null;
+                };
+            };
+        };
+        /** @description Filtros opcionais da busca e do chat (RF-04.10), aplicados antes da busca. Vazio = todos os documentos do condomínio. */
+        FiltrosDocumentos: {
+            categorias?: components["schemas"]["Categoria"][];
+            /**
+             * Format: date
+             * @description Documentos cuja competência cruza o período
+             */
+            dataInicio?: string | null;
+            /** Format: date */
+            dataFim?: string | null;
+            arquivoIds?: string[];
+        };
+        PedidoPergunta: {
+            pergunta: string;
+            /** @description Trocas anteriores desta conversa, da mais antiga para a mais recente (o backend usa as últimas 6) */
+            historico?: {
+                pergunta: string;
+                resposta: string;
+            }[];
+            filtros?: components["schemas"]["FiltrosDocumentos"];
+        };
+        /**
+         * @description NAO_ENCONTRADA = "Não encontrei nos documentos." (RF-04.12), sem blocos nem citações
+         * @enum {string}
+         */
+        SituacaoResposta: "RESPONDIDA" | "NAO_ENCONTRADA";
+        RespostaAssistente: {
+            situacao: components["schemas"]["SituacaoResposta"];
+            /** @description Bloco "Nos documentos". Números transcritos vêm marcados "(conforme o documento, não conferido)" */
+            nosDocumentos: {
+                texto: string;
+                /** @description Números das citações (campo numero de citacoes) */
+                citacoes: number[];
+            }[];
+            /** @description Bloco "Nos dados gravados", montado das ferramentas de consulta (nunca escrito pelo modelo) */
+            nosDadosGravados: components["schemas"]["DadoGravado"][];
+            /** @description Numeradas a partir de 1, na ordem da primeira citação */
+            citacoes: components["schemas"]["CitacaoDocumento"][];
+            /** @description Categoria de documento que faltaria (RF-04.12) */
+            sugestao?: string | null;
+            aviso?: string | null;
+            /** @description Modelo de IA que respondeu */
+            modelo: string;
+        };
+        DadoGravado: {
+            /** @description resumo_fundos, buscar_lancamentos, listar_arquivos ou conferencias_do_arquivo (a tela do link sai daqui) */
+            consulta: string;
+            /** @description Filtros usados na consulta */
+            parametros: {
+                nome: string;
+                valor: string;
+            }[];
+            linhas: {
+                rotulo: string;
+                /** @description Já formatado (dinheiro como "R$ 1.234,56") */
+                valor: string;
+            }[];
+            comentario?: string | null;
+        };
+        /** @description Onde o trecho está no original. PDF abre na página (#page=N) */
+        LocalizacaoTrecho: {
+            /** @enum {string} */
+            tipo: "PAGINA" | "PLANILHA" | "PARAGRAFOS";
+            pagina?: number | null;
+            aba?: string | null;
+            linhaInicio?: number | null;
+            linhaFim?: number | null;
+            paragrafoInicio?: number | null;
+            paragrafoFim?: number | null;
+            secao?: string | null;
+            /** @description Texto pronto para a tela (ex. "página 3", "aba Junho, linhas 10 a 14") */
+            descricao: string;
+        };
+        TrechoDocumento: {
+            trechoId: string;
+            /** Format: uuid */
+            arquivoId: string;
+            nomeArquivo: string;
+            categoria: components["schemas"]["Categoria"];
+            localizacao: components["schemas"]["LocalizacaoTrecho"];
+            /** @description Texto literal do documento */
+            texto: string;
+            sha256: string;
+        };
+        CitacaoDocumento: components["schemas"]["TrechoDocumento"] & {
+            numero: number;
+        };
+        PedidoBuscaDocumentos: {
+            texto: string;
+            filtros?: components["schemas"]["FiltrosDocumentos"];
+            /** @default 10 */
+            limite: number;
         };
         ModuloDoCondominio: {
             codigo: string;
@@ -855,6 +1157,12 @@ export interface components {
             arquivos: number;
             /** Format: int64 */
             paginas: number;
+            /**
+             * @description Custo estimado em US$, texto decimal exato com 2 casas (ex. "3.50"). Ausente quando não há tokens nessa
+             *     linha ou quando o custo está indisponível (custoDisponivel = false); nulo quando há tokens de modelo sem
+             *     preço no catálogo (ver modelosSemPreco).
+             */
+            custoEstimadoUsd?: string | null;
         };
         UsoDoPeriodo: {
             /** Format: uuid */
@@ -865,6 +1173,15 @@ export interface components {
             fim: string;
             porFuncao: components["schemas"]["TotalUso"][];
             porMes: components["schemas"]["TotalUso"][];
+            /** @description false quando o rag não respondeu o catálogo de preços; aí não há nenhum valor de custo */
+            custoDisponivel?: boolean;
+            /**
+             * @description Total do período em US$ (arredondamento da soma exata, não a soma dos totais arredondados). Nulo com
+             *     modelo sem preço no catálogo; ausente com custoDisponivel = false.
+             */
+            custoEstimadoTotalUsd?: string | null;
+            /** @description Modelos com tokens no período e sem preço no catálogo, como "provedor/modelo" */
+            modelosSemPreco?: string[];
         };
         /** @enum {string} */
         Categoria: "BALANCETE" | "EXTRATO" | "PO" | "CONTRATO" | "FOLHA" | "COMPROVANTE" | "ATA" | "CONVENCAO_RI" | "OUTROS";
@@ -1588,8 +1905,10 @@ export interface components {
             arquivoExistenteId?: string;
             /** @description Em recusa por módulo não contratado (403): código do módulo */
             modulo?: string;
-            /** @description Motivos da recusa da confirmação da PO */
+            /** @description Motivos da recusa (confirmação da PO */
             motivos?: string[];
+            /** @description Em recusa do chat pelo modo (409): modo de respostas efetivo */
+            modoIa?: components["schemas"]["ModoIa"];
         };
     };
     responses: never;
@@ -2720,6 +3039,305 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    listarProvedoresIa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK, na ordem do catálogo */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvedorIa"][];
+                };
+            };
+            /** @description Perfil sem permissão */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rag fora do ar */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    obterConfiguracaoIa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoIa"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    gravarConfiguracaoIa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoConfiguracaoIa"];
+            };
+        };
+        responses: {
+            /** @description Configuração depois da gravação */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoIa"];
+                };
+            };
+            /** @description Corpo ausente ou mal formado */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Configuração recusada (lista em motivos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Rag fora do ar ou sem chave pública; com chave nova */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    perguntarAssistente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoPergunta"];
+            };
+        };
+        responses: {
+            /** @description Resposta (RESPONDIDA ou NAO_ENCONTRADA) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespostaAssistente"];
+                };
+            };
+            /** @description Pergunta vazia ou acima de 2000 caracteres */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Perfil sem permissão */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Condomínio não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description Chat indisponível no modo atual, sem chamar o rag (modoIa diz qual). MCP_EXTERNO: "O assistente deste
+             *     condomínio é o seu Claude, conectado ao MCP." DESLIGADO: "A IA está desligada neste condomínio." Também
+             *     sem chave cadastrada ou chave que o rag não consegue ler ("cadastre a chave de novo").
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Chave de IA do condomínio recusada pelo provedor */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Limite de uso do provedor de IA atingido; tentar mais tarde */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Rag ou provedor de IA fora do ar */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description A resposta passou do prazo */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    buscarDocumentos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoBuscaDocumentos"];
+            };
+        };
+        responses: {
+            /** @description OK (lista vazia quando nada foi encontrado) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrechoDocumento"][];
+                };
+            };
+            /** @description Texto vazio */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem acesso ao condomínio ou módulo não contratado (modulo = ASSISTENTE) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Condomínio não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rag fora do ar */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
             };
         };
     };

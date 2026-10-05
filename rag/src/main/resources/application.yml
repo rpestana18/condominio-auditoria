@@ -11,7 +11,8 @@ spring:
     default-schema: rag
   ai:
     model:
-      # Só embeddings nesta entrega; o chat do Ollama fica desligado (respostas são da entrega 3, ADR 0003)
+      # A autoconfiguração de ChatModel fica desligada de propósito: o rag monta um cliente do SDK oficial da
+      # Anthropic por pergunta, com a chave do condomínio (nenhuma chave única no boot). Ver GatewayIa.
       chat: none
       embedding: ollama
     ollama:
@@ -62,6 +63,63 @@ rag:
   leitor:
     url: ${LEITOR_URL:http://localhost:8090}
     timeout-segundos: 300
+  assistente:
+    # Par de chaves do rag (ADR 0003, Sub-decisão 4.1 A). Sem arquivo e sem permissão de gerar, o chat fica
+    # indisponível: ListarProvedores vem sem chave pública e Perguntar recusa com FAILED_PRECONDITION.
+    chave-privada-arquivo: ${RAG_CHAVE_PRIVADA_ARQUIVO:}
+    gerar-chave-dev: ${RAG_GERAR_CHAVE_DEV:false}
+    # Provedor das respostas; um cliente novo por pergunta, com a chave do condomínio
+    anthropic-url: ${RAG_ANTHROPIC_URL:https://api.anthropic.com}
+    prazo-provedor-segundos: ${RAG_PRAZO_PROVEDOR:90}
+    tentativas-provedor: ${RAG_TENTATIVAS_PROVEDOR:2}
+    # Sem streaming nesta versão (o fluxo manda andamento, não texto parcial)
+    max-tokens: ${RAG_MAX_TOKENS:16000}
+    # output_config.effort: low, medium, high, xhigh, max. Vazio = não enviar (o Haiku 4.5 não aceita effort)
+    esforco: ${RAG_ESFORCO:medium}
+    voltas-ferramentas: ${RAG_VOLTAS_FERRAMENTAS:6}
+    historico-maximo: 10
+    # Ferramentas numéricas: gRPC Consulta do backend, com o mesmo token do usuário
+    backend-grpc: ${BACKEND_GRPC:backend:9090}
+    prazo-ferramenta-segundos: ${RAG_PRAZO_FERRAMENTA:20}
+    # RF-04.15 / ADR 0003 Q11: só entre aspas de citação literal
+    termos-conduta: ${RAG_TERMOS_CONDUTA:desvio,desviou,fraude,fraudou,roubo,roubou,culpa,culpado}
+
+# Catálogo de provedores e modelos de IA (RF-09.6, ADR 0003, Decisão 1). Só configuração: acrescentar provedor de um
+# tipo já implementado não é código. Preços em dólar por milhão de tokens, texto decimal com ponto.
+condominio:
+  ia:
+    provedores:
+      - codigo: anthropic
+        nome: "Anthropic (Claude)"
+        tipo: anthropic
+        uso: RESPOSTAS
+        local: false
+        precisa-chave: true
+        dimensao: 0
+        modelos:
+          - id: claude-sonnet-5-5
+            nome: "Claude Sonnet 5.5"
+            padrao: true
+            preco-entrada-milhao-usd: "2.00"
+            preco-saida-milhao-usd: "10.00"
+          - id: claude-haiku-4-5
+            nome: "Claude Haiku 4.5"
+            padrao: false
+            preco-entrada-milhao-usd: "1.00"
+            preco-saida-milhao-usd: "5.00"
+      - codigo: ollama-local
+        nome: "Ollama local (nesta instalação)"
+        tipo: ollama
+        uso: EMBEDDINGS
+        local: true
+        precisa-chave: false
+        dimensao: 1024
+        modelos:
+          - id: bge-m3
+            nome: "BGE-M3 (multilíngue, 1024 dimensões)"
+            padrao: true
+            preco-entrada-milhao-usd: "0"
+            preco-saida-milhao-usd: "0"
 
 management:
   endpoints:

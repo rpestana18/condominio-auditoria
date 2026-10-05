@@ -4,7 +4,7 @@ import { useSessao } from "../contexto";
 import { UltimoArquivo } from "./UltimoArquivo";
 
 export function Layout() {
-  const { usuario, condominioId, condominioNome, trocarCondominio, pode } = useSessao();
+  const { usuario, condominioId, condominioNome, trocarCondominio, pode, moduloLigado } = useSessao();
   return (
     <div className="layout">
       <aside className="menu">
@@ -17,6 +17,8 @@ export function Layout() {
             Início
           </NavLink>
           <NavLink to="/arquivos">Arquivos</NavLink>
+          {/* Só com o módulo ligado (RF-10.3), para todos os perfis; o backend recusa (403) se estiver desligado */}
+          {moduloLigado("ASSISTENTE") && <NavLink to="/assistente">Assistente</NavLink>}
           <span className="menu-secao">Orçamento</span>
           <NavLink to="/previsto-realizado">Previsto × realizado</NavLink>
           <NavLink to="/depara">De-para</NavLink>
@@ -29,6 +31,9 @@ export function Layout() {
               </span>
               <NavLink to="/administracao/modulos" aria-describedby="menu-administracao">
                 Módulos
+              </NavLink>
+              <NavLink to="/administracao/ia" aria-describedby="menu-administracao">
+                IA do condomínio
               </NavLink>
             </>
           )}

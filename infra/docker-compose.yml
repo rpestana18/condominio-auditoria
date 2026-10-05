@@ -105,6 +105,8 @@ services:
       # Busca nos documentos (rpc BuscarDocumentos) repassada ao rag
       RAG_GRPC: rag:9091
       RAG_GRPC_PRAZO_SEGUNDOS: 30
+      # Pergunta do chat (Claude + ferramentas + validação) demora mais que a busca
+      RAG_GRPC_PRAZO_PERGUNTA_SEGUNDOS: 120
     volumes: [../dados:/dados]
     # 8081 = API REST (tela); 9090 = gRPC (só para depuração local, o mcp usa a rede interna)
     ports: ["8081:8080", "9090:9090"]
@@ -134,8 +136,15 @@ services:
       # gRPC do assistente (Assistente.Buscar), só na rede interna; quem chama é o backend
       GRPC_PORTA: 9091
       RAG_PARALELISMO_INDEXACAO: 1
+      # Chat do Assistente (ADR 0003, entrega 3). O par de chaves do rag cifra as chaves de API dos condomínios: só o
+      # rag tem a privada. Em desenvolvimento o rag gera o par na primeira subida e guarda no volume "chaves-rag";
+      # perder o volume obriga a cadastrar de novo as chaves dos condomínios. Em produção: segredo ou cofre, sem gerar.
+      RAG_CHAVE_PRIVADA_ARQUIVO: /chaves/rag.pem
+      RAG_GERAR_CHAVE_DEV: "true"
+      # Ferramentas numéricas do chat: o rag consulta o backend com o token do próprio usuário
+      BACKEND_GRPC: backend:9090
     # Só lê os originais: a pasta entra como somente leitura
-    volumes: [../dados:/dados:ro]
+    volumes: [../dados:/dados:ro, chaves-rag:/chaves]
     ports: ["8082:8080"]
     depends_on:
       banco: { condition: service_healthy }
@@ -167,3 +176,4 @@ volumes:
   banco:
   fila:
   ollama:
+  chaves-rag:

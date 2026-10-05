@@ -129,7 +129,8 @@ paths:
       summary: Contexto do condomínio para montar a tela (módulos ligados). Qualquer perfil com acesso ao condomínio.
       description: |
         O menu "Assistente" depende de ASSISTENTE estar em modulosLigados (RF-10.2, RF-10.3). Ligar ou desligar vale
-        no próximo carregamento, sem reinício. O modo de IA do assistente entra aqui na configuração de IA (ADR 0003).
+        no próximo carregamento, sem reinício. Com o módulo ligado, "assistente" traz o modo de IA efetivo (RF-04.16),
+        para a tela escolher entre chat + busca, aviso do MCP + busca ou só busca; nunca traz a chave.
       operationId: contextoCondominio
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ContextoCondominio" } } } }
@@ -188,7 +189,11 @@ paths:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }]
     get:
       summary: Uso dos módulos no período, por função e por mês (só ADMIN no MVP; RF-09.7, Q17)
-      description: Datas no fuso de Brasília, fim incluído. Sem custo nesta fase.
+      description: |
+        Datas no fuso de Brasília, fim incluído. Custo estimado em US$ (RF-09.7; ADR 0003, Decisão 4): tokens × preço
+        por milhão de tokens do catálogo de IA do rag, calculado na hora (nada de custo é gravado), em decimal exato e
+        arredondado a 2 casas (meio para cima) só em cada total. Não é valor de cobrança. Rag fora do ar: o uso sai
+        normalmente, com custoDisponivel = false e sem valores de custo.
       operationId: usoModulos
       parameters:
         - { name: inicio, in: query, required: true, schema: { type: string, format: date } }
@@ -203,7 +208,9 @@ paths:
       summary: Exporta os períodos ativos e o uso do período em Excel (só ADMIN; RF-10.6, RF-09.7)
       description: |
         Arquivo .xlsx com duas abas: "Períodos ativos" (os que tocam o período pedido) e "Uso por mês". Datas no
-        horário de Brasília. Sem valores de cobrança nesta fase.
+        horário de Brasília. A aba "Uso por mês" traz a coluna "Custo estimado (US$)" (texto 1.234,56, 2 casas só nos
+        totais), uma linha "Total do período" e, com o rag fora do ar, um aviso de custo indisponível. Custo estimado
+        não é valor de cobrança; nenhum valor de cobrança é calculado nesta fase.
       operationId: exportarUsoModulos
       parameters:
         - { name: inicio, in: query, required: true, schema: { type: string, format: date } }
@@ -385,6 +392,100 @@ paths:
           content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EvidenciaLancamento" } } } }
         "400": { description: Período ou alvo inválido }
         "403": { description: Sem acesso ao condomínio }
+  /ia/provedores:
+    get:
+      summary: Catálogo de provedores e modelos de IA, lido do rag (só ADMIN; RF-09.6, ADR 0003)
+      description: |
+        Para os campos de provedor e modelo da tela "IA do condomínio". O catálogo é mantido na configuração do rag;
+        a chave pública do rag não sai por aqui. Preços em dólar por milhão de tokens, só para o custo estimado.
+      operationId: listarProvedoresIa
+      responses:
+        "200":
+          description: OK, na ordem do catálogo
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ProvedorIa" } } } }
+        "403": { description: Perfil sem permissão }
+        "503": { description: Rag fora do ar, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+  /condominios/{condominioId}/ia:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Configuração de IA do condomínio, geral e do Assistente (só ADMIN; RF-09.1, RF-09.2, RF-09.6)
+      description: |
+        Sem configuração gravada: modo geral MCP_EXTERNO (padrão do piloto), respostas do Assistente herdando o modo
+        geral e embeddings LOCAL com ollama-local/bge-m3. A chave nunca volta: só chaveCadastrada e chaveFinal.
+      operationId: obterConfiguracaoIa
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ConfiguracaoIa" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "404": { description: Condomínio não encontrado }
+    put:
+      summary: Grava a configuração de IA do condomínio (só ADMIN; RF-09.1, RF-09.2, RF-09.6)
+      description: |
+        Substitui a configuração inteira (modo geral e Assistente). A chave é só de escrita: ausente ou nula mantém a
+        guardada; preenchida troca; removerChave apaga. O backend cifra a chave com a chave pública do rag e não
+        consegue lê-la depois. Cada gravação que muda algo entra na trilha da configuração de IA (só de inserção) com
+        quem, quando, valores anteriores e novos; da chave, só "chave trocada" e os 4 últimos caracteres.
+        Recusas (422, lista em motivos): modo de respostas LOCAL (previsto, ainda sem provedor); API_KEY sem chave
+        guardada nem nova; provedor ou modelo fora do catálogo ou de uso errado; embeddings diferente de LOCAL ou
+        DESLIGADO, ou com provedor que não é local (Q12).
+      operationId: gravarConfiguracaoIa
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoConfiguracaoIa" } } }
+      responses:
+        "200": { description: Configuração depois da gravação, content: { application/json: { schema: { $ref: "#/components/schemas/ConfiguracaoIa" } } } }
+        "400": { description: Corpo ausente ou mal formado, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "404": { description: Condomínio não encontrado }
+        "422": { description: Configuração recusada (lista em motivos), content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+        "503": { description: Rag fora do ar ou sem chave pública; com chave nova, nada é gravado, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+  /condominios/{condominioId}/assistente/perguntas:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    post:
+      summary: Pergunta ao assistente, com citações dos documentos e números das ferramentas (USUARIO, GESTOR ou ADMIN; RF-04.8 a RF-04.16)
+      description: |
+        Só com o módulo Assistente ligado e o modo de respostas efetivo API_KEY. O backend chama o rag (gRPC Perguntar,
+        prazo de 120 s), junta o fluxo e devolve a resposta inteira, já validada. O histórico só existe na tela
+        (RF-04.11): o frontend manda as trocas anteriores e o backend usa as últimas 6. Citações de arquivos que o
+        usuário não pode ver ou que foram excluídos são descartadas na volta. Gera o registro de uso "pergunta".
+      operationId: perguntarAssistente
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoPergunta" } } }
+      responses:
+        "200": { description: Resposta (RESPONDIDA ou NAO_ENCONTRADA), content: { application/json: { schema: { $ref: "#/components/schemas/RespostaAssistente" } } } }
+        "400": { description: Pergunta vazia ou acima de 2000 caracteres, ou filtro inválido, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+        "403": { description: Perfil sem permissão, sem acesso ao condomínio ou módulo não contratado (modulo = ASSISTENTE), content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+        "404": { description: Condomínio não encontrado }
+        "409":
+          description: |
+            Chat indisponível no modo atual, sem chamar o rag (modoIa diz qual). MCP_EXTERNO: "O assistente deste
+            condomínio é o seu Claude, conectado ao MCP." DESLIGADO: "A IA está desligada neste condomínio." Também
+            sem chave cadastrada ou chave que o rag não consegue ler ("cadastre a chave de novo").
+          content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } }
+        "422": { description: Chave de IA do condomínio recusada pelo provedor, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+        "429": { description: Limite de uso do provedor de IA atingido; tentar mais tarde, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+        "503": { description: Rag ou provedor de IA fora do ar, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+        "504": { description: A resposta passou do prazo, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+  /condominios/{condominioId}/assistente/busca:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    post:
+      summary: Busca por palavra nos documentos, sem IA (todos os perfis; RF-04.18)
+      description: |
+        Só com o módulo Assistente ligado, em qualquer modo de IA (inclusive DESLIGADO, Q7). Devolve trechos citáveis
+        do mais relevante para o menos relevante, sem resposta redigida. Aceita "frase entre aspas" e exclusão com -.
+        Gera o registro de uso "busca_documentos".
+      operationId: buscarDocumentos
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoBuscaDocumentos" } } }
+      responses:
+        "200":
+          description: OK (lista vazia quando nada foi encontrado)
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/TrechoDocumento" } } } }
+        "400": { description: Texto vazio, limite fora de 1 a 50 ou filtro inválido, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+        "403": { description: Sem acesso ao condomínio ou módulo não contratado (modulo = ASSISTENTE), content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+        "404": { description: Condomínio não encontrado }
+        "503": { description: Rag fora do ar, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
   /condominios/{condominioId}/previsto-realizado/exportacao:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }]
     get:
@@ -542,6 +643,209 @@ components:
         condominioId: { type: string, format: uuid }
         nome: { type: string }
         modulosLigados: { type: array, items: { type: string }, description: "Códigos dos módulos ligados (ex.: [ASSISTENTE])" }
+        assistente:
+          description: Modo de IA efetivo do Assistente (RF-04.16). Nulo ou ausente com o módulo Assistente desligado.
+          anyOf:
+            - { $ref: "#/components/schemas/ContextoAssistente" }
+            - { type: "null" }
+    ContextoAssistente:
+      type: object
+      required: [modoRespostas, modoEmbeddings, chatDisponivel]
+      properties:
+        modoRespostas: { $ref: "#/components/schemas/ModoIa" }
+        modoEmbeddings: { $ref: "#/components/schemas/ModoIa" }
+        chatDisponivel: { type: boolean, description: "Modo de respostas API_KEY com chave cadastrada: a tela mostra o chat" }
+    ModoIa:
+      type: string
+      description: |
+        Quem executa a IA (RF-09.1, RF-09.6). MCP_EXTERNO = o Claude do usuário conectado ao MCP (padrão do piloto);
+        API_KEY = o sistema chama o provedor com a chave do condomínio; DESLIGADO = nenhuma IA; LOCAL = modelo na
+        infraestrutura do cliente (nesta fase só para embeddings).
+      enum: [MCP_EXTERNO, API_KEY, DESLIGADO, LOCAL]
+    UsoProvedorIa:
+      type: string
+      description: RESPOSTAS = chat; EMBEDDINGS = busca por significado e indexação
+      enum: [RESPOSTAS, EMBEDDINGS]
+    ProvedorIa:
+      type: object
+      required: [codigo, nome, tipo, uso, local, precisaChave, modelos]
+      properties:
+        codigo: { type: string, description: "Código usado na configuração (ex.: anthropic, ollama-local)" }
+        nome: { type: string }
+        tipo: { type: string, description: "Implementação no rag (ex.: anthropic, ollama)" }
+        uso: { $ref: "#/components/schemas/UsoProvedorIa" }
+        local: { type: boolean, description: "Roda na infraestrutura do sistema, sem enviar texto para fora (único aceito para embeddings, Q12)" }
+        precisaChave: { type: boolean }
+        dimensao: { type: [integer, "null"], description: Só embeddings, dimensão dos vetores }
+        modelos: { type: array, items: { $ref: "#/components/schemas/ModeloIa" } }
+    ModeloIa:
+      type: object
+      required: [id, nome, padrao, precoEntradaMilhaoUsd, precoSaidaMilhaoUsd]
+      properties:
+        id: { type: string, description: "Ex.: claude-sonnet-5-5" }
+        nome: { type: string }
+        padrao: { type: boolean }
+        precoEntradaMilhaoUsd: { type: string, pattern: "^[0-9]+(\\.[0-9]+)?$", description: 'US$ por milhão de tokens de entrada, texto decimal exato (ex. "2.00")' }
+        precoSaidaMilhaoUsd: { type: string, pattern: "^[0-9]+(\\.[0-9]+)?$", description: 'US$ por milhão de tokens de saída, texto decimal exato (ex. "10.00")' }
+    ConfiguracaoIa:
+      type: object
+      required: [modoGeral, assistente]
+      properties:
+        modoGeral: { $ref: "#/components/schemas/ModoIa" }
+        assistente:
+          type: object
+          required: [respostas, embeddings]
+          properties:
+            respostas: { $ref: "#/components/schemas/ConfiguracaoRespostasIa" }
+            embeddings: { $ref: "#/components/schemas/ConfiguracaoEmbeddingsIa" }
+        atualizadoPor: { type: [string, "null"], description: Nulo = nunca gravada (valem os padrões) }
+        atualizadoEm: { type: [string, "null"], format: date-time }
+    ConfiguracaoRespostasIa:
+      type: object
+      required: [modoEfetivo, chaveCadastrada]
+      properties:
+        modo: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/ModoIa" }], description: Nulo = herda o modo geral }
+        modoEfetivo: { $ref: "#/components/schemas/ModoIa" }
+        provedor: { type: [string, "null"], description: Código do provedor no catálogo }
+        modelo: { type: [string, "null"], description: Id do modelo no catálogo }
+        chaveCadastrada: { type: boolean }
+        chaveFinal: { type: [string, "null"], description: "Os 4 últimos caracteres da chave (ex.: \"x9Qa\"); nulo sem chave" }
+    ConfiguracaoEmbeddingsIa:
+      type: object
+      required: [modo, provedor, modelo]
+      properties:
+        modo: { $ref: "#/components/schemas/ModoIa" }
+        provedor: { type: [string, "null"], description: Nulo com DESLIGADO }
+        modelo: { type: [string, "null"] }
+    PedidoConfiguracaoIa:
+      type: object
+      required: [modoGeral, assistente]
+      properties:
+        modoGeral: { $ref: "#/components/schemas/ModoIa" }
+        assistente:
+          type: object
+          required: [respostas, embeddings]
+          properties:
+            respostas:
+              type: object
+              properties:
+                modo: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/ModoIa" }], description: Nulo = herda o modo geral }
+                provedor: { type: [string, "null"], description: Obrigatório quando o modo efetivo é API_KEY }
+                modelo: { type: [string, "null"], description: Nulo = modelo padrão do provedor }
+                chave: { type: [string, "null"], writeOnly: true, minLength: 8, maxLength: 500, description: Só de escrita. Ausente ou nula mantém a chave guardada; nunca volta em resposta nem vai para log }
+                removerChave: { type: boolean, default: false, description: Apaga a chave guardada (não pode vir junto com chave) }
+            embeddings:
+              type: object
+              required: [modo]
+              properties:
+                modo: { $ref: "#/components/schemas/ModoIa" }
+                provedor: { type: [string, "null"], description: "Obrigatório com LOCAL; só provedor local do catálogo (ex.: ollama-local)" }
+                modelo: { type: [string, "null"], description: Nulo = modelo padrão do provedor }
+    FiltrosDocumentos:
+      type: object
+      description: Filtros opcionais da busca e do chat (RF-04.10), aplicados antes da busca. Vazio = todos os documentos do condomínio.
+      properties:
+        categorias: { type: array, items: { $ref: "#/components/schemas/Categoria" } }
+        dataInicio: { type: [string, "null"], format: date, description: Documentos cuja competência cruza o período }
+        dataFim: { type: [string, "null"], format: date }
+        arquivoIds: { type: array, items: { type: string, format: uuid } }
+    PedidoPergunta:
+      type: object
+      required: [pergunta]
+      properties:
+        pergunta: { type: string, minLength: 1, maxLength: 2000 }
+        historico:
+          type: array
+          description: Trocas anteriores desta conversa, da mais antiga para a mais recente (o backend usa as últimas 6)
+          items:
+            type: object
+            required: [pergunta, resposta]
+            properties: { pergunta: { type: string }, resposta: { type: string } }
+        filtros: { $ref: "#/components/schemas/FiltrosDocumentos" }
+    SituacaoResposta:
+      type: string
+      description: NAO_ENCONTRADA = "Não encontrei nos documentos." (RF-04.12), sem blocos nem citações
+      enum: [RESPONDIDA, NAO_ENCONTRADA]
+    RespostaAssistente:
+      type: object
+      required: [situacao, nosDocumentos, nosDadosGravados, citacoes, modelo]
+      properties:
+        situacao: { $ref: "#/components/schemas/SituacaoResposta" }
+        nosDocumentos:
+          type: array
+          description: Bloco "Nos documentos". Números transcritos vêm marcados "(conforme o documento, não conferido)"
+          items:
+            type: object
+            required: [texto, citacoes]
+            properties:
+              texto: { type: string }
+              citacoes: { type: array, items: { type: integer }, description: Números das citações (campo numero de citacoes) }
+        nosDadosGravados:
+          type: array
+          description: Bloco "Nos dados gravados", montado das ferramentas de consulta (nunca escrito pelo modelo)
+          items: { $ref: "#/components/schemas/DadoGravado" }
+        citacoes: { type: array, items: { $ref: "#/components/schemas/CitacaoDocumento" }, description: "Numeradas a partir de 1, na ordem da primeira citação" }
+        sugestao: { type: [string, "null"], description: Categoria de documento que faltaria (RF-04.12) }
+        aviso: { type: [string, "null"] }
+        modelo: { type: string, description: Modelo de IA que respondeu }
+    DadoGravado:
+      type: object
+      required: [consulta, parametros, linhas]
+      properties:
+        consulta: { type: string, description: "resumo_fundos, buscar_lancamentos, listar_arquivos ou conferencias_do_arquivo (a tela do link sai daqui)" }
+        parametros:
+          type: array
+          description: Filtros usados na consulta
+          items:
+            type: object
+            required: [nome, valor]
+            properties: { nome: { type: string }, valor: { type: string } }
+        linhas:
+          type: array
+          items:
+            type: object
+            required: [rotulo, valor]
+            properties: { rotulo: { type: string }, valor: { type: string, description: 'Já formatado (dinheiro como "R$ 1.234,56")' } }
+        comentario: { type: [string, "null"] }
+    LocalizacaoTrecho:
+      type: object
+      required: [tipo, descricao]
+      description: Onde o trecho está no original. PDF abre na página (#page=N)
+      properties:
+        tipo: { type: string, enum: [PAGINA, PLANILHA, PARAGRAFOS] }
+        pagina: { type: [integer, "null"] }
+        aba: { type: [string, "null"] }
+        linhaInicio: { type: [integer, "null"] }
+        linhaFim: { type: [integer, "null"] }
+        paragrafoInicio: { type: [integer, "null"] }
+        paragrafoFim: { type: [integer, "null"] }
+        secao: { type: [string, "null"] }
+        descricao: { type: string, description: 'Texto pronto para a tela (ex. "página 3", "aba Junho, linhas 10 a 14")' }
+    TrechoDocumento:
+      type: object
+      required: [trechoId, arquivoId, nomeArquivo, categoria, localizacao, texto, sha256]
+      properties:
+        trechoId: { type: string }
+        arquivoId: { type: string, format: uuid }
+        nomeArquivo: { type: string }
+        categoria: { $ref: "#/components/schemas/Categoria" }
+        localizacao: { $ref: "#/components/schemas/LocalizacaoTrecho" }
+        texto: { type: string, description: Texto literal do documento, não conferido }
+        sha256: { type: string }
+    CitacaoDocumento:
+      allOf:
+        - { $ref: "#/components/schemas/TrechoDocumento" }
+        - type: object
+          required: [numero]
+          properties:
+            numero: { type: integer, minimum: 1 }
+    PedidoBuscaDocumentos:
+      type: object
+      required: [texto]
+      properties:
+        texto: { type: string, minLength: 1, maxLength: 500 }
+        filtros: { $ref: "#/components/schemas/FiltrosDocumentos" }
+        limite: { type: integer, minimum: 1, maximum: 50, default: 10 }
     ModuloDoCondominio:
       type: object
       required: [codigo, nome, descricao, inclui, dependeDe, ligadoPorPadrao, ligado, versaoCatalogo]
@@ -599,6 +903,13 @@ components:
         tokensSaida: { type: integer, format: int64 }
         arquivos: { type: integer, format: int64 }
         paginas: { type: integer, format: int64 }
+        custoEstimadoUsd:
+          type: [string, "null"]
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+          description: |
+            Custo estimado em US$, texto decimal exato com 2 casas (ex. "3.50"). Ausente quando não há tokens nessa
+            linha ou quando o custo está indisponível (custoDisponivel = false); nulo quando há tokens de modelo sem
+            preço no catálogo (ver modelosSemPreco).
     UsoDoPeriodo:
       type: object
       required: [condominioId, inicio, fim, porFuncao, porMes]
@@ -608,6 +919,20 @@ components:
         fim: { type: string, format: date }
         porFuncao: { type: array, items: { $ref: "#/components/schemas/TotalUso" } }
         porMes: { type: array, items: { $ref: "#/components/schemas/TotalUso" } }
+        custoDisponivel:
+          type: boolean
+          description: false quando o rag não respondeu o catálogo de preços; aí não há nenhum valor de custo
+        custoEstimadoTotalUsd:
+          type: [string, "null"]
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+          description: |
+            Total do período em US$ (arredondamento da soma exata, não a soma dos totais arredondados). Nulo com
+            modelo sem preço no catálogo; ausente com custoDisponivel = false.
+        modelosSemPreco:
+          type: array
+          items: { type: string }
+          description: 'Modelos com tokens no período e sem preço no catálogo, como "provedor/modelo"'
+
     Categoria:
       type: string
       enum: [BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
@@ -1346,4 +1671,5 @@ components:
         detail: { type: string }
         arquivoExistenteId: { type: string, format: uuid }
         modulo: { type: string, description: "Em recusa por módulo não contratado (403): código do módulo" }
-        motivos: { type: array, items: { type: string }, description: Motivos da recusa da confirmação da PO }
+        motivos: { type: array, items: { type: string }, description: Motivos da recusa (confirmação da PO, configuração de IA) }
+        modoIa: { $ref: "#/components/schemas/ModoIa", description: "Em recusa do chat pelo modo (409): modo de respostas efetivo" }

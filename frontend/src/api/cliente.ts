@@ -89,6 +89,32 @@ export async function abrirArquivo(caminho: string, pagina?: number): Promise<vo
 }
 
 /**
+ * Abre o original numa nova aba, opcionalmente numa página (PDF: `#page=N`, RF-04.9).
+ * A aba é aberta antes de baixar, ainda dentro do clique, para o navegador não bloquear como pop-up;
+ * depois recebe o arquivo (blob local, já autenticado). `tipo` força o tipo do conteúdo (ex.: "application/pdf"),
+ * porque o servidor manda o original como application/octet-stream e o navegador baixaria em vez de mostrar.
+ */
+export async function abrirOriginal(caminho: string, opcoes: { pagina?: number | null; tipo?: string } = {}): Promise<void> {
+  const janela = window.open("", "_blank");
+  try {
+    const resposta = await chamar(caminho);
+    const blob = await resposta.blob();
+    const url = URL.createObjectURL(opcoes.tipo ? new Blob([blob], { type: opcoes.tipo }) : blob);
+    const endereco = opcoes.pagina ? `${url}#page=${opcoes.pagina}` : url;
+    if (janela) {
+      janela.opener = null;
+      janela.location.href = endereco;
+    } else {
+      window.open(endereco, "_blank", "noopener");
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (erro) {
+    janela?.close();
+    throw erro;
+  }
+}
+
+/**
  * Baixa um arquivo autenticado e salva com o nome que o servidor mandou no Content-Disposition.
  * Não assumimos o tipo (PDF, Excel, CSV): o blob vai como veio.
  */

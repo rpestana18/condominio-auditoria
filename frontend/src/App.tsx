@@ -3,8 +3,11 @@ import { useUsuario } from "./api/consultas";
 import { Layout } from "./componentes/Layout";
 import { ProvedorSessao } from "./contexto";
 import { sair } from "./autenticacao/keycloak";
+import { ProvedorConversa } from "./componentes/assistente/conversa";
+import { AdministracaoIa } from "./paginas/AdministracaoIa";
 import { AdministracaoModulos } from "./paginas/AdministracaoModulos";
 import { Arquivos } from "./paginas/Arquivos";
+import { Assistente } from "./paginas/Assistente";
 import { Depara } from "./paginas/Depara";
 import { Inicio } from "./paginas/Inicio";
 import { PrevisaoPo } from "./paginas/PrevisaoPo";
@@ -27,19 +30,24 @@ export function App() {
   }
   return (
     <ProvedorSessao usuario={usuario}>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route index element={<Inicio />} />
-            <Route path="arquivos" element={<Arquivos />} />
-            <Route path="previsto-realizado" element={<PrevistoRealizado />} />
-            <Route path="depara" element={<Depara />} />
-            <Route path="previsoes" element={<Previsoes />} />
-            <Route path="previsoes/:poId" element={<PrevisaoPo />} />
-            <Route path="administracao/modulos" element={<AdministracaoModulos />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      {/* A conversa do Assistente fica aqui, acima das rotas, só na memória (RF-04.11) */}
+      <ProvedorConversa>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route index element={<Inicio />} />
+              <Route path="arquivos" element={<Arquivos />} />
+              <Route path="previsto-realizado" element={<PrevistoRealizado />} />
+              <Route path="depara" element={<Depara />} />
+              <Route path="previsoes" element={<Previsoes />} />
+              <Route path="previsoes/:poId" element={<PrevisaoPo />} />
+              <Route path="assistente" element={<Assistente />} />
+              <Route path="administracao/modulos" element={<AdministracaoModulos />} />
+              <Route path="administracao/ia" element={<AdministracaoIa />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ProvedorConversa>
     </ProvedorSessao>
   );
 }

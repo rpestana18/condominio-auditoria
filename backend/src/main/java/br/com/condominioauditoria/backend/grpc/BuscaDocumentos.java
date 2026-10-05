@@ -3,6 +3,8 @@ package br.com.condominioauditoria.backend.grpc;
 import br.com.condominioauditoria.backend.arquivo.Arquivo;
 import br.com.condominioauditoria.backend.arquivo.ArquivoRepository;
 import br.com.condominioauditoria.backend.arquivo.Categoria;
+import br.com.condominioauditoria.backend.ia.ConfiguracaoIaServico;
+import br.com.condominioauditoria.backend.modulo.ModoIa;
 import br.com.condominioauditoria.backend.modulo.Modulos;
 import br.com.condominioauditoria.backend.modulo.RegistroUso;
 import br.com.condominioauditoria.backend.seguranca.AcessoCondominio;
@@ -45,8 +47,9 @@ import org.springframework.stereotype.Component;
  * "Módulo Assistente não contratado para este condomínio." sem chamar o rag. Cada busca respondida gera um registro
  * de uso "chamada_mcp" (RF-09.7; a origem deste rpc é o mcp).
  *
- * Sempre pede o modo HIBRIDA (o rag cai para PALAVRA se os embeddings estiverem fora). A escolha do modo pela
- * configuração de IA do condomínio entra na entrega 3.
+ * Modo da busca pela configuração de IA do condomínio (entrega 3, Q16): embeddings DESLIGADO = PALAVRA; LOCAL =
+ * HIBRIDA com o modelo configurado (o rag cai para PALAVRA se os embeddings estiverem fora). Funciona em qualquer modo
+ * de respostas, inclusive DESLIGADO.
  */
 @Component
 class BuscaDocumentos {
@@ -60,20 +63,28 @@ class BuscaDocumentos {
     private final ClienteAssistente rag;
     private final Modulos modulos;
     private final RegistroUso registroUso;
+    private final ConfiguracaoIaServico configuracaoIa;
 
     BuscaDocumentos(AcessoCondominio acesso, ArquivoRepository arquivos, ClienteAssistente rag, Modulos modulos,
-            RegistroUso registroUso) {
+            RegistroUso registroUso, ConfiguracaoIaServico configuracaoIa) {
         this.acesso = acesso;
         this.arquivos = arquivos;
         this.rag = rag;
         this.modulos = modulos;
         this.registroUso = registroUso;
+        this.configuracaoIa = configuracaoIa;
     }
 
     /** Chamado dentro do rpc, já com o usuário do token no contexto de segurança e o acesso ao condomínio conferido. */
     BuscarDocumentosResponse buscar(UUID condominioId, BuscarDocumentosRequest pedido) {
         modulos.exigir(condominioId, Modulos.ASSISTENTE);
-        BuscarRequest pedidoRag = paraRag(condominioId, pedido);
+        var embeddings = configuracaoIa.ler(condominioId).embeddings();
+        BuscarRequest pedidoRag = paraRag(condominioId, pedido).toBuilder()
+                .setModo(embeddings.modo() == ModoIa.DESLIGADO ? ModoBusca.MODO_BUSCA_PALAVRA
+                        : ModoBusca.MODO_BUSCA_HIBRIDA)
+                .setModeloEmbeddings(embeddings.modo() == ModoIa.LOCAL && embeddings.modelo() != null
+                        ? embeddings.modelo() : "")
+                .build();
         String autorizacao = acesso.tokenBearer()
                 .orElseThrow(() -> Status.UNAUTHENTICATED.withDescription("Token ausente").asRuntimeException());
         BuscarResponse resposta;

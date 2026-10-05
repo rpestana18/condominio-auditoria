@@ -17,9 +17,12 @@ import org.springframework.stereotype.Component;
  * Spring. Quem chama é só o backend.
  *
  * Sem TLS dentro da rede do docker compose; na nuvem, o TLS fica na malha de rede ou entra aqui por parâmetro.
- * TODO(ADR 0003, Decisão 5.2 e contrato assistente.proto): validar o token do usuário (metadado "authorization") como
- * o AutenticacaoGrpc do backend, com spring-boot-starter-oauth2-resource-server. Na entrega 1 o rag confia no backend
- * (rede interna), que já verificou token, perfil, condomínio e módulo antes de chamar.
+ *
+ * O {@link AutorizacaoGrpc} guarda o metadado "authorization" no contexto: Perguntar e ListarProvedores exigem o
+ * token (UNAUTHENTICATED sem ele) e Perguntar o repassa às ferramentas numéricas do backend.
+ * TODO(ADR 0003, Decisão 5.2 e contrato assistente.proto): conferir a assinatura do JWT como o AutenticacaoGrpc do
+ * backend, com spring-boot-starter-oauth2-resource-server. Hoje o rag confia no backend (rede interna), que já
+ * verificou token, perfil, condomínio e módulo antes de chamar.
  */
 @Component
 class ServidorGrpc implements SmartLifecycle {
@@ -39,7 +42,7 @@ class ServidorGrpc implements SmartLifecycle {
     public void start() {
         try {
             servidor = Grpc.newServerBuilderForPort(porta, InsecureServerCredentials.create())
-                    .addService(assistente)
+                    .addService(io.grpc.ServerInterceptors.intercept(assistente, new AutorizacaoGrpc()))
                     .build()
                     .start();
             log.info("Servidor gRPC do assistente ouvindo na porta {}", porta);

@@ -269,3 +269,80 @@ input[type="date"] { color-scheme: light dark; }
 .filtros { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
 .rolagem { overflow-x: auto; }
 :focus-visible { outline: 2px solid var(--primaria); outline-offset: 2px; }
+
+/* Assistente (RF-04.8 a 04.18) */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+input[type="search"], input[type="password"] {
+  font: inherit; color: var(--texto); background: var(--superficie);
+  padding: 7px 10px; border: 1px solid var(--borda); border-radius: 8px;
+}
+code { font-family: ui-monospace, monospace; font-size: 0.85em; background: var(--fundo); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+.aviso-modo h2 { font-size: 1rem; }
+.aviso-modo ol { margin: 8px 0; padding-left: 20px; display: grid; gap: 6px; font-size: 0.9rem; }
+
+.filtros-documentos { padding: 12px 18px; }
+.filtros-documentos summary { cursor: pointer; font-weight: 600; }
+.filtros-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 12px 0; }
+.filtros-grade fieldset { border: none; padding: 0; margin: 0; display: grid; gap: 8px; align-content: start; }
+.filtros-grade legend { font-weight: 600; font-size: 0.88rem; margin-bottom: 6px; }
+.lista-opcoes { display: grid; gap: 4px; font-size: 0.86rem; }
+.lista-opcoes label { display: flex; gap: 8px; align-items: baseline; cursor: pointer; flex-wrap: wrap; }
+.lista-opcoes.rolavel { max-height: 220px; overflow: auto; padding-right: 6px; }
+.nome-documento { overflow-wrap: anywhere; }
+
+.chat { display: grid; gap: 16px; }
+.conversa { display: grid; gap: 18px; }
+.troca { display: grid; gap: 10px; }
+.pergunta {
+  justify-self: end; max-width: min(720px, 90%); margin: 0; padding: 10px 14px; border-radius: var(--raio);
+  background: var(--primaria-clara); color: var(--texto); white-space: pre-wrap;
+}
+.pesquisando { font-style: italic; }
+.pergunta-form { background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio); padding: 14px; position: sticky; bottom: 40px; }
+.pergunta-acoes { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; margin-top: 10px; }
+.pergunta-acoes .discreto { margin-right: auto; }
+
+.resposta { background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio); padding: 14px 18px; }
+.resposta.com-fontes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 360px); gap: 20px; align-items: start; }
+@media (max-width: 1000px) { .resposta.com-fontes { grid-template-columns: 1fr; } }
+.resposta-texto { min-width: 0; }
+.bloco-resposta h3 { margin-top: 0; }
+.bloco-resposta + .bloco-resposta { margin-top: 16px; }
+.bloco-resposta p { line-height: 1.55; }
+.aviso-resposta { font-style: italic; }
+.marcador-citacao {
+  background: none; border: none; padding: 0 1px; cursor: pointer; font: inherit; font-size: 0.8em;
+  color: var(--primaria); font-weight: 600; vertical-align: super;
+}
+.marcador-citacao:hover { text-decoration: underline; }
+.dado-gravado { margin-bottom: 12px; }
+.dado-gravado p { margin: 4px 0; }
+.dado-gravado .tabela { margin: 6px 0; max-width: 520px; }
+
+.fontes { display: grid; gap: 10px; }
+.fontes h3 { margin: 0; }
+.fonte { border: 1px solid var(--borda); border-radius: 8px; padding: 10px 12px; font-size: 0.86rem; background: var(--superficie); }
+.fonte.destacada { border-color: var(--primaria); box-shadow: 0 0 0 2px var(--primaria-clara); }
+.fonte header { display: flex; gap: 8px; align-items: flex-start; }
+.fonte header div { display: grid; gap: 2px; min-width: 0; }
+.fonte blockquote {
+  margin: 8px 0 0; padding: 6px 10px; border-left: 3px solid var(--borda); white-space: pre-wrap;
+  max-height: 200px; overflow: auto; color: var(--texto);
+}
+.fonte .acoes { margin-top: 8px; }
+.numero-citacao {
+  flex: none; min-width: 22px; height: 22px; border-radius: 99px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--primaria); color: var(--superficie); font-size: 0.75rem; font-weight: 700;
+}
+.busca-documentos { display: grid; gap: 8px; }
+.busca-campo { flex: 1; min-width: 240px; }
+.lista-trechos { display: grid; gap: 10px; }
+
+/* Administração › IA do condomínio (RF-09.6) */
+.escolha-modo { border: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.escolha-modo legend { font-size: 0.85rem; color: var(--texto-discreto); margin-bottom: 8px; }
+.escolha-modo label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.escolha-modo input { margin-top: 4px; }
+.campo-chave { display: grid; gap: 8px; max-width: 420px; }
+.campo-chave .botao-link { justify-self: start; }
+.total-custo { font-size: 0.9rem; margin: 8px 0 0; }

@@ -7,8 +7,13 @@ import jakarta.persistence.Id;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
+import org.hibernate.annotations.DynamicUpdate;
 
 /** Registro de um arquivo enviado. O conteúdo fica na pasta de dados; aqui só o caminho, o hash e o status. */
+// Só as colunas alteradas vão no UPDATE: a gravação do resultado da leitura e a da indexação chegam por filas
+// diferentes e mexem em colunas diferentes; sem isto, a transação mais longa regravava a linha inteira e apagava a
+// situação da indexação gravada no meio-tempo (arquivo indexado voltava a aparecer "na fila").
+@DynamicUpdate
 @Entity
 public class Arquivo {
 

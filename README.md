@@ -112,6 +112,26 @@ Sem o Ollama, a busca continua funcionando só por palavra para o que já foi in
 
 Os usuários de exemplo e as regras de sessão (token de 5 min, sessão que cai após 30 min sem uso) estão em `infra/keycloak/realm-condominio.json`. Esse arquivo só é importado quando o Keycloak sobe com o banco dele vazio.
 
+## Assistente na tela (chat sobre os documentos)
+
+O Assistente é um módulo contratável: aparece no menu só quando está ligado em **Administração › Módulos** (o piloto já vem ligado). A tela tem a **Busca nos documentos** (por palavra, sem IA) em qualquer modo e o **chat** só no modo `API_KEY`.
+
+Para ligar o chat no condomínio:
+
+1. Entre como `admin` e abra **Administração › IA do condomínio**.
+2. Em "Assistente — respostas", escolha `API_KEY`, o provedor `anthropic` e o modelo (Claude Sonnet 5.5 é o padrão; Claude Haiku 4.5 é a opção mais barata).
+3. Cole a chave de API do condomínio (crie em https://console.anthropic.com) e salve. A chave é cifrada com a chave pública do `rag` e nunca mais aparece: a tela mostra só os 4 últimos caracteres.
+
+Cada pergunta responde em dois blocos: **Nos documentos** (com citações que abrem o original na página) e **Nos dados gravados** (números das consultas ao banco, nunca calculados pela IA). Sem fonte, a resposta é "Não encontrei nos documentos". A conversa fica só na tela e some ao trocar de condomínio ou sair. O uso (perguntas, tokens e custo estimado em US$) aparece em **Administração › Módulos**.
+
+Nos modos `MCP_EXTERNO` e `DESLIGADO` o sistema não chama nenhuma IA externa: a tela mostra a busca e, em `MCP_EXTERNO`, como conectar o seu Claude (seção abaixo).
+
+| Situação | O que fazer |
+|---|---|
+| "A chave de IA do condomínio foi recusada pelo provedor" | A chave foi revogada ou digitada errada. Cadastre de novo em **IA do condomínio** |
+| "cadastre a chave de novo" depois de recriar os volumes | O par de chaves do `rag` fica no volume `chaves-rag`. Se o volume foi apagado, as chaves já cadastradas não decifram mais: cadastre de novo |
+| "O assistente está indisponível no momento" | O `rag` está parado ou sem acesso a `api.anthropic.com`. Veja `docker compose logs rag` |
+
 ## Conectar o Claude (MCP)
 
 O serviço **mcp** deixa o Claude consultar o sistema com as permissões do seu usuário: fundos, arquivos, conferências e lançamentos (com arquivo e página de origem) e trechos dos documentos enviados. Ferramentas: `listar_condominios`, `resumo_fundos`, `listar_arquivos`, `conferencias_do_arquivo`, `buscar_lancamentos` e `buscar_documentos`.

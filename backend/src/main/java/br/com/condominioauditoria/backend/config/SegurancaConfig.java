@@ -39,6 +39,8 @@ class SegurancaConfig {
                         // é REQUEST, não ERROR, e continua recusada.
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Página de erro do Spring: sem isto, 400 e 404 tratados pelo próprio Spring viram 403 vazio
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/**").hasAnyRole("USUARIO", "GESTOR", "ADMIN")
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(conversorDePerfis)));

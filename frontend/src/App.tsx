@@ -3,6 +3,7 @@ import { useUsuario } from "./api/consultas";
 import { Layout } from "./componentes/Layout";
 import { ProvedorSessao } from "./contexto";
 import { sair } from "./autenticacao/keycloak";
+import { AdministracaoModulos } from "./paginas/AdministracaoModulos";
 import { Arquivos } from "./paginas/Arquivos";
 import { Depara } from "./paginas/Depara";
 import { Inicio } from "./paginas/Inicio";
@@ -35,6 +36,7 @@ export function App() {
             <Route path="depara" element={<Depara />} />
             <Route path="previsoes" element={<Previsoes />} />
             <Route path="previsoes/:poId" element={<PrevisaoPo />} />
+            <Route path="administracao/modulos" element={<AdministracaoModulos />} />
           </Route>
         </Routes>
       </BrowserRouter>

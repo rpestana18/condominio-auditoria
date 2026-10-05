@@ -61,3 +61,22 @@ export const classeDiferenca = (valor: number) => (valor > 0 ? "acima" : "");
 
 /** Início do hash, para mostrar sem ocupar a linha toda (o completo vai no title). */
 export const hashCurto = (sha256: string) => sha256.slice(0, 12);
+const inteiro = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+
+/** 12345 vira "12.345". */
+export const formatarInteiro = (valor: number) => inteiro.format(valor);
+
+/** "2026-10" vira "out/2026". */
+export function formatarMesAbreviado(anoMes: string | undefined): string {
+  if (!anoMes) return "";
+  const [ano, mes] = anoMes.split("-");
+  const nome = new Date(Number(ano), Number(mes) - 1, 15).toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+  return `${nome}/${ano}`;
+}
+
+/** Data de hoje no fuso do navegador, em AAAA-MM-DD (o formato do <input type="date"> e da API). */
+export function hojeIso(): string {
+  const hoje = new Date();
+  const doisDigitos = (n: number) => String(n).padStart(2, "0");
+  return `${hoje.getFullYear()}-${doisDigitos(hoje.getMonth() + 1)}-${doisDigitos(hoje.getDate())}`;
+}

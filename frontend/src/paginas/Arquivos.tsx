@@ -1,22 +1,34 @@
 import { useState } from "react";
 import { useArquivos, useCategorias } from "../api/consultas";
-import type { ArquivoResumo, Categoria } from "../api/tipos";
+import type { ArquivoResumo, Categoria, SituacaoIndexacao } from "../api/tipos";
 import { DetalheArquivo } from "../componentes/DetalheArquivo";
 import { EditarCategoria } from "../componentes/EditarCategoria";
 import { EnvioArquivo } from "../componentes/EnvioArquivo";
+import { IndexacaoArquivo, rotulosIndexacao } from "../componentes/IndexacaoArquivo";
 import { StatusArquivo } from "../componentes/StatusArquivo";
 import { useSessao } from "../contexto";
 import { formatarDataHora, formatarPeriodo } from "../formato";
 
+/** Filtro da coluna "Busca" (RF-04.7): uma situação da API ou "não indexado" (campo nulo). */
+type FiltroIndexacao = "TODOS" | "NAO_INDEXADO" | SituacaoIndexacao;
+
+/** Só esconde linhas que já vieram da API; não calcula nada. */
+const passaNoFiltro = (a: ArquivoResumo, filtro: FiltroIndexacao) =>
+  filtro === "TODOS" || (filtro === "NAO_INDEXADO" ? !a.indexacao : a.indexacao?.situacao === filtro);
+
 /** Arquivos separados por categoria, do mais recente para o mais antigo. */
 export function Arquivos() {
-  const { condominioId, pode } = useSessao();
+  const { condominioId, pode, moduloLigado } = useSessao();
   const { data: categorias = [] } = useCategorias();
   const [categoria, setCategoria] = useState<Categoria | undefined>();
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [editando, setEditando] = useState<ArquivoResumo | null>(null);
   const podeEditar = pode("GESTOR", "ADMIN");
-  const { data: arquivos = [], isLoading } = useArquivos(condominioId, categoria);
+  const [filtroIndexacao, setFiltroIndexacao] = useState<FiltroIndexacao>("TODOS");
+  const { data: todos = [], isLoading } = useArquivos(condominioId, categoria);
+  // A coluna "Busca" só existe com o módulo Assistente ligado (sem ele a API não manda o estado)
+  const comBusca = moduloLigado("ASSISTENTE") || todos.some((a) => a.indexacao);
+  const arquivos = comBusca ? todos.filter((a) => passaNoFiltro(a, filtroIndexacao)) : todos;
 
   return (
     <div className={selecionado ? "com-detalhe" : undefined}>
@@ -37,10 +49,29 @@ export function Arquivos() {
           ))}
         </div>
 
+        {comBusca && (
+          <label className="filtro">
+            Busca nos documentos
+            <select value={filtroIndexacao} onChange={(e) => setFiltroIndexacao(e.target.value as FiltroIndexacao)}>
+              <option value="TODOS">Todos os estados</option>
+              <option value="NAO_INDEXADO">Não indexado</option>
+              {(Object.keys(rotulosIndexacao) as SituacaoIndexacao[]).map((s) => (
+                <option key={s} value={s}>
+                  {rotulosIndexacao[s]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
         {isLoading ? (
           <p className="aviso">Carregando…</p>
         ) : arquivos.length === 0 ? (
-          <p className="aviso">Nenhum arquivo nesta categoria ainda.</p>
+          <p className="aviso">
+            {filtroIndexacao !== "TODOS" && todos.length > 0
+              ? "Nenhum arquivo neste estado de indexação."
+              : "Nenhum arquivo nesta categoria ainda."}
+          </p>
         ) : (
           <table className="tabela clicavel">
             <thead>
@@ -50,6 +81,7 @@ export function Arquivos() {
                 <th>Período</th>
                 <th>Enviado em</th>
                 <th>Situação</th>
+                {comBusca && <th>Busca</th>}
                 {podeEditar && <th aria-label="Ações" />}
               </tr>
             </thead>
@@ -65,6 +97,11 @@ export function Arquivos() {
                   <td>
                     <StatusArquivo status={a.status} />
                   </td>
+                  {comBusca && (
+                    <td>
+                      <IndexacaoArquivo indexacao={a.indexacao} />
+                    </td>
+                  )}
                   {podeEditar && (
                     <td>
                       <button

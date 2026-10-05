@@ -3,6 +3,8 @@ package br.com.condominioauditoria.backend.grpc;
 import br.com.condominioauditoria.backend.arquivo.Arquivo;
 import br.com.condominioauditoria.backend.arquivo.ArquivoRepository;
 import br.com.condominioauditoria.backend.arquivo.Categoria;
+import br.com.condominioauditoria.backend.modulo.Modulos;
+import br.com.condominioauditoria.backend.modulo.RegistroUso;
 import br.com.condominioauditoria.backend.seguranca.AcessoCondominio;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
@@ -39,8 +41,12 @@ import org.springframework.stereotype.Component;
  * (Assistente.Buscar) com o token do usuário e, na volta, descarta trechos de arquivos que não existem no backend
  * para o condomínio pedido (segunda barreira, além do filtro por condomínio que o rag já faz).
  *
- * Entrega 1: sempre pede o modo HIBRIDA (o rag cai para PALAVRA se os embeddings estiverem fora). A escolha do modo
- * pela configuração de IA e a verificação do módulo Assistente entram na entrega 2.
+ * Pertence ao módulo Assistente (RF-10.3): com ele desligado no condomínio, recusa com FAILED_PRECONDITION
+ * "Módulo Assistente não contratado para este condomínio." sem chamar o rag. Cada busca respondida gera um registro
+ * de uso "chamada_mcp" (RF-09.7; a origem deste rpc é o mcp).
+ *
+ * Sempre pede o modo HIBRIDA (o rag cai para PALAVRA se os embeddings estiverem fora). A escolha do modo pela
+ * configuração de IA do condomínio entra na entrega 3.
  */
 @Component
 class BuscaDocumentos {
@@ -52,15 +58,21 @@ class BuscaDocumentos {
     private final AcessoCondominio acesso;
     private final ArquivoRepository arquivos;
     private final ClienteAssistente rag;
+    private final Modulos modulos;
+    private final RegistroUso registroUso;
 
-    BuscaDocumentos(AcessoCondominio acesso, ArquivoRepository arquivos, ClienteAssistente rag) {
+    BuscaDocumentos(AcessoCondominio acesso, ArquivoRepository arquivos, ClienteAssistente rag, Modulos modulos,
+            RegistroUso registroUso) {
         this.acesso = acesso;
         this.arquivos = arquivos;
         this.rag = rag;
+        this.modulos = modulos;
+        this.registroUso = registroUso;
     }
 
-    /** Chamado dentro do rpc, já com o usuário do token no contexto de segurança. */
+    /** Chamado dentro do rpc, já com o usuário do token no contexto de segurança e o acesso ao condomínio conferido. */
     BuscarDocumentosResponse buscar(UUID condominioId, BuscarDocumentosRequest pedido) {
+        modulos.exigir(condominioId, Modulos.ASSISTENTE);
         BuscarRequest pedidoRag = paraRag(condominioId, pedido);
         String autorizacao = acesso.tokenBearer()
                 .orElseThrow(() -> Status.UNAUTHENTICATED.withDescription("Token ausente").asRuntimeException());
@@ -70,6 +82,7 @@ class BuscaDocumentos {
         } catch (StatusRuntimeException erro) {
             throw traduzirErroDoRag(erro);
         }
+        registroUso.chamadaMcp(condominioId, acesso.usuario(), resposta.getModoUsado() == ModoBusca.MODO_BUSCA_HIBRIDA);
         return BuscarDocumentosResponse.newBuilder()
                 .addAllTrechos(permitidos(condominioId, resposta.getTrechosList()).stream()
                         .map(BuscaDocumentos::converter).toList())

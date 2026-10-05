@@ -8,6 +8,7 @@ import br.com.condominioauditoria.backend.contabil.ConferenciaRepository;
 import br.com.condominioauditoria.backend.contabil.Fundo;
 import br.com.condominioauditoria.backend.contabil.FundoRepository;
 import br.com.condominioauditoria.backend.contabil.LancamentoRepository;
+import br.com.condominioauditoria.backend.modulo.ModuloNaoContratadoException;
 import br.com.condominioauditoria.backend.painel.PainelService;
 import br.com.condominioauditoria.backend.seguranca.AcessoCondominio;
 import br.com.condominioauditoria.contratos.consulta.v1.ArquivoResumo;
@@ -216,6 +217,8 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
         return switch (erro) {
             case StatusRuntimeException s -> s;
             case AccessDeniedException a -> Status.PERMISSION_DENIED.withDescription(a.getMessage()).asRuntimeException();
+            case ModuloNaoContratadoException m ->
+                    Status.FAILED_PRECONDITION.withDescription(m.getMessage()).asRuntimeException();
             case IllegalArgumentException i -> Status.INVALID_ARGUMENT.withDescription(i.getMessage()).asRuntimeException();
             default -> {
                 log.error("Erro no gRPC de consulta", erro);

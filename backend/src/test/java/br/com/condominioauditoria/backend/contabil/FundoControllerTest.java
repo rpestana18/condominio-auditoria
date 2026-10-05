@@ -56,6 +56,21 @@ class FundoControllerTest {
     }
 
     @Test
+    void semFundoOrdinarioConfirmadoListaTodosSemMarca() {
+        Condominio semOrdinario = mock(Condominio.class);
+        CondominioRepository condominios = mock(CondominioRepository.class);
+        when(condominios.findById(condominioId)).thenReturn(Optional.of(semOrdinario));
+        FundoRepository fundos = mock(FundoRepository.class);
+        when(fundos.findByCondominioId(condominioId)).thenReturn(List.of(ordinario, new Fundo(condominioId, "OBRAS")));
+        logar(condominioId, "GESTOR");
+
+        var lista = new FundoController(new AcessoCondominio(), condominios, fundos).listar(condominioId);
+
+        assertThat(lista).extracting(FundoController.FundoDto::nome).containsExactly("CONDOMÍNIO", "OBRAS");
+        assertThat(lista).noneMatch(FundoController.FundoDto::ordinario);
+    }
+
+    @Test
     void outroCondominioNaoLista() {
         logar(UUID.randomUUID(), "GESTOR");
 

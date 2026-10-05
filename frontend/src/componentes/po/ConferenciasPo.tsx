@@ -12,8 +12,8 @@ export function ConferenciasPo({ conferencias, avisos }: { conferencias: Confere
   return (
     <section className="bloco">
       <h2>Conferência da leitura</h2>
-      {avisos.map((a) => (
-        <p key={a.codigo} className="aviso alerta">
+      {avisos.map((a, i) => (
+        <p key={`${a.codigo}-${i}`} className="aviso alerta">
           {a.texto}
         </p>
       ))}

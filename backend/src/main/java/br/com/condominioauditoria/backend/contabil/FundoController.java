@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.backend.contabil;
 
-import br.com.condominioauditoria.backend.condominio.Condominio;
 import br.com.condominioauditoria.backend.condominio.CondominioRepository;
 import br.com.condominioauditoria.backend.seguranca.AcessoCondominio;
 import java.util.Comparator;
@@ -41,8 +40,10 @@ class FundoController {
     @Transactional(readOnly = true)
     List<FundoDto> listar(@PathVariable UUID condominioId) {
         acesso.exigir(condominioId);
-        UUID ordinario = condominios.findById(condominioId).map(Condominio::getFundoOrdinarioId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
+        // Sem fundo ordinário confirmado a lista sai com ordinario = false em todos (é dela que o Gestor escolhe)
+        UUID ordinario = condominios.findById(condominioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"))
+                .getFundoOrdinarioId();
         return fundos.findByCondominioId(condominioId).stream()
                 .sorted(Comparator.comparing(Fundo::getNome))
                 .map(f -> new FundoDto(f.getId(), f.getNome(), f.getId().equals(ordinario)))

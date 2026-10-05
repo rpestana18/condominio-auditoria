@@ -2,6 +2,7 @@ package br.com.condominioauditoria.backend.arquivo;
 
 import br.com.condominioauditoria.backend.mensagens.PublicadorArquivos.ArquivoParaLer;
 import br.com.condominioauditoria.backend.mensagens.PublicadorIndexacao.ArquivoParaIndexar;
+import br.com.condominioauditoria.backend.modulo.Modulos;
 import br.com.condominioauditoria.armazenamento.Armazenamento;
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,7 +22,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Recebe arquivos: guarda o original na pasta, registra no banco e, depois do commit, pede ao rag pela fila a leitura
- * e a indexação para a busca nos documentos (filas separadas, ADR 0003, Decisão 5.1).
+ * e a indexação para a busca nos documentos (filas separadas, ADR 0003, Decisão 5.1). A indexação pertence ao
+ * módulo Assistente: com ele desligado no condomínio, o arquivo passa só pelo núcleo e o estado de indexação fica
+ * como está (nulo no arquivo novo), sem nenhuma mensagem (RF-10.3).
  */
 @Service
 public class ArquivoService {
@@ -30,13 +33,15 @@ public class ArquivoService {
     private final Armazenamento armazenamento;
     private final ApplicationEventPublisher eventos;
     private final HistoricoCategoriaRepository historico;
+    private final Modulos modulos;
 
     ArquivoService(ArquivoRepository arquivos, Armazenamento armazenamento, ApplicationEventPublisher eventos,
-            HistoricoCategoriaRepository historico) {
+            HistoricoCategoriaRepository historico, Modulos modulos) {
         this.arquivos = arquivos;
         this.armazenamento = armazenamento;
         this.eventos = eventos;
         this.historico = historico;
+        this.modulos = modulos;
     }
 
     @Transactional
@@ -59,10 +64,14 @@ public class ArquivoService {
                     armazenamento.guardar(caminho, entrada);
                 }
             }
-            Arquivo arquivo = arquivos.save(new Arquivo(condominioId, categoria, nome, caminho, sha256,
-                    Files.size(temporario), envio.getContentType(), usuario));
+            var novo = new Arquivo(condominioId, categoria, nome, caminho, sha256, Files.size(temporario),
+                    envio.getContentType(), usuario);
+            boolean indexar = pedirIndexacao(novo);
+            Arquivo arquivo = arquivos.save(novo);
             eventos.publishEvent(new ArquivoParaLer(arquivo.getId()));
-            eventos.publishEvent(new ArquivoParaIndexar(arquivo.getId()));
+            if (indexar) {
+                eventos.publishEvent(new ArquivoParaIndexar(arquivo.getId()));
+            }
             return arquivo;
         } finally {
             Files.deleteIfExists(temporario);
@@ -70,8 +79,8 @@ public class ArquivoService {
     }
 
     /**
-     * Reprocessar é seguro: a gravação apaga a extração anterior do arquivo antes de inserir a nova. Também reindexa
-     * (é assim que arquivos enviados antes da busca entram no índice, RF-04.6); o rag não refaz o que já está igual.
+     * Reprocessar é seguro: a gravação apaga a extração anterior do arquivo antes de inserir a nova. Com o módulo
+     * Assistente ligado, também reindexa (RF-04.6); o rag não refaz o que já está igual.
      */
     @Transactional
     public Arquivo reprocessar(Arquivo arquivo) {
@@ -79,10 +88,21 @@ public class ArquivoService {
             throw new IllegalStateException("O arquivo já está sendo processado");
         }
         arquivo.novoProcessamento();
-        arquivo.novaIndexacao();
+        boolean indexar = pedirIndexacao(arquivo);
         eventos.publishEvent(new ArquivoParaLer(arquivo.getId()));
-        eventos.publishEvent(new ArquivoParaIndexar(arquivo.getId()));
+        if (indexar) {
+            eventos.publishEvent(new ArquivoParaIndexar(arquivo.getId()));
+        }
         return arquivos.save(arquivo);
+    }
+
+    /** Novo pedido de indexação só com o módulo Assistente ligado no condomínio (RF-10.3). */
+    private boolean pedirIndexacao(Arquivo arquivo) {
+        if (!modulos.ligado(arquivo.getCondominioId(), Modulos.ASSISTENTE)) {
+            return false;
+        }
+        arquivo.novaIndexacao();
+        return true;
     }
 
     /**

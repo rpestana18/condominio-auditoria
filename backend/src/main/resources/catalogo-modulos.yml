@@ -1,0 +1,21 @@
+# Catálogo de módulos contratáveis por condomínio (RF-10.1; ADR 0003, Decisão 4). Versionado junto com o código.
+# Um módulo novo é uma entrada aqui mais a verificação Modulos.exigir(condominio, CODIGO) nos pontos que ele inclui;
+# o mecanismo de ligar, desligar, trilha e uso não muda. Mudou o catálogo? Suba a versão.
+# O que não está em nenhum módulo é o núcleo, sempre ligado.
+catalogo-modulos:
+  versao: 1
+  modulos:
+    - codigo: ASSISTENTE
+      nome: Assistente
+      descricao: >-
+        Busca nos documentos enviados e, a partir da entrega 3, chat sobre eles, sempre com citação de arquivo e
+        localização (RF-04).
+      inclui:
+        - Indexação dos arquivos enviados para a busca (fila rag.indexacao), inclusive ao ligar o módulo
+        - Busca nos documentos por palavra e por significado
+        - Ferramenta buscar_documentos no MCP (rpc BuscarDocumentos)
+        - Tela "Assistente" com chat sobre os documentos (previsto, entrega 3)
+        - Registro de uso (indexação, buscas e chamadas)
+      depende-de: []
+      # Condomínio novo começa com o Assistente desligado; o piloto foi ligado na migração V11 (Q15)
+      ligado-por-padrao: false

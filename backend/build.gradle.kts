@@ -19,6 +19,7 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation(libs.json.schema.validator)
     implementation(libs.grpc.netty.shaded)
+    implementation(libs.poi.ooxml) // Excel (T11)
     runtimeOnly("org.postgresql:postgresql")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")

@@ -1,6 +1,9 @@
 spring:
   application:
     name: backend
+  config:
+    # Catálogo de módulos contratáveis (RF-10.1), lido no boot
+    import: classpath:catalogo-modulos.yml
   datasource:
     # Cada serviço tem o seu schema no PostgreSQL; o backend usa "backend"
     url: ${BANCO_URL:jdbc:postgresql://localhost:5432/condominio}?currentSchema=backend

@@ -79,7 +79,7 @@ paths:
   /condominios/{condominioId}/arquivos/{id}/reprocessar:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/ArquivoId" }]
     post:
-      summary: Coloca o arquivo de novo na fila de leitura e de indexação (GESTOR ou ADMIN). Não duplica dados.
+      summary: Coloca o arquivo de novo na fila de leitura e, com o módulo Assistente ligado, de indexação (GESTOR ou ADMIN). Não duplica dados.
       operationId: reprocessarArquivo
       responses:
         "202": { description: Na fila, content: { application/json: { schema: { $ref: "#/components/schemas/ArquivoResumo" } } } }
@@ -123,6 +123,95 @@ paths:
         "204": { description: Confirmado }
         "403": { description: Perfil sem permissão }
         "404": { description: Fundo não é deste condomínio }
+  /condominios/{condominioId}/contexto:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Contexto do condomínio para montar a tela (módulos ligados). Qualquer perfil com acesso ao condomínio.
+      description: |
+        O menu "Assistente" depende de ASSISTENTE estar em modulosLigados (RF-10.2, RF-10.3). Ligar ou desligar vale
+        no próximo carregamento, sem reinício. O modo de IA do assistente entra aqui na configuração de IA (ADR 0003).
+      operationId: contextoCondominio
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ContextoCondominio" } } } }
+        "403": { description: Sem acesso a este condomínio }
+        "404": { description: Condomínio não encontrado }
+  /condominios/{condominioId}/modulos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Catálogo de módulos com o estado no condomínio (RF-10.1). Qualquer perfil com acesso; só leitura.
+      operationId: listarModulos
+      responses:
+        "200":
+          description: OK, na ordem do catálogo
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ModuloDoCondominio" } } } }
+        "403": { description: Sem acesso a este condomínio }
+  /condominios/{condominioId}/modulos/{codigo}:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/CodigoModulo" }]
+    put:
+      summary: Liga ou desliga um módulo no condomínio (só ADMIN, o administrador da plataforma no MVP; RF-10.2)
+      description: |
+        Grava o estado e um evento na trilha de ativação (só de inclusão), com motivo opcional. Pedir o estado que
+        já vale não faz nada (nenhum evento). Ligar o ASSISTENTE coloca todos os arquivos do condomínio na fila de
+        indexação depois da resposta (RF-10.4); desligar não apaga índice nem originais (RF-10.5).
+      operationId: alterarModulo
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AlteracaoModulo" } } }
+      responses:
+        "200": { description: Estado depois da alteração, content: { application/json: { schema: { $ref: "#/components/schemas/ModuloDoCondominio" } } } }
+        "400": { description: Estado não informado ou motivo acima de 500 caracteres, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+        "403": { description: Perfil sem permissão }
+        "404": { description: Módulo fora do catálogo ou condomínio não encontrado }
+  /condominios/{condominioId}/modulos/{codigo}/eventos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/CodigoModulo" }]
+    get:
+      summary: Trilha de ativação do módulo no condomínio, da mais antiga para a mais recente (só ADMIN; RF-10.6)
+      operationId: eventosModulo
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EventoModulo" } } } }
+        "403": { description: Perfil sem permissão }
+        "404": { description: Módulo fora do catálogo }
+  /condominios/{condominioId}/modulos/{codigo}/periodos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/CodigoModulo" }]
+    get:
+      summary: Períodos ativos do módulo no condomínio, calculados da trilha (só ADMIN; RF-10.6)
+      operationId: periodosModulo
+      responses:
+        "200":
+          description: OK, do mais antigo para o mais recente
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PeriodoAtivo" } } } }
+        "403": { description: Perfil sem permissão }
+        "404": { description: Módulo fora do catálogo }
+  /condominios/{condominioId}/uso:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Uso dos módulos no período, por função e por mês (só ADMIN no MVP; RF-09.7, Q17)
+      description: Datas no fuso de Brasília, fim incluído. Sem custo nesta fase.
+      operationId: usoModulos
+      parameters:
+        - { name: inicio, in: query, required: true, schema: { type: string, format: date } }
+        - { name: fim, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/UsoDoPeriodo" } } } }
+        "400": { description: Datas ausentes ou início depois do fim }
+        "403": { description: Perfil sem permissão }
+  /condominios/{condominioId}/uso/exportacao:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Exporta os períodos ativos e o uso do período em Excel (só ADMIN; RF-10.6, RF-09.7)
+      description: |
+        Arquivo .xlsx com duas abas: "Períodos ativos" (os que tocam o período pedido) e "Uso por mês". Datas no
+        horário de Brasília. Sem valores de cobrança nesta fase.
+      operationId: exportarUsoModulos
+      parameters:
+        - { name: inicio, in: query, required: true, schema: { type: string, format: date } }
+        - { name: fim, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        "200": { description: Planilha Excel, content: { application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } } } }
+        "400": { description: Datas ausentes ou início depois do fim }
+        "403": { description: Perfil sem permissão }
   /condominios/{condominioId}/previsoes:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }]
     get:
@@ -301,8 +390,82 @@ components:
   parameters:
     CondominioId: { name: condominioId, in: path, required: true, schema: { type: string, format: uuid } }
     ArquivoId: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    CodigoModulo: { name: codigo, in: path, required: true, description: "Código do módulo no catálogo (ex.: ASSISTENTE)", schema: { type: string } }
     PoId: { name: poId, in: path, required: true, schema: { type: string, format: uuid } }
   schemas:
+    ContextoCondominio:
+      type: object
+      required: [condominioId, nome, modulosLigados]
+      properties:
+        condominioId: { type: string, format: uuid }
+        nome: { type: string }
+        modulosLigados: { type: array, items: { type: string }, description: "Códigos dos módulos ligados (ex.: [ASSISTENTE])" }
+    ModuloDoCondominio:
+      type: object
+      required: [codigo, nome, descricao, inclui, dependeDe, ligadoPorPadrao, ligado, versaoCatalogo]
+      properties:
+        codigo: { type: string }
+        nome: { type: string }
+        descricao: { type: string }
+        inclui: { type: array, items: { type: string }, description: O que o módulo inclui (telas, API, ferramentas MCP, processamentos) }
+        dependeDe: { type: array, items: { type: string } }
+        ligadoPorPadrao: { type: boolean, description: Estado de um condomínio novo }
+        ligado: { type: boolean }
+        desde: { type: [string, "null"], format: date-time, description: "Desde quando está no estado atual. Nulo = nunca alterado (vale o padrão)" }
+        versaoCatalogo: { type: integer }
+    AlteracaoModulo:
+      type: object
+      required: [ligado]
+      properties:
+        ligado: { type: boolean }
+        motivo: { type: [string, "null"], maxLength: 500, description: "Opcional (RF-10.6); em branco = não informado. Vai para a trilha de ativação" }
+    EventoModulo:
+      type: object
+      required: [id, modulo, ligadoAntes, ligadoDepois, usuario, quando]
+      properties:
+        id: { type: string, format: uuid }
+        modulo: { type: string }
+        ligadoAntes: { type: boolean }
+        ligadoDepois: { type: boolean }
+        usuario: { type: string }
+        quando: { type: string, format: date-time }
+        motivo: { type: [string, "null"], description: Nulo quando não informado }
+    PeriodoAtivo:
+      type: object
+      required: [modulo]
+      properties:
+        modulo: { type: string }
+        inicio: { type: [string, "null"], format: date-time, description: "Nulo só se o módulo nasceu ligado por padrão, antes da trilha" }
+        fim: { type: [string, "null"], format: date-time, description: Nulo = ainda ligado }
+        ligadoPor: { type: [string, "null"] }
+        motivoLigar: { type: [string, "null"] }
+        desligadoPor: { type: [string, "null"] }
+        motivoDesligar: { type: [string, "null"] }
+    FuncaoUso:
+      type: string
+      description: "busca_documentos = busca pela tela; chamada_mcp = buscar_documentos pelo MCP; indexacao = arquivo indexado; embeddings e pergunta = chat (entrega 3)"
+      enum: [busca_documentos, chamada_mcp, indexacao, embeddings, pergunta]
+    TotalUso:
+      type: object
+      required: [modulo, funcao, quantidade, tokensEntrada, tokensSaida, arquivos, paginas]
+      properties:
+        mes: { type: string, description: "AAAA-MM (só em porMes)", pattern: "^[0-9]{4}-[0-9]{2}$" }
+        modulo: { type: string }
+        funcao: { $ref: "#/components/schemas/FuncaoUso" }
+        quantidade: { type: integer, format: int64, description: Número de registros (chamadas, buscas, arquivos indexados) }
+        tokensEntrada: { type: integer, format: int64 }
+        tokensSaida: { type: integer, format: int64 }
+        arquivos: { type: integer, format: int64 }
+        paginas: { type: integer, format: int64 }
+    UsoDoPeriodo:
+      type: object
+      required: [condominioId, inicio, fim, porFuncao, porMes]
+      properties:
+        condominioId: { type: string, format: uuid }
+        inicio: { type: string, format: date }
+        fim: { type: string, format: date }
+        porFuncao: { type: array, items: { $ref: "#/components/schemas/TotalUso" } }
+        porMes: { type: array, items: { $ref: "#/components/schemas/TotalUso" } }
     Categoria:
       type: string
       enum: [BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
@@ -351,7 +514,7 @@ components:
         enviadoEm: { type: string, format: date-time }
         processadoEm: { type: [string, "null"], format: date-time }
         indexacao:
-          description: Estado da indexação para a busca nos documentos (ADR 0003). Nulo ou ausente = arquivo ainda não indexado (enviado antes da busca; reprocessar indexa).
+          description: Estado da indexação para a busca nos documentos (ADR 0003). Nulo ou ausente = arquivo ainda não indexado (enviado antes da busca ou com o módulo Assistente desligado; reprocessar ou ligar o módulo indexa).
           anyOf:
             - { $ref: "#/components/schemas/IndexacaoArquivo" }
             - { type: "null" }
@@ -950,4 +1113,5 @@ components:
         status: { type: integer }
         detail: { type: string }
         arquivoExistenteId: { type: string, format: uuid }
+        modulo: { type: string, description: "Em recusa por módulo não contratado (403): código do módulo" }
         motivos: { type: array, items: { type: string }, description: Motivos da recusa da confirmação da PO }

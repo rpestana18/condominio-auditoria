@@ -6,7 +6,7 @@ json-schema-validator = "3.0.8"
 grpc = "1.84.0"
 protobuf = "4.33.4"
 gradle-protobuf = "0.10.0"
-# Relatórios do backend (ADR 0001; ADR 0004, Decisão 6). Thymeleaf vem do BOM do Spring Boot.
+# Relatórios do backend (ADR 0001; ADR 0004, Decisão 6; docs/tecnologias.md, T11). Thymeleaf vem do BOM do Spring Boot.
 openhtmltopdf = "1.1.87"
 poi = "5.5.1"
 

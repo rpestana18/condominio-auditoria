@@ -3,6 +3,7 @@ import { useUsuario } from "./api/consultas";
 import { Layout } from "./componentes/Layout";
 import { ProvedorSessao } from "./contexto";
 import { sair } from "./autenticacao/keycloak";
+import { AdministracaoModulos } from "./paginas/AdministracaoModulos";
 import { Arquivos } from "./paginas/Arquivos";
 import { Inicio } from "./paginas/Inicio";
 
@@ -27,6 +28,7 @@ export function App() {
           <Route element={<Layout />}>
             <Route index element={<Inicio />} />
             <Route path="arquivos" element={<Arquivos />} />
+            <Route path="administracao/modulos" element={<AdministracaoModulos />} />
           </Route>
         </Routes>
       </BrowserRouter>

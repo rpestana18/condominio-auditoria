@@ -157,3 +157,49 @@ select { padding: 7px 10px; border: 1px solid var(--borda); border-radius: 8px; 
 .janela legend { font-weight: 600; margin-bottom: 6px; }
 .janela label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .janela .acoes { justify-content: flex-end; }
+
+.menu-secao {
+  margin: 16px 12px 2px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--texto-discreto);
+}
+
+/* Estado da indexação para a busca (RF-04.7): texto pequeno, sem chamar atenção */
+.indexacao { font-size: 0.8rem; color: var(--texto-discreto); }
+.indexacao-indexado { color: var(--positivo); }
+.indexacao-na_fila, .indexacao-indexando { color: var(--alerta); }
+.indexacao-erro { color: var(--negativo); }
+.indexacao-motivo { color: var(--texto-discreto); }
+.indexacao-ressalva .indexacao-motivo { display: block; color: var(--alerta); }
+.tabela .indexacao-motivo { display: inline-block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.tabela .indexacao-ressalva .indexacao-motivo { display: block; }
+.filtro { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--texto-discreto); margin-bottom: 14px; }
+
+/* Administração › Módulos (RF-10) */
+.migalha { font-size: 1rem; font-weight: 400; }
+.selo.neutro { background: var(--fundo); color: var(--texto-discreto); border: 1px solid var(--borda); }
+.modulo-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.modulo-topo h2 { margin-bottom: 4px; }
+.modulo-topo p { margin: 0; }
+.modulo-dados { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; font-size: 0.88rem; margin: 14px 0 0; }
+.modulo-dados dt { color: var(--texto-discreto); }
+.modulo-dados dd { margin: 0; }
+.confirmacao {
+  margin-top: 14px; padding: 14px 16px; border: 1px solid var(--alerta); border-radius: 8px; background: var(--alerta-fundo);
+}
+.confirmacao p { margin: 0 0 8px; }
+.confirmacao .discreto { color: var(--texto); }
+.campo { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: var(--texto-discreto); }
+.confirmacao .campo { color: var(--texto); }
+textarea, input[type="date"] {
+  font: inherit; color: var(--texto); background: var(--superficie);
+  padding: 7px 10px; border: 1px solid var(--borda); border-radius: 8px;
+}
+textarea { resize: vertical; width: 100%; }
+input[type="date"] { color-scheme: light dark; }
+.trilha { margin-top: 8px; }
+.bloco-texto { display: block; }
+.cabecalho-bloco { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.cabecalho-bloco h2 { margin: 0; }
+.filtros { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.rolagem { overflow-x: auto; }
+:focus-visible { outline: 2px solid var(--primaria); outline-offset: 2px; }

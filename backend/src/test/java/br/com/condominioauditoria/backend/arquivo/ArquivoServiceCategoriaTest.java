@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import br.com.condominioauditoria.armazenamento.Armazenamento;
 import br.com.condominioauditoria.backend.mensagens.PublicadorArquivos.ArquivoParaLer;
+import br.com.condominioauditoria.backend.modulo.Modulos;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,9 @@ class ArquivoServiceCategoriaTest {
     private final ArquivoRepository arquivos = mock(ArquivoRepository.class);
     private final ApplicationEventPublisher eventos = mock(ApplicationEventPublisher.class);
     private final HistoricoCategoriaRepository historico = mock(HistoricoCategoriaRepository.class);
-    private final ArquivoService servico = new ArquivoService(arquivos, mock(Armazenamento.class), eventos, historico);
+    private final Modulos modulos = mock(Modulos.class);
+    private final ArquivoService servico = new ArquivoService(arquivos, mock(Armazenamento.class), eventos, historico,
+            modulos);
 
     private Arquivo arquivo;
 

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * V10 no PostgreSQL real (schema temporário): uma realocação ativa por lançamento e versão da PO; realocação e achado
+ * V12 no PostgreSQL real (schema temporário): uma realocação ativa por lançamento e versão da PO; realocação e achado
  * nunca são apagados; as trilhas da realocação e do achado são só de inserção; o estado do achado é um dos previstos.
  * Banco como no {@link TrilhaDeparaBancoTest}; sem banco acessível, o teste é pulado.
  */

@@ -8,8 +8,18 @@ export class ErroApi extends Error {
     readonly status: number,
     readonly problema: Problema | null,
   ) {
-    super(problema?.detail ?? `Erro ${status} ao falar com o servidor`);
+    super(problema?.detail ?? problema?.title ?? mensagemPadrao(status));
   }
+
+  /** Código do módulo quando a recusa é "Módulo não contratado" (403 com o campo `modulo`). */
+  get moduloNaoContratado(): string | undefined {
+    return this.status === 403 ? (this.problema?.modulo ?? undefined) : undefined;
+  }
+}
+
+function mensagemPadrao(status: number): string {
+  if (status === 403) return "Seu perfil não tem permissão para esta ação.";
+  return `Erro ${status} ao falar com o servidor`;
 }
 
 async function chamar(caminho: string, opcoes: RequestInit = {}): Promise<Response> {
@@ -57,4 +67,36 @@ export async function abrirArquivo(caminho: string): Promise<void> {
   const url = URL.createObjectURL(await resposta.blob());
   window.open(url, "_blank", "noopener");
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/**
+ * Baixa um arquivo autenticado e salva com o nome que o servidor mandou no Content-Disposition.
+ * Não assumimos o tipo (CSV hoje, .xlsx depois): o blob vai como veio.
+ */
+export async function baixarArquivo(caminho: string, nomePadrao: string): Promise<void> {
+  const resposta = await chamar(caminho);
+  const nome = nomeDoArquivo(resposta.headers.get("content-disposition")) ?? nomePadrao;
+  const url = URL.createObjectURL(await resposta.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nome;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/** Lê o nome de `attachment; filename*=UTF-8''uso%20out.xlsx` ou `filename="uso.csv"`. */
+function nomeDoArquivo(cabecalho: string | null): string | null {
+  if (!cabecalho) return null;
+  const codificado = /filename\*\s*=\s*(?:UTF-8|utf-8)''([^;]+)/.exec(cabecalho);
+  if (codificado) {
+    try {
+      return decodeURIComponent(codificado[1].trim().replace(/^"|"$/g, ""));
+    } catch {
+      // nome mal codificado: tenta o filename simples abaixo
+    }
+  }
+  const simples = /filename\s*=\s*"?([^";]+)"?/.exec(cabecalho);
+  return simples ? simples[1].trim() : null;
 }

@@ -2,10 +2,11 @@ import { abrirArquivo } from "../api/cliente";
 import { useDetalheArquivo, useReprocessar } from "../api/consultas";
 import { useSessao } from "../contexto";
 import { formatarDataHora, formatarMoeda, formatarPeriodo, formatarTamanho } from "../formato";
+import { IndexacaoArquivo } from "./IndexacaoArquivo";
 import { StatusArquivo } from "./StatusArquivo";
 
 export function DetalheArquivo({ id, aoFechar }: { id: string; aoFechar: () => void }) {
-  const { condominioId, pode } = useSessao();
+  const { condominioId, pode, moduloLigado } = useSessao();
   const { data: detalhe } = useDetalheArquivo(condominioId, id);
   const reprocessar = useReprocessar(condominioId);
   if (!detalhe) return null;
@@ -25,6 +26,14 @@ export function DetalheArquivo({ id, aoFechar }: { id: string; aoFechar: () => v
         <dd>
           <StatusArquivo status={arquivo.status} /> {arquivo.mensagem}
         </dd>
+        {(moduloLigado("ASSISTENTE") || arquivo.indexacao) && (
+          <>
+            <dt title="Indexação para a busca nos documentos e o assistente">Busca</dt>
+            <dd>
+              <IndexacaoArquivo indexacao={arquivo.indexacao} completo />
+            </dd>
+          </>
+        )}
         <dt>Categoria</dt>
         <dd>{arquivo.categoriaRotulo}</dd>
         {arquivo.periodoInicio && (

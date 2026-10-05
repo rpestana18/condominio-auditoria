@@ -4,7 +4,7 @@ import { useSessao } from "../contexto";
 import { UltimoArquivo } from "./UltimoArquivo";
 
 export function Layout() {
-  const { usuario, condominioId, condominioNome, trocarCondominio } = useSessao();
+  const { usuario, condominioId, condominioNome, trocarCondominio, pode } = useSessao();
   return (
     <div className="layout">
       <aside className="menu">
@@ -21,6 +21,17 @@ export function Layout() {
           <NavLink to="/previsto-realizado">Previsto × realizado</NavLink>
           <NavLink to="/depara">De-para</NavLink>
           <NavLink to="/previsoes">PO</NavLink>
+          {/* Só esconde o menu: o backend recusa (403) quem não é ADMIN */}
+          {pode("ADMIN") && (
+            <>
+              <span className="menu-secao" id="menu-administracao">
+                Administração
+              </span>
+              <NavLink to="/administracao/modulos" aria-describedby="menu-administracao">
+                Módulos
+              </NavLink>
+            </>
+          )}
         </nav>
       </aside>
       <div className="conteudo">

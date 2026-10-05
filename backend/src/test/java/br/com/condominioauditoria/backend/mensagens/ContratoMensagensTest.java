@@ -199,6 +199,7 @@ class ContratoMensagensTest {
     void pedidoDeIndexacaoSaiNoContrato() {
         var arquivo = new Arquivo(UUID.randomUUID(), Categoria.ATA, "ata.pdf", "c/ATA/2026/x-ata.pdf",
                 "a".repeat(64), 10, "application/pdf", "gestor");
+        arquivo.novaIndexacao();
         String json = new String(contrato.escrever(IndexarArquivo.indexar(arquivo)), StandardCharsets.UTF_8);
         assertThat(json).contains("\"operacao\":\"INDEXAR\"").contains("\"categoria\":\"ATA\"")
                 .contains(arquivo.getIndexacaoId().toString());

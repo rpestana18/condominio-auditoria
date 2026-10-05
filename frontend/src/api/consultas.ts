@@ -1,8 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { atualizar, enviar, gravar, obter } from "./cliente";
-import type { ArquivoDetalhe, ArquivoResumo, Categoria, CategoriaDto, NovaCategoria, Painel, UsuarioLogado } from "./tipos";
+import type {
+  AlteracaoModulo,
+  ArquivoDetalhe,
+  ArquivoResumo,
+  Categoria,
+  CategoriaDto,
+  ContextoCondominio,
+  EventoModulo,
+  ModuloDoCondominio,
+  NovaCategoria,
+  Painel,
+  PeriodoAtivo,
+  UsoDoPeriodo,
+  UsuarioLogado,
+} from "./tipos";
 
-const emAndamento = (a: ArquivoResumo) => a.status === "PENDENTE" || a.status === "PROCESSANDO";
+/** Processamento ou indexação ainda em curso: a tela continua perguntando a cada 3 segundos. */
+const emAndamento = (a: ArquivoResumo) =>
+  a.status === "PENDENTE" ||
+  a.status === "PROCESSANDO" ||
+  a.indexacao?.situacao === "NA_FILA" ||
+  a.indexacao?.situacao === "INDEXANDO";
 
 export function useUsuario() {
   return useQuery({ queryKey: ["eu"], queryFn: () => obter<UsuarioLogado>("/eu") });
@@ -91,5 +110,68 @@ export function useConfirmarFundoOrdinario(condominioId: string) {
   return useMutation({
     mutationFn: (fundoId: string) => gravar(`/condominios/${condominioId}/fundo-ordinario`, { fundoId }),
     onSuccess: () => void cliente.invalidateQueries({ queryKey: ["painel", condominioId] }),
+  });
+}
+
+// ---- Módulos contratáveis (RF-10) e uso (RF-09.7) ----
+
+/** Módulos ligados no condomínio. Serve para mostrar ou esconder menus (o backend é quem barra). */
+export function useContexto(condominioId: string) {
+  return useQuery({
+    queryKey: ["contexto", condominioId],
+    queryFn: () => obter<ContextoCondominio>(`/condominios/${condominioId}/contexto`),
+  });
+}
+
+export function useModulos(condominioId: string) {
+  return useQuery({
+    queryKey: ["modulos", condominioId],
+    queryFn: async () => (await obter<ModuloDoCondominio[]>(`/condominios/${condominioId}/modulos`)) ?? [],
+  });
+}
+
+/** Trilha de ligar/desligar de um módulo (só ADMIN). */
+export function useEventosModulo(condominioId: string, codigo: string) {
+  return useQuery({
+    queryKey: ["modulos", condominioId, codigo, "eventos"],
+    queryFn: async () => (await obter<EventoModulo[]>(`/condominios/${condominioId}/modulos/${codigo}/eventos`)) ?? [],
+  });
+}
+
+/** Períodos ativos, calculados pelo backend a partir da trilha (só ADMIN). */
+export function usePeriodosModulo(condominioId: string, codigo: string) {
+  return useQuery({
+    queryKey: ["modulos", condominioId, codigo, "periodos"],
+    queryFn: async () => (await obter<PeriodoAtivo[]>(`/condominios/${condominioId}/modulos/${codigo}/periodos`)) ?? [],
+  });
+}
+
+/** Liga ou desliga um módulo (só ADMIN). Ligar o Assistente coloca os arquivos na fila de indexação. */
+export function useAlterarModulo(condominioId: string) {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: ({ codigo, alteracao }: { codigo: string; alteracao: AlteracaoModulo }) =>
+      atualizar<ModuloDoCondominio>(`/condominios/${condominioId}/modulos/${codigo}`, alteracao),
+    onSuccess: () => {
+      void cliente.invalidateQueries({ queryKey: ["modulos", condominioId] });
+      void cliente.invalidateQueries({ queryKey: ["contexto", condominioId] });
+      void cliente.invalidateQueries({ queryKey: ["arquivos", condominioId] });
+      void cliente.invalidateQueries({ queryKey: ["arquivo", condominioId] });
+    },
+  });
+}
+
+/** Caminho do uso no período; a exportação usa o mesmo filtro. Datas em AAAA-MM-DD. */
+export const caminhoUso = (condominioId: string, inicio: string, fim: string, exportacao = false) =>
+  `/condominios/${condominioId}/uso${exportacao ? "/exportacao" : ""}?inicio=${inicio}&fim=${fim}`;
+
+/** Só pergunta à API com as duas datas e o início antes do fim (AAAA-MM-DD compara como texto). */
+export const periodoPreenchido = (inicio: string, fim: string) => inicio !== "" && fim !== "" && inicio <= fim;
+
+export function useUso(condominioId: string, inicio: string, fim: string) {
+  return useQuery({
+    queryKey: ["uso", condominioId, inicio, fim],
+    queryFn: () => obter<UsoDoPeriodo>(caminhoUso(condominioId, inicio, fim)),
+    enabled: periodoPreenchido(inicio, fim),
   });
 }

@@ -2,6 +2,9 @@ package br.com.condominioauditoria.backend.processamento;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import br.com.condominioauditoria.backend.arquivo.Arquivo;
@@ -10,6 +13,7 @@ import br.com.condominioauditoria.backend.arquivo.Categoria;
 import br.com.condominioauditoria.backend.arquivo.SituacaoIndexacao;
 import br.com.condominioauditoria.backend.mensagens.ResultadoIndexacao;
 import br.com.condominioauditoria.backend.mensagens.ResultadoIndexacao.Situacao;
+import br.com.condominioauditoria.backend.modulo.RegistroUso;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,18 +23,48 @@ import org.junit.jupiter.api.Test;
 class IndexacaoArquivoServiceTest {
 
     private final ArquivoRepository arquivos = mock(ArquivoRepository.class);
-    private final IndexacaoArquivoService servico = new IndexacaoArquivoService(arquivos);
+    private final RegistroUso registroUso = mock(RegistroUso.class);
+    private final IndexacaoArquivoService servico = new IndexacaoArquivoService(arquivos, registroUso);
     private Arquivo arquivo;
 
     @BeforeEach
     void preparar() {
         arquivo = new Arquivo(UUID.randomUUID(), Categoria.ATA, "ata.pdf", "c/ATA/2026/x-ata.pdf", "a".repeat(64), 10,
                 "application/pdf", "gestor");
+        arquivo.novaIndexacao();
         when(arquivos.findById(arquivo.getId())).thenReturn(Optional.of(arquivo));
     }
 
     @Test
-    void arquivoNovoNasceNaFila() {
+    void arquivoNovoNasceSemIndexacao() {
+        var novo = new Arquivo(UUID.randomUUID(), Categoria.ATA, "ata.pdf", "c/ATA/2026/x-ata.pdf", "a".repeat(64), 10,
+                "application/pdf", "gestor");
+        assertThat(novo.getIndexacaoSituacao()).isNull();
+        assertThat(novo.getIndexacaoId()).isNull();
+    }
+
+    @Test
+    void indexadoRegistraUsoUmaVezMesmoComReentrega() {
+        servico.aplicar(resultado(arquivo.getIndexacaoId(), Situacao.INDEXANDO, null, null, null));
+        servico.aplicar(resultado(arquivo.getIndexacaoId(), Situacao.INDEXADO, null, 12, 15));
+        servico.aplicar(resultado(arquivo.getIndexacaoId(), Situacao.INDEXADO, null, 12, 15)); // reentrega
+
+        verify(registroUso, times(1)).indexacao(arquivo.getCondominioId(), 12, "bge-m3");
+    }
+
+    @Test
+    void semTextoErroEDescartadoNaoRegistramUso() {
+        UUID velho = arquivo.getIndexacaoId();
+        arquivo.novaIndexacao();
+        servico.aplicar(resultado(velho, Situacao.INDEXADO, null, 3, 4));
+        servico.aplicar(resultado(arquivo.getIndexacaoId(), Situacao.SEM_TEXTO, "sem texto", 3, 0));
+        servico.aplicar(resultado(arquivo.getIndexacaoId(), Situacao.ERRO, "falhou", null, null));
+
+        verifyNoInteractions(registroUso);
+    }
+
+    @Test
+    void pedidoNovoNasceNaFila() {
         assertThat(arquivo.getIndexacaoSituacao()).isEqualTo(SituacaoIndexacao.NA_FILA);
         assertThat(arquivo.getIndexacaoId()).isNotNull();
         assertThat(arquivo.getIndexacaoTentativas()).isEqualTo(1);

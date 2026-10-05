@@ -16,11 +16,14 @@ import br.com.condominioauditoria.backend.arquivo.Categoria;
 import br.com.condominioauditoria.backend.arquivo.SituacaoIndexacao;
 import br.com.condominioauditoria.backend.config.PropriedadesCondominio;
 import br.com.condominioauditoria.backend.mensagens.PublicadorIndexacao.ArquivoParaIndexar;
+import br.com.condominioauditoria.backend.mensagens.PublicadorIndexacao.ArquivosParaIndexar;
+import br.com.condominioauditoria.backend.modulo.Modulos;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.amqp.core.Message;
@@ -32,9 +35,16 @@ class PublicadorIndexacaoTest {
 
     private final RabbitTemplate rabbit = mock(RabbitTemplate.class);
     private final ArquivoRepository arquivos = mock(ArquivoRepository.class);
+    private final Modulos modulos = mock(Modulos.class);
     private final PublicadorIndexacao publicador = new PublicadorIndexacao(rabbit, new ContratoMensagens(), arquivos,
             mock(PlatformTransactionManager.class),
-            new PropriedadesCondominio(null, new PropriedadesCondominio.Processamento(15, 3), null, null));
+            new PropriedadesCondominio(null, new PropriedadesCondominio.Processamento(15, 3), null, null), modulos,
+            Runnable::run);
+
+    @BeforeEach
+    void moduloLigado() {
+        when(modulos.ligado(any(UUID.class), eq(Modulos.ASSISTENTE))).thenReturn(true);
+    }
 
     @Test
     void aposOCommitPublicaNaFilaDeIndexacao() {
@@ -79,8 +89,56 @@ class PublicadorIndexacaoTest {
         verify(rabbit, never()).send(any(String.class), any(String.class), any(Message.class));
     }
 
+    @Test
+    void moduloDesligadoNaoPublicaNemNoAvulsoNemNoLote() {
+        Arquivo arquivo = arquivo();
+        when(modulos.ligado(arquivo.getCondominioId(), Modulos.ASSISTENTE)).thenReturn(false);
+        when(arquivos.findById(arquivo.getId())).thenReturn(Optional.of(arquivo));
+        when(arquivos.findAllById(List.of(arquivo.getId()))).thenReturn(List.of(arquivo));
+
+        publicador.aposCommit(new ArquivoParaIndexar(arquivo.getId()));
+        publicador.aposCommit(new ArquivosParaIndexar(arquivo.getCondominioId(), List.of(arquivo.getId())));
+
+        verify(rabbit, never()).send(any(String.class), any(String.class), any(Message.class));
+    }
+
+    @Test
+    void varreduraIgnoraCondominioComModuloDesligadoSemGastarTentativa() {
+        Arquivo parado = arquivo();
+        when(modulos.ligado(parado.getCondominioId(), Modulos.ASSISTENTE)).thenReturn(false);
+        when(arquivos.findByIndexacaoSituacaoInAndIndexacaoEnfileiradaEmBeforeOrderByEnviadoEm(anyCollection(), any()))
+                .thenReturn(List.of(parado));
+
+        publicador.varrer(Instant.now());
+
+        assertThat(parado.getIndexacaoTentativas()).isEqualTo(1);
+        assertThat(parado.getIndexacaoSituacao()).isEqualTo(SituacaoIndexacao.NA_FILA);
+        verify(rabbit, never()).send(any(String.class), any(String.class), any(Message.class));
+    }
+
+    @Test
+    void lotePublicaUmPedidoPorArquivo() {
+        UUID condominio = UUID.randomUUID();
+        List<Arquivo> lote = List.of(arquivo(condominio), arquivo(condominio), arquivo(condominio));
+        List<UUID> ids = lote.stream().map(Arquivo::getId).toList();
+        when(arquivos.findAllById(ids)).thenReturn(lote);
+
+        publicador.aposCommit(new ArquivosParaIndexar(condominio, ids));
+
+        var mensagens = ArgumentCaptor.forClass(Message.class);
+        verify(rabbit, times(3)).send(eq(""), eq(Filas.INDEXACAO), mensagens.capture());
+        assertThat(mensagens.getAllValues()).extracting(m -> new String(m.getBody(), StandardCharsets.UTF_8))
+                .allSatisfy(json -> assertThat(json).contains(condominio.toString()));
+    }
+
     private static Arquivo arquivo() {
-        return new Arquivo(UUID.randomUUID(), Categoria.BALANCETE, "fluxo.pdf", "c/BALANCETE/2026/x-fluxo.pdf",
+        return arquivo(UUID.randomUUID());
+    }
+
+    private static Arquivo arquivo(UUID condominio) {
+        Arquivo arquivo = new Arquivo(condominio, Categoria.BALANCETE, "fluxo.pdf", "c/BALANCETE/2026/x-fluxo.pdf",
                 "b".repeat(64), 10, "application/pdf", "gestor");
+        arquivo.novaIndexacao();
+        return arquivo;
     }
 }

@@ -70,7 +70,7 @@ public class Arquivo {
         this.processamentoId = UUID.randomUUID();
         this.enfileiradoEm = this.enviadoEm;
         this.tentativas = 1;
-        novaIndexacao();
+        // Sem indexação: quem grava decide pedir (só com o módulo Assistente ligado, RF-10.3)
     }
 
     /** Nova leitura do zero (reprocessar): resultados de leituras anteriores passam a ser ignorados. */

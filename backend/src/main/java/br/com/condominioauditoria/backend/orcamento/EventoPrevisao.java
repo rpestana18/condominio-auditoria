@@ -11,6 +11,8 @@ public class EventoPrevisao {
 
     public static final String CONFIRMADA = "CONFIRMADA";
     public static final String SUBSTITUIDA = "SUBSTITUIDA";
+    /** Ligação das linhas 1.9.x aos fundos alterada depois da confirmação (RF-03.1.9). */
+    public static final String FUNDOS_ALTERADOS = "FUNDOS_ALTERADOS";
 
     @Id
     private UUID id;

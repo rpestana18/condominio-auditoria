@@ -6,7 +6,8 @@ json-schema-validator = "3.0.8"
 grpc = "1.84.0"
 protobuf = "4.33.4"
 gradle-protobuf = "0.10.0"
-# Excel dos relatórios e exportações (docs/tecnologias.md, T11)
+# Relatórios do backend (ADR 0001; ADR 0004, Decisão 6; docs/tecnologias.md, T11). Thymeleaf vem do BOM do Spring Boot.
+openhtmltopdf = "1.1.87"
 poi = "5.5.1"
 
 [libraries]
@@ -17,8 +18,10 @@ grpc-stub = { module = "io.grpc:grpc-stub" }
 grpc-protobuf = { module = "io.grpc:grpc-protobuf" }
 grpc-netty-shaded = { module = "io.grpc:grpc-netty-shaded" }
 grpc-inprocess = { module = "io.grpc:grpc-inprocess" }
-protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
+spring-boot-starter-thymeleaf = { module = "org.springframework.boot:spring-boot-starter-thymeleaf" }
+openhtmltopdf-pdfbox = { module = "io.github.openhtmltopdf:openhtmltopdf-pdfbox", version.ref = "openhtmltopdf" }
 poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }
+protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

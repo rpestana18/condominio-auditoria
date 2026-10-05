@@ -1,6 +1,7 @@
 package br.com.condominioauditoria.backend.orcamento;
 
 import br.com.condominioauditoria.backend.auditoria.RegraExcessoMes;
+import br.com.condominioauditoria.backend.contabil.ImpressaoLancamento;
 import br.com.condominioauditoria.backend.contabil.Lancamento;
 import br.com.condominioauditoria.backend.orcamento.PrevistoRealizado.Aviso;
 import br.com.condominioauditoria.backend.orcamento.PrevistoRealizado.Bloco;
@@ -25,6 +26,8 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -59,16 +62,23 @@ import java.util.stream.Collectors;
  */
 public final class CalculoPrevistoRealizado {
 
-    /** Versão das regras deste cálculo; muda quando qualquer regra acima muda. Vai em todo resultado. */
-    public static final String VERSAO = "1";
+    /**
+     * Versão das regras deste cálculo; muda quando qualquer regra acima muda. Vai em todo resultado. Versão 2: a
+     * realocação casa com o lançamento pela chave estável (impressão), não pelo id.
+     */
+    public static final String VERSAO = "2";
 
     public static final String ALVO_AJUSTES = "AJUSTES";
     public static final String ALVO_A_REALOCAR = "A_REALOCAR";
     public static final String ALVO_SEM_LINHA_PO = "SEM_LINHA_PO";
     public static final String ALVO_TRANSFERENCIAS = "TRANSFERENCIAS";
+    /** Evidência da despesa realizada inteira: linhas da PO + a realocar + sem linha da PO (RF-03.1.12). */
+    public static final String ALVO_TOTAL = "total";
 
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2);
     private static final BigDecimal CEM = new BigDecimal("100");
+    private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
     private static final String[] MESES = {"jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov",
             "dez"};
 
@@ -96,8 +106,19 @@ public final class CalculoPrevistoRealizado {
         }
     }
 
-    /** Lançamento a realocar levado a uma linha da PO (RF-03.1.7). */
-    public record Realocacao(UUID lancamentoId, UUID linhaPoId, String usuario, Instant em) {
+    /**
+     * Lançamento a realocar levado a uma linha da PO (RF-03.1.7). Casa com o lançamento pela {@code chave} da
+     * {@link ImpressaoLancamento}, que sobrevive ao reprocesso do fluxo; data, conta, valor, arquivo e página servem
+     * para o aviso quando não há casamento.
+     */
+    public record Realocacao(UUID id, String chave, UUID arquivoId, LocalDate data, String conta, BigDecimal valor,
+            int pagina, UUID linhaPoId, String usuario, Instant em) {
+
+        public Realocacao {
+            Objects.requireNonNull(chave, "chave");
+            Objects.requireNonNull(data, "data");
+            Objects.requireNonNull(linhaPoId, "linhaPoId");
+        }
     }
 
     /**
@@ -136,6 +157,40 @@ public final class CalculoPrevistoRealizado {
 
     public static String alvoFundo(UUID fundoId) {
         return "fundo:" + fundoId;
+    }
+
+    /** Evidência de um grupo da PO: os lançamentos das linhas dele (pelo id da linha de grupo). */
+    public static String alvoGrupo(UUID linhaDoGrupoId) {
+        return "grupo:" + linhaDoGrupoId;
+    }
+
+    /**
+     * Lançamentos que compõem um número (RF-03.1.12): "linha:&lt;id&gt;", "grupo:&lt;id&gt;" (as linhas do grupo, na
+     * ordem da PO), "total" (despesa realizada: as linhas de todos os grupos, depois a realocar e sem linha da PO),
+     * "fundo:&lt;id&gt;" e os blocos (AJUSTES, A_REALOCAR, SEM_LINHA_PO, TRANSFERENCIAS). Alvo sem lançamento: lista
+     * vazia. Só lê o que o cálculo já apurou.
+     */
+    public static List<Evidencia> evidencia(Calculo c, String alvo) {
+        String a = alvo == null ? "" : alvo.trim();
+        PrevistoRealizado r = c.resultado();
+        if (a.startsWith("grupo:")) {
+            return r.grupos().stream().filter(g -> alvoGrupo(g.linhaId()).equals(a)).findFirst()
+                    .map(g -> doGrupo(c, g)).orElse(List.of());
+        }
+        if (a.equals(ALVO_TOTAL)) {
+            List<Evidencia> todas = new ArrayList<>();
+            r.grupos().forEach(g -> todas.addAll(doGrupo(c, g)));
+            todas.addAll(c.evidencias().getOrDefault(ALVO_A_REALOCAR, List.of()));
+            todas.addAll(c.evidencias().getOrDefault(ALVO_SEM_LINHA_PO, List.of()));
+            return List.copyOf(todas);
+        }
+        return c.evidencias().getOrDefault(a, List.of());
+    }
+
+    private static List<Evidencia> doGrupo(Calculo c, GrupoResultado g) {
+        List<Evidencia> lista = new ArrayList<>();
+        g.linhas().forEach(l -> lista.addAll(c.evidencias().getOrDefault(alvoLinha(l.linhaId()), List.of())));
+        return List.copyOf(lista);
     }
 
     public static Calculo calcular(Entrada e) {
@@ -227,7 +282,7 @@ public final class CalculoPrevistoRealizado {
         final Map<UUID, LinhaPo> destinosValidos = new LinkedHashMap<>();
         final Map<String, Destino> confirmados;
         final Map<String, DeparaConta> deparaPorConta = new HashMap<>();
-        final Map<UUID, Realocacao> realocacoes = new HashMap<>();
+        final Map<String, Realocacao> realocacoes = new HashMap<>();
         final Map<UUID, LinhaPo> linhaPorFundo = new HashMap<>();
         final List<LinhaPo> linhasDeFundo;
         final Map<UUID, LinhaPo> linhasPorId;
@@ -238,7 +293,7 @@ public final class CalculoPrevistoRealizado {
             ServicoDepara.destinosDeDebito(estrutura).forEach(l -> destinosValidos.put(l.getId(), l));
             this.confirmados = DeparaEfetivo.confirmados(e.deparas());
             e.deparas().forEach(d -> deparaPorConta.put(d.getContaCodigo(), d));
-            e.realocacoes().forEach(r -> realocacoes.put(r.lancamentoId(), r));
+            e.realocacoes().forEach(r -> realocacoes.put(r.chave(), r));
             this.linhasPorId = e.linhas().stream().collect(Collectors.toMap(LinhaPo::getId, Function.identity()));
             this.linhasDeFundo = estrutura.fundos().map(EstruturaPo.Grupo::linhas).orElse(List.of());
             linhasDeFundo.forEach(l -> {
@@ -313,7 +368,7 @@ public final class CalculoPrevistoRealizado {
             }
             ap.contasConfirmadas.add(conta);
             switch (d.tipo()) {
-                case LINHA_PO -> ap.linha(d.linhaPoId(), valor, l, f, nome(l.getFundoId()), null);
+                case LINHA_PO -> ap.linha(d.linhaPoId(), valor, l, f, nome(l.getFundoId()), null, null);
                 case AJUSTE -> {
                     ap.ajustes.somar(conta, l.getContaNome(), d.texto(), valor);
                     ap.evidencia(ALVO_AJUSTES, l, f, nome(l.getFundoId()), null);
@@ -323,11 +378,13 @@ public final class CalculoPrevistoRealizado {
                     ap.evidencia(ALVO_TRANSFERENCIAS, l, f, nome(l.getFundoId()), null);
                 }
                 case A_REALOCAR -> {
-                    Realocacao r = realocacoes.get(l.getId());
+                    Realocacao r = realocacoes.get(ImpressaoLancamento.chave(l));
                     LinhaPo destino = r == null ? null : destinosValidos.get(r.linhaPoId());
                     if (destino != null) {
+                        ap.realocacoesUsadas.add(r.chave());
                         ap.linha(destino.getId(), valor, l, f, nome(l.getFundoId()), "realocado para "
-                                + destino.getCodigoEfetivo() + " por " + r.usuario() + " em " + r.em());
+                                + destino.getCodigoEfetivo() + " " + destino.getDescricao() + " por " + r.usuario()
+                                + " em " + DATA.format(r.em().atZone(FUSO)), r.id());
                     } else {
                         ap.aRealocar.somar(conta, l.getContaNome(), d.texto(), valor);
                         ap.evidencia(ALVO_A_REALOCAR, l, f, nome(l.getFundoId()), null);
@@ -442,6 +499,7 @@ public final class CalculoPrevistoRealizado {
                 avisos.add(new Aviso("A_REALOCAR", DinheiroBr.formatar(aRealocar.total()) + " a realocar ("
                         + aRealocar.lancamentos() + " lançamentos): fora das linhas da PO até a realocação"));
             }
+            realocacoesSemEfeito(ap, somados).forEach(avisos::add);
             if (!faltando.isEmpty()) {
                 avisos.add(new Aviso("MESES_SEM_FLUXO", listaDeMeses(faltando) + " sem fluxo carregado"));
             }
@@ -462,6 +520,34 @@ public final class CalculoPrevistoRealizado {
             Map<String, List<Evidencia>> evidencias = new TreeMap<>();
             ap.evidencias.forEach((k, v) -> evidencias.put(k, List.copyOf(v)));
             return new Calculo(r, evidencias);
+        }
+
+        /**
+         * Realocações de meses somados que não entraram em nenhuma linha: sem lançamento correspondente (o fluxo
+         * mudou) ou com lançamento que não está mais em "a realocar". Nada é somado em silêncio.
+         */
+        private List<Aviso> realocacoesSemEfeito(Apuracao ap, List<String> somados) {
+            Set<String> chavesDoPeriodo = e.lancamentos().stream().map(ImpressaoLancamento::chave)
+                    .collect(Collectors.toSet());
+            List<Aviso> avisos = new ArrayList<>();
+            e.realocacoes().stream().filter(r -> somados.contains(YearMonth.from(r.data()).toString()))
+                    .filter(r -> !ap.realocacoesUsadas.contains(r.chave()))
+                    .sorted(Comparator.comparing(Realocacao::data).thenComparing(Realocacao::chave))
+                    .forEach(r -> {
+                        String quem = "lançamento de " + DATA.format(r.data()) + (r.conta() == null ? ""
+                                : ", conta " + r.conta()) + ", R$ " + DinheiroBr.formatar(r.valor()) + ", página "
+                                + r.pagina();
+                        if (!chavesDoPeriodo.contains(r.chave())) {
+                            avisos.add(new Aviso("REALOCACAO_SEM_LANCAMENTO", "Realocação sem lançamento"
+                                    + " correspondente (" + quem + "): o fluxo foi lido de novo com outro conteúdo;"
+                                    + " o valor não foi somado a nenhuma linha"));
+                        } else {
+                            avisos.add(new Aviso("REALOCACAO_SEM_EFEITO", "Realocação sem efeito (" + quem + "): a"
+                                    + " conta não está em \"a realocar\" no de-para confirmado ou a linha de destino"
+                                    + " não recebe débitos"));
+                        }
+                    });
+            return avisos;
         }
 
         private Regra20 regra20(Apuracao ap, int n, BigDecimal previsto, BigDecimal aRealocar, BigDecimal semLinha,
@@ -538,6 +624,7 @@ public final class CalculoPrevistoRealizado {
         final Set<String> contasConfirmadas = new TreeSet<>();
         final Set<String> contasSemDepara = new TreeSet<>();
         final Map<String, List<Evidencia>> evidencias = new LinkedHashMap<>();
+        final Set<String> realocacoesUsadas = new TreeSet<>();
         BigDecimal debitos = ZERO;
         int qtdDebitos;
 
@@ -549,17 +636,23 @@ public final class CalculoPrevistoRealizado {
             return porLinha.values().stream().reduce(ZERO, BigDecimal::add).add(aRealocar.total).add(semLinha.total);
         }
 
-        void linha(UUID linha, BigDecimal valor, Lancamento l, Fluxo f, String fundo, String realocacao) {
+        void linha(UUID linha, BigDecimal valor, Lancamento l, Fluxo f, String fundo, String realocacao,
+                UUID realocacaoId) {
             porLinha.merge(linha, valor, BigDecimal::add);
             qtdPorLinha.merge(linha, 1, Integer::sum);
-            evidencia(alvoLinha(linha), l, f, fundo, realocacao);
+            evidencia(alvoLinha(linha), l, f, fundo, realocacao, realocacaoId);
         }
 
         void evidencia(String alvo, Lancamento l, Fluxo f, String fundo, String realocacao) {
+            evidencia(alvo, l, f, fundo, realocacao, null);
+        }
+
+        void evidencia(String alvo, Lancamento l, Fluxo f, String fundo, String realocacao, UUID realocacaoId) {
             BigDecimal valor = l.getDebito().signum() != 0 ? l.getDebito() : l.getCredito();
             evidencias.computeIfAbsent(alvo, k -> new ArrayList<>()).add(new Evidencia(l.getId(), l.getData(),
                     l.getContaCodigo(), l.getContaNome(), l.getHistorico(), l.getFornecedor(), l.getDocumento(), valor,
-                    fundo, f.arquivoId(), f.nome(), f.sha256(), l.getPagina(), l.getOrdem(), realocacao));
+                    fundo, f.arquivoId(), f.nome(), f.sha256(), l.getPagina(), l.getOrdem(), realocacao,
+                    realocacaoId));
         }
     }
 

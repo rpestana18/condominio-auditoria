@@ -29,6 +29,10 @@ public class Achado {
     @Enumerated(EnumType.STRING)
     private EstadoAchado estado;
     private Instant criadoEm;
+    /** A condição da regra existia no último recálculo. */
+    private boolean condicaoPresente;
+    private String estadoMotivo;
+    private Instant estadoEm;
 
     protected Achado() {
     }
@@ -45,6 +49,42 @@ public class Achado {
         this.descricao = descricao;
         this.estado = EstadoAchado.ABERTO;
         this.criadoEm = criadoEm;
+        this.condicaoPresente = true;
+        this.estadoEm = criadoEm;
+    }
+
+    /**
+     * A condição deixou de existir. Achado aberto passa a "não se aplica mais" (Q27); achado marcado por pessoa
+     * mantém o estado. Devolve falso se nada mudou (a condição já estava ausente).
+     */
+    public boolean condicaoDeixouDeExistir(String motivo, Instant em) {
+        if (!condicaoPresente) {
+            return false;
+        }
+        condicaoPresente = false;
+        if (estado == EstadoAchado.ABERTO) {
+            estado = EstadoAchado.NAO_SE_APLICA_MAIS;
+            estadoMotivo = motivo;
+            estadoEm = em;
+        }
+        return true;
+    }
+
+    /**
+     * A condição voltou: o mesmo achado volta a "aberto" (sem criar outro); marcado por pessoa mantém o estado.
+     * Devolve falso se nada mudou (a condição já estava presente).
+     */
+    public boolean condicaoVoltou(String motivo, Instant em) {
+        if (condicaoPresente) {
+            return false;
+        }
+        condicaoPresente = true;
+        if (estado == EstadoAchado.NAO_SE_APLICA_MAIS) {
+            estado = EstadoAchado.ABERTO;
+            estadoMotivo = motivo;
+            estadoEm = em;
+        }
+        return true;
     }
 
     public UUID getId() {
@@ -85,5 +125,17 @@ public class Achado {
 
     public Instant getCriadoEm() {
         return criadoEm;
+    }
+
+    public boolean isCondicaoPresente() {
+        return condicaoPresente;
+    }
+
+    public String getEstadoMotivo() {
+        return estadoMotivo;
+    }
+
+    public Instant getEstadoEm() {
+        return estadoEm;
     }
 }

@@ -36,6 +36,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,10 +62,11 @@ public class ServicoDepara {
     private final EventoDeparaRepository eventos;
     private final LancamentoRepository lancamentos;
     private final SugestaoPorNome sugestao;
+    private final ApplicationEventPublisher publicador;
 
     ServicoDepara(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes, LinhaPoRepository linhas,
             DeparaContaRepository deparas, EventoDeparaRepository eventos, LancamentoRepository lancamentos,
-            PropriedadesDepara propriedades) {
+            PropriedadesDepara propriedades, ApplicationEventPublisher publicador) {
         this.condominios = condominios;
         this.previsoes = previsoes;
         this.linhas = linhas;
@@ -72,6 +74,7 @@ public class ServicoDepara {
         this.eventos = eventos;
         this.lancamentos = lancamentos;
         this.sugestao = new SugestaoPorNome(propriedades);
+        this.publicador = publicador;
     }
 
     /** Conta do fluxo com débito no fundo Condomínio no exercício da PO: nome impresso, quantidade e soma. */
@@ -131,8 +134,13 @@ public class ServicoDepara {
         EstadoDepara estado = pedido.confirmar() == null || pedido.confirmar() ? EstadoDepara.CONFIRMADO
                 : EstadoDepara.SUGERIDO;
         String nome = Optional.ofNullable(contasDoFluxo(ctx.po()).get(codigo)).map(ContaDoFluxo::nome).orElse(null);
+        Instant agora = Instant.now();
         DeparaConta d = gravar(ctx, codigo, nome, destino, estado, OrigemDepara.ADMIN, "escolhido pelo Admin", false,
-                usuario, Instant.now(), true);
+                usuario, agora, true);
+        if (agora.equals(d.getAtualizadoEm())) {
+            publicador.publishEvent(MudancaOrcamento.de(condominioId, "de-para da conta " + codigo + " "
+                    + (estado == EstadoDepara.CONFIRMADO ? "confirmado" : "sugerido"), usuario, agora));
+        }
         return conta(Optional.ofNullable(contasDoFluxo(ctx.po()).get(codigo))
                 .orElse(new ContaDoFluxo(codigo, nome, 0, BigDecimal.ZERO.setScale(2))), d, ctx);
     }
@@ -166,6 +174,14 @@ public class ServicoDepara {
             }
         }
         log.info("De-para da PO {}: {} conta(s) {} por {}", ctx.po().getId(), alteradas, novo, usuario);
+        if (alteradas > 0) {
+            String acao = novo == EstadoDepara.CONFIRMADO ? "confirmado" : "recusado";
+            List<String> mudadas = pedido.contas().stream().distinct()
+                    .filter(c -> ignoradas.stream().noneMatch(i -> i.conta().equals(c))).toList();
+            publicador.publishEvent(MudancaOrcamento.de(condominioId, mudadas.size() == 1
+                    ? "de-para da conta " + mudadas.getFirst() + " " + acao
+                    : "de-para de " + mudadas.size() + " contas " + acao, usuario, agora));
+        }
         return new ResultadoLote(alteradas, ignoradas);
     }
 

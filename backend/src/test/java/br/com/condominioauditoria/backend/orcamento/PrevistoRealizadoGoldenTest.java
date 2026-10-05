@@ -258,8 +258,10 @@ class PrevistoRealizadoGoldenTest {
         g.confirmarMapa();
         List<CalculoPrevistoRealizado.Realocacao> realocacoes = g.cenario.lancamentos.stream()
                 .filter(l -> "1064".equals(l.getContaCodigo()) && l.getDebito().signum() != 0)
-                .map(l -> new CalculoPrevistoRealizado.Realocacao(l.getId(), g.linha("1.7.9").getId(), "gestor",
-                        Instant.EPOCH))
+                .map(l -> new CalculoPrevistoRealizado.Realocacao(UUID.randomUUID(),
+                        br.com.condominioauditoria.backend.contabil.ImpressaoLancamento.chave(l), l.getArquivoId(),
+                        l.getData(), l.getContaCodigo(), l.getDebito(), l.getPagina(), g.linha("1.7.9").getId(),
+                        "gestor", Instant.EPOCH))
                 .toList();
 
         PrevistoRealizado r = CalculoPrevistoRealizado.calcular(g.entrada(new Mes(YearMonth.of(2026, 9)),

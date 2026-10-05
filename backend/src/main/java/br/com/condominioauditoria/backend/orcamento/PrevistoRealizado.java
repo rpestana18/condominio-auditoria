@@ -114,6 +114,6 @@ public record PrevistoRealizado(String versaoCalculo, String periodo, Situacao s
     /** Lançamento que compõe um número (RF-03.1.12), com arquivo, página e hash de origem. */
     public record Evidencia(UUID lancamentoId, LocalDate data, String conta, String contaNome, String historico,
             String fornecedor, String documento, BigDecimal valor, String fundo, UUID arquivoId, String arquivoNome,
-            String sha256, int pagina, int ordem, String realocacao) {
+            String sha256, int pagina, int ordem, String realocacao, UUID realocacaoId) {
     }
 }

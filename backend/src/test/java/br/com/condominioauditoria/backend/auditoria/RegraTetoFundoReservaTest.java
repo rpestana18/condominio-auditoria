@@ -56,7 +56,7 @@ class RegraTetoFundoReservaTest {
         });
         when(achados.findByCondominioIdAndRegraAndCompetenciaAndAlvo(any(), any(), any(), any()))
                 .thenAnswer(i -> gravados.stream().findFirst());
-        RegistroAchados registro = new RegistroAchados(achados, evidencias);
+        RegistroAchados registro = new RegistroAchados(achados, evidencias, mock(EventoAchadoRepository.class));
         UUID condominio = UUID.randomUUID();
         var prova = List.of(new RegistroAchados.Evidencia(UUID.randomUUID(), "a".repeat(64), 1, "PO, linha 1.9.1", null));
 

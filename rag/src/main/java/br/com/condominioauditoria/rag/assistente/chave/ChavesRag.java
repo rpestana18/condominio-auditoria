@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -50,6 +51,7 @@ public class ChavesRag {
     private final PrivateKey privada;
     private final String publicaPem;
 
+    @Autowired
     ChavesRag(br.com.condominioauditoria.rag.config.PropriedadesRag propriedades) {
         var config = propriedades.assistente();
         Par par = carregar(config.chavePrivadaArquivo(), config.gerarChaveDev());

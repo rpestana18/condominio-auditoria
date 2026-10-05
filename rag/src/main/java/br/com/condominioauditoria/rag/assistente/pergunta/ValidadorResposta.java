@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -37,6 +38,7 @@ public class ValidadorResposta {
 
     private final List<Pattern> termosConduta;
 
+    @Autowired
     ValidadorResposta(PropriedadesRag propriedades) {
         this(propriedades.assistente().termosConduta());
     }

@@ -279,3 +279,4 @@ code { font-family: ui-monospace, monospace; font-size: 0.85em; background: var(
 .escolha-modo input { margin-top: 4px; }
 .campo-chave { display: grid; gap: 8px; max-width: 420px; }
 .campo-chave .botao-link { justify-self: start; }
+.total-custo { font-size: 0.9rem; margin: 8px 0 0; }

@@ -4,7 +4,7 @@ import { baixarArquivo } from "../../api/cliente";
 import { caminhoUso, periodoPreenchido, useUso } from "../../api/consultas";
 import type { FuncaoUso, TotalUso } from "../../api/tipos";
 import { useSessao } from "../../contexto";
-import { formatarData, formatarInteiro, formatarMes, hojeIso } from "../../formato";
+import { formatarData, formatarDolarTexto, formatarInteiro, formatarMes, hojeIso } from "../../formato";
 
 const rotulosFuncao: Record<FuncaoUso, string> = {
   busca_documentos: "Busca nos documentos (tela)",
@@ -52,8 +52,8 @@ export function UsoModulos({ nomesModulos }: { nomesModulos: Record<string, stri
         </div>
       </header>
       <p className="discreto">
-        Quantidades registradas pelo sistema. A planilha traz também os períodos ativos. Nenhum valor de cobrança é
-        calculado nesta fase.
+        Quantidades registradas pelo sistema. O custo é uma estimativa em dólar (tokens × preço do catálogo de IA),
+        calculada pelo servidor; não é valor de cobrança. A planilha traz também os períodos ativos.
       </p>
       {exportar.isError && (
         <p className="aviso erro" role="alert">
@@ -69,16 +69,50 @@ export function UsoModulos({ nomesModulos }: { nomesModulos: Record<string, stri
         <p className="aviso erro">{error.message}</p>
       ) : !uso ? null : (
         <>
+          <AvisosCusto custoDisponivel={uso.custoDisponivel !== false} modelosSemPreco={uso.modelosSemPreco ?? []} />
           <h3>
             Por função · {formatarData(uso.inicio)} a {formatarData(uso.fim)}
           </h3>
           <TabelaUso linhas={uso.porFuncao} nomesModulos={nomesModulos} />
+          <p className="total-custo">
+            Custo estimado do período:{" "}
+            <strong>
+              {uso.custoDisponivel === false
+                ? "indisponível"
+                : uso.custoEstimadoTotalUsd
+                  ? formatarDolarTexto(uso.custoEstimadoTotalUsd)
+                  : uso.custoEstimadoTotalUsd === null
+                    ? "sem preço para todos os modelos"
+                    : "—"}
+            </strong>
+          </p>
           <h3>Por mês</h3>
           <TabelaUso linhas={uso.porMes} nomesModulos={nomesModulos} comMes />
         </>
       )}
     </section>
   );
+}
+
+/** Por que o custo pode faltar: catálogo do rag fora do ar ou modelo sem preço no catálogo. */
+function AvisosCusto({ custoDisponivel, modelosSemPreco }: { custoDisponivel: boolean; modelosSemPreco: string[] }) {
+  return (
+    <>
+      {!custoDisponivel && <p className="aviso alerta">Custo indisponível: o serviço de IA não respondeu.</p>}
+      {custoDisponivel && modelosSemPreco.length > 0 && (
+        <p className="aviso alerta">
+          Sem preço no catálogo para {modelosSemPreco.join(", ")}: o custo dessas linhas e o total não foram estimados.
+        </p>
+      )}
+    </>
+  );
+}
+
+/** Célula de custo: traço sem tokens ou sem custo calculado; "sem preço" quando o modelo não tem preço. */
+function textoCusto(linha: TotalUso): string {
+  if (linha.tokensEntrada === 0 && linha.tokensSaida === 0) return "—";
+  if (linha.custoEstimadoUsd === null) return "sem preço";
+  return linha.custoEstimadoUsd ? formatarDolarTexto(linha.custoEstimadoUsd) : "—";
 }
 
 interface PropsTabela {
@@ -102,6 +136,7 @@ function TabelaUso({ linhas, nomesModulos, comMes = false }: PropsTabela) {
             <th className="numero">Tokens de saída</th>
             <th className="numero">Arquivos</th>
             <th className="numero">Páginas</th>
+            <th className="numero">Custo estimado (US$)</th>
           </tr>
         </thead>
         <tbody>
@@ -115,6 +150,7 @@ function TabelaUso({ linhas, nomesModulos, comMes = false }: PropsTabela) {
               <td className="numero">{formatarInteiro(l.tokensSaida)}</td>
               <td className="numero">{formatarInteiro(l.arquivos)}</td>
               <td className="numero">{formatarInteiro(l.paginas)}</td>
+              <td className="numero">{textoCusto(l)}</td>
             </tr>
           ))}
         </tbody>

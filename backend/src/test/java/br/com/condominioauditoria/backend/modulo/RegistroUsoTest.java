@@ -99,6 +99,32 @@ class RegistroUsoTest {
         verifyNoInteractions(usos);
     }
 
+    @Test
+    void perguntaGuardaTokensProvedorModeloEVersaoDoPromptEmApiKey() {
+        registro.pergunta(CONDOMINIO, "conselheiro", "anthropic", "claude-sonnet-5-5", 1200, 340, "2026-10-05.1");
+
+        UsoModulo uso = gravado();
+        assertThat(uso.getFuncao()).isEqualTo(FuncaoUso.PERGUNTA);
+        assertThat(uso.getModo()).isEqualTo(ModoIa.API_KEY);
+        assertThat(uso.getUsuario()).isEqualTo("conselheiro");
+        assertThat(uso.getProvedor()).isEqualTo("anthropic");
+        assertThat(uso.getModelo()).isEqualTo("claude-sonnet-5-5");
+        assertThat(uso.getTokensEntrada()).isEqualTo(1200);
+        assertThat(uso.getTokensSaida()).isEqualTo(340);
+        assertThat(uso.getVersaoPrompt()).isEqualTo("2026-10-05.1");
+    }
+
+    @Test
+    void buscaPelaTelaEhDesligadoSemTokens() {
+        registro.buscaDocumentos(CONDOMINIO, "conselheiro");
+
+        UsoModulo uso = gravado();
+        assertThat(uso.getFuncao()).isEqualTo(FuncaoUso.BUSCA_DOCUMENTOS);
+        assertThat(uso.getModo()).isEqualTo(ModoIa.DESLIGADO);
+        assertThat(uso.getTokensEntrada()).isNull();
+        assertThat(uso.getModelo()).isNull();
+    }
+
     private UsoModulo gravado() {
         var uso = ArgumentCaptor.forClass(UsoModulo.class);
         verify(usos).save(uso.capture());

@@ -26,6 +26,12 @@ dependencies {
     // Embeddings locais pelo Ollama, modelo bge-m3 (ADR 0003, Decisão 2)
     implementation("org.springframework.ai:spring-ai-starter-model-ollama")
 
+    // Respostas do chat pelo Claude (ADR 0003, Decisão 1 A). O starter traz, de forma transitiva, o SDK oficial
+    // com.anthropic:anthropic-java, que é o que o rag chama (um cliente por pergunta, com a chave do condomínio);
+    // a autoconfiguração do ChatModel do Spring AI fica desligada (spring.ai.model.chat=none), porque ela exigiria
+    // uma chave única no boot. Nenhuma biblioteca nova: só esta, aprovada na ADR.
+    implementation("org.springframework.ai:spring-ai-starter-model-anthropic")
+
     // Servidor gRPC do assistente (contracts/grpc/assistente/v1)
     implementation(libs.grpc.netty.shaded)
 

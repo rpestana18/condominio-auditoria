@@ -13,6 +13,8 @@ import static org.mockito.Mockito.when;
 
 import br.com.condominioauditoria.backend.condominio.Condominio;
 import br.com.condominioauditoria.backend.condominio.CondominioRepository;
+import br.com.condominioauditoria.backend.ia.CatalogoIa;
+import br.com.condominioauditoria.backend.ia.ConfiguracaoIaServico;
 import br.com.condominioauditoria.backend.modulo.ModuloController.AlteracaoModulo;
 import br.com.condominioauditoria.backend.modulo.Modulos.EstadoModulo;
 import br.com.condominioauditoria.backend.modulo.RegistroUso.ResumoUso;
@@ -75,14 +77,24 @@ class ModuloControllerPermissaoTest {
         }
 
         @Bean
+        ConfiguracaoIaServico configuracaoIa() {
+            return mock(ConfiguracaoIaServico.class);
+        }
+
+        @Bean
+        CatalogoIa catalogoIa() {
+            return mock(CatalogoIa.class);
+        }
+
+        @Bean
         AcessoCondominio acesso() {
             return new AcessoCondominio();
         }
 
         @Bean
         ModuloController moduloController(Modulos modulos, RegistroUso registroUso, AcessoCondominio acesso,
-                CondominioRepository condominios) {
-            return new ModuloController(modulos, registroUso, acesso, condominios);
+                CondominioRepository condominios, ConfiguracaoIaServico configuracaoIa, CatalogoIa catalogoIa) {
+            return new ModuloController(modulos, registroUso, acesso, condominios, configuracaoIa, catalogoIa);
         }
     }
 
@@ -177,6 +189,7 @@ class ModuloControllerPermissaoTest {
         controller.eventos(PILOTO, Modulos.ASSISTENTE);
         controller.periodos(PILOTO, Modulos.ASSISTENTE);
         assertThat(controller.uso(PILOTO, INICIO, FIM).condominioId()).isEqualTo(PILOTO);
+        assertThat(controller.uso(PILOTO, INICIO, FIM).custoDisponivel()).isFalse(); // rag sem catálogo: não quebra
         var exportacao = controller.exportar(PILOTO, INICIO, FIM);
 
         assertThat(exportacao.getHeaders().getContentType().toString()).isEqualTo(ExportacaoUsoExcel.TIPO);

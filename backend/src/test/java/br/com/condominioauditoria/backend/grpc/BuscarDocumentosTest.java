@@ -16,6 +16,8 @@ import br.com.condominioauditoria.backend.arquivo.Arquivo;
 import br.com.condominioauditoria.backend.arquivo.ArquivoRepository;
 import br.com.condominioauditoria.backend.arquivo.Categoria;
 import br.com.condominioauditoria.backend.config.PropriedadesCondominio;
+import br.com.condominioauditoria.backend.ia.ConfiguracaoIaServico;
+import br.com.condominioauditoria.backend.modulo.ModoIa;
 import br.com.condominioauditoria.backend.modulo.ModuloNaoContratadoException;
 import br.com.condominioauditoria.backend.modulo.Modulos;
 import br.com.condominioauditoria.backend.modulo.RegistroUso;
@@ -77,6 +79,7 @@ class BuscarDocumentosTest {
     /** Mock: exigir não lança = módulo ligado. Os testes de módulo desligado configuram a recusa. */
     private final Modulos modulos = mock(Modulos.class);
     private final RegistroUso registroUso = mock(RegistroUso.class);
+    private final ConfiguracaoIaServico configuracaoIa = mock(ConfiguracaoIaServico.class);
     private final Arquivo ataDoA = new Arquivo(CONDOMINIO_A, Categoria.ATA, "ata.pdf", "a/ATA/2026/x-ata.pdf",
             "a".repeat(64), 10, "application/pdf", "gestor");
     private final Arquivo poDoA = new Arquivo(CONDOMINIO_A, Categoria.PO, "po.xlsx", "a/PO/2026/x-po.xlsx",
@@ -133,8 +136,9 @@ class BuscarDocumentosTest {
 
         var propriedades = new PropriedadesCondominio(null, null, null, new PropriedadesCondominio.Rag("rag:9091", 5));
         var acesso = new AcessoCondominio();
+        embeddings(ModoIa.LOCAL, "bge-m3");
         var busca = new BuscaDocumentos(acesso, arquivos, new ClienteAssistente(canalRag, propriedades), modulos,
-                registroUso);
+                registroUso, configuracaoIa);
         var consulta = new ConsultaGrpcServico(acesso, null, arquivos, null, null, null, null, busca);
 
         var conversor = new JwtAuthenticationConverter();
@@ -286,6 +290,31 @@ class BuscarDocumentosTest {
                 .isInstanceOfSatisfying(StatusRuntimeException.class,
                         e -> assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.INVALID_ARGUMENT));
         assertThat(pedidosAoRag).isEmpty();
+    }
+
+    @Test
+    void embeddingsDesligadosBuscamSoPorPalavraSemModelo() {
+        embeddings(ModoIa.DESLIGADO, null);
+
+        stub("usuario-a").buscarDocumentos(pedido(CONDOMINIO_A, "multa").build());
+
+        assertThat(pedidosAoRag.getFirst().getModo()).isEqualTo(ModoBusca.MODO_BUSCA_PALAVRA);
+        assertThat(pedidosAoRag.getFirst().getModeloEmbeddings()).isEmpty();
+    }
+
+    @Test
+    void embeddingsLocaisBuscamHibridoComOModeloConfigurado() {
+        stub("usuario-a").buscarDocumentos(pedido(CONDOMINIO_A, "multa").build());
+
+        assertThat(pedidosAoRag.getFirst().getModo()).isEqualTo(ModoBusca.MODO_BUSCA_HIBRIDA);
+        assertThat(pedidosAoRag.getFirst().getModeloEmbeddings()).isEqualTo("bge-m3");
+    }
+
+    private void embeddings(ModoIa modo, String modelo) {
+        var respostas = new ConfiguracaoIaServico.Respostas(null, ModoIa.MCP_EXTERNO, null, null, null, null);
+        when(configuracaoIa.ler(any())).thenReturn(new ConfiguracaoIaServico.Efetiva(ModoIa.MCP_EXTERNO, respostas,
+                new ConfiguracaoIaServico.Embeddings(modo, modo == ModoIa.LOCAL ? "ollama-local" : null, modelo), null,
+                null));
     }
 
     @Test

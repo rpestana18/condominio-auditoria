@@ -15,6 +15,9 @@ import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
 import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
 import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
+import br.com.condominioauditoria.rag.assistente.catalogo.CatalogoProvedores;
+import br.com.condominioauditoria.rag.assistente.chave.ChavesRag;
+import br.com.condominioauditoria.rag.assistente.pergunta.ServicoPergunta;
 import br.com.condominioauditoria.rag.indice.BuscaDocumentos;
 import br.com.condominioauditoria.rag.indice.GeradorEmbeddings;
 import br.com.condominioauditoria.rag.indice.Localizacao;
@@ -54,7 +57,9 @@ class AssistenteGrpcServicoTest {
         when(embeddings.modelo()).thenReturn("bge-m3");
         String nome = InProcessServerBuilder.generateName();
         servidor = InProcessServerBuilder.forName(nome).directExecutor()
-                .addService(new AssistenteGrpcServico(busca, embeddings)).build().start();
+                .addService(new AssistenteGrpcServico(busca, embeddings, mock(ServicoPergunta.class),
+                        mock(CatalogoProvedores.class), mock(ChavesRag.class)))
+                .build().start();
         canal = InProcessChannelBuilder.forName(nome).directExecutor().build();
         cliente = AssistenteGrpc.newBlockingStub(canal);
     }

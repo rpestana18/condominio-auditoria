@@ -1,16 +1,19 @@
 package br.com.condominioauditoria.backend.modulo;
 
 import br.com.condominioauditoria.backend.modulo.RegistroUso.ResumoUso;
+import br.com.condominioauditoria.backend.orcamento.DinheiroBr;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -19,6 +22,11 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  * Períodos ativos e uso do período em Excel (.xlsx), RF-10.6 e RF-09.7, com o Apache POI (docs/tecnologias.md, T11).
  * Duas abas: "Períodos ativos" e "Uso por mês". Datas e horas em células de data, no horário de Brasília; contagens em
  * células numéricas. Texto livre (ex.: motivo) vai como texto, nunca como fórmula. Sem valores de cobrança nesta fase.
+ *
+ * Custo estimado em US$ (RF-09.7; ADR 0003, Decisão 4): coluna por mês e função e uma linha de total, calculados por
+ * {@link CustoUso} (tokens × preço do catálogo do rag, 2 casas só nos totais). Célula vazia = sem tokens; "sem preço"
+ * = tokens de modelo fora do catálogo. O valor vai como texto no padrão brasileiro (1.234,56), formatado do
+ * BigDecimal, nunca como número de ponto flutuante. Sem catálogo (rag fora do ar), a planilha sai sem custo e com aviso.
  */
 public final class ExportacaoUsoExcel {
 
@@ -33,7 +41,15 @@ public final class ExportacaoUsoExcel {
     private ExportacaoUsoExcel() {
     }
 
+    static final String COLUNA_CUSTO = "Custo estimado (US$)";
+
     public static byte[] gerar(String nomeCondominio, ResumoUso uso, List<PeriodoAtivo> periodos) {
+        return gerar(nomeCondominio, uso, periodos, null);
+    }
+
+    /** custo nulo = catálogo de preços indisponível. */
+    public static byte[] gerar(String nomeCondominio, ResumoUso uso, List<PeriodoAtivo> periodos,
+            CustoUso.CustoDoPeriodo custo) {
         try (var planilha = new XSSFWorkbook(); var saida = new ByteArrayOutputStream()) {
             Estilos estilos = new Estilos(planilha);
             String periodo = DATA.format(uso.inicio()) + " a " + DATA.format(uso.fim());
@@ -58,8 +74,8 @@ public final class ExportacaoUsoExcel {
             }
 
             Sheet abaUso = aba(planilha, ABA_USO, nomeCondominio, periodo, estilos, List.of("Mês", "Módulo", "Função",
-                    "Quantidade", "Tokens de entrada", "Tokens de saída", "Arquivos", "Páginas"),
-                    new int[] {10, 14, 18, 12, 18, 16, 10, 10});
+                    "Quantidade", "Tokens de entrada", "Tokens de saída", "Arquivos", "Páginas", COLUNA_CUSTO),
+                    new int[] {10, 14, 18, 12, 18, 16, 10, 10, 20});
             n = LINHA_CABECALHO + 1;
             for (TotalUso t : uso.porMes()) {
                 Row linha = abaUso.createRow(n++);
@@ -71,6 +87,27 @@ public final class ExportacaoUsoExcel {
                 linha.createCell(5).setCellValue(t.tokensSaida());
                 linha.createCell(6).setCellValue(t.arquivos());
                 linha.createCell(7).setCellValue(t.paginas());
+                if (custo != null && (t.tokensEntrada() > 0 || t.tokensSaida() > 0)) {
+                    valorCusto(linha, 8, custo.doMes(t), estilos);
+                }
+            }
+            boolean temTokens = uso.porMes().stream().anyMatch(t -> t.tokensEntrada() > 0 || t.tokensSaida() > 0);
+            if (custo != null || temTokens) {
+                n++;
+                if (custo == null) {
+                    texto(abaUso.createRow(n), 0, "Custo estimado indisponível: o catálogo de preços do serviço rag"
+                            + " não respondeu.");
+                } else {
+                    Row total = abaUso.createRow(n++);
+                    celula(total, 0, "Total do período", estilos.negrito);
+                    valorCusto(total, 8, custo.total(), estilos);
+                    texto(abaUso.createRow(n++), 0, "Custo estimado em US$: tokens × preço por milhão de tokens do"
+                            + " catálogo de IA, arredondado a 2 casas só nos totais. Não é valor de cobrança.");
+                    if (!custo.modelosSemPreco().isEmpty()) {
+                        texto(abaUso.createRow(n), 0, "Sem preço no catálogo (custo não estimado): "
+                                + String.join(", ", custo.modelosSemPreco()));
+                    }
+                }
             }
 
             planilha.write(saida);
@@ -110,6 +147,17 @@ public final class ExportacaoUsoExcel {
         c.setCellStyle(estilo);
     }
 
+    private static void valorCusto(Row linha, int coluna, BigDecimal valor, Estilos estilos) {
+        if (valor == null) {
+            texto(linha, coluna, "sem preço");
+            return;
+        }
+        // Texto formatado a partir do BigDecimal (1.234,56), sem passar por ponto flutuante
+        Cell c = linha.createCell(coluna);
+        c.setCellValue(DinheiroBr.formatar(valor));
+        c.setCellStyle(estilos.direita);
+    }
+
     private static void dataHora(Row linha, int coluna, Instant instante, Estilos estilos) {
         if (instante == null) {
             return;
@@ -122,6 +170,7 @@ public final class ExportacaoUsoExcel {
     private static final class Estilos {
         final CellStyle negrito;
         final CellStyle dataHora;
+        final CellStyle direita;
 
         Estilos(XSSFWorkbook planilha) {
             Font fonte = planilha.createFont();
@@ -130,6 +179,8 @@ public final class ExportacaoUsoExcel {
             negrito.setFont(fonte);
             dataHora = planilha.createCellStyle();
             dataHora.setDataFormat(planilha.getCreationHelper().createDataFormat().getFormat("dd/mm/yyyy hh:mm:ss"));
+            direita = planilha.createCellStyle();
+            direita.setAlignment(HorizontalAlignment.RIGHT);
         }
     }
 }

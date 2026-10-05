@@ -80,10 +80,17 @@ condominio:
         TRANSP: TRANSPORTE
         SIST: SISTEMA
         EQUIP: EQUIPAMENTO
-  # Assistente no rag (busca nos documentos, ADR 0003). O prazo vale para cada chamada ao rag.
+  # Assistente no rag (busca nos documentos e chat, ADR 0003). O prazo vale para cada chamada ao rag.
   rag:
     grpc: ${RAG_GRPC:localhost:9091}
     prazo-segundos: ${RAG_GRPC_PRAZO_SEGUNDOS:30}
+    # Perguntar (chat): o modelo pode chamar ferramentas e tentar de novo; prazo estourado = 504 na API
+    prazo-pergunta-segundos: ${RAG_GRPC_PRAZO_PERGUNTA_SEGUNDOS:120}
+    # Catálogo de provedores e chave pública do rag (ListarProvedores), guardado em memória por este tempo
+    catalogo-cache-segundos: ${RAG_CATALOGO_CACHE_SEGUNDOS:300}
+  assistente:
+    # Trocas anteriores da conversa mandadas ao rag em cada pergunta (o histórico só existe na tela, Q10)
+    historico-trocas: ${ASSISTENTE_HISTORICO_TROCAS:6}
 
 management:
   endpoints:

@@ -317,7 +317,10 @@ export interface paths {
         };
         /**
          * Uso dos módulos no período, por função e por mês (só ADMIN no MVP; RF-09.7, Q17)
-         * @description Datas no fuso de Brasília, fim incluído. Sem custo nesta fase.
+         * @description Datas no fuso de Brasília, fim incluído. Custo estimado em US$ (RF-09.7; ADR 0003, Decisão 4): tokens × preço
+         *     por milhão de tokens do catálogo de IA do rag, calculado na hora (nada de custo é gravado), em decimal exato e
+         *     arredondado a 2 casas (meio para cima) só em cada total. Não é valor de cobrança. Rag fora do ar: o uso sai
+         *     normalmente, com custoDisponivel = false e sem valores de custo.
          */
         get: operations["usoModulos"];
         put?: never;
@@ -340,7 +343,9 @@ export interface paths {
         /**
          * Exporta os períodos ativos e o uso do período em Excel (só ADMIN; RF-10.6, RF-09.7)
          * @description Arquivo .xlsx com duas abas: "Períodos ativos" (os que tocam o período pedido) e "Uso por mês". Datas no
-         *     horário de Brasília. Sem valores de cobrança nesta fase.
+         *     horário de Brasília. A aba "Uso por mês" traz a coluna "Custo estimado (US$)" (texto 1.234,56, 2 casas só nos
+         *     totais), uma linha "Total do período" e, com o rag fora do ar, um aviso de custo indisponível. Custo estimado
+         *     não é valor de cobrança; nenhum valor de cobrança é calculado nesta fase.
          */
         get: operations["exportarUsoModulos"];
         put?: never;
@@ -984,6 +989,12 @@ export interface components {
             arquivos: number;
             /** Format: int64 */
             paginas: number;
+            /**
+             * @description Custo estimado em US$, texto decimal exato com 2 casas (ex. "3.50"). Ausente quando não há tokens nessa
+             *     linha ou quando o custo está indisponível (custoDisponivel = false); nulo quando há tokens de modelo sem
+             *     preço no catálogo (ver modelosSemPreco).
+             */
+            custoEstimadoUsd?: string | null;
         };
         UsoDoPeriodo: {
             /** Format: uuid */
@@ -994,6 +1005,15 @@ export interface components {
             fim: string;
             porFuncao: components["schemas"]["TotalUso"][];
             porMes: components["schemas"]["TotalUso"][];
+            /** @description false quando o rag não respondeu o catálogo de preços; aí não há nenhum valor de custo */
+            custoDisponivel?: boolean;
+            /**
+             * @description Total do período em US$ (arredondamento da soma exata, não a soma dos totais arredondados). Nulo com
+             *     modelo sem preço no catálogo; ausente com custoDisponivel = false.
+             */
+            custoEstimadoTotalUsd?: string | null;
+            /** @description Modelos com tokens no período e sem preço no catálogo, como "provedor/modelo" */
+            modelosSemPreco?: string[];
         };
         /** @enum {string} */
         Categoria: "BALANCETE" | "EXTRATO" | "PO" | "CONTRATO" | "FOLHA" | "COMPROVANTE" | "ATA" | "CONVENCAO_RI" | "OUTROS";

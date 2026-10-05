@@ -1,17 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { atualizar, enviar, gravar, obter } from "./cliente";
+import { atualizar, enviar, gravar, obter, postar } from "./cliente";
 import type {
   AlteracaoModulo,
   ArquivoDetalhe,
   ArquivoResumo,
   Categoria,
   CategoriaDto,
+  ConfiguracaoIa,
   ContextoCondominio,
   EventoModulo,
   ModuloDoCondominio,
   NovaCategoria,
   Painel,
+  PedidoBuscaDocumentos,
+  PedidoConfiguracaoIa,
   PeriodoAtivo,
+  ProvedorIa,
+  TrechoDocumento,
   UsoDoPeriodo,
   UsuarioLogado,
 } from "./tipos";
@@ -173,5 +178,47 @@ export function useUso(condominioId: string, inicio: string, fim: string) {
     queryKey: ["uso", condominioId, inicio, fim],
     queryFn: () => obter<UsoDoPeriodo>(caminhoUso(condominioId, inicio, fim)),
     enabled: periodoPreenchido(inicio, fim),
+  });
+}
+
+// ---- Configuração de IA (RF-09.6) e Assistente (RF-04) ----
+
+/** Configuração de IA do condomínio (só ADMIN). A chave nunca volta: só "cadastrada" e os 4 últimos caracteres. */
+export function useConfiguracaoIa(condominioId: string) {
+  return useQuery({
+    queryKey: ["ia", condominioId],
+    queryFn: () => obter<ConfiguracaoIa>(`/condominios/${condominioId}/ia`),
+  });
+}
+
+/** Catálogo de provedores e modelos, lido do rag pelo backend (só ADMIN). */
+export function useProvedoresIa() {
+  return useQuery({
+    queryKey: ["ia", "provedores"],
+    queryFn: async () => (await obter<ProvedorIa[]>("/ia/provedores")) ?? [],
+    staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * Grava a configuração de IA. Depois recarrega o contexto: o menu e a tela "Assistente" passam a refletir
+ * o novo modo sem recarregar a página (RF-04.16, último critério).
+ */
+export function useGravarConfiguracaoIa(condominioId: string) {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: (pedido: PedidoConfiguracaoIa) => atualizar<ConfiguracaoIa>(`/condominios/${condominioId}/ia`, pedido),
+    onSuccess: (configuracao) => {
+      cliente.setQueryData(["ia", condominioId], configuracao);
+      void cliente.invalidateQueries({ queryKey: ["contexto", condominioId] });
+    },
+  });
+}
+
+/** Busca por palavra nos documentos, sem IA (RF-04.18). É uma ação do usuário, por isso mutação e não consulta. */
+export function useBuscarDocumentos(condominioId: string) {
+  return useMutation({
+    mutationFn: async (pedido: PedidoBuscaDocumentos) =>
+      (await postar<TrechoDocumento[]>(`/condominios/${condominioId}/assistente/busca`, pedido)) ?? [],
   });
 }

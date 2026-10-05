@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useContexto } from "./api/consultas";
-import type { Perfil, UsuarioLogado } from "./api/tipos";
+import type { ContextoAssistente, Perfil, UsuarioLogado } from "./api/tipos";
 
 interface Sessao {
   usuario: UsuarioLogado;
@@ -13,6 +13,10 @@ interface Sessao {
   modulosLigados: string[];
   /** Ex.: moduloLigado("ASSISTENTE") para mostrar o menu Assistente. O backend também barra (403). */
   moduloLigado: (codigo: string) => boolean;
+  /** Modo de IA efetivo do Assistente (RF-04.16); nulo com o módulo desligado ou enquanto carrega. */
+  assistente: ContextoAssistente | null;
+  /** O contexto já chegou da API (evita mostrar "módulo desligado" enquanto carrega). */
+  contextoCarregado: boolean;
 }
 
 const ContextoSessao = createContext<Sessao | null>(null);
@@ -32,6 +36,8 @@ export function ProvedorSessao({ usuario, children }: { usuario: UsuarioLogado; 
     pode: (...perfis) => perfis.some((p) => usuario.perfis.includes(p)),
     modulosLigados,
     moduloLigado: (codigo) => modulosLigados.includes(codigo),
+    assistente: contexto?.assistente ?? null,
+    contextoCarregado: contexto !== undefined,
   };
   return <ContextoSessao.Provider value={sessao}>{children}</ContextoSessao.Provider>;
 }

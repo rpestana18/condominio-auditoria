@@ -46,6 +46,16 @@ export async function enviar<T>(caminho: string, corpo?: FormData): Promise<T> {
   return (await resposta.json()) as T;
 }
 
+/** POST com corpo JSON (pergunta ao assistente, busca nos documentos). */
+export async function postar<T>(caminho: string, corpo: unknown): Promise<T> {
+  const resposta = await chamar(caminho, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(corpo),
+  });
+  return (await resposta.json()) as T;
+}
+
 /** PUT com corpo JSON e sem resposta (204). */
 export async function gravar(caminho: string, corpo: unknown): Promise<void> {
   await chamar(caminho, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
@@ -67,6 +77,32 @@ export async function abrirArquivo(caminho: string): Promise<void> {
   const url = URL.createObjectURL(await resposta.blob());
   window.open(url, "_blank", "noopener");
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/**
+ * Abre o original numa nova aba, opcionalmente numa página (PDF: `#page=N`, RF-04.9).
+ * A aba é aberta antes de baixar, ainda dentro do clique, para o navegador não bloquear como pop-up;
+ * depois recebe o arquivo (blob local, já autenticado). `tipo` força o tipo do conteúdo (ex.: "application/pdf"),
+ * porque o servidor manda o original como application/octet-stream e o navegador baixaria em vez de mostrar.
+ */
+export async function abrirOriginal(caminho: string, opcoes: { pagina?: number | null; tipo?: string } = {}): Promise<void> {
+  const janela = window.open("", "_blank");
+  try {
+    const resposta = await chamar(caminho);
+    const blob = await resposta.blob();
+    const url = URL.createObjectURL(opcoes.tipo ? new Blob([blob], { type: opcoes.tipo }) : blob);
+    const endereco = opcoes.pagina ? `${url}#page=${opcoes.pagina}` : url;
+    if (janela) {
+      janela.opener = null;
+      janela.location.href = endereco;
+    } else {
+      window.open(endereco, "_blank", "noopener");
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (erro) {
+    janela?.close();
+    throw erro;
+  }
 }
 
 /**

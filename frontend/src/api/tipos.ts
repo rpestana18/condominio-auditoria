@@ -25,3 +25,20 @@ export type PeriodoAtivo = Esquemas["PeriodoAtivo"];
 export type FuncaoUso = Esquemas["FuncaoUso"];
 export type TotalUso = Esquemas["TotalUso"];
 export type UsoDoPeriodo = Esquemas["UsoDoPeriodo"];
+
+// Assistente (RF-04.8 a 04.18) e configuração de IA do condomínio (RF-09.6)
+export type ModoIa = Esquemas["ModoIa"];
+export type ContextoAssistente = Esquemas["ContextoAssistente"];
+export type ProvedorIa = Esquemas["ProvedorIa"];
+export type ModeloIa = Esquemas["ModeloIa"];
+export type ConfiguracaoIa = Esquemas["ConfiguracaoIa"];
+export type PedidoConfiguracaoIa = Esquemas["PedidoConfiguracaoIa"];
+export type FiltrosDocumentos = Esquemas["FiltrosDocumentos"];
+export type PedidoPergunta = Esquemas["PedidoPergunta"];
+export type TrocaHistorico = NonNullable<PedidoPergunta["historico"]>[number];
+export type RespostaAssistente = Esquemas["RespostaAssistente"];
+export type ParagrafoDocumentos = RespostaAssistente["nosDocumentos"][number];
+export type DadoGravado = Esquemas["DadoGravado"];
+export type TrechoDocumento = Esquemas["TrechoDocumento"];
+export type CitacaoDocumento = Esquemas["CitacaoDocumento"];
+export type PedidoBuscaDocumentos = Esquemas["PedidoBuscaDocumentos"];

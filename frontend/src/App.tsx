@@ -3,8 +3,11 @@ import { useUsuario } from "./api/consultas";
 import { Layout } from "./componentes/Layout";
 import { ProvedorSessao } from "./contexto";
 import { sair } from "./autenticacao/keycloak";
+import { ProvedorConversa } from "./componentes/assistente/conversa";
+import { AdministracaoIa } from "./paginas/AdministracaoIa";
 import { AdministracaoModulos } from "./paginas/AdministracaoModulos";
 import { Arquivos } from "./paginas/Arquivos";
+import { Assistente } from "./paginas/Assistente";
 import { Inicio } from "./paginas/Inicio";
 
 export function App() {
@@ -23,15 +26,20 @@ export function App() {
   }
   return (
     <ProvedorSessao usuario={usuario}>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route index element={<Inicio />} />
-            <Route path="arquivos" element={<Arquivos />} />
-            <Route path="administracao/modulos" element={<AdministracaoModulos />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      {/* A conversa do Assistente fica aqui, acima das rotas, só na memória (RF-04.11) */}
+      <ProvedorConversa>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route index element={<Inicio />} />
+              <Route path="arquivos" element={<Arquivos />} />
+              <Route path="assistente" element={<Assistente />} />
+              <Route path="administracao/modulos" element={<AdministracaoModulos />} />
+              <Route path="administracao/ia" element={<AdministracaoIa />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ProvedorConversa>
     </ProvedorSessao>
   );
 }

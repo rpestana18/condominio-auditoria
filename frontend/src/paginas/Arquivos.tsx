@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { useArquivos, useCategorias } from "../api/consultas";
 import type { ArquivoResumo, Categoria, SituacaoIndexacao } from "../api/tipos";
 import { DetalheArquivo } from "../componentes/DetalheArquivo";
@@ -21,7 +22,9 @@ export function Arquivos() {
   const { condominioId, pode, moduloLigado } = useSessao();
   const { data: categorias = [] } = useCategorias();
   const [categoria, setCategoria] = useState<Categoria | undefined>();
-  const [selecionado, setSelecionado] = useState<string | null>(null);
+  // ?arquivo=<id> abre o detalhe direto (link "Ver conferências do arquivo" do Assistente)
+  const [parametros] = useSearchParams();
+  const [selecionado, setSelecionado] = useState<string | null>(() => parametros.get("arquivo"));
   const [editando, setEditando] = useState<ArquivoResumo | null>(null);
   const podeEditar = pode("GESTOR", "ADMIN");
   const [filtroIndexacao, setFiltroIndexacao] = useState<FiltroIndexacao>("TODOS");

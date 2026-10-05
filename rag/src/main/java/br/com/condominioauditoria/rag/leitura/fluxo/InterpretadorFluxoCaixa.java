@@ -5,6 +5,7 @@ import br.com.condominioauditoria.rag.dominio.fluxo.FluxoDeCaixa;
 import br.com.condominioauditoria.rag.dominio.fluxo.LancamentoFluxo;
 import br.com.condominioauditoria.rag.dominio.fluxo.PosicaoFundo;
 import br.com.condominioauditoria.rag.dominio.fluxo.SecaoFundo;
+import br.com.condominioauditoria.rag.leitura.Linha;
 import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido;
 import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Pagina;
 import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Palavra;
@@ -188,6 +189,8 @@ public final class InterpretadorFluxoCaixa {
                 Matcher m = CONTA.matcher(conta);
                 String contaCodigo = m.matches() ? m.group(1) : null;
                 String contaNome = m.matches() ? m.group(2) : conta;
+                BigDecimal credito = valores.getOrDefault(Colunas.Valor.CREDITO, Dinheiro.ZERO);
+                BigDecimal debito = valores.getOrDefault(Colunas.Valor.DEBITO, Dinheiro.ZERO);
                 lancamentos.add(new LancamentoFluxo(
                         linha.pagina(),
                         ++ordem,
@@ -196,10 +199,10 @@ public final class InterpretadorFluxoCaixa {
                         contaNome,
                         textoNaAltura(blocos.get(Colunas.Texto.CODIGO), linha.topo()),
                         historico,
-                        valores.getOrDefault(Colunas.Valor.CREDITO, Dinheiro.ZERO),
-                        valores.getOrDefault(Colunas.Valor.DEBITO, Dinheiro.ZERO),
+                        credito,
+                        debito,
                         valores.get(Colunas.Valor.SALDO),
-                        Enriquecedor.enriquecer(contaNome, historico)));
+                        Enriquecedor.enriquecer(contaNome, historico, credito, debito)));
             }
             regiao.clear();
         }

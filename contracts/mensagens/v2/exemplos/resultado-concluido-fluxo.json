@@ -1,0 +1,103 @@
+{
+  "versao": 2,
+  "processamentoId": "0b0e6c2a-7d1f-4f63-9d0e-3a2b1c4d5e70",
+  "arquivoId": "5a1c9e3b-2f4d-4b8a-8c7e-1d2f3a4b5c6d",
+  "condominioId": "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001",
+  "situacao": "CONCLUIDO",
+  "motivo": null,
+  "interpretador": "fluxo-caixa-protest",
+  "paginas": 1,
+  "fluxoDeCaixa": {
+    "empreendimento": "EXEMPLO",
+    "periodoInicio": "2026-09-01",
+    "periodoFim": "2026-09-30",
+    "secoes": [
+      {
+        "fundo": "ORDINÁRIO",
+        "saldoAnterior": "10000.00",
+        "lancamentos": [
+          {
+            "pagina": 1,
+            "ordem": 1,
+            "data": "2026-09-02",
+            "contaCodigo": "3101",
+            "contaNome": "ÁGUA",
+            "documento": "123",
+            "historico": "CONTA DE ÁGUA",
+            "credito": "0.00",
+            "debito": "1500.10",
+            "saldo": "8499.90",
+            "enriquecimento": {
+              "notaFiscal": null,
+              "fornecedor": "SABESP",
+              "meioPagamento": null,
+              "transferenciaEntreFundos": false,
+              "recebimentoCota": false
+            }
+          }
+        ],
+        "totalCreditosInformado": "0.00",
+        "totalDebitosInformado": "1500.10"
+      },
+      {
+        "fundo": "FUNDO DE RESERVA",
+        "saldoAnterior": "50000.00",
+        "lancamentos": [
+          {
+            "pagina": 1,
+            "ordem": 2,
+            "data": "2026-09-10",
+            "contaCodigo": null,
+            "contaNome": null,
+            "documento": null,
+            "historico": "RECIBOS ACUMULADOS",
+            "credito": "14260.79",
+            "debito": "0.00",
+            "saldo": "64260.79",
+            "enriquecimento": {
+              "notaFiscal": null,
+              "fornecedor": null,
+              "meioPagamento": null,
+              "transferenciaEntreFundos": false,
+              "recebimentoCota": true
+            }
+          }
+        ],
+        "totalCreditosInformado": "14260.79",
+        "totalDebitosInformado": "0.00"
+      }
+    ],
+    "posicaoFinanceira": [
+      {
+        "fundo": "ORDINÁRIO",
+        "saldoAnterior": "10000.00",
+        "creditos": "0.00",
+        "debitos": "1500.10",
+        "saldoAtual": "8499.90"
+      },
+      {
+        "fundo": "FUNDO DE RESERVA",
+        "saldoAnterior": "50000.00",
+        "creditos": "14260.79",
+        "debitos": "0.00",
+        "saldoAtual": "64260.79"
+      }
+    ],
+    "totalPosicao": {
+      "fundo": "TOTAL",
+      "saldoAnterior": "60000.00",
+      "creditos": "14260.79",
+      "debitos": "1500.10",
+      "saldoAtual": "72760.69"
+    }
+  },
+  "previsaoOrcamentaria": null,
+  "conferencias": [
+    {
+      "codigo": "SALDO_CORRENTE",
+      "descricao": "Saldo linha a linha em todos os fundos",
+      "ok": true,
+      "detalhe": "2 lançamentos conferidos"
+    }
+  ]
+}

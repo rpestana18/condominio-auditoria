@@ -24,7 +24,7 @@ import org.springframework.test.context.DynamicPropertySource;
 
 /**
  * Contra um PostgreSQL real (só roda com a variável BANCO_TESTE, ex.: jdbc:postgresql://localhost:55432/condominio):
- * Flyway até a V10, validação do Hibernate, piloto ligado, trilha e uso só de inclusão (gatilhos), períodos e o resumo
+ * Flyway até a V11, validação do Hibernate, piloto ligado, trilha e uso só de inclusão (gatilhos), períodos e o resumo
  * de uso pela consulta nativa. Usa condomínios novos a cada execução, porque a trilha não pode ser apagada.
  *
  * Sem a variável, o teste é pulado (o build não depende de banco).

@@ -212,6 +212,178 @@ paths:
         "200": { description: Planilha Excel, content: { application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } } } }
         "400": { description: Datas ausentes ou início depois do fim }
         "403": { description: Perfil sem permissão }
+  /condominios/{condominioId}/previsoes:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: POs lidas do condomínio, da mais recente para a mais antiga (todos os perfis, RF-03.1.1)
+      operationId: listarPrevisoes
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PrevisaoResumo" } } } }
+        "403": { description: Sem acesso ao condomínio }
+  /condominios/{condominioId}/previsoes/{poId}:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    get:
+      summary: PO com linhas, conferências, avisos e pendências (todos os perfis, RF-03.1.1 e RF-03.1.2)
+      operationId: detalhePrevisao
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PrevisaoDetalhe" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Não encontrada }
+  /condominios/{condominioId}/previsoes/{poId}/confirmacao:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    post:
+      summary: Confirma a PO e o exercício (só ADMIN, RF-03.1.3; ciente da divergência, Q29)
+      description: |
+        Registra exercício, ata (ou "sem ata"), código efetivo das linhas com código impresso repetido e a ligação de
+        cada linha de fundo (1.9.x) a um fundo do fluxo. Os valores lidos nunca são editados. PO lida com divergência
+        de soma só é confirmada com cienteDivergencia e justificativa. Só uma PO vale para cada mês: sobreposição com
+        PO confirmada exige reaprovacao (a anterior passa a SUBSTITUIDA a partir do início da nova).
+        Fundo de reserva acima do teto (Conv. 20.1) gera achado ATENCAO; aprovação fora do 1º trimestre gera só aviso.
+      operationId: confirmarPrevisao
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoConfirmacao" } } }
+      responses:
+        "200": { description: Confirmada, content: { application/json: { schema: { $ref: "#/components/schemas/PrevisaoDetalhe" } } } }
+        "403": { description: Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO já confirmada ou outra PO confirmada vale nos mesmos meses, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+        "422": { description: Confirmação recusada (lista em motivos), content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+  /condominios/{condominioId}/previsoes/{poId}/depara:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    get:
+      summary: De-para das contas do fluxo nesta versão da PO (todos os perfis, RF-03.1.4 e RF-03.1.13)
+      description: |
+        Contas do fluxo com débito no fundo Condomínio no exercício da PO, mais as contas que já têm de-para.
+        Conta sem de-para tem estado nulo. Só CONFIRMADO entra no previsto × realizado.
+      operationId: listarDepara
+      parameters:
+        - name: filtro
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/FiltroDepara" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DeparaLista" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+  /condominios/{condominioId}/previsoes/{poId}/depara/{conta}:
+    parameters:
+      - { $ref: "#/components/parameters/CondominioId" }
+      - { $ref: "#/components/parameters/PoId" }
+      - { name: conta, in: path, required: true, description: Código da conta do fluxo como impresso (ex. 0028), schema: { type: string, pattern: "^[0-9]{1,20}$" } }
+    put:
+      summary: Admin escolhe o destino de uma conta (só ADMIN, RF-03.1.4 e RF-03.1.5)
+      description: |
+        Destino LINHA_PO aponta para uma linha de despesa da PO (grupos 1.1 a 1.8) pelo id, nunca pela conta da PO.
+        Com confirmar nulo ou true, o de-para fica CONFIRMADO; com false, SUGERIDO. A trilha registra o destino e o
+        estado anteriores e novos.
+      operationId: definirDepara
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoDestino" } } }
+      responses:
+        "200": { description: Gravado, content: { application/json: { schema: { $ref: "#/components/schemas/ContaDepara" } } } }
+        "403": { description: Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada }
+        "422": { description: Destino inválido (linha de outra PO, de fundo, de total ou de grupo) }
+  /condominios/{condominioId}/previsoes/{poId}/depara/lote:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    post:
+      summary: Confirma ou recusa várias contas de uma vez (só ADMIN, RF-03.1.13), um evento por conta
+      operationId: loteDepara
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoLote" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ResultadoLote" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada }
+  /condominios/{condominioId}/previsoes/{poId}/depara/sugestoes:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    post:
+      summary: Gera sugestões para as contas sem de-para (só ADMIN, RF-03.1.5), sem IA
+      description: |
+        Primeiro a versão anterior da PO (só o que estava confirmado; linha igual = mesmo código efetivo, conta e
+        descrição), depois a comparação de nomes (sem dígitos, sem acento; nota mínima configurável; empate não
+        sugere). Tudo entra SUGERIDO, com o motivo. Nenhuma conta é confirmada e nenhum número muda.
+      operationId: sugerirDepara
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ResultadoSugestoes" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada }
+  /condominios/{condominioId}/previsoes/{poId}/depara/planilha:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    post:
+      summary: Carrega a planilha de sugestões (CSV "conta do fluxo;linha da PO"), só ADMIN (RF-03.1.5)
+      description: |
+        Formato do mapa do piloto, separado por ponto e vírgula, com ou sem cabeçalho, UTF-8 ou Windows-1252. Destino:
+        código efetivo de uma linha de despesa, "AJUSTE (...)", "REALOCAR (...)" ou "TRANSFERENCIA (...)". Tudo entra
+        SUGERIDO; conta já confirmada não muda; linha inválida é listada e não entra.
+      operationId: planilhaDepara
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [arquivo]
+              properties: { arquivo: { type: string, format: binary } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ResultadoPlanilha" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada }
+        "413": { description: Planilha acima de 1 MB }
+  /condominios/{condominioId}/previsoes/{poId}/depara/eventos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    get:
+      summary: Trilha do de-para (todos os perfis), só de inserção
+      operationId: eventosDepara
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EventoDepara" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+  /condominios/{condominioId}/previsto-realizado:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Previsto × realizado do mês ou acumulado do exercício (todos os perfis, RF-03.1.6 a RF-03.1.11)
+      description: |
+        Calculado na consulta pela função pura CalculoPrevistoRealizado (versaoCalculo no resultado); nada é gravado.
+        Realizado = débitos do fundo Condomínio (fundo ordinário) pelo de-para CONFIRMADO; ajustes, a realocar e sem
+        linha da PO à parte; transferências entre fundos fora. Previsto do mês = soma das linhas 1.1 a 1.8 (Q30).
+        Fundos ligados às linhas 1.9: arrecadação (recebimento de cota) × previsto. Mês sem fluxo, com dois fluxos,
+        sem PO, com PO não confirmada ou sem fundo ordinário: situacao diz o porquê e os números ficam nulos.
+      operationId: previstoRealizado
+      parameters:
+        - { name: periodo, in: query, required: true, description: AAAA-MM ou "acumulado", schema: { type: string, pattern: "^([0-9]{4}-[0-9]{2}|acumulado)$" } }
+        - { name: po, in: query, required: false, description: Versão da PO; sem ela, a que vale no mês (no acumulado, a confirmada mais recente), schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PrevistoRealizado" } } } }
+        "400": { description: Período inválido }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Condomínio ou PO não encontrados }
+  /condominios/{condominioId}/previsto-realizado/evidencia:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Lançamentos que compõem um número do previsto × realizado (todos os perfis, RF-03.1.12)
+      operationId: evidenciaPrevistoRealizado
+      parameters:
+        - { name: periodo, in: query, required: true, schema: { type: string, pattern: "^([0-9]{4}-[0-9]{2}|acumulado)$" } }
+        - { name: po, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: alvo, in: query, required: true, description: '"linha:<linhaId>", "fundo:<fundoId>" (arrecadação), AJUSTES, A_REALOCAR, SEM_LINHA_PO ou TRANSFERENCIAS', schema: { type: string } }
+      responses:
+        "200":
+          description: OK (lista vazia quando o alvo não tem lançamento)
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EvidenciaLancamento" } } } }
+        "400": { description: Período ou alvo inválido }
+        "403": { description: Sem acesso ao condomínio }
 components:
   securitySchemes:
     bearer: { type: http, scheme: bearer, bearerFormat: JWT }
@@ -219,6 +391,7 @@ components:
     CondominioId: { name: condominioId, in: path, required: true, schema: { type: string, format: uuid } }
     ArquivoId: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     CodigoModulo: { name: codigo, in: path, required: true, description: "Código do módulo no catálogo (ex.: ASSISTENTE)", schema: { type: string } }
+    PoId: { name: poId, in: path, required: true, schema: { type: string, format: uuid } }
   schemas:
     ContextoCondominio:
       type: object
@@ -435,6 +608,504 @@ components:
               historico: { type: string }
               valor: { type: number }
               pagina: { type: integer }
+    EstadoPrevisao:
+      type: string
+      description: |
+        LIDA (aguarda confirmação), LIDA_COM_DIVERGENCIA (soma que não bate além da tolerância de arredondamento),
+        CONFIRMADA (vale para os meses do exercício) e SUBSTITUIDA (trocada por reaprovação a partir de um mês).
+      enum: [LIDA, LIDA_COM_DIVERGENCIA, CONFIRMADA, SUBSTITUIDA]
+    PrevisaoResumo:
+      type: object
+      required: [id, arquivoId, sha256, estado, previstoMes, lidaEm]
+      properties:
+        id: { type: string, format: uuid }
+        arquivoId: { type: string, format: uuid }
+        arquivoNome: { type: [string, "null"] }
+        sha256: { type: string }
+        estado: { $ref: "#/components/schemas/EstadoPrevisao" }
+        versao: { type: [integer, "null"], description: Preenchida na confirmação (1, 2, ... por reaprovação) }
+        titulo: { type: [string, "null"] }
+        exercicioImpresso: { type: [string, "null"], description: Como impresso (ex. "2026 / 2027") }
+        exercicioInicio: { type: [string, "null"], pattern: "^[0-9]{4}-[0-9]{2}$", description: AAAA-MM, informado na confirmação }
+        exercicioFim: { type: [string, "null"], pattern: "^[0-9]{4}-[0-9]{2}$" }
+        totalImpresso: { type: [number, "null"] }
+        previstoMes: { type: number, description: Soma das linhas dos grupos que não são fundos (usada nos cálculos) }
+        lidaEm: { type: string, format: date-time }
+        confirmadaPor: { type: [string, "null"] }
+        confirmadaEm: { type: [string, "null"], format: date-time }
+    PrevisaoDetalhe:
+      type: object
+      required: [previsao, toleranciaArredondamento, linhas, conferencias, avisos, codigosRepetidos, fundos, achados]
+      properties:
+        previsao: { $ref: "#/components/schemas/PrevisaoResumo" }
+        colunaOrcadoAnterior: { type: [string, "null"] }
+        colunaOrcado: { type: [string, "null"] }
+        previstoMesImpresso: { type: [number, "null"], description: Total impresso menos fundos impressos }
+        toleranciaArredondamento: { type: number, description: Diferença máxima tratada como arredondamento nesta leitura }
+        substituidaDesde: { type: [string, "null"], pattern: "^[0-9]{4}-[0-9]{2}$", description: Mês a partir do qual vale a nova versão }
+        confirmacao:
+          description: Dados informados pelo Admin; nulo antes da confirmação
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [semAta, cienteDivergencia]
+              properties:
+                ataArquivoId: { type: [string, "null"], format: uuid }
+                semAta: { type: boolean }
+                dataAprovacao: { type: [string, "null"], format: date }
+                cienteDivergencia: { type: boolean }
+                justificativaDivergencia: { type: [string, "null"] }
+        linhas: { type: array, items: { $ref: "#/components/schemas/LinhaPo" } }
+        conferencias: { type: array, items: { $ref: "#/components/schemas/ConferenciaPo" } }
+        avisos: { type: array, items: { $ref: "#/components/schemas/AvisoPo" } }
+        codigosRepetidos:
+          type: array
+          items:
+            type: object
+            required: [codigoImpresso, resolvido, linhas]
+            properties:
+              codigoImpresso: { type: string }
+              resolvido: { type: boolean, description: Os códigos efetivos dessas linhas já são distintos }
+              linhas:
+                type: array
+                items:
+                  type: object
+                  required: [linhaId, ordem, descricao, codigoEfetivo]
+                  properties:
+                    linhaId: { type: string, format: uuid }
+                    ordem: { type: integer }
+                    descricao: { type: string }
+                    codigoEfetivo: { type: string }
+        fundos:
+          type: array
+          description: Ligação das linhas de fundo (1.9.x) aos fundos do fluxo, feita na confirmação
+          items:
+            type: object
+            required: [linhaId, codigoEfetivo, descricao, orcado, fundoId, fundo]
+            properties:
+              linhaId: { type: string, format: uuid }
+              codigoEfetivo: { type: string }
+              descricao: { type: string }
+              orcado: { type: number }
+              fundoId: { type: string, format: uuid }
+              fundo: { type: string }
+        achados:
+          type: array
+          items:
+            type: object
+            required: [id, regra, versaoRegra, severidade, competencia, descricao, estado]
+            properties:
+              id: { type: string, format: uuid }
+              regra: { type: string }
+              versaoRegra: { type: string }
+              severidade: { type: string, enum: [INFORMATIVO, ATENCAO, CRITICO] }
+              competencia: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" }
+              descricao: { type: string }
+              estado: { type: string, enum: [ABERTO] }
+    LinhaPo:
+      type: object
+      required: [id, ordem, pagina, tipo, codigoImpresso, codigoEfetivo, descricao, orcadoAnterior, orcado, linhaDeFundo, arquivoId, sha256]
+      properties:
+        id: { type: string, format: uuid, description: Identificador estável da linha (destino do de-para) }
+        ordem: { type: integer }
+        pagina: { type: integer }
+        tipo: { type: string, enum: [TOTAL, GRUPO, LINHA] }
+        codigoImpresso: { type: string }
+        codigoEfetivo: { type: string, description: Igual ao impresso; o Admin muda só quando o código se repete }
+        conta: { type: [string, "null"] }
+        contaTexto: { type: [string, "null"] }
+        marca: { type: [string, "null"], enum: [RATEIO_A_PARTE, NEGOCIADA_ISENCAO, SEM_VALOR, VALOR_FIXO_SEM_REFERENCIA, null] }
+        descricao: { type: string }
+        orcadoAnterior: { type: number }
+        orcado: { type: number }
+        percentualTexto: { type: [string, "null"], description: Coluna "%" como lida; não entra em cálculo }
+        observacoes: { type: [string, "null"] }
+        linhaDeFundo: { type: boolean, description: Linha do grupo de fundos (precisa ser ligada a um fundo na confirmação) }
+        arquivoId: { type: string, format: uuid }
+        sha256: { type: string }
+    ConferenciaPo:
+      type: object
+      required: [codigo, descricao, ok, classificacao]
+      properties:
+        codigo: { type: string }
+        descricao: { type: string }
+        ok: { type: boolean }
+        detalhe: { type: [string, "null"] }
+        classificacao:
+          type: string
+          description: OK; ARREDONDAMENTO (diferença até a tolerância, só aviso); DIVERGENCIA; CODIGO_REPETIDO (pendência)
+          enum: [OK, ARREDONDAMENTO, DIVERGENCIA, CODIGO_REPETIDO]
+        explicacao: { type: [string, "null"], description: Quando falhou, as duas somas }
+    AvisoPo:
+      type: object
+      required: [codigo, texto]
+      properties:
+        codigo:
+          type: string
+          enum: [ARREDONDAMENTO, DIVERGENCIA, CODIGO_REPETIDO, CONFIRMADA_COM_DIVERGENCIA, FORA_PRIMEIRO_TRIMESTRE, SEM_ATA, REGRA_NAO_AVALIADA]
+        texto: { type: string }
+    PedidoConfirmacao:
+      type: object
+      required: [exercicioInicio, exercicioFim, semAta]
+      properties:
+        exercicioInicio: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$", description: AAAA-MM }
+        exercicioFim: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$", description: AAAA-MM }
+        ataArquivoId: { type: [string, "null"], format: uuid, description: Arquivo da categoria ATA; nulo com semAta }
+        semAta: { type: boolean }
+        dataAprovacao: { type: [string, "null"], format: date, description: Data da assembleia; obrigatória com ata }
+        codigosEfetivos:
+          type: array
+          description: Código distinto para linhas cujo código impresso se repete (mesmo grupo, ex. 1.3.2 → 1.3.25)
+          items:
+            type: object
+            required: [linhaId, codigo]
+            properties:
+              linhaId: { type: string, format: uuid }
+              codigo: { type: string }
+        fundos:
+          type: array
+          description: Cada linha de fundo (linhaDeFundo) ligada a um fundo do fluxo, distinto e que não seja o ordinário
+          items:
+            type: object
+            required: [linhaId, fundoId]
+            properties:
+              linhaId: { type: string, format: uuid }
+              fundoId: { type: string, format: uuid }
+        reaprovacao: { type: boolean, default: false }
+        cienteDivergencia: { type: boolean, default: false }
+        justificativa: { type: [string, "null"], description: Obrigatória com cienteDivergencia }
+    TipoDestino:
+      type: string
+      description: Linha da PO; ajuste (não é despesa); meio de pagamento a realocar (RF-02B); transferência entre fundos
+      enum: [LINHA_PO, AJUSTE, A_REALOCAR, TRANSFERENCIA]
+    EstadoDepara:
+      type: string
+      enum: [SUGERIDO, CONFIRMADO, RECUSADO]
+    OrigemDepara:
+      type: string
+      enum: [VERSAO_ANTERIOR, PLANILHA, NOME, ADMIN]
+    FiltroDepara:
+      type: string
+      description: PENDENTES = sem de-para confirmado (sem de-para, sugerido ou recusado)
+      enum: [TODAS, PENDENTES, SUGERIDO, CONFIRMADO, RECUSADO, SEM_DEPARA, IGUAIS_VERSAO_ANTERIOR]
+    DestinoDepara:
+      type: object
+      required: [tipo, texto]
+      properties:
+        tipo: { $ref: "#/components/schemas/TipoDestino" }
+        linhaId: { type: [string, "null"], format: uuid, description: Só com LINHA_PO }
+        codigo: { type: [string, "null"], description: Código efetivo da linha }
+        descricao: { type: [string, "null"] }
+        detalhe: { type: [string, "null"], description: Texto do destino especial, ex. "estorno" }
+        texto: { type: string, description: Ex. "1.7.8 Material hidráulico" ou "AJUSTE (estorno)" }
+    ContaDepara:
+      type: object
+      required: [conta, lancamentos, debitos, igualVersaoAnterior]
+      properties:
+        conta: { type: string, description: Código da conta do fluxo como impresso }
+        nome: { type: [string, "null"], description: Nome como impresso no fluxo }
+        lancamentos: { type: integer, description: Débitos do fundo Condomínio no exercício da PO }
+        debitos: { type: number }
+        destino: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/DestinoDepara" }] }
+        estado: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/EstadoDepara" }], description: Nulo = sem de-para }
+        origem: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/OrigemDepara" }] }
+        motivo: { type: [string, "null"], description: Nomes comparados, linha da planilha ou "igual à versão anterior" }
+        igualVersaoAnterior: { type: boolean }
+        atualizadoPor: { type: [string, "null"] }
+        atualizadoEm: { type: [string, "null"], format: date-time }
+    DeparaLista:
+      type: object
+      required: [previsaoId, resumo, contas]
+      properties:
+        previsaoId: { type: string, format: uuid }
+        versao: { type: [integer, "null"] }
+        resumo:
+          type: object
+          description: Sempre sobre todas as contas, sem o filtro ("N de M contas confirmadas")
+          required: [contas, confirmadas, sugeridas, recusadas, semDepara]
+          properties:
+            contas: { type: integer }
+            confirmadas: { type: integer }
+            sugeridas: { type: integer }
+            recusadas: { type: integer }
+            semDepara: { type: integer }
+        contas: { type: array, items: { $ref: "#/components/schemas/ContaDepara" } }
+    PedidoDestino:
+      type: object
+      required: [tipo]
+      properties:
+        tipo: { $ref: "#/components/schemas/TipoDestino" }
+        linhaId: { type: [string, "null"], format: uuid, description: Obrigatória com LINHA_PO }
+        detalhe: { type: [string, "null"] }
+        confirmar: { type: [boolean, "null"], description: Nulo ou true confirma; false deixa SUGERIDO }
+    PedidoLote:
+      type: object
+      required: [acao, contas]
+      properties:
+        acao: { type: string, enum: [CONFIRMAR, RECUSAR] }
+        contas: { type: array, minItems: 1, items: { type: string } }
+    ContaIgnorada:
+      type: object
+      required: [conta, motivo]
+      properties: { conta: { type: string }, motivo: { type: string } }
+    ResultadoLote:
+      type: object
+      required: [alteradas, ignoradas]
+      properties:
+        alteradas: { type: integer }
+        ignoradas: { type: array, items: { $ref: "#/components/schemas/ContaIgnorada" } }
+    ResultadoSugestoes:
+      type: object
+      required: [criadas, daVersaoAnterior, peloNome, semSugestao]
+      properties:
+        criadas: { type: integer }
+        daVersaoAnterior: { type: integer }
+        peloNome: { type: integer }
+        semSugestao:
+          type: array
+          items:
+            type: object
+            required: [conta, motivo]
+            properties: { conta: { type: string }, nome: { type: [string, "null"] }, motivo: { type: string } }
+    ResultadoPlanilha:
+      type: object
+      required: [aceitas, ignoradas, recusadas]
+      properties:
+        aceitas: { type: integer }
+        ignoradas: { type: array, items: { $ref: "#/components/schemas/ContaIgnorada" } }
+        recusadas:
+          type: array
+          items:
+            type: object
+            required: [linha, conteudo, motivo]
+            properties: { linha: { type: integer }, conteudo: { type: string }, motivo: { type: string } }
+    EventoDepara:
+      type: object
+      required: [id, conta, acao, usuario, em, destinoNovo, estadoNovo, origem]
+      properties:
+        id: { type: string, format: uuid }
+        conta: { type: string }
+        nome: { type: [string, "null"] }
+        acao: { type: string, enum: [SUGERIDO, CONFIRMADO, RECUSADO, ALTERADO] }
+        usuario: { type: string }
+        em: { type: string, format: date-time }
+        destinoAnterior: { type: [string, "null"] }
+        estadoAnterior: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/EstadoDepara" }] }
+        destinoNovo: { type: string }
+        estadoNovo: { $ref: "#/components/schemas/EstadoDepara" }
+        origem: { $ref: "#/components/schemas/OrigemDepara" }
+        motivo: { type: [string, "null"] }
+    PrevistoRealizado:
+      type: object
+      required: [versaoCalculo, periodo, situacao, meses, mesesSomados, mesesSemFluxo, mesesComDoisFluxos, provisorio, grupos, fundos, avisos]
+      properties:
+        versaoCalculo: { type: string, description: Versão das regras do cálculo usada nesta resposta }
+        periodo: { type: string, description: AAAA-MM ou "acumulado" }
+        situacao: { type: string, enum: [CALCULADO, SEM_PO, PO_NAO_CONFIRMADA, SEM_FUNDO_ORDINARIO, SEM_FLUXO, DOIS_FLUXOS] }
+        mensagem: { type: [string, "null"], description: Por que não há números (situação diferente de CALCULADO) }
+        po:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [id, estado, arquivoId, sha256]
+              properties:
+                id: { type: string, format: uuid }
+                versao: { type: [integer, "null"] }
+                estado: { $ref: "#/components/schemas/EstadoPrevisao" }
+                arquivoId: { type: string, format: uuid }
+                arquivoNome: { type: [string, "null"] }
+                sha256: { type: string }
+                exercicioInicio: { type: [string, "null"] }
+                exercicioFim: { type: [string, "null"] }
+        meses:
+          type: array
+          description: No acumulado, os meses do exercício; no mês, só ele. Números só com COM_FLUXO
+          items:
+            type: object
+            required: [mes, situacao, fluxos]
+            properties:
+              mes: { type: string }
+              situacao: { type: string, enum: [COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS] }
+              fluxos: { type: array, items: { $ref: "#/components/schemas/FluxoUsado" } }
+              previsto: { type: [number, "null"] }
+              despesaRealizada: { type: [number, "null"] }
+              excesso: { type: [number, "null"] }
+              percentualExcesso: { type: [number, "null"] }
+              acimaDoLimite: { type: [boolean, "null"] }
+        mesesSomados: { type: array, items: { type: string } }
+        mesesSemFluxo: { type: array, items: { type: string }, description: Meses sem fluxo antes do último mês com fluxo }
+        mesesComDoisFluxos: { type: array, items: { type: string } }
+        depara:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [contas, confirmadas, semDeparaConfirmado]
+              properties:
+                contas: { type: integer, description: Contas com débito no fundo Condomínio no período }
+                confirmadas: { type: integer }
+                semDeparaConfirmado: { type: integer }
+        provisorio: { type: boolean, description: Há valor a realocar ou sem linha da PO }
+        totais:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [previstoMes, previsto, despesaRealizada, emLinhas, diferenca, previstoExercicio]
+              properties:
+                previstoMes: { type: number }
+                previsto: { type: number, description: Previsto do mês × meses somados }
+                despesaRealizada: { type: number, description: Em linhas + a realocar + sem linha da PO }
+                emLinhas: { type: number }
+                diferenca: { type: number }
+                execucao: { type: [number, "null"], description: "% com 1 casa; nulo com previsto zero" }
+                previstoExercicio: { type: number, description: Previsto do mês × meses do exercício (referência) }
+        grupos: { type: array, items: { $ref: "#/components/schemas/GrupoPrevistoRealizado" } }
+        ajustes: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BlocoPrevistoRealizado" }] }
+        aRealocar: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BlocoPrevistoRealizado" }] }
+        semLinhaPo: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BlocoPrevistoRealizado" }] }
+        conferencia:
+          oneOf:
+            - type: "null"
+            - type: object
+              description: Total de débitos do fundo = despesa realizada + ajustes + transferências
+              required: [debitosDoFundo, lancamentos, despesaRealizada, ajustes, transferencias, confere]
+              properties:
+                debitosDoFundo: { type: number }
+                lancamentos: { type: integer }
+                despesaRealizada: { type: number }
+                ajustes: { type: number }
+                transferencias: { type: number }
+                confere: { type: boolean }
+        regra20:
+          description: Regra dos 20% (Conv. 16.2), só no mês
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [regra, versaoRegra, limitePercentual, previstoMes, excesso, percentual, limite, linhasAcima, linhas, aRealocar, semLinhaPo, cenarioMaximo, provisorio, acimaDoLimite]
+              properties:
+                regra: { type: string }
+                versaoRegra: { type: string }
+                limitePercentual: { type: number }
+                previstoMes: { type: number }
+                excesso: { type: number, description: Soma das diferenças positivas, linha a linha }
+                percentual: { type: number }
+                limite: { type: number, description: Em reais, arredondado; a comparação é exata }
+                linhasAcima: { type: integer }
+                linhas:
+                  type: array
+                  items:
+                    type: object
+                    required: [linhaId, codigo, descricao, excesso]
+                    properties:
+                      linhaId: { type: string, format: uuid }
+                      codigo: { type: string }
+                      descricao: { type: string }
+                      excesso: { type: number }
+                aRealocar: { type: number }
+                semLinhaPo: { type: number }
+                cenarioMaximo: { type: number, description: Excesso + a realocar + sem linha da PO }
+                percentualCenarioMaximo: { type: [number, "null"] }
+                provisorio: { type: boolean }
+                acimaDoLimite: { type: boolean }
+        fundos:
+          type: array
+          items:
+            type: object
+            required: [situacao]
+            properties:
+              fundoId: { type: [string, "null"], format: uuid }
+              fundo: { type: [string, "null"], description: Nome impresso no fluxo }
+              linhaId: { type: [string, "null"], format: uuid }
+              linhaCodigo: { type: [string, "null"] }
+              situacao: { type: string, enum: [COMPARADO, SEM_PREVISTO_NA_PO, LINHA_SEM_FUNDO, REPROCESSAR_FLUXO] }
+              previsto: { type: [number, "null"] }
+              arrecadado: { type: [number, "null"] }
+              diferenca: { type: [number, "null"] }
+              execucao: { type: [number, "null"] }
+              creditos: { type: [number, "null"] }
+              debitos: { type: [number, "null"] }
+        avisos:
+          type: array
+          items:
+            type: object
+            required: [codigo, texto]
+            properties: { codigo: { type: string }, texto: { type: string } }
+    FluxoUsado:
+      type: object
+      required: [arquivoId, nome, sha256]
+      properties:
+        arquivoId: { type: string, format: uuid }
+        nome: { type: string }
+        sha256: { type: string }
+        periodoInicio: { type: [string, "null"], format: date }
+        periodoFim: { type: [string, "null"], format: date }
+        enviadoEm: { type: [string, "null"], format: date-time }
+        enviadoPor: { type: [string, "null"] }
+    GrupoPrevistoRealizado:
+      type: object
+      required: [linhaId, codigo, descricao, previsto, realizado, diferenca, linhas]
+      properties:
+        linhaId: { type: string, format: uuid }
+        codigo: { type: string }
+        descricao: { type: string }
+        previsto: { type: number, description: Soma das linhas (Q30) }
+        realizado: { type: number }
+        diferenca: { type: number }
+        execucao: { type: [number, "null"] }
+        linhas:
+          type: array
+          items:
+            type: object
+            required: [linhaId, codigo, descricao, pagina, previsto, realizado, diferenca, contasFluxo, lancamentos]
+            properties:
+              linhaId: { type: string, format: uuid }
+              codigo: { type: string }
+              descricao: { type: string }
+              conta: { type: [string, "null"] }
+              marca: { type: [string, "null"], enum: [RATEIO_A_PARTE, NEGOCIADA_ISENCAO, SEM_VALOR, VALOR_FIXO_SEM_REFERENCIA, null] }
+              observacoes: { type: [string, "null"] }
+              pagina: { type: integer }
+              previsto: { type: number }
+              realizado: { type: number }
+              diferenca: { type: number }
+              execucao: { type: [number, "null"] }
+              contasFluxo: { type: array, items: { type: string }, description: Contas do fluxo com de-para confirmado para a linha }
+              lancamentos: { type: integer }
+    BlocoPrevistoRealizado:
+      type: object
+      required: [total, lancamentos, contas]
+      properties:
+        total: { type: number }
+        lancamentos: { type: integer }
+        contas:
+          type: array
+          items:
+            type: object
+            required: [valor, lancamentos]
+            properties:
+              conta: { type: [string, "null"] }
+              nome: { type: [string, "null"] }
+              detalhe: { type: [string, "null"], description: Ex. "AJUSTE (estorno)", "de-para sugerido", "sem de-para" }
+              valor: { type: number }
+              lancamentos: { type: integer }
+    EvidenciaLancamento:
+      type: object
+      required: [lancamentoId, data, historico, valor, arquivoId, sha256, pagina, ordem]
+      properties:
+        lancamentoId: { type: string, format: uuid }
+        data: { type: string, format: date }
+        conta: { type: [string, "null"] }
+        contaNome: { type: [string, "null"] }
+        historico: { type: string }
+        fornecedor: { type: [string, "null"] }
+        documento: { type: [string, "null"] }
+        valor: { type: number }
+        fundo: { type: [string, "null"] }
+        arquivoId: { type: string, format: uuid }
+        arquivoNome: { type: [string, "null"] }
+        sha256: { type: string }
+        pagina: { type: integer }
+        ordem: { type: integer }
+        realocacao: { type: [string, "null"], description: '"realocado para <linha> por <usuário> em <data>"' }
     Problema:
       type: object
       properties:
@@ -443,3 +1114,4 @@ components:
         detail: { type: string }
         arquivoExistenteId: { type: string, format: uuid }
         modulo: { type: string, description: "Em recusa por módulo não contratado (403): código do módulo" }
+        motivos: { type: array, items: { type: string }, description: Motivos da recusa da confirmação da PO }

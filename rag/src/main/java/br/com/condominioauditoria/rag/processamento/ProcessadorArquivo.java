@@ -3,8 +3,11 @@ package br.com.condominioauditoria.rag.processamento;
 import br.com.condominioauditoria.armazenamento.Armazenamento;
 import br.com.condominioauditoria.rag.dominio.fluxo.ConferenciaFluxo;
 import br.com.condominioauditoria.rag.dominio.fluxo.FluxoDeCaixa;
+import br.com.condominioauditoria.rag.dominio.po.ConferenciaPo;
+import br.com.condominioauditoria.rag.dominio.po.PrevisaoOrcamentaria;
 import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido;
 import br.com.condominioauditoria.rag.leitura.fluxo.InterpretadorFluxoCaixa;
+import br.com.condominioauditoria.rag.leitura.po.InterpretadorPoProtest;
 import br.com.condominioauditoria.rag.mensagens.ArquivoRecebido;
 import br.com.condominioauditoria.rag.mensagens.ContratoMensagens;
 import br.com.condominioauditoria.rag.mensagens.Filas;
@@ -21,7 +24,8 @@ import org.springframework.web.client.ResourceAccessException;
 
 /**
  * Consome a fila de arquivos recebidos. Para cada arquivo: avisa que começou, lê o original, chama o leitor Python,
- * interpreta o layout, confere as somas e devolve tudo numa mensagem só.
+ * interpreta o layout (fluxo de caixa ou PO da Protest, escolhido pelo conteúdo), confere as somas e devolve tudo
+ * numa mensagem só. Quem decide se a PO lida vale é o backend, pela categoria do arquivo (ADR 0004, Decisão 3).
  *
  * A mensagem só sai da fila (ack) quando o resultado foi publicado. Se o rag cair no meio, o RabbitMQ entrega o
  * arquivo de novo; o backend descarta resultado repetido ou velho pelo processamentoId.
@@ -30,6 +34,9 @@ import org.springframework.web.client.ResourceAccessException;
 class ProcessadorArquivo {
 
     static final String INTERPRETADOR_FLUXO = "fluxo-caixa-protest";
+    static final String INTERPRETADOR_PO = "po-protest";
+    /** Categoria do arquivo de PO no backend; só usada para explicar a falha da PO escaneada. */
+    static final String CATEGORIA_PO = "PO";
 
     private static final Logger log = LoggerFactory.getLogger(ProcessadorArquivo.class);
 
@@ -38,14 +45,17 @@ class ProcessadorArquivo {
     private final Armazenamento armazenamento;
     private final LeitorDocumentosHttp leitor;
     private final InterpretadorFluxoCaixa interpretadorFluxo;
+    private final InterpretadorPoProtest interpretadorPo;
 
     ProcessadorArquivo(ContratoMensagens contrato, RabbitTemplate rabbit, Armazenamento armazenamento,
-            LeitorDocumentosHttp leitor, InterpretadorFluxoCaixa interpretadorFluxo) {
+            LeitorDocumentosHttp leitor, InterpretadorFluxoCaixa interpretadorFluxo,
+            InterpretadorPoProtest interpretadorPo) {
         this.contrato = contrato;
         this.rabbit = rabbit;
         this.armazenamento = armazenamento;
         this.leitor = leitor;
         this.interpretadorFluxo = interpretadorFluxo;
+        this.interpretadorPo = interpretadorPo;
     }
 
     @RabbitListener(queues = Filas.ARQUIVOS_RECEBIDOS)
@@ -69,12 +79,22 @@ class ProcessadorArquivo {
         try (InputStream entrada = armazenamento.abrir(arquivo.caminho())) {
             conteudo = entrada.readAllBytes();
         }
-        DocumentoLido documento = leitor.ler(arquivo.nomeOriginal(), conteudo);
+        return interpretar(arquivo, leitor.ler(arquivo.nomeOriginal(), conteudo));
+    }
+
+    ResultadoProcessamento interpretar(ArquivoRecebido arquivo, DocumentoLido documento) {
         int paginas = documento.paginas().size();
         if (interpretadorFluxo.reconhece(documento)) {
             FluxoDeCaixa fluxo = interpretadorFluxo.interpretar(documento);
             return ResultadoProcessamento.concluido(arquivo, INTERPRETADOR_FLUXO, paginas, fluxo,
                     ConferenciaFluxo.conferir(fluxo));
+        }
+        if (interpretadorPo.reconhece(documento)) {
+            PrevisaoOrcamentaria po = interpretadorPo.interpretar(documento);
+            return ResultadoProcessamento.concluidoPo(arquivo, INTERPRETADOR_PO, paginas, po, ConferenciaPo.conferir(po));
+        }
+        if (CATEGORIA_PO.equals(arquivo.categoria()) && InterpretadorPoProtest.semTexto(documento)) {
+            return ResultadoProcessamento.falhou(arquivo, InterpretadorPoProtest.SEM_TEXTO);
         }
         return ResultadoProcessamento.concluido(arquivo, null, paginas, null, null);
     }

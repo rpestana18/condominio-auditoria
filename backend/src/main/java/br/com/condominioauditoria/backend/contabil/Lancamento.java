@@ -30,6 +30,8 @@ public class Lancamento {
     private String fornecedor;
     private String meioPagamento;
     private boolean transferenciaEntreFundos;
+    /** Crédito de recebimento de cota (v2). Nulo: gravado antes da v2, a arrecadação pede reprocesso. */
+    private Boolean recebimentoCota;
 
     protected Lancamento() {
     }
@@ -53,6 +55,7 @@ public class Lancamento {
         this.fornecedor = l.enriquecimento().fornecedor();
         this.meioPagamento = l.enriquecimento().meioPagamento();
         this.transferenciaEntreFundos = l.enriquecimento().transferenciaEntreFundos();
+        this.recebimentoCota = l.enriquecimento().recebimentoCota();
     }
 
     public UUID getId() {
@@ -121,5 +124,13 @@ public class Lancamento {
 
     public boolean isTransferenciaEntreFundos() {
         return transferenciaEntreFundos;
+    }
+
+    public Boolean getRecebimentoCota() {
+        return recebimentoCota;
+    }
+
+    public UUID getCondominioId() {
+        return condominioId;
     }
 }

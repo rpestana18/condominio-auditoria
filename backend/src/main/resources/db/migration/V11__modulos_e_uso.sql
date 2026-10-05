@@ -76,9 +76,9 @@ create trigger tg_uso_modulo_sem_truncate before truncate on uso_modulo
 
 -- O piloto começa com o Assistente ligado (Q15), com o evento na trilha.
 insert into modulo_condominio (condominio_id, modulo, ligado, desde, alterado_por)
-select id, 'ASSISTENTE', true, now(), 'sistema (migração V10)'
+select id, 'ASSISTENTE', true, now(), 'sistema (migração V11)'
 from condominio where id = '6f1d2c1e-3b4a-4c8e-9a51-2815a0000001';
 
 insert into evento_modulo (id, condominio_id, modulo, ligado_antes, ligado_depois, usuario, quando, motivo)
-select gen_random_uuid(), id, 'ASSISTENTE', false, true, 'sistema (migração V10)', now(), 'Implantação do piloto'
+select gen_random_uuid(), id, 'ASSISTENTE', false, true, 'sistema (migração V11)', now(), 'Implantação do piloto'
 from condominio where id = '6f1d2c1e-3b4a-4c8e-9a51-2815a0000001';

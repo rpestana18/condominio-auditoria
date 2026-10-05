@@ -20,6 +20,7 @@ import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.Fluxo
 import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.LancamentoLido;
 import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.Secao;
 import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.Situacao;
+import br.com.condominioauditoria.backend.orcamento.GravacaoPrevisao;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -35,7 +36,7 @@ class GravacaoResultadoCategoriaTest {
     private final SaldoFundoRepository saldos = mock(SaldoFundoRepository.class);
     private final ConferenciaRepository conferencias = mock(ConferenciaRepository.class);
     private final GravacaoResultado gravacao = new GravacaoResultado(arquivos, mock(FundoRepository.class),
-            lancamentos, saldos, conferencias);
+            lancamentos, saldos, conferencias, mock(GravacaoPrevisao.class));
 
     @Test
     void fluxoEmOutraCategoriaApagaExtracaoENaoGravaLancamentos() {
@@ -47,8 +48,8 @@ class GravacaoResultadoCategoriaTest {
                 List.of(new Secao("Ordinário", new BigDecimal("1000.00"), List.of(lancamento),
                         new BigDecimal("0.00"), new BigDecimal("150.00"))),
                 List.of(), null);
-        var resultado = new ResultadoProcessamento(1, arquivo.getProcessamentoId(), arquivo.getId(),
-                arquivo.getCondominioId(), Situacao.CONCLUIDO, null, "fluxo-caixa-fundos", 1, fluxo, List.of());
+        var resultado = new ResultadoProcessamento(2, arquivo.getProcessamentoId(), arquivo.getId(),
+                arquivo.getCondominioId(), Situacao.CONCLUIDO, null, "fluxo-caixa-fundos", 1, fluxo, null, List.of());
         when(arquivos.findById(arquivo.getId())).thenReturn(Optional.of(arquivo));
 
         gravacao.gravar(resultado);

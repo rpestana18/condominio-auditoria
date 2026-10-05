@@ -184,7 +184,7 @@ libs/
   armazenamento/    interface Armazenamento (pasta local; S3 depois), usada por backend e rag
   contrato-grpc/    código gerado de contracts/grpc (usado por backend, rag e mcp)
 frontend/           React + TypeScript + Vite
-contracts/          openapi.yaml, leitor/v1, mensagens/v1 (fila) e grpc/ (.proto)
+contracts/          openapi.yaml, leitor/v1, mensagens/v1 e v2 (fila) e grpc/ (.proto)
 infra/              docker-compose, Dockerfile dos serviços Java e realm do Keycloak
 docs/               requisitos, arquitetura, tecnologias e ADRs
 ```
@@ -214,4 +214,4 @@ cd leitor && python -m venv .venv && .venv/bin/pip install -r requirements-dev.t
 cd frontend && pnpm build                               # checagem de tipos
 ```
 
-Mudou um contrato? `contracts/openapi.yaml`: rode `pnpm gerar-api` dentro de `frontend/`. `contracts/grpc/`: o Gradle gera o código de novo no build. `contracts/mensagens/`: crie uma nova versão e ajuste backend e rag no mesmo PR; o exemplo em `contracts/mensagens/v1/exemplos/` é testado pelos dois lados.
+Mudou um contrato? `contracts/openapi.yaml`: rode `pnpm gerar-api` dentro de `frontend/`. `contracts/grpc/`: o Gradle gera o código de novo no build. `contracts/mensagens/`: crie uma nova versão e ajuste backend e rag no mesmo PR; os exemplos em `contracts/mensagens/v2/exemplos/` (resultado) são testados pelos dois lados. O pedido de leitura (`ArquivoRecebido`) continua na v1; o resultado (`ResultadoProcessamento`) é v2 desde a ADR 0004, e a v1 do resultado vai para a fila de erro.

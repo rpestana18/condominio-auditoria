@@ -30,6 +30,25 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, UUID> {
     List<Lancamento> filtrar(UUID condominioId, java.time.LocalDate inicio, java.time.LocalDate fim,
             boolean todosFundos, java.util.Collection<UUID> fundos, String texto, boolean somenteSaidas, Limit limite);
 
+    /**
+     * Débitos de um fundo no período, só de arquivos da categoria de balancetes e fluxos de caixa, sem as
+     * transferências entre fundos e só com conta do fluxo: as contas que entram no de-para (RF-03.1.4).
+     */
+    @Query("""
+            select l from Lancamento l
+            where l.condominioId = :condominioId and l.fundoId = :fundoId
+              and l.data >= :inicio and l.data <= :fim
+              and l.debito <> 0 and l.transferenciaEntreFundos = false and l.contaCodigo is not null
+              and l.arquivoId in (select a.id from Arquivo a
+                                  where a.categoria = br.com.condominioauditoria.backend.arquivo.Categoria.BALANCETE)
+            order by l.data, l.arquivoId, l.ordem""")
+    List<Lancamento> debitosComConta(UUID condominioId, UUID fundoId, java.time.LocalDate inicio,
+            java.time.LocalDate fim);
+
+    /** Lançamentos dos fluxos escolhidos no período, de todos os fundos (previsto × realizado). */
+    List<Lancamento> findByArquivoIdInAndDataBetween(java.util.Collection<UUID> arquivos, java.time.LocalDate inicio,
+            java.time.LocalDate fim);
+
     @Modifying
     @Query("delete from Lancamento l where l.arquivoId = :arquivoId")
     void apagarDoArquivo(UUID arquivoId);

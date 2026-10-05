@@ -350,6 +350,258 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/previsoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /** POs lidas do condomínio, da mais recente para a mais antiga (todos os perfis, RF-03.1.1) */
+        get: operations["listarPrevisoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        /** PO com linhas, conferências, avisos e pendências (todos os perfis, RF-03.1.1 e RF-03.1.2) */
+        get: operations["detalhePrevisao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/confirmacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirma a PO e o exercício (só ADMIN, RF-03.1.3; ciente da divergência, Q29)
+         * @description Registra exercício, ata (ou "sem ata"), código efetivo das linhas com código impresso repetido e a ligação de
+         *     cada linha de fundo (1.9.x) a um fundo do fluxo. Os valores lidos nunca são editados. PO lida com divergência
+         *     de soma só é confirmada com cienteDivergencia e justificativa. Só uma PO vale para cada mês: sobreposição com
+         *     PO confirmada exige reaprovacao (a anterior passa a SUBSTITUIDA a partir do início da nova).
+         *     Fundo de reserva acima do teto (Conv. 20.1) gera achado ATENCAO; aprovação fora do 1º trimestre gera só aviso.
+         */
+        post: operations["confirmarPrevisao"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/depara": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * De-para das contas do fluxo nesta versão da PO (todos os perfis, RF-03.1.4 e RF-03.1.13)
+         * @description Contas do fluxo com débito no fundo Condomínio no exercício da PO, mais as contas que já têm de-para.
+         *     Conta sem de-para tem estado nulo. Só CONFIRMADO entra no previsto × realizado.
+         */
+        get: operations["listarDepara"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/depara/{conta}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+                /** @description Código da conta do fluxo como impresso (ex. 0028) */
+                conta: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Admin escolhe o destino de uma conta (só ADMIN, RF-03.1.4 e RF-03.1.5)
+         * @description Destino LINHA_PO aponta para uma linha de despesa da PO (grupos 1.1 a 1.8) pelo id, nunca pela conta da PO.
+         *     Com confirmar nulo ou true, o de-para fica CONFIRMADO; com false, SUGERIDO. A trilha registra o destino e o
+         *     estado anteriores e novos.
+         */
+        put: operations["definirDepara"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/depara/lote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirma ou recusa várias contas de uma vez (só ADMIN, RF-03.1.13), um evento por conta */
+        post: operations["loteDepara"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/depara/sugestoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gera sugestões para as contas sem de-para (só ADMIN, RF-03.1.5), sem IA
+         * @description Primeiro a versão anterior da PO (só o que estava confirmado; linha igual = mesmo código efetivo, conta e
+         *     descrição), depois a comparação de nomes (sem dígitos, sem acento; nota mínima configurável; empate não
+         *     sugere). Tudo entra SUGERIDO, com o motivo. Nenhuma conta é confirmada e nenhum número muda.
+         */
+        post: operations["sugerirDepara"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/depara/planilha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Carrega a planilha de sugestões (CSV "conta do fluxo;linha da PO"), só ADMIN (RF-03.1.5)
+         * @description Formato do mapa do piloto, separado por ponto e vírgula, com ou sem cabeçalho, UTF-8 ou Windows-1252. Destino:
+         *     código efetivo de uma linha de despesa, "AJUSTE (...)", "REALOCAR (...)" ou "TRANSFERENCIA (...)". Tudo entra
+         *     SUGERIDO; conta já confirmada não muda; linha inválida é listada e não entra.
+         */
+        post: operations["planilhaDepara"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/depara/eventos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        /** Trilha do de-para (todos os perfis), só de inserção */
+        get: operations["eventosDepara"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsto-realizado": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Previsto × realizado do mês ou acumulado do exercício (todos os perfis, RF-03.1.6 a RF-03.1.11)
+         * @description Calculado na consulta pela função pura CalculoPrevistoRealizado (versaoCalculo no resultado); nada é gravado.
+         *     Realizado = débitos do fundo Condomínio (fundo ordinário) pelo de-para CONFIRMADO; ajustes, a realocar e sem
+         *     linha da PO à parte; transferências entre fundos fora. Previsto do mês = soma das linhas 1.1 a 1.8 (Q30).
+         *     Fundos ligados às linhas 1.9: arrecadação (recebimento de cota) × previsto. Mês sem fluxo, com dois fluxos,
+         *     sem PO, com PO não confirmada ou sem fundo ordinário: situacao diz o porquê e os números ficam nulos.
+         */
+        get: operations["previstoRealizado"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsto-realizado/evidencia": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /** Lançamentos que compõem um número do previsto × realizado (todos os perfis, RF-03.1.12) */
+        get: operations["evidenciaPrevistoRealizado"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -566,6 +818,495 @@ export interface components {
                 pagina: number;
             }[];
         };
+        /**
+         * @description LIDA (aguarda confirmação), LIDA_COM_DIVERGENCIA (soma que não bate além da tolerância de arredondamento),
+         *     CONFIRMADA (vale para os meses do exercício) e SUBSTITUIDA (trocada por reaprovação a partir de um mês).
+         * @enum {string}
+         */
+        EstadoPrevisao: "LIDA" | "LIDA_COM_DIVERGENCIA" | "CONFIRMADA" | "SUBSTITUIDA";
+        PrevisaoResumo: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            arquivoId: string;
+            arquivoNome?: string | null;
+            sha256: string;
+            estado: components["schemas"]["EstadoPrevisao"];
+            /** @description Preenchida na confirmação (1 */
+            versao?: number | null;
+            titulo?: string | null;
+            /** @description Como impresso (ex. "2026 / 2027") */
+            exercicioImpresso?: string | null;
+            /** @description AAAA-MM */
+            exercicioInicio?: string | null;
+            exercicioFim?: string | null;
+            totalImpresso?: number | null;
+            /** @description Soma das linhas dos grupos que não são fundos (usada nos cálculos) */
+            previstoMes: number;
+            /** Format: date-time */
+            lidaEm: string;
+            confirmadaPor?: string | null;
+            /** Format: date-time */
+            confirmadaEm?: string | null;
+        };
+        PrevisaoDetalhe: {
+            previsao: components["schemas"]["PrevisaoResumo"];
+            colunaOrcadoAnterior?: string | null;
+            colunaOrcado?: string | null;
+            /** @description Total impresso menos fundos impressos */
+            previstoMesImpresso?: number | null;
+            /** @description Diferença máxima tratada como arredondamento nesta leitura */
+            toleranciaArredondamento: number;
+            /** @description Mês a partir do qual vale a nova versão */
+            substituidaDesde?: string | null;
+            /** @description Dados informados pelo Admin; nulo antes da confirmação */
+            confirmacao?: null | {
+                /** Format: uuid */
+                ataArquivoId?: string | null;
+                semAta: boolean;
+                /** Format: date */
+                dataAprovacao?: string | null;
+                cienteDivergencia: boolean;
+                justificativaDivergencia?: string | null;
+            };
+            linhas: components["schemas"]["LinhaPo"][];
+            conferencias: components["schemas"]["ConferenciaPo"][];
+            avisos: components["schemas"]["AvisoPo"][];
+            codigosRepetidos: {
+                codigoImpresso: string;
+                /** @description Os códigos efetivos dessas linhas já são distintos */
+                resolvido: boolean;
+                linhas: {
+                    /** Format: uuid */
+                    linhaId: string;
+                    ordem: number;
+                    descricao: string;
+                    codigoEfetivo: string;
+                }[];
+            }[];
+            /** @description Ligação das linhas de fundo (1.9.x) aos fundos do fluxo, feita na confirmação */
+            fundos: {
+                /** Format: uuid */
+                linhaId: string;
+                codigoEfetivo: string;
+                descricao: string;
+                orcado: number;
+                /** Format: uuid */
+                fundoId: string;
+                fundo: string;
+            }[];
+            achados: {
+                /** Format: uuid */
+                id: string;
+                regra: string;
+                versaoRegra: string;
+                /** @enum {string} */
+                severidade: "INFORMATIVO" | "ATENCAO" | "CRITICO";
+                competencia: string;
+                descricao: string;
+                /** @enum {string} */
+                estado: "ABERTO";
+            }[];
+        };
+        LinhaPo: {
+            /**
+             * Format: uuid
+             * @description Identificador estável da linha (destino do de-para)
+             */
+            id: string;
+            ordem: number;
+            pagina: number;
+            /** @enum {string} */
+            tipo: "TOTAL" | "GRUPO" | "LINHA";
+            codigoImpresso: string;
+            /** @description Igual ao impresso; o Admin muda só quando o código se repete */
+            codigoEfetivo: string;
+            conta?: string | null;
+            contaTexto?: string | null;
+            /** @enum {string|null} */
+            marca?: "RATEIO_A_PARTE" | "NEGOCIADA_ISENCAO" | "SEM_VALOR" | "VALOR_FIXO_SEM_REFERENCIA" | null;
+            descricao: string;
+            orcadoAnterior: number;
+            orcado: number;
+            /** @description Coluna "%" como lida; não entra em cálculo */
+            percentualTexto?: string | null;
+            observacoes?: string | null;
+            /** @description Linha do grupo de fundos (precisa ser ligada a um fundo na confirmação) */
+            linhaDeFundo: boolean;
+            /** Format: uuid */
+            arquivoId: string;
+            sha256: string;
+        };
+        ConferenciaPo: {
+            codigo: string;
+            descricao: string;
+            ok: boolean;
+            detalhe?: string | null;
+            /**
+             * @description OK; ARREDONDAMENTO (diferença até a tolerância, só aviso); DIVERGENCIA; CODIGO_REPETIDO (pendência)
+             * @enum {string}
+             */
+            classificacao: "OK" | "ARREDONDAMENTO" | "DIVERGENCIA" | "CODIGO_REPETIDO";
+            /** @description Quando falhou */
+            explicacao?: string | null;
+        };
+        AvisoPo: {
+            /** @enum {string} */
+            codigo: "ARREDONDAMENTO" | "DIVERGENCIA" | "CODIGO_REPETIDO" | "CONFIRMADA_COM_DIVERGENCIA" | "FORA_PRIMEIRO_TRIMESTRE" | "SEM_ATA" | "REGRA_NAO_AVALIADA";
+            texto: string;
+        };
+        PedidoConfirmacao: {
+            /** @description AAAA-MM */
+            exercicioInicio: string;
+            /** @description AAAA-MM */
+            exercicioFim: string;
+            /**
+             * Format: uuid
+             * @description Arquivo da categoria ATA; nulo com semAta
+             */
+            ataArquivoId?: string | null;
+            semAta: boolean;
+            /**
+             * Format: date
+             * @description Data da assembleia; obrigatória com ata
+             */
+            dataAprovacao?: string | null;
+            /** @description Código distinto para linhas cujo código impresso se repete (mesmo grupo, ex. 1.3.2 → 1.3.25) */
+            codigosEfetivos?: {
+                /** Format: uuid */
+                linhaId: string;
+                codigo: string;
+            }[];
+            /** @description Cada linha de fundo (linhaDeFundo) ligada a um fundo do fluxo, distinto e que não seja o ordinário */
+            fundos?: {
+                /** Format: uuid */
+                linhaId: string;
+                /** Format: uuid */
+                fundoId: string;
+            }[];
+            /** @default false */
+            reaprovacao: boolean;
+            /** @default false */
+            cienteDivergencia: boolean;
+            /** @description Obrigatória com cienteDivergencia */
+            justificativa?: string | null;
+        };
+        /**
+         * @description Linha da PO; ajuste (não é despesa); meio de pagamento a realocar (RF-02B); transferência entre fundos
+         * @enum {string}
+         */
+        TipoDestino: "LINHA_PO" | "AJUSTE" | "A_REALOCAR" | "TRANSFERENCIA";
+        /** @enum {string} */
+        EstadoDepara: "SUGERIDO" | "CONFIRMADO" | "RECUSADO";
+        /** @enum {string} */
+        OrigemDepara: "VERSAO_ANTERIOR" | "PLANILHA" | "NOME" | "ADMIN";
+        /**
+         * @description PENDENTES = sem de-para confirmado (sem de-para, sugerido ou recusado)
+         * @enum {string}
+         */
+        FiltroDepara: "TODAS" | "PENDENTES" | "SUGERIDO" | "CONFIRMADO" | "RECUSADO" | "SEM_DEPARA" | "IGUAIS_VERSAO_ANTERIOR";
+        DestinoDepara: {
+            tipo: components["schemas"]["TipoDestino"];
+            /**
+             * Format: uuid
+             * @description Só com LINHA_PO
+             */
+            linhaId?: string | null;
+            /** @description Código efetivo da linha */
+            codigo?: string | null;
+            descricao?: string | null;
+            /** @description Texto do destino especial */
+            detalhe?: string | null;
+            /** @description Ex. "1.7.8 Material hidráulico" ou "AJUSTE (estorno)" */
+            texto: string;
+        };
+        ContaDepara: {
+            /** @description Código da conta do fluxo como impresso */
+            conta: string;
+            /** @description Nome como impresso no fluxo */
+            nome?: string | null;
+            /** @description Débitos do fundo Condomínio no exercício da PO */
+            lancamentos: number;
+            debitos: number;
+            destino?: null | components["schemas"]["DestinoDepara"];
+            /** @description Nulo = sem de-para */
+            estado?: null | components["schemas"]["EstadoDepara"];
+            origem?: null | components["schemas"]["OrigemDepara"];
+            /** @description Nomes comparados */
+            motivo?: string | null;
+            igualVersaoAnterior: boolean;
+            atualizadoPor?: string | null;
+            /** Format: date-time */
+            atualizadoEm?: string | null;
+        };
+        DeparaLista: {
+            /** Format: uuid */
+            previsaoId: string;
+            versao?: number | null;
+            /** @description Sempre sobre todas as contas, sem o filtro ("N de M contas confirmadas") */
+            resumo: {
+                contas: number;
+                confirmadas: number;
+                sugeridas: number;
+                recusadas: number;
+                semDepara: number;
+            };
+            contas: components["schemas"]["ContaDepara"][];
+        };
+        PedidoDestino: {
+            tipo: components["schemas"]["TipoDestino"];
+            /**
+             * Format: uuid
+             * @description Obrigatória com LINHA_PO
+             */
+            linhaId?: string | null;
+            detalhe?: string | null;
+            /** @description Nulo ou true confirma; false deixa SUGERIDO */
+            confirmar?: boolean | null;
+        };
+        PedidoLote: {
+            /** @enum {string} */
+            acao: "CONFIRMAR" | "RECUSAR";
+            contas: string[];
+        };
+        ContaIgnorada: {
+            conta: string;
+            motivo: string;
+        };
+        ResultadoLote: {
+            alteradas: number;
+            ignoradas: components["schemas"]["ContaIgnorada"][];
+        };
+        ResultadoSugestoes: {
+            criadas: number;
+            daVersaoAnterior: number;
+            peloNome: number;
+            semSugestao: {
+                conta: string;
+                nome?: string | null;
+                motivo: string;
+            }[];
+        };
+        ResultadoPlanilha: {
+            aceitas: number;
+            ignoradas: components["schemas"]["ContaIgnorada"][];
+            recusadas: {
+                linha: number;
+                conteudo: string;
+                motivo: string;
+            }[];
+        };
+        EventoDepara: {
+            /** Format: uuid */
+            id: string;
+            conta: string;
+            nome?: string | null;
+            /** @enum {string} */
+            acao: "SUGERIDO" | "CONFIRMADO" | "RECUSADO" | "ALTERADO";
+            usuario: string;
+            /** Format: date-time */
+            em: string;
+            destinoAnterior?: string | null;
+            estadoAnterior?: null | components["schemas"]["EstadoDepara"];
+            destinoNovo: string;
+            estadoNovo: components["schemas"]["EstadoDepara"];
+            origem: components["schemas"]["OrigemDepara"];
+            motivo?: string | null;
+        };
+        PrevistoRealizado: {
+            /** @description Versão das regras do cálculo usada nesta resposta */
+            versaoCalculo: string;
+            /** @description AAAA-MM ou "acumulado" */
+            periodo: string;
+            /** @enum {string} */
+            situacao: "CALCULADO" | "SEM_PO" | "PO_NAO_CONFIRMADA" | "SEM_FUNDO_ORDINARIO" | "SEM_FLUXO" | "DOIS_FLUXOS";
+            /** @description Por que não há números (situação diferente de CALCULADO) */
+            mensagem?: string | null;
+            po?: null | {
+                /** Format: uuid */
+                id: string;
+                versao?: number | null;
+                estado: components["schemas"]["EstadoPrevisao"];
+                /** Format: uuid */
+                arquivoId: string;
+                arquivoNome?: string | null;
+                sha256: string;
+                exercicioInicio?: string | null;
+                exercicioFim?: string | null;
+            };
+            /** @description No acumulado, os meses do exercício; no mês, só ele. Números só com COM_FLUXO */
+            meses: {
+                mes: string;
+                /** @enum {string} */
+                situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
+                fluxos: components["schemas"]["FluxoUsado"][];
+                previsto?: number | null;
+                despesaRealizada?: number | null;
+                excesso?: number | null;
+                percentualExcesso?: number | null;
+                acimaDoLimite?: boolean | null;
+            }[];
+            mesesSomados: string[];
+            /** @description Meses sem fluxo antes do último mês com fluxo */
+            mesesSemFluxo: string[];
+            mesesComDoisFluxos: string[];
+            depara?: null | {
+                /** @description Contas com débito no fundo Condomínio no período */
+                contas: number;
+                confirmadas: number;
+                semDeparaConfirmado: number;
+            };
+            /** @description Há valor a realocar ou sem linha da PO */
+            provisorio: boolean;
+            totais?: null | {
+                previstoMes: number;
+                /** @description Previsto do mês × meses somados */
+                previsto: number;
+                /** @description Em linhas + a realocar + sem linha da PO */
+                despesaRealizada: number;
+                emLinhas: number;
+                diferenca: number;
+                /** @description % com 1 casa; nulo com previsto zero */
+                execucao?: number | null;
+                /** @description Previsto do mês × meses do exercício (referência) */
+                previstoExercicio: number;
+            };
+            grupos: components["schemas"]["GrupoPrevistoRealizado"][];
+            ajustes?: null | components["schemas"]["BlocoPrevistoRealizado"];
+            aRealocar?: null | components["schemas"]["BlocoPrevistoRealizado"];
+            semLinhaPo?: null | components["schemas"]["BlocoPrevistoRealizado"];
+            conferencia?: null | {
+                debitosDoFundo: number;
+                lancamentos: number;
+                despesaRealizada: number;
+                ajustes: number;
+                transferencias: number;
+                confere: boolean;
+            };
+            /** @description Regra dos 20% (Conv. 16.2), só no mês */
+            regra20?: null | {
+                regra: string;
+                versaoRegra: string;
+                limitePercentual: number;
+                previstoMes: number;
+                /** @description Soma das diferenças positivas */
+                excesso: number;
+                percentual: number;
+                /** @description Em reais */
+                limite: number;
+                linhasAcima: number;
+                linhas: {
+                    /** Format: uuid */
+                    linhaId: string;
+                    codigo: string;
+                    descricao: string;
+                    excesso: number;
+                }[];
+                aRealocar: number;
+                semLinhaPo: number;
+                /** @description Excesso + a realocar + sem linha da PO */
+                cenarioMaximo: number;
+                percentualCenarioMaximo?: number | null;
+                provisorio: boolean;
+                acimaDoLimite: boolean;
+            };
+            fundos: {
+                /** Format: uuid */
+                fundoId?: string | null;
+                /** @description Nome impresso no fluxo */
+                fundo?: string | null;
+                /** Format: uuid */
+                linhaId?: string | null;
+                linhaCodigo?: string | null;
+                /** @enum {string} */
+                situacao: "COMPARADO" | "SEM_PREVISTO_NA_PO" | "LINHA_SEM_FUNDO" | "REPROCESSAR_FLUXO";
+                previsto?: number | null;
+                arrecadado?: number | null;
+                diferenca?: number | null;
+                execucao?: number | null;
+                creditos?: number | null;
+                debitos?: number | null;
+            }[];
+            avisos: {
+                codigo: string;
+                texto: string;
+            }[];
+        };
+        FluxoUsado: {
+            /** Format: uuid */
+            arquivoId: string;
+            nome: string;
+            sha256: string;
+            /** Format: date */
+            periodoInicio?: string | null;
+            /** Format: date */
+            periodoFim?: string | null;
+            /** Format: date-time */
+            enviadoEm?: string | null;
+            enviadoPor?: string | null;
+        };
+        GrupoPrevistoRealizado: {
+            /** Format: uuid */
+            linhaId: string;
+            codigo: string;
+            descricao: string;
+            /** @description Soma das linhas (Q30) */
+            previsto: number;
+            realizado: number;
+            diferenca: number;
+            execucao?: number | null;
+            linhas: {
+                /** Format: uuid */
+                linhaId: string;
+                codigo: string;
+                descricao: string;
+                conta?: string | null;
+                /** @enum {string|null} */
+                marca?: "RATEIO_A_PARTE" | "NEGOCIADA_ISENCAO" | "SEM_VALOR" | "VALOR_FIXO_SEM_REFERENCIA" | null;
+                observacoes?: string | null;
+                pagina: number;
+                previsto: number;
+                realizado: number;
+                diferenca: number;
+                execucao?: number | null;
+                /** @description Contas do fluxo com de-para confirmado para a linha */
+                contasFluxo: string[];
+                lancamentos: number;
+            }[];
+        };
+        BlocoPrevistoRealizado: {
+            total: number;
+            lancamentos: number;
+            contas: {
+                conta?: string | null;
+                nome?: string | null;
+                /** @description Ex. "AJUSTE (estorno)" */
+                detalhe?: string | null;
+                valor: number;
+                lancamentos: number;
+            }[];
+        };
+        EvidenciaLancamento: {
+            /** Format: uuid */
+            lancamentoId: string;
+            /** Format: date */
+            data: string;
+            conta?: string | null;
+            contaNome?: string | null;
+            historico: string;
+            fornecedor?: string | null;
+            documento?: string | null;
+            valor: number;
+            fundo?: string | null;
+            /** Format: uuid */
+            arquivoId: string;
+            arquivoNome?: string | null;
+            sha256: string;
+            pagina: number;
+            ordem: number;
+            /** @description "realocado para <linha> por <usuário> em <data>" */
+            realocacao?: string | null;
+        };
         Problema: {
             title?: string;
             status?: number;
@@ -574,6 +1315,8 @@ export interface components {
             arquivoExistenteId?: string;
             /** @description Em recusa por módulo não contratado (403): código do módulo */
             modulo?: string;
+            /** @description Motivos da recusa da confirmação da PO */
+            motivos?: string[];
         };
     };
     responses: never;
@@ -582,6 +1325,7 @@ export interface components {
         ArquivoId: string;
         /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
         CodigoModulo: string;
+        PoId: string;
     };
     requestBodies: never;
     headers: never;
@@ -1199,6 +1943,503 @@ export interface operations {
                 content?: never;
             };
             /** @description Perfil sem permissão */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listarPrevisoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevisaoResumo"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    detalhePrevisao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevisaoDetalhe"];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    confirmarPrevisao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoConfirmacao"];
+            };
+        };
+        responses: {
+            /** @description Confirmada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevisaoDetalhe"];
+                };
+            };
+            /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO já confirmada ou outra PO confirmada vale nos mesmos meses */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Confirmação recusada (lista em motivos) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarDepara: {
+        parameters: {
+            query?: {
+                filtro?: components["schemas"]["FiltroDepara"];
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeparaLista"];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    definirDepara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+                /** @description Código da conta do fluxo como impresso (ex. 0028) */
+                conta: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDestino"];
+            };
+        };
+        responses: {
+            /** @description Gravado */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContaDepara"];
+                };
+            };
+            /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Destino inválido (linha de outra PO */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    loteDepara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoLote"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoLote"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sugerirDepara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoSugestoes"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    planilhaDepara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    arquivo: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoPlanilha"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Planilha acima de 1 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    eventosDepara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventoDepara"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    previstoRealizado: {
+        parameters: {
+            query: {
+                /** @description AAAA-MM ou "acumulado" */
+                periodo: string;
+                /** @description Versão da PO; sem ela */
+                po?: string;
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevistoRealizado"];
+                };
+            };
+            /** @description Período inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio ou PO não encontrados */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    evidenciaPrevistoRealizado: {
+        parameters: {
+            query: {
+                periodo: string;
+                po?: string;
+                /** @description "linha:<linhaId>", "fundo:<fundoId>" (arrecadação), AJUSTES, A_REALOCAR, SEM_LINHA_PO ou TRANSFERENCIAS */
+                alvo: string;
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK (lista vazia quando o alvo não tem lançamento) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenciaLancamento"][];
+                };
+            };
+            /** @description Período ou alvo inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem acesso ao condomínio */
             403: {
                 headers: {
                     [name: string]: unknown;

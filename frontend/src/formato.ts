@@ -31,13 +31,43 @@ export function formatarTamanho(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
 }
 
+const meses = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+/** "2026-09" vira "09/2026". "acumulado" continua "acumulado". */
+export function formatarMes(aaaamm: string): string {
+  const [ano, mes] = aaaamm.split("-");
+  return mes ? `${mes}/${ano}` : aaaamm;
+}
+
+/** "2026-09" vira "set/26" (eixos de gráfico). */
+export function formatarMesCurto(aaaamm: string): string {
+  const [ano, mes] = aaaamm.split("-");
+  return mes ? `${meses[Number(mes) - 1]}/${ano.slice(2)}` : aaaamm;
+}
+
+/** Percentual que já vem calculado da API (98.8 vira "98,8%"). Nulo vira "—" (ex.: previsto zero). */
+export function formatarPercentual(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined) return "—";
+  return `${valor.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+}
+
+/** Diferença com sinal explícito: "+R$ 6.793,38" ou "-R$ 880,00". */
+export function formatarDiferenca(valor: number): string {
+  return valor > 0 ? `+${moeda.format(valor)}` : moeda.format(valor);
+}
+
+/** Classe de cor da diferença: acima do previsto ganha só um destaque de atenção (é indício, não conclusão). */
+export const classeDiferenca = (valor: number) => (valor > 0 ? "acima" : "");
+
+/** Início do hash, para mostrar sem ocupar a linha toda (o completo vai no title). */
+export const hashCurto = (sha256: string) => sha256.slice(0, 12);
 const inteiro = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 
 /** 12345 vira "12.345". */
 export const formatarInteiro = (valor: number) => inteiro.format(valor);
 
 /** "2026-10" vira "out/2026". */
-export function formatarMes(anoMes: string | undefined): string {
+export function formatarMesAbreviado(anoMes: string | undefined): string {
   if (!anoMes) return "";
   const [ano, mes] = anoMes.split("-");
   const nome = new Date(Number(ano), Number(mes) - 1, 15).toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");

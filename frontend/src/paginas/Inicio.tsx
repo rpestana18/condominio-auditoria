@@ -3,6 +3,7 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { usePainel } from "../api/consultas";
 import type { Painel } from "../api/tipos";
 import { CartaoNumero } from "../componentes/CartaoNumero";
+import { CartaoPrevistoAno } from "../componentes/CartaoPrevistoAno";
 import { CartaoSaldoAcumulado } from "../componentes/CartaoSaldoAcumulado";
 import { useSessao } from "../contexto";
 import { formatarData, formatarMoeda, formatarMoedaCurta, formatarPeriodo } from "../formato";
@@ -61,6 +62,7 @@ function PainelDoMes({ painel }: { painel: Painel }) {
         />
         <CartaoNumero titulo="Saldo no fim do mês" valor={painel.saldoAtual} />
         <CartaoSaldoAcumulado painel={painel} />
+        <CartaoPrevistoAno />
       </div>
 
       <section className="bloco">

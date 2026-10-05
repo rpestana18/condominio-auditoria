@@ -46,13 +46,19 @@ export async function enviar<T>(caminho: string, corpo?: FormData): Promise<T> {
   return (await resposta.json()) as T;
 }
 
-/** POST com corpo JSON (pergunta ao assistente, busca nos documentos). */
-export async function postar<T>(caminho: string, corpo: unknown): Promise<T> {
+/** POST com corpo JSON (ex.: confirmação da PO, ações em lote do de-para). */
+export async function enviarJson<T>(caminho: string, corpo?: unknown): Promise<T> {
   const resposta = await chamar(caminho, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(corpo),
+    headers: corpo === undefined ? undefined : { "Content-Type": "application/json" },
+    body: corpo === undefined ? undefined : JSON.stringify(corpo),
   });
+  return (await resposta.json()) as T;
+}
+
+/** DELETE que devolve JSON (ex.: desfazer a realocação devolve o registro desfeito). */
+export async function excluir<T>(caminho: string): Promise<T> {
+  const resposta = await chamar(caminho, { method: "DELETE" });
   return (await resposta.json()) as T;
 }
 
@@ -71,11 +77,14 @@ export async function atualizar<T>(caminho: string, corpo: unknown): Promise<T> 
   return (await resposta.json()) as T;
 }
 
-/** Baixa um arquivo autenticado e abre numa nova aba (o navegador não manda o token sozinho num link). */
-export async function abrirArquivo(caminho: string): Promise<void> {
+/**
+ * Baixa um arquivo autenticado e abre numa nova aba (o navegador não manda o token sozinho num link).
+ * Com `pagina`, o leitor de PDF do navegador abre direto nela (#page=N), para mostrar a evidência.
+ */
+export async function abrirArquivo(caminho: string, pagina?: number): Promise<void> {
   const resposta = await chamar(caminho);
   const url = URL.createObjectURL(await resposta.blob());
-  window.open(url, "_blank", "noopener");
+  window.open(pagina ? `${url}#page=${pagina}` : url, "_blank", "noopener");
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
@@ -107,7 +116,7 @@ export async function abrirOriginal(caminho: string, opcoes: { pagina?: number |
 
 /**
  * Baixa um arquivo autenticado e salva com o nome que o servidor mandou no Content-Disposition.
- * Não assumimos o tipo (CSV hoje, .xlsx depois): o blob vai como veio.
+ * Não assumimos o tipo (PDF, Excel, CSV): o blob vai como veio.
  */
 export async function baixarArquivo(caminho: string, nomePadrao: string): Promise<void> {
   const resposta = await chamar(caminho);

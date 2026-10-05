@@ -49,7 +49,7 @@ class GravacaoResultadoPoTest {
     private final LinhaPoRepository linhas = mock(LinhaPoRepository.class);
     private final GravacaoResultado gravacao = new GravacaoResultado(arquivos, mock(FundoRepository.class),
             lancamentos, saldos, conferencias,
-            new GravacaoPrevisao(previsoes, linhas, new PropriedadesOrcamento(new BigDecimal("0.01"))));
+            new GravacaoPrevisao(previsoes, linhas, new PropriedadesOrcamento(new BigDecimal("0.01"))), evento -> { });
 
     private final List<PrevisaoOrcamentaria> salvas = new ArrayList<>();
     private Arquivo arquivo;

@@ -47,8 +47,18 @@ class PrevistoRealizadoControllerPermissaoTest {
         }
 
         @Bean
-        PrevistoRealizadoController controller(AcessoCondominio acesso, ConsultaPrevistoRealizado consulta) {
-            return new PrevistoRealizadoController(acesso, consulta);
+        ExportacaoPrevistoRealizado exportacao() {
+            ExportacaoPrevistoRealizado e = mock(ExportacaoPrevistoRealizado.class);
+            org.mockito.Mockito.when(e.exportar(any(), any(), any(), any(), any(), any())).thenReturn(
+                    new ExportacaoPrevistoRealizado.ArquivoExportado("previsto-realizado-2026-09.pdf", "application/pdf",
+                            new byte[] {1}));
+            return e;
+        }
+
+        @Bean
+        PrevistoRealizadoController controller(AcessoCondominio acesso, ConsultaPrevistoRealizado consulta,
+                ExportacaoPrevistoRealizado exportacao) {
+            return new PrevistoRealizadoController(acesso, consulta, exportacao);
         }
     }
 
@@ -69,17 +79,38 @@ class PrevistoRealizadoControllerPermissaoTest {
     void todosOsPerfisDoCondominioConsultam() {
         for (String perfil : List.of("USUARIO", "GESTOR", "ADMIN")) {
             logar(CONDOMINIO, "pessoa-" + perfil, perfil);
-            controller.consultar(CONDOMINIO, "2026-09", null);
+            controller.consultar(CONDOMINIO, "2026-09", null, null);
             controller.evidencia(CONDOMINIO, "2026-09", null, "AJUSTES");
         }
         verify(consulta, org.mockito.Mockito.times(3)).consultar(CONDOMINIO, "2026-09", null);
     }
 
     @Test
+    void todosOsPerfisDoCondominioExportam() {
+        ExportacaoPrevistoRealizado exportacao = contexto.getBean(ExportacaoPrevistoRealizado.class);
+        for (String perfil : List.of("USUARIO", "GESTOR", "ADMIN")) {
+            logar(CONDOMINIO, "pessoa-" + perfil, perfil);
+            var resposta = controller.exportar(CONDOMINIO, "pdf", "2026-09", null, null);
+            assertThat(resposta.getHeaders().getContentType().toString()).isEqualTo("application/pdf");
+            assertThat(resposta.getHeaders().getContentDisposition().getFilename())
+                    .isEqualTo("previsto-realizado-2026-09.pdf");
+        }
+        verify(exportacao, org.mockito.Mockito.times(3)).exportar(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void outroCondominioNaoExporta() {
+        logar(UUID.randomUUID(), "gestor-de-outro", "GESTOR");
+
+        assertThatThrownBy(() -> controller.exportar(CONDOMINIO, "xlsx", "2026-09", null, null))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
     void outroCondominioNaoConsulta() {
         logar(UUID.randomUUID(), "gestor-de-outro", "GESTOR");
 
-        assertThatThrownBy(() -> controller.consultar(CONDOMINIO, "2026-09", null))
+        assertThatThrownBy(() -> controller.consultar(CONDOMINIO, "2026-09", null, null))
                 .isInstanceOf(AccessDeniedException.class);
         verify(consulta, never()).consultar(any(), any(), any());
     }

@@ -36,7 +36,7 @@ class GravacaoResultadoCategoriaTest {
     private final SaldoFundoRepository saldos = mock(SaldoFundoRepository.class);
     private final ConferenciaRepository conferencias = mock(ConferenciaRepository.class);
     private final GravacaoResultado gravacao = new GravacaoResultado(arquivos, mock(FundoRepository.class),
-            lancamentos, saldos, conferencias, mock(GravacaoPrevisao.class));
+            lancamentos, saldos, conferencias, mock(GravacaoPrevisao.class), evento -> { });
 
     @Test
     void fluxoEmOutraCategoriaApagaExtracaoENaoGravaLancamentos() {

@@ -4,7 +4,7 @@ import { baixarArquivo } from "../../api/cliente";
 import { caminhoUso, periodoPreenchido, useUso } from "../../api/consultas";
 import type { FuncaoUso, TotalUso } from "../../api/tipos";
 import { useSessao } from "../../contexto";
-import { formatarData, formatarDolarTexto, formatarInteiro, formatarMes, hojeIso } from "../../formato";
+import { formatarData, formatarDolarTexto, formatarInteiro, formatarMesAbreviado, hojeIso } from "../../formato";
 
 const rotulosFuncao: Record<FuncaoUso, string> = {
   busca_documentos: "Busca nos documentos (tela)",
@@ -142,7 +142,7 @@ function TabelaUso({ linhas, nomesModulos, comMes = false }: PropsTabela) {
         <tbody>
           {linhas.map((l) => (
             <tr key={`${l.mes ?? ""}-${l.modulo}-${l.funcao}`}>
-              {comMes && <td>{formatarMes(l.mes)}</td>}
+              {comMes && <td>{formatarMesAbreviado(l.mes)}</td>}
               <td>{nomesModulos[l.modulo] ?? l.modulo}</td>
               <td>{rotulosFuncao[l.funcao] ?? l.funcao}</td>
               <td className="numero">{formatarInteiro(l.quantidade)}</td>

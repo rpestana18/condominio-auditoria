@@ -371,11 +371,12 @@ paths:
       parameters:
         - { name: periodo, in: query, required: true, description: AAAA-MM ou "acumulado", schema: { type: string, pattern: "^([0-9]{4}-[0-9]{2}|acumulado)$" } }
         - { name: po, in: query, required: false, description: Versão da PO; sem ela, a que vale no mês (no acumulado, a confirmada mais recente), schema: { type: string, format: uuid } }
+        - { name: fundo, in: query, required: false, description: 'Filtro de fundo (RF-03.1.13). O fundo ordinário mostra só o fundo Condomínio (sem o painel dos fundos); outro fundo mostra só o painel dele, com totais, grupos, blocos, conferência e regra dos 20% nulos ou vazios e provisorio = false. Sem ele, tudo', schema: { type: string, format: uuid } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PrevistoRealizado" } } } }
         "400": { description: Período inválido }
         "403": { description: Sem acesso ao condomínio }
-        "404": { description: Condomínio ou PO não encontrados }
+        "404": { description: Condomínio, PO ou fundo não encontrados }
   /condominios/{condominioId}/previsto-realizado/evidencia:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }]
     get:
@@ -384,7 +385,7 @@ paths:
       parameters:
         - { name: periodo, in: query, required: true, schema: { type: string, pattern: "^([0-9]{4}-[0-9]{2}|acumulado)$" } }
         - { name: po, in: query, required: false, schema: { type: string, format: uuid } }
-        - { name: alvo, in: query, required: true, description: '"linha:<linhaId>", "fundo:<fundoId>" (arrecadação), AJUSTES, A_REALOCAR, SEM_LINHA_PO ou TRANSFERENCIAS', schema: { type: string } }
+        - { name: alvo, in: query, required: true, description: '"linha:<linhaId>", "grupo:<linhaId do grupo>" (as linhas do grupo, na ordem da PO), "total" (despesa realizada: linhas de todos os grupos, depois A_REALOCAR e SEM_LINHA_PO), "fundo:<fundoId>" (arrecadação), AJUSTES, A_REALOCAR, SEM_LINHA_PO ou TRANSFERENCIAS', schema: { type: string } }
       responses:
         "200":
           description: OK (lista vazia quando o alvo não tem lançamento)
@@ -485,6 +486,147 @@ paths:
         "403": { description: Sem acesso ao condomínio ou módulo não contratado (modulo = ASSISTENTE), content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
         "404": { description: Condomínio não encontrado }
         "503": { description: Rag fora do ar, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+  /condominios/{condominioId}/previsto-realizado/exportacao:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Exporta a mesma visão do previsto × realizado em PDF ou Excel (todos os perfis, RF-03.1.14)
+      description: |
+        Gerado do mesmo resultado do GET /previsto-realizado (mesma função, mesmos filtros): os números são os do
+        JSON. Cabeçalho com condomínio, PO (arquivo, versão, hash e exercício), período, data e hora, quem gerou e
+        estado do de-para. Com valor a realocar ou sem linha da PO, traz "PROVISÓRIO" e a lista desses lançamentos.
+        Sem gráfico. Excel com as abas "Resumo" e "Evidência" (um lançamento por linha, com arquivo, página e hash).
+        Mês sem números (sem fluxo, dois fluxos etc.) exporta a mensagem no lugar dos números.
+      operationId: exportarPrevistoRealizado
+      parameters:
+        - { name: formato, in: query, required: true, schema: { type: string, enum: [pdf, xlsx] } }
+        - { name: periodo, in: query, required: true, description: AAAA-MM ou "acumulado", schema: { type: string, pattern: "^([0-9]{4}-[0-9]{2}|acumulado)$" } }
+        - { name: po, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: fundo, in: query, required: false, description: 'Filtro de fundo (RF-03.1.13). O fundo ordinário mostra só o fundo Condomínio (sem o painel dos fundos); outro fundo mostra só o painel dele, com totais, grupos, blocos, conferência e regra dos 20% nulos ou vazios e provisorio = false. Sem ele, tudo', schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Arquivo (Content-Disposition attachment; previsto-realizado-<periodo>.pdf ou .xlsx)
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } }
+        "400": { description: Formato ou período inválido }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Condomínio, PO ou fundo não encontrados }
+  /condominios/{condominioId}/fundos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Fundos do fluxo do condomínio, pelo nome impresso (todos os perfis; RF-03.1.9 e RF-03.1.13)
+      description: Lista para ligar as linhas 1.9 e para o filtro de fundo, em ordem de nome. "OBRAS" e "OBRAS / REFORMAS / INFRA" são itens separados.
+      operationId: fundos
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/FundoFluxo" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Condomínio não encontrado }
+  /condominios/{condominioId}/previsoes/{poId}/fundos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    put:
+      summary: Altera a ligação das linhas 1.9 aos fundos depois da confirmação (só Admin; RF-03.1.9)
+      description: |
+        A lista é a ligação completa: linha 1.9.x ausente ou com fundoId nulo fica sem fundo. Cada linha com no máximo
+        um fundo, cada fundo em no máximo uma linha, nunca o fundo ordinário. A trilha da PO (GET .../eventos) recebe um
+        evento FUNDOS_ALTERADOS com o fundo anterior e o novo de cada linha, quem e quando. Sem mudança, nada é gravado.
+        Os achados são recalculados depois do commit.
+      operationId: alterarFundosPo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fundos]
+              properties:
+                fundos:
+                  type: array
+                  items:
+                    type: object
+                    required: [linhaId]
+                    properties:
+                      linhaId: { type: string, format: uuid }
+                      fundoId: { type: [string, "null"], format: uuid }
+      responses:
+        "200": { description: PO com a nova ligação, content: { application/json: { schema: { $ref: "#/components/schemas/PrevisaoDetalhe" } } } }
+        "403": { description: Gestor, Usuário ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada }
+        "422": { description: Ligação recusada, com os motivos, content: { application/json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+  /condominios/{condominioId}/previsoes/{poId}/eventos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    get:
+      summary: Trilha da PO (todos os perfis), só de inserção
+      description: Confirmação (CONFIRMADA), substituição (SUBSTITUIDA) e alterações da ligação dos fundos (FUNDOS_ALTERADOS).
+      operationId: eventosPrevisao
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EventoPrevisao" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+  /condominios/{condominioId}/realocacoes:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Realocações de uma versão da PO, ativas e desfeitas (todos os perfis, RF-03.1.7)
+      operationId: realocacoes
+      parameters:
+        - { name: po, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Realocacao" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+    post:
+      summary: Realoca um lançamento "a realocar" para uma linha de despesa da PO (Gestor e Admin, RF-03.1.7)
+      description: |
+        Só débitos do fundo Condomínio cuja conta tem de-para CONFIRMADO para REALOCAR, e só para linhas 1.1 a 1.8 da
+        PO que vale no mês do lançamento. O lançamento original não muda. A realocação guarda a impressão do lançamento
+        (arquivo, página, ordem, data, conta, documento e valor) e sobrevive ao reprocesso do mesmo fluxo. Os achados
+        são recalculados depois do commit.
+      operationId: realocar
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoRealocacao" } } }
+      responses:
+        "200": { description: Realocado, content: { application/json: { schema: { $ref: "#/components/schemas/Realocacao" } } } }
+        "403": { description: Usuário (só consulta) ou sem acesso ao condomínio }
+        "404": { description: Condomínio ou lançamento não encontrado }
+        "409": { description: Sem PO aprovada no mês, ou lançamento já realocado }
+        "422": { description: Lançamento não está em "a realocar", não é do fundo Condomínio, ou linha inválida }
+  /condominios/{condominioId}/realocacoes/{realocacaoId}:
+    parameters:
+      - { $ref: "#/components/parameters/CondominioId" }
+      - { name: realocacaoId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      summary: Desfaz a realocação (Gestor e Admin); o valor volta a "a realocar" e nada é apagado
+      operationId: desfazerRealocacao
+      responses:
+        "200": { description: Desfeita (ativa = false), content: { application/json: { schema: { $ref: "#/components/schemas/Realocacao" } } } }
+        "403": { description: Usuário (só consulta) ou sem acesso ao condomínio }
+        "404": { description: Realocação não encontrada }
+        "409": { description: Já desfeita }
+  /condominios/{condominioId}/achados:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Achados com a evidência original e o histórico (todos os perfis, só leitura; RF-03.1.12)
+      description: |
+        Os achados do orçamento são recalculados depois de cada mudança (fluxo gravado, PO confirmada, de-para,
+        fundos, realocação). Um achado por regra, mês e alvo; nunca apagado. Quando a condição deixa de existir, o
+        achado aberto passa a NAO_SE_APLICA_MAIS, com o motivo (Q27); se a condição volta, o mesmo achado volta a
+        ABERTO. Estados marcados por pessoa (RF-02.8) não mudam pelo recálculo.
+      operationId: achados
+      parameters:
+        - { name: competencia, in: query, required: false, description: AAAA-MM; sem ela, todos os meses, schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Achado" } } } }
+        "400": { description: Competência inválida }
+        "403": { description: Sem acesso ao condomínio }
 components:
   securitySchemes:
     bearer: { type: http, scheme: bearer, bearerFormat: JWT }
@@ -1026,7 +1168,7 @@ components:
               severidade: { type: string, enum: [INFORMATIVO, ATENCAO, CRITICO] }
               competencia: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" }
               descricao: { type: string }
-              estado: { type: string, enum: [ABERTO] }
+              estado: { $ref: "#/components/schemas/EstadoAchado" }
     LinhaPo:
       type: object
       required: [id, ordem, pagina, tipo, codigoImpresso, codigoEfetivo, descricao, orcadoAnterior, orcado, linhaDeFundo, arquivoId, sha256]
@@ -1431,6 +1573,96 @@ components:
         pagina: { type: integer }
         ordem: { type: integer }
         realocacao: { type: [string, "null"], description: '"realocado para <linha> por <usuário> em <data>"' }
+        realocacaoId: { type: [string, "null"], format: uuid, description: Realocação ativa que levou o lançamento à linha (para desfazer) }
+    EstadoAchado:
+      type: string
+      enum: [ABERTO, NAO_SE_APLICA_MAIS, JUSTIFICADO, RESOLVIDO, FALSO_POSITIVO]
+    Achado:
+      type: object
+      required: [id, regra, versaoRegra, severidade, competencia, alvo, descricao, estado, condicaoPresente, criadoEm, evidencias, historico]
+      properties:
+        id: { type: string, format: uuid }
+        regra: { type: string, description: Ex. EXCESSO_MES_ACIMA_LIMITE, CONTA_SEM_LINHA_PO, FUNDO_RESERVA_ACIMA_TETO }
+        versaoRegra: { type: string }
+        severidade: { type: string, enum: [INFORMATIVO, ATENCAO, CRITICO] }
+        competencia: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" }
+        alvo: { type: string, description: 'Ex. "fundo-condominio", "conta:8888"' }
+        descricao: { type: string }
+        estado: { $ref: "#/components/schemas/EstadoAchado" }
+        estadoMotivo: { type: [string, "null"], description: 'Ex. "de-para da conta 8888 confirmado por admin em 04/10/2026"' }
+        estadoEm: { type: [string, "null"], format: date-time }
+        condicaoPresente: { type: boolean, description: A condição da regra existia no último recálculo }
+        criadoEm: { type: string, format: date-time }
+        evidencias:
+          type: array
+          items:
+            type: object
+            required: [ordem, arquivoId, sha256, referencia]
+            properties:
+              ordem: { type: integer }
+              arquivoId: { type: string, format: uuid }
+              sha256: { type: string }
+              pagina: { type: [integer, "null"] }
+              referencia: { type: string }
+              linhaPoId: { type: [string, "null"], format: uuid }
+        historico:
+          type: array
+          items:
+            type: object
+            required: [estadoNovo, condicaoPresente, motivo, usuario, em]
+            properties:
+              estadoAnterior: { oneOf: [{ $ref: "#/components/schemas/EstadoAchado" }, { type: "null" }] }
+              estadoNovo: { $ref: "#/components/schemas/EstadoAchado" }
+              condicaoPresente: { type: boolean }
+              motivo: { type: string }
+              usuario: { type: string }
+              em: { type: string, format: date-time }
+    FundoFluxo:
+      type: object
+      required: [id, nome, ordinario]
+      properties:
+        id: { type: string, format: uuid }
+        nome: { type: string, description: Nome exato impresso no fluxo }
+        ordinario: { type: boolean, description: É o fundo ordinário (fundo Condomínio) confirmado }
+    EventoPrevisao:
+      type: object
+      required: [tipo, usuario, em, detalhe]
+      properties:
+        tipo: { type: string, enum: [CONFIRMADA, SUBSTITUIDA, FUNDOS_ALTERADOS] }
+        usuario: { type: string }
+        em: { type: string, format: date-time }
+        justificativa: { type: [string, "null"] }
+        detalhe: { type: string }
+    PedidoRealocacao:
+      type: object
+      required: [lancamentoId, linhaId]
+      properties:
+        lancamentoId: { type: string, format: uuid, description: lancamentoId da evidência "A_REALOCAR" }
+        linhaId: { type: string, format: uuid, description: Linha de despesa (1.1 a 1.8) da PO que vale no mês }
+    Realocacao:
+      type: object
+      required: [id, previsaoId, data, historico, valor, arquivoId, sha256, pagina, ordem, linhaId, realocadaPor, realocadaEm, ativa]
+      properties:
+        id: { type: string, format: uuid }
+        previsaoId: { type: string, format: uuid }
+        data: { type: string, format: date }
+        conta: { type: [string, "null"] }
+        contaNome: { type: [string, "null"] }
+        documento: { type: [string, "null"] }
+        historico: { type: string }
+        valor: { type: number }
+        arquivoId: { type: string, format: uuid }
+        sha256: { type: string }
+        pagina: { type: integer }
+        ordem: { type: integer }
+        linhaId: { type: string, format: uuid }
+        linhaCodigo: { type: [string, "null"] }
+        linhaDescricao: { type: [string, "null"] }
+        realocadaPor: { type: string }
+        realocadaEm: { type: string, format: date-time }
+        desfeitaPor: { type: [string, "null"] }
+        desfeitaEm: { type: [string, "null"], format: date-time }
+        ativa: { type: boolean }
     Problema:
       type: object
       properties:

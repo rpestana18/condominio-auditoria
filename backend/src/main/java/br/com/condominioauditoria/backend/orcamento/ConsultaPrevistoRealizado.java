@@ -61,11 +61,13 @@ public class ConsultaPrevistoRealizado {
     private final LancamentoRepository lancamentos;
     private final ParametroRegraRepository parametros;
     private final ConsultaPrevisao consultaPrevisao;
+    private final RealocacaoLancamentoRepository realocacoes;
 
     ConsultaPrevistoRealizado(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             LinhaPoRepository linhas, DeparaContaRepository deparas, PoFundoRepository poFundos,
             FundoRepository fundos, ArquivoRepository arquivos, LancamentoRepository lancamentos,
-            ParametroRegraRepository parametros, ConsultaPrevisao consultaPrevisao) {
+            ParametroRegraRepository parametros, ConsultaPrevisao consultaPrevisao,
+            RealocacaoLancamentoRepository realocacoes) {
         this.condominios = condominios;
         this.previsoes = previsoes;
         this.linhas = linhas;
@@ -76,6 +78,7 @@ public class ConsultaPrevistoRealizado {
         this.lancamentos = lancamentos;
         this.parametros = parametros;
         this.consultaPrevisao = consultaPrevisao;
+        this.realocacoes = realocacoes;
     }
 
     @Transactional(readOnly = true)
@@ -83,13 +86,38 @@ public class ConsultaPrevistoRealizado {
         return calcular(condominioId, periodo, poId).resultado();
     }
 
-    /** Lançamentos que compõem um número: "linha:&lt;id&gt;", "fundo:&lt;id&gt;", AJUSTES, A_REALOCAR, SEM_LINHA_PO. */
+    /** Com o filtro de fundo (RF-03.1.13); {@code fundoId} nulo = todos. */
+    @Transactional(readOnly = true)
+    public PrevistoRealizado consultar(UUID condominioId, String periodo, UUID poId, UUID fundoId) {
+        return calcular(condominioId, periodo, poId, fundoId).resultado();
+    }
+
+    /** O fundo do filtro, que tem de ser deste condomínio (404 se não for). */
+    Fundo fundoDoFiltro(UUID condominioId, UUID fundoId) {
+        return fundos.findByCondominioId(condominioId).stream().filter(f -> f.getId().equals(fundoId)).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Fundo não encontrado"));
+    }
+
+    /** Cálculo com o filtro de fundo aplicado depois (só esconde; ver {@link VisaoPorFundo}). */
+    Calculo calcular(UUID condominioId, String periodo, UUID poId, UUID fundoId) {
+        if (fundoId == null) {
+            return calcular(condominioId, periodo, poId);
+        }
+        fundoDoFiltro(condominioId, fundoId);
+        UUID ordinario = condominios.findById(condominioId).map(Condominio::getFundoOrdinarioId).orElse(null);
+        return VisaoPorFundo.filtrar(calcular(condominioId, periodo, poId), fundoId, ordinario);
+    }
+
+    /**
+     * Lançamentos que compõem um número: "linha:&lt;id&gt;", "grupo:&lt;id&gt;", "total", "fundo:&lt;id&gt;", AJUSTES,
+     * A_REALOCAR, SEM_LINHA_PO, TRANSFERENCIAS.
+     */
     @Transactional(readOnly = true)
     public List<Evidencia> evidencia(UUID condominioId, String periodo, UUID poId, String alvo) {
         if (alvo == null || alvo.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe o alvo da evidência");
         }
-        return calcular(condominioId, periodo, poId).evidencias().getOrDefault(alvo.trim(), List.of());
+        return CalculoPrevistoRealizado.evidencia(calcular(condominioId, periodo, poId), alvo);
     }
 
     Calculo calcular(UUID condominioId, String periodoTexto, UUID poId) {
@@ -136,10 +164,12 @@ public class ConsultaPrevistoRealizado {
                 .filter(a -> AVISOS_DA_PO.contains(a.codigo())).map(a -> new Aviso(a.codigo().name(), a.texto()))
                 .toList();
         String nomeArquivo = arquivos.findById(po.getArquivoId()).map(Arquivo::getNomeOriginal).orElse(null);
-        // Realocações entram no passo 8 (RF-03.1.7): até lá, tudo o que é "a realocar" fica no bloco à parte
+        // Realocações ativas desta versão da PO (RF-03.1.7), religadas aos lançamentos pela chave estável
+        List<CalculoPrevistoRealizado.Realocacao> ativas = realocacoes.findByPrevisaoIdAndDesfeitaEmIsNull(po.getId())
+                .stream().map(RealocacaoLancamento::paraCalculo).toList();
         return CalculoPrevistoRealizado.calcular(new Entrada(po, nomeArquivo, lidas,
                 deparas.findByPrevisaoIdOrderByContaCodigo(po.getId()), fundoPorLinha, nomes,
-                condominio.getFundoOrdinarioId(), fluxos, doPeriodo, List.of(), limite, avisosDaPo, periodo));
+                condominio.getFundoOrdinarioId(), fluxos, doPeriodo, ativas, limite, avisosDaPo, periodo));
     }
 
     private Optional<PrevisaoOrcamentaria> escolherPo(UUID condominioId, Periodo periodo, UUID poId) {

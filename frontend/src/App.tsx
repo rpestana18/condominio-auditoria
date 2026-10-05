@@ -8,7 +8,11 @@ import { AdministracaoIa } from "./paginas/AdministracaoIa";
 import { AdministracaoModulos } from "./paginas/AdministracaoModulos";
 import { Arquivos } from "./paginas/Arquivos";
 import { Assistente } from "./paginas/Assistente";
+import { Depara } from "./paginas/Depara";
 import { Inicio } from "./paginas/Inicio";
+import { PrevisaoPo } from "./paginas/PrevisaoPo";
+import { Previsoes } from "./paginas/Previsoes";
+import { PrevistoRealizado } from "./paginas/PrevistoRealizado";
 
 export function App() {
   const { data: usuario, error } = useUsuario();
@@ -33,6 +37,10 @@ export function App() {
             <Route element={<Layout />}>
               <Route index element={<Inicio />} />
               <Route path="arquivos" element={<Arquivos />} />
+              <Route path="previsto-realizado" element={<PrevistoRealizado />} />
+              <Route path="depara" element={<Depara />} />
+              <Route path="previsoes" element={<Previsoes />} />
+              <Route path="previsoes/:poId" element={<PrevisaoPo />} />
               <Route path="assistente" element={<Assistente />} />
               <Route path="administracao/modulos" element={<AdministracaoModulos />} />
               <Route path="administracao/ia" element={<AdministracaoIa />} />

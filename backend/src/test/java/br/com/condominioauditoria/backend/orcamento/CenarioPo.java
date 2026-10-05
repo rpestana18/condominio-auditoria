@@ -8,10 +8,14 @@ import static org.mockito.Mockito.when;
 import br.com.condominioauditoria.backend.arquivo.Arquivo;
 import br.com.condominioauditoria.backend.arquivo.ArquivoRepository;
 import br.com.condominioauditoria.backend.arquivo.Categoria;
+import br.com.condominioauditoria.backend.arquivo.StatusArquivo;
 import br.com.condominioauditoria.backend.auditoria.Achado;
 import br.com.condominioauditoria.backend.auditoria.AchadoEvidencia;
 import br.com.condominioauditoria.backend.auditoria.AchadoEvidenciaRepository;
 import br.com.condominioauditoria.backend.auditoria.AchadoRepository;
+import br.com.condominioauditoria.backend.auditoria.EventoAchado;
+import br.com.condominioauditoria.backend.auditoria.EventoAchadoRepository;
+import br.com.condominioauditoria.backend.auditoria.RegraExcessoMes;
 import br.com.condominioauditoria.backend.auditoria.ParametroRegra;
 import br.com.condominioauditoria.backend.auditoria.ParametroRegraRepository;
 import br.com.condominioauditoria.backend.auditoria.RegistroAchados;
@@ -62,6 +66,12 @@ final class CenarioPo {
     final List<DeparaConta> deparas = new ArrayList<>();
     final List<EventoDepara> eventosDepara = new ArrayList<>();
     final List<Lancamento> lancamentos = new ArrayList<>();
+    final List<EventoAchado> eventosAchado = new ArrayList<>();
+    final List<RealocacaoLancamento> realocacoes = new ArrayList<>();
+    final List<EventoRealocacao> eventosRealocacao = new ArrayList<>();
+    final List<Fundo> fundos = new ArrayList<>();
+    /** Mudanças publicadas pelos serviços; {@link #aposCommit()} faz o papel do disparo depois do commit. */
+    final List<Object> publicados = new ArrayList<>();
 
     final ConfirmacaoPrevisao confirmacao;
     final ConsultaPrevisao consulta;
@@ -70,6 +80,11 @@ final class CenarioPo {
     final LinhaPoRepository linhaRepo;
     final DeparaContaRepository deparaRepo;
     final EventoDeparaRepository eventoDeparaRepo;
+    final ConsultaPrevistoRealizado previstoRealizado;
+    final ServicoRealocacao realocacao;
+    final RecalculoAchadosOrcamento recalculo;
+    final RegistroAchados registro;
+    final LigacaoFundosPo ligacaoFundos;
     private final GravacaoPrevisao gravacao;
 
     CenarioPo() {
@@ -117,7 +132,13 @@ final class CenarioPo {
                 .filter(c -> c.getArquivoId().equals(i.getArgument(0))).toList());
 
         FundoRepository fundoRepo = mock(FundoRepository.class);
-        when(fundoRepo.findByCondominioId(condominioId)).thenReturn(List.of(ordinario, reserva, obrasInfra, obras));
+        fundos.addAll(List.of(ordinario, reserva, obrasInfra, obras));
+        when(fundoRepo.findByCondominioId(condominioId)).thenAnswer(i -> List.copyOf(fundos));
+        when(arquivoRepo.findByCondominioIdAndCategoriaAndStatusIn(any(), any(), any())).thenAnswer(i -> arquivos
+                .values().stream().filter(a -> a.getCondominioId().equals(i.getArgument(0))
+                        && a.getCategoria() == i.getArgument(1)
+                        && i.<Collection<StatusArquivo>>getArgument(2).contains(a.getStatus()))
+                .toList());
 
         PoFundoRepository poFundoRepo = mock(PoFundoRepository.class);
         when(poFundoRepo.save(any())).thenAnswer(i -> {
@@ -126,6 +147,8 @@ final class CenarioPo {
         });
         when(poFundoRepo.findByPrevisaoId(any())).thenAnswer(i -> poFundos.stream()
                 .filter(f -> f.getPrevisaoId().equals(i.getArgument(0))).toList());
+        org.mockito.Mockito.doAnswer(i -> poFundos.removeIf(f -> f.getPrevisaoId().equals(i.getArgument(0))))
+                .when(poFundoRepo).apagarDaPrevisao(any());
 
         EventoPrevisaoRepository eventoRepo = mock(EventoPrevisaoRepository.class);
         when(eventoRepo.save(any())).thenAnswer(i -> {
@@ -135,7 +158,19 @@ final class CenarioPo {
 
         AchadoRepository achadoRepo = mock(AchadoRepository.class);
         when(achadoRepo.save(any())).thenAnswer(i -> {
-            achados.add(i.getArgument(0));
+            if (!achados.contains(i.<Achado>getArgument(0))) {
+                achados.add(i.getArgument(0));
+            }
+            return i.getArgument(0);
+        });
+        when(achadoRepo.findByCondominioIdAndCompetenciaAndRegraIn(any(), any(), any())).thenAnswer(i -> achados
+                .stream().filter(a -> a.getCondominioId().equals(i.getArgument(0))
+                        && a.getCompetencia().atDay(1).equals(i.getArgument(1))
+                        && i.<Collection<String>>getArgument(2).contains(a.getRegra()))
+                .toList());
+        EventoAchadoRepository eventoAchadoRepo = mock(EventoAchadoRepository.class);
+        when(eventoAchadoRepo.save(any())).thenAnswer(i -> {
+            eventosAchado.add(i.getArgument(0));
             return i.getArgument(0);
         });
         when(achadoRepo.findByCondominioIdAndRegraAndCompetenciaAndAlvo(any(), anyString(), any(), anyString()))
@@ -159,12 +194,15 @@ final class CenarioPo {
                 .findFirst());
         parametros.add(new ParametroRegra(condominioId, RegraTetoFundoReserva.PARAMETRO, new BigDecimal("5.0000"),
                 LocalDate.of(1900, 1, 1), null, "Conv. 20.1"));
+        parametros.add(new ParametroRegra(condominioId, RegraExcessoMes.PARAMETRO, new BigDecimal("20.0000"),
+                LocalDate.of(1900, 1, 1), null, "Conv. 16.2"));
 
         ReservaDaPo reservaDaPo = new ReservaDaPo(parametroRepo);
         consulta = new ConsultaPrevisao(previsaoRepo, linhaRepo, conferenciaRepo, arquivoRepo, poFundoRepo, fundoRepo,
                 achadoRepo, reservaDaPo);
+        registro = new RegistroAchados(achadoRepo, evidenciaRepo, eventoAchadoRepo);
         confirmacao = new ConfirmacaoPrevisao(condominios, previsaoRepo, linhaRepo, poFundoRepo, eventoRepo,
-                arquivoRepo, fundoRepo, consulta, reservaDaPo, new RegistroAchados(achadoRepo, evidenciaRepo));
+                arquivoRepo, fundoRepo, consulta, reservaDaPo, registro, publicados::add);
         gravacao = new GravacaoPrevisao(previsaoRepo, linhaRepo, new PropriedadesOrcamento(new BigDecimal("0.01")));
 
         deparaRepo = mock(DeparaContaRepository.class);
@@ -194,10 +232,65 @@ final class CenarioPo {
                         && !l.getData().isAfter(i.getArgument(3)) && l.getDebito().signum() != 0
                         && !l.isTransferenciaEntreFundos() && l.getContaCodigo() != null)
                 .sorted(Comparator.comparing(Lancamento::getData)).toList());
+        when(lancamentoRepo.findByArquivoIdInAndDataBetween(any(), any(), any())).thenAnswer(i -> lancamentos.stream()
+                .filter(l -> i.<Collection<UUID>>getArgument(0).contains(l.getArquivoId())
+                        && !l.getData().isBefore(i.getArgument(1)) && !l.getData().isAfter(i.getArgument(2)))
+                .toList());
+        when(lancamentoRepo.findById(any())).thenAnswer(i -> lancamentos.stream()
+                .filter(l -> l.getId().equals(i.getArgument(0))).findFirst());
         depara = new ServicoDepara(condominios, previsaoRepo, linhaRepo, deparaRepo, eventoDeparaRepo, lancamentoRepo,
-                PropriedadesDepara.padrao());
+                PropriedadesDepara.padrao(), publicados::add);
+
+        RealocacaoLancamentoRepository realocacaoRepo = mock(RealocacaoLancamentoRepository.class);
+        when(realocacaoRepo.save(any())).thenAnswer(i -> {
+            if (!realocacoes.contains(i.<RealocacaoLancamento>getArgument(0))) {
+                realocacoes.add(i.getArgument(0));
+            }
+            return i.getArgument(0);
+        });
+        when(realocacaoRepo.findByPrevisaoIdAndDesfeitaEmIsNull(any())).thenAnswer(i -> realocacoes.stream()
+                .filter(r -> r.getPrevisaoId().equals(i.getArgument(0)) && r.ativa()).toList());
+        when(realocacaoRepo.findByPrevisaoIdOrderByDataAscRealocadaEmAsc(any())).thenAnswer(i -> realocacoes.stream()
+                .filter(r -> r.getPrevisaoId().equals(i.getArgument(0))).toList());
+        when(realocacaoRepo.findByPrevisaoIdAndChaveLancamentoAndDesfeitaEmIsNull(any(), anyString()))
+                .thenAnswer(i -> realocacoes.stream().filter(r -> r.getPrevisaoId().equals(i.getArgument(0))
+                        && r.getChaveLancamento().equals(i.getArgument(1)) && r.ativa()).findFirst());
+        when(realocacaoRepo.findByIdAndCondominioId(any(), any())).thenAnswer(i -> realocacoes.stream()
+                .filter(r -> r.getId().equals(i.getArgument(0)) && r.getCondominioId().equals(i.getArgument(1)))
+                .findFirst());
+        EventoRealocacaoRepository eventoRealocacaoRepo = mock(EventoRealocacaoRepository.class);
+        when(eventoRealocacaoRepo.save(any())).thenAnswer(i -> {
+            eventosRealocacao.add(i.getArgument(0));
+            return i.getArgument(0);
+        });
+        previstoRealizado = new ConsultaPrevistoRealizado(condominios, previsaoRepo, linhaRepo, deparaRepo,
+                poFundoRepo, fundoRepo, arquivoRepo, lancamentoRepo, parametroRepo, consulta, realocacaoRepo);
+        realocacao = new ServicoRealocacao(condominios, lancamentoRepo, arquivoRepo, consulta, previsaoRepo,
+                linhaRepo, deparaRepo, realocacaoRepo, eventoRealocacaoRepo, publicados::add);
+        recalculo = new RecalculoAchadosOrcamento(condominios, previsaoRepo, previstoRealizado, registro);
+        ligacaoFundos = new LigacaoFundosPo(condominios, previsaoRepo, linhaRepo, poFundoRepo, fundoRepo, eventoRepo,
+                consulta, publicados::add);
 
         ata = arquivo(Categoria.ATA, "ata-ago-2026-05.pdf");
+    }
+
+    /**
+     * Faz o papel do {@link DisparoRecalculoAchados}: para cada mudança publicada desde a última chamada, recalcula
+     * os achados (como depois do commit). Devolve quantas mudanças foram tratadas.
+     */
+    int aposCommit() {
+        List<MudancaOrcamento> mudancas = publicados.stream().filter(MudancaOrcamento.class::isInstance)
+                .map(MudancaOrcamento.class::cast).toList();
+        publicados.clear();
+        mudancas.forEach(recalculo::recalcular);
+        return mudancas.size();
+    }
+
+    /** Arquivo de fluxo da categoria de balancetes, lido (concluído), cobrindo o período. */
+    Arquivo fluxo(String nome, LocalDate inicio, LocalDate fim, int lancamentos) {
+        Arquivo a = arquivo(Categoria.BALANCETE, nome);
+        a.concluir(StatusArquivo.CONCLUIDO, "Todas as conferências passaram", "fluxo-protest", inicio, fim, lancamentos);
+        return a;
     }
 
     /** Lê a PO como a GravacaoResultado faria (linhas e conferências gravadas). */

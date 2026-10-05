@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { ErroApi, postar } from "../../api/cliente";
+import { ErroApi, enviarJson } from "../../api/cliente";
 import type { FiltrosDocumentos, PedidoPergunta, RespostaAssistente, TrocaHistorico } from "../../api/tipos";
 import { useSessao } from "../../contexto";
 import { mensagemErroAssistente } from "./erros";
@@ -103,7 +103,7 @@ export function ProvedorConversa({ children }: { children: ReactNode }) {
     const trocaId = novoId();
     setEstado((e) => ({ ...e, trocas: [...e.trocas, { id: trocaId, pergunta }] }));
 
-    postar<RespostaAssistente>(`/condominios/${condominioId}/assistente/perguntas`, pedido)
+    enviarJson<RespostaAssistente>(`/condominios/${condominioId}/assistente/perguntas`, pedido)
       .then((resposta) => concluir(conversaId, trocaId, { resposta }))
       .catch((erro: unknown) => {
         concluir(conversaId, trocaId, { erro: mensagemErroAssistente(erro) });

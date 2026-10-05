@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.backend.config;
 
+import jakarta.servlet.DispatcherType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,10 @@ class SegurancaConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        // Despacho interno do erro (404, 400, 409 das ResponseStatusException): sem isso o servidor
+                        // encaminha para /error, o denyAll recusa e todo erro chega como 403. Chamada direta a /error
+                        // é REQUEST, não ERROR, e continua recusada.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Página de erro do Spring: sem isto, 400 e 404 tratados pelo próprio Spring viram 403 vazio
                         .requestMatchers("/error").permitAll()

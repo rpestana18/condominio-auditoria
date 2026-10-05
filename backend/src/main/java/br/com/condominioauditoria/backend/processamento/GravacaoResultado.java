@@ -20,7 +20,9 @@ import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.Previ
 import br.com.condominioauditoria.backend.mensagens.ResultadoProcessamento.Secao;
 import br.com.condominioauditoria.backend.orcamento.EstadoPrevisao;
 import br.com.condominioauditoria.backend.orcamento.GravacaoPrevisao;
+import br.com.condominioauditoria.backend.orcamento.MudancaOrcamento;
 import br.com.condominioauditoria.backend.orcamento.PrevisaoOrcamentaria;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +31,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,15 +51,18 @@ public class GravacaoResultado {
     private final SaldoFundoRepository saldos;
     private final ConferenciaRepository conferencias;
     private final GravacaoPrevisao previsoes;
+    private final ApplicationEventPublisher publicador;
 
     GravacaoResultado(ArquivoRepository arquivos, FundoRepository fundos, LancamentoRepository lancamentos,
-            SaldoFundoRepository saldos, ConferenciaRepository conferencias, GravacaoPrevisao previsoes) {
+            SaldoFundoRepository saldos, ConferenciaRepository conferencias, GravacaoPrevisao previsoes,
+            ApplicationEventPublisher publicador) {
         this.arquivos = arquivos;
         this.fundos = fundos;
         this.lancamentos = lancamentos;
         this.saldos = saldos;
         this.conferencias = conferencias;
         this.previsoes = previsoes;
+        this.publicador = publicador;
     }
 
     @Transactional
@@ -78,6 +84,9 @@ public class GravacaoResultado {
         lancamentos.apagarDoArquivo(arquivo.getId());
         saldos.apagarDoArquivo(arquivo.getId());
         conferencias.apagarDoArquivo(arquivo.getId());
+        // Fluxo gravado (ou apagado, se a categoria mudou): os achados do orçamento são recalculados depois do commit
+        publicador.publishEvent(MudancaOrcamento.de(arquivo.getCondominioId(), "leitura do arquivo "
+                + arquivo.getNomeOriginal() + " gravada", "sistema", Instant.now()));
 
         PrevisaoLida po = resultado.previsaoOrcamentaria();
         if (po == null || arquivo.getCategoria() != Categoria.PO) {

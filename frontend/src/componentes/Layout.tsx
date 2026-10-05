@@ -19,6 +19,10 @@ export function Layout() {
           <NavLink to="/arquivos">Arquivos</NavLink>
           {/* Só com o módulo ligado (RF-10.3), para todos os perfis; o backend recusa (403) se estiver desligado */}
           {moduloLigado("ASSISTENTE") && <NavLink to="/assistente">Assistente</NavLink>}
+          <span className="menu-secao">Orçamento</span>
+          <NavLink to="/previsto-realizado">Previsto × realizado</NavLink>
+          <NavLink to="/depara">De-para</NavLink>
+          <NavLink to="/previsoes">PO</NavLink>
           {/* Só esconde o menu: o backend recusa (403) quem não é ADMIN */}
           {pode("ADMIN") && (
             <>

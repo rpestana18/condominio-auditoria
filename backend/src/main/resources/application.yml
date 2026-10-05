@@ -20,6 +20,9 @@ spring:
       hibernate.jdbc.batch_size: 100
       hibernate.order_inserts: true
       hibernate.default_schema: backend
+  # Thymeleaf só gera relatórios (RelatorioPdf, templates em relatorios/); o backend não tem telas
+  thymeleaf:
+    check-template-location: false
   servlet:
     multipart:
       max-file-size: 50MB

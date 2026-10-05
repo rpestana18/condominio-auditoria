@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { atualizar, enviar, gravar, obter, postar } from "./cliente";
+import { atualizar, enviar, gravar, obter, enviarJson } from "./cliente";
 import type {
   AlteracaoModulo,
   ArquivoDetalhe,
@@ -219,6 +219,6 @@ export function useGravarConfiguracaoIa(condominioId: string) {
 export function useBuscarDocumentos(condominioId: string) {
   return useMutation({
     mutationFn: async (pedido: PedidoBuscaDocumentos) =>
-      (await postar<TrechoDocumento[]>(`/condominios/${condominioId}/assistente/busca`, pedido)) ?? [],
+      (await enviarJson<TrechoDocumento[]>(`/condominios/${condominioId}/assistente/busca`, pedido)) ?? [],
   });
 }

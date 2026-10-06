@@ -193,8 +193,8 @@ Alguns lançamentos chegam numa linha que é **meio de pagamento** e não nature
 
 ### RF-03 Orçamento e previsão
 - RF-03.1 Previsto (PO) × realizado por linha da PO, mês a mês, por fundo e acumulado no exercício da PO. Detalhado em RF-03.1.1 a RF-03.1.15, ao fim desta seção.
-- RF-03.2 Série histórica com as POs e balancetes de anos anteriores.
-- RF-03.3 Projeção do próximo ano por rubrica considerando histórico, contratos vigentes (reajustes), dissídio dos funcionários e índices (IPCA/IGP-M) — com cenários (base, otimista, pessimista) e a premissa de cada número visível.
+- RF-03.2 Série histórica com as POs e balancetes de anos anteriores. Detalhado no menu "Análise da PO" (RF-11.1 a RF-11.9).
+- RF-03.3 (esboço da fase 3 no RF-11.15) Projeção do próximo ano por rubrica considerando histórico, contratos vigentes (reajustes), dissídio dos funcionários e índices (IPCA/IGP-M) — com cenários (base, otimista, pessimista) e a premissa de cada número visível.
 - RF-03.4 Simulação da cota condominial por unidade resultante da projeção.
 - RF-03.5 **Tela "Criar nova PO"** (a ser desenhada junto com o usuário):
   - parte da PO aprovada vigente, com o realizado acumulado e a projeção de cada linha ao lado;
@@ -474,11 +474,11 @@ Termos usados abaixo:
   - Dado um condomínio que ainda não confirmou o fundo ordinário, quando o Gestor ou o Admin abre a tela inicial, então o lugar do cartão "Saldo acumulado" mostra a sugestão ("Este é o fundo ordinário? CONDOMÍNIO") com os botões confirmar e trocar; para o Usuário, o cartão não aparece.
   - Dado um fundo ordinário confirmado que não aparece no relatório do mês, quando o usuário abre a tela inicial, então o cartão mostra o aviso discreto "Fundo ordinário não encontrado neste relatório", sem valor.
   - Dado um saldo acumulado negativo, quando a tela mostra o cartão, então o valor aparece em vermelho, sem outro texto.
-- RF-05.2 Gráficos: evolução mensal de receitas/despesas, despesas por rubrica, previsto × realizado, histórico anual, projeção.
+- RF-05.2 Gráficos: evolução mensal de receitas/despesas, despesas por rubrica, previsto × realizado, histórico anual, projeção. Os gráficos da PO estão na tela "Indicadores" (RF-11.10 a RF-11.14).
 - RF-05.3 **Indicador discreto em um canto**, em todas as telas: "Último arquivo: <nome> · <categoria> · <data>".
 - RF-05.4 **Tela de arquivos**: separada por categorias (abas ou filtro), **ordenada da data mais recente para a mais antiga**, com busca, status e download do original.
 - RF-05.5 Tela de achados de auditoria com filtros e detalhe da evidência (abre o documento na página certa).
-- RF-05.6 Tela de previsão orçamentária: tela "Previsto × realizado" e tela de de-para (detalhadas em RF-03.1.13). A tela "Criar nova PO" é o RF-03.5.
+- RF-05.6 Tela de previsão orçamentária: tela "Previsto × realizado" e tela de de-para (detalhadas em RF-03.1.13), agora no menu "Análise da PO" com "Comparar exercícios" e "Indicadores" (RF-11). A tela "Criar nova PO" é o RF-03.5.
 
 ### RF-06 Relatórios (sob demanda)
 - RF-06.1 Exportar PDF e Excel: relatório mensal de auditoria, previsto × realizado (detalhado em RF-03.1.14), relatório anual para assembleia/conselho, lista de achados.
@@ -542,6 +542,119 @@ Origem: "o cliente pode escolher se quer esse módulo ou não e podemos vender n
 - RF-10.6 **Trilha de ativação** (base para cobrança futura como adicional): cada ligar ou desligar fica na trilha de auditoria (RF-07.4) com condomínio, módulo, estado anterior e novo, data e hora, quem fez e motivo (opcional). O sistema calcula os **períodos ativos** de cada módulo por condomínio (início e fim) e os exporta em Excel, junto com o uso do período (RF-09.7). Nenhum valor de cobrança é calculado nesta fase.
   - Dado o Assistente ligado em 01/11/2026 e desligado em 15/12/2026 no condomínio A, quando o Super-admin consulta os períodos ativos de A, então vê um período de 01/11/2026 a 15/12/2026, com quem ligou e quem desligou.
   - Dado qualquer registro da trilha de ativação, quando alguém tenta alterá-lo ou excluí-lo, então a ação é recusada (trilha só cresce).
+
+### RF-11 Menu "Análise da PO" (pedido do usuário, 06/10/2026)
+Origem: pedido do usuário de 06/10/2026: *"ter a análise da PO aprovada, das anteriores e, o sistema se baseando nisso e nos balancetes, poder ter a projeção da próxima PO para usarmos como base. Isso como opções. [...] Seria um novo menu onde poderíamos iniciar com previsto x realizado, gráficos de indicadores e depois pensamos na funcionalidade de projetar a nova PO."* Detalha RF-03.2 (série histórica), RF-05.2 (gráficos) e RF-05.6, e esboça RF-03.3. **Q31 a Q36 respondidas pelo usuário em 06/10/2026** (§10): todas seguiram a recomendação, com dois ajustes: na Q32, a coluna impressa pode ser substituída pelo arquivo da PO anterior quando ele for conseguido; na Q36, a exportação em PDF e Excel do RF-11.8 e do RF-11.14 fica para depois. Reaproveita sem mudança as regras do RF-03.1.1 a RF-03.1.15 (leitura da PO, de-para, realizado, fundos, regra dos 20%, evidência, exportação e golden de setembro/2026).
+
+Entrega em três fases:
+1. **Fase 1, previsto × realizado de várias POs**: a PO aprovada vigente e as anteriores, cada uma no seu exercício, e a comparação entre exercícios (RF-11.1 a RF-11.9).
+2. **Fase 2, indicadores**: gráficos a partir dos mesmos números da fase 1 (RF-11.10 a RF-11.14).
+3. **Fase 3, projeção da próxima PO**: só esboçada aqui (RF-11.15). Ganha requisitos próprios depois das fases 1 e 2.
+
+Situação atual (06/10/2026, main em `caa62b3`):
+- O menu tem a seção "Orçamento" com "Previsto × realizado", "De-para" e "PO".
+- O backend já guarda **várias versões de PO** e escolhe a PO de cada mês pelo exercício. Só uma PO vale para cada mês (RF-03.1.3).
+- O de-para é por versão da PO (RF-03.1.4).
+- A leitura grava a coluna "Orçado anterior" de cada linha (`orcado_anterior`, V7), mas nenhuma tela a usa.
+- A tela de previsto × realizado mostra um exercício por vez. Não há comparação entre exercícios nem tela de indicadores. O Recharts já está no frontend (ADR 0004, Decisão 6).
+- No piloto só existem a PO 2026/2027 e o fluxo de setembro/2026. As POs e os fluxos anteriores não foram enviados (Q5, P5 e P6).
+
+Fora destes requisitos (decisão do arquiteto em ADR, com aprovação do usuário): onde fica guardada a correspondência de linhas entre exercícios; se o resultado de vários exercícios é calculado na consulta (ADR 0004, Decisão 5) ou guardado; o formato das consultas da API; os tipos de gráfico do Recharts. Ficam fora também, para requisito próprio: PO de outras administradoras (RF-00.5); o bloco "fora da PO" com rubrica criada na realocação (RF-02B.3), que aparece se existir mas não é exigido aqui; ferramentas MCP (RF-08.1); exportação em PDF e Excel da comparação e dos indicadores (RF-11.8 e RF-11.14, adiados pelo usuário na Q36).
+
+Premissas (padrões adotados; o usuário pode mudar):
+1. Cada exercício é calculado com **a própria PO e o próprio de-para**, exatamente como o RF-03.1 calcula um exercício hoje. A fase 1 não muda nenhum número de um exercício isolado: setembro/2026 continua igual ao golden.
+2. Comparação entre exercícios mostra **fatos lado a lado** (valores e variação em R$ e %). O sistema não escreve causa, tendência nem julgamento (§3.3, RF-03.1.12).
+3. Mês sem fluxo carregado continua "sem fluxo carregado", **nunca zero**, também nos gráficos (RF-03.1.10).
+4. Os gráficos não calculam nada: mostram os números que o backend já entrega para as tabelas.
+
+Termos usados abaixo (os demais estão no RF-03.1):
+- **Exercício**: os 12 meses de vigência de uma PO confirmada (RF-03.1.3). Um condomínio tem vários, um por PO aprovada.
+- **PO anterior**: a PO do exercício imediatamente antes de outro.
+- **Coluna "Orçado anterior"**: valor mensal que a própria PO imprime para o exercício anterior, linha a linha (no piloto, a coluna "Orçado 2025/2026").
+- **Correspondência de linhas**: ligação de uma linha da PO de um exercício a uma linha da PO de outro exercício, para comparar a mesma despesa ao longo dos anos. Estados: sugerido, confirmado, recusado (como o de-para).
+
+**Fase 1: análise da PO aprovada e das anteriores**
+- RF-11.1 **Menu "Análise da PO"**: a seção "Orçamento" do menu passa a se chamar "Análise da PO", com os itens "Previsto × realizado" (tela atual, RF-03.1.13), "Comparar exercícios" (RF-11.6) e, na fase 2, "Indicadores" (RF-11.10). "PO" e "De-para" continuam na mesma seção (Q31). O item "Projeção" só aparece quando a fase 3 for entregue. Todos os perfis veem os itens; as ações de edição continuam só do Admin.
+  - Dado qualquer perfil, quando abre o menu, então vê a seção "Análise da PO" com "Previsto × realizado", "Comparar exercícios", "PO" e "De-para", e não vê "Projeção".
+  - Dado um Usuário, quando abre qualquer tela da seção, então nenhuma ação de edição aparece.
+- RF-11.2 **Enviar POs anteriores**: o Gestor ou o Admin envia a PO de exercícios passados na categoria PO, como hoje (RF-00.3, carga histórica). Cada uma é lida, conferida e confirmada pelas regras do RF-03.1.1 a RF-03.1.3, com o exercício informado pelo Admin e a ata, quando houver. Exercícios **não podem se sobrepor**: a confirmação de uma PO cujo exercício cruza um mês já coberto por outra PO confirmada é recusada, com o mês e a PO em conflito (reaprovação do mesmo exercício continua criando nova versão, RF-03.1.3). PO de layout não reconhecido fica listada como "layout não reconhecido", sem números, até o RF-00.5.
+  - Dado a PO 2026/2027 do piloto confirmada (05/2026 a 04/2027) e uma cópia de teste da mesma PO enviada como "2025/2026", quando o Admin a confirma com exercício 05/2025 a 04/2026, então o condomínio passa a ter dois exercícios, e a tela "PO" lista os dois, do mais recente para o mais antigo.
+  - Dado o mesmo caso, quando o Admin tenta confirmar a cópia com exercício 06/2025 a 05/2026, então a confirmação é recusada com "05/2026 já está no exercício da PO 2026/2027".
+  - Dado uma PO de outra administradora, quando enviada, então aparece como "layout não reconhecido", sem números, e não entra em nenhuma comparação.
+- RF-11.3 **Mês entre dois exercícios** (Q34): quando há meses entre o fim de um exercício e o início do seguinte (ex.: a PO nova aprovada com atraso), esses meses ficam "sem PO aprovada", como hoje. O Admin pode marcar a PO anterior como **prorrogada** até um mês informado, com justificativa obrigatória; os meses prorrogados usam a PO anterior e aparecem com a marca "PO prorrogada" na tela e na exportação. A marcação vai para a trilha. Nunca é automática.
+  - Dado um exercício de teste 04/2025 a 03/2026 e a PO 2026/2027 do piloto (05/2026 a 04/2027), quando o usuário abre 04/2026, então vê "sem PO aprovada para este mês".
+  - Dado o mesmo caso, quando o Admin marca a PO 2025/2026 como prorrogada até 04/2026, com justificativa, então 04/2026 é calculado com essa PO e mostra "PO prorrogada", e a trilha registra quem, quando e a justificativa.
+  - Dado a mesma marcação sem justificativa, ou de um Gestor ou Usuário, quando salva, então é recusada.
+  - *Se Q34 for "Não": meses entre exercícios ficam sempre "sem PO aprovada".*
+- RF-11.4 **Previsto × realizado de qualquer exercício**: a tela atual ganha o filtro "Exercício", com todos os exercícios confirmados do mais recente para o mais antigo, e abre no exercício vigente. Mês a mês, acumulado, fundos, regra dos 20%, blocos à parte, evidência e exportação seguem o RF-03.1, cada exercício com a sua PO e o seu de-para. A tela mostra, por exercício, os meses com e sem fluxo e o estado do de-para ("N de M contas confirmadas").
+  - Dado o piloto com a PO 2026/2027 e o fluxo de setembro/2026, quando o usuário abre o exercício 2026/2027 em 09/2026, então os números são os do RF-03.1.6 (despesa realizada 446.176,89; previsto 451.620,13; execução 98,8%; excesso 38.880,19, 8,6%), centavo a centavo.
+  - Dado o exercício de teste 2025/2026 confirmado e sem nenhum fluxo carregado, quando o usuário o abre, então os 12 meses aparecem "sem fluxo carregado", o acumulado mostra só o previsto do exercício, e nenhum mês aparece com realizado R$ 0,00.
+  - Dado o exercício de teste 2025/2026 com o de-para ainda "sugerido" (oferecido a partir da PO 2026/2027, RF-03.1.4), quando o usuário abre um mês com fluxo, então vale o critério do RF-03.1.4: nada entra em linha da PO até o Admin confirmar.
+- RF-11.5 **PO anterior pela coluna impressa** (Q32): quando o arquivo da PO anterior não foi enviado, a comparação de previsto usa a coluna "Orçado anterior" da PO mais antiga carregada, marcada como **"PO anterior pela coluna impressa"**. Só tem previsto (sem realizado, sem exercício próprio) e segue as linhas da PO que a imprimiu. A conferência da coluna é a mesma do RF-03.1.2: soma das linhas contra subtotal e total impressos, com a tolerância de R$ 0,01 (Q30). **Substituição pelo arquivo** (Q32): quando o arquivo da PO anterior é enviado e confirmado depois, ele **substitui** a coluna impressa naquele exercício, sem ação extra: a comparação passa a usar a PO enviada, com realizado se houver fluxo, e a coluna impressa continua visível só como conferência. Os dois são mostrados lado a lado, e uma diferença acima de R$ 0,01 por grupo entre o valor da PO anterior e a coluna impressa vira **aviso** "a coluna 'Orçado anterior' difere da PO anterior enviada", com os dois valores (não é achado).
+  - Dado a PO 2026/2027 do piloto, sem nenhuma PO anterior enviada, quando o usuário abre "Comparar exercícios", então vê a coluna "2025/2026 (coluna impressa)" com: total das despesas 441.304,38; fundos 22.065,22; previsto do mês (sem fundos) 419.239,16; Pessoal 37.661,43; Contratos 348.631,55; Aquisição de bens 2.350,00; Administrativas 18.525,42; Materiais 19.300,00; Serviços 14.270,99; e só previsto, sem realizado. Os valores de grupo são os impressos se a soma das linhas da coluna bater com eles na tolerância; senão, vale a regra do RF-03.1.2.
+  - Dado o mesmo caso, quando a linha 1.3.20 é comparada, então mostra 17.195,00 (2025/2026) e 8.000,00 (2026/2027), variação −9.195,00 e −53,5%; e o "%" impresso "−53,47%" aparece como texto lido.
+  - Dado uma cópia de teste da PO 2025/2026 enviada com o subtotal de Pessoal 37.000,00, quando confirmada, então a comparação mostra o aviso com 37.000,00 (PO enviada) e 37.661,43 (coluna impressa), e usa o da PO enviada na coluna 2025/2026.
+  - Dado a comparação usando a coluna impressa para 2025/2026, quando a PO 2025/2026 é enviada e confirmada, então a coluna passa a se chamar "2025/2026" (sem "coluna impressa"), usa os valores da PO enviada, e o usuário vê a coluna impressa só no detalhe de conferência.
+- RF-11.6 **Tela "Comparar exercícios"**: para todos os perfis. Filtros: exercícios (dois ou mais, padrão: o vigente e o anterior), fundo, e "mesmos meses" (compara só os meses que têm fluxo nos dois exercícios, ex.: set/2025 × set/2026). Três visões:
+  1. **Resumo por exercício**: previsto do mês, previsto do exercício, meses com fluxo, previsto e realizado acumulados, execução, maior excesso mensal da regra dos 20% (em R$ e %), meses acima do limite e achados abertos do exercício. Variação do previsto do mês contra o exercício anterior, em R$ e %.
+  2. **Por grupo** (1.1 a 1.9): previsto e realizado de cada exercício lado a lado, com a variação. Grupos são os do layout e não precisam de correspondência.
+  3. **Por linha**: só com a correspondência de linhas (RF-11.7). Linhas sem correspondência confirmada aparecem num bloco "sem correspondência", com o valor de cada exercício, e nunca são somadas a outra linha.
+  Fundos de reserva e de obras comparam a arrecadação (RF-03.1.9). Variação em % só quando a base é diferente de zero; com base zero aparece "nova no exercício".
+  - Dado o piloto com só a PO 2026/2027 e a coluna impressa, quando o usuário abre o resumo, então vê o previsto do mês 451.620,13 contra 419.239,16, variação +32.380,97 e +7,7%; e Contratos 336.274,18 (soma das linhas, Q30) contra 348.631,55, variação −12.357,37 e −3,5%.
+  - Dado a linha 1.3.25 Caixa D'água (anterior 0,00; atual 1.518,93), quando exibida, então a variação aparece como "nova no exercício", sem percentual.
+  - Dado dois exercícios com fluxo carregado só em setembro de cada um, quando o usuário marca "mesmos meses", então o acumulado de cada exercício soma só setembro, e o filtro informa "comparando: setembro".
+  - Dado qualquer valor da comparação, quando o usuário clica nele, então abre o previsto × realizado daquele exercício, mês e linha ou grupo, com a evidência do RF-03.1.12.
+  - Dado qualquer tela ou exportação da comparação, quando inspecionada, então nenhum termo da lista de conduta (RF-04.15) aparece, e nenhum texto explica a variação.
+- RF-11.7 **Correspondência de linhas entre exercícios** (Q33): o sistema sugere ligar a linha de um exercício à linha de outro com a **mesma conta da PO** (código e nome, ex.: "1682 - Sindicatura Profissional"), mostrando o motivo. Não usa o código do item (ex.: 1.3.20), que muda entre POs, nem a descrição, que costuma ser o fornecedor. Só o Admin confirma, troca ou recusa; sugestão nunca vale sozinha; tudo na trilha (como RF-03.1.4). Uma linha pode corresponder a várias do outro exercício (divisão ou junção de linhas), e o sistema mostra o grupo de linhas somado dos dois lados.
+  - Dado as linhas 1.3.20 "1682 - Sindicatura Profissional" de dois exercícios, quando a correspondência é sugerida, então aparece "sugerido" com o motivo "mesma conta da PO: 1682 - Sindicatura Profissional", e a comparação por linha só a usa depois da confirmação.
+  - Dado as duas linhas 1.3.2 da PO 2026/2027 (Bombas e Caixa D'água, esta renumerada 1.3.25 na confirmação), quando a correspondência é sugerida, então cada uma é sugerida separadamente pela conta da PO, e nenhuma é somada à outra sem a confirmação do Admin.
+  - Dado um Gestor ou Usuário, quando tenta confirmar uma correspondência (tela ou API), então a ação é recusada (403).
+  - Dado o Admin que confirma as sugestões em lote, quando salva, então há um evento na trilha por linha.
+  - *Se Q33 for "Não": a comparação fica só por grupo e por exercício (visões 1 e 2 do RF-11.6).*
+- RF-11.8 *(adiado, Q36: fica para entrega futura)* **Exportação da comparação** em PDF e Excel (padrão do RF-03.1.14 e da ADR 0004, Decisão 6): cabeçalho com condomínio, exercícios e POs comparados (arquivo, versão, hash, ou "coluna impressa"), filtros, data e hora, quem gerou e estado do de-para e da correspondência de cada exercício. Marca "PROVISÓRIO" quando algum exercício tem conta sem linha da PO, valor a realocar ou correspondência pendente. Números idênticos aos da tela.
+  - Dado a comparação do piloto do RF-11.6, quando exportada em PDF e em Excel, então 451.620,13, 419.239,16, +32.380,97 e +7,7% aparecem iguais aos da tela.
+- RF-11.9 **Caso de aceite da fase 1** (RNF-10): o golden de setembro/2026 (RF-03.1.15) continua passando sem mudança. Entra um caso novo com a PO 2026/2027 e a coluna "Orçado anterior" (RF-11.5 e RF-11.6). Quando o usuário enviar a PO 2025/2026 e fluxos do exercício anterior (P6), entra um caso real com dois exercícios; até lá, o caso com dois exercícios usa a cópia de teste dos critérios acima.
+
+**Fase 2: indicadores e gráficos**
+- RF-11.10 **Tela "Indicadores"**, para todos os perfis, com filtros de exercício e fundo. Mostra os gráficos do RF-11.11 a partir dos mesmos números das telas da fase 1 (premissa 4). Cada gráfico tem título, período, unidade (R$ ou %), a data dos dados e uma **tabela alternativa** com os mesmos valores (acessibilidade e conferência).
+  - Dado setembro/2026 do piloto, quando o usuário abre os indicadores do exercício 2026/2027, então todos os valores de setembro nos gráficos são iguais aos da tela "Previsto × realizado", centavo a centavo (execução 98,8%; excesso 8,6%; limite 20%).
+  - Dado qualquer gráfico, quando o usuário abre a tabela alternativa, então vê os mesmos valores do gráfico.
+- RF-11.11 **Indicadores da primeira entrega** (lista proposta; o usuário pode tirar ou incluir, Q35):
+  1. **Execução mensal** do fundo Condomínio (realizado ÷ previsto do mês, em %) nos 12 meses do exercício, com a referência de 100%.
+  2. **Regra dos 20%**: excesso do mês em % do previsto, com a linha do limite de 20% (Conv. 16.2) e o cenário máximo com "a realocar" e "sem linha da PO" (RF-03.1.11).
+  3. **Previsto × realizado acumulado** do exercício, mês a mês.
+  4. **Realizado por grupo** (1.1 a 1.8), mês a mês.
+  5. **Maiores diferenças** do acumulado: as 10 linhas mais acima e as 10 mais abaixo do previsto, em R$.
+  6. **Fundos de reserva e de obras**: arrecadação × previsto, mês a mês (RF-03.1.9).
+  7. **Comparação entre exercícios**: previsto do mês por grupo em cada exercício, e execução acumulada de cada exercício (RF-11.6).
+  - Dado o exercício 2026/2027 com só setembro carregado, quando o gráfico 1 é exibido, então setembro mostra 98,8% e os outros 11 meses aparecem marcados "sem fluxo carregado", sem barra e sem ponto em zero.
+  - Dado setembro/2026, quando o gráfico 2 é exibido, então mostra 8,6% com a linha de 20% e o cenário máximo de 8,8%, marcado "provisório" por haver valor a realocar.
+  - Dado setembro/2026, quando o gráfico 5 é exibido, então 1.3.10 Vigia e Portaria aparece entre as mais acima, com +6.793,38.
+  - Dado setembro/2026, quando o gráfico 6 é exibido, então Reserva mostra 14.260,79 × 13.548,60 e Obras 9.705,06 × 9.032,40.
+- RF-11.12 **Do gráfico à evidência** (RNF-04): clicar num ponto, barra ou linha abre o previsto × realizado daquele exercício, mês, fundo e linha ou grupo, com os lançamentos (RF-03.1.12).
+  - Dado o gráfico 5, quando o usuário clica em 1.3.10, então abre a linha 1.3.10 de setembro/2026 com os lançamentos da conta 1442 que somam 86.816,34.
+- RF-11.13 **Sem julgamento nos gráficos** (§3.3): cores marcam só o que tem base. A única marcação de alerta é o excesso acima de 20% (Conv. 16.2), em vermelho; o resto usa cores neutras. Nenhum título, legenda ou dica explica causa ou tendência, e nenhum termo do RF-04.15 aparece. Outros limites com cor (ex.: execução acima de 105%) só entram com a fonte e o valor definidos pelo usuário como parâmetro do condomínio (Q35).
+  - Dado um mês de teste com excesso de 20,1%, quando o gráfico 2 é exibido, então a barra do mês fica vermelha; e com 20,0%, fica neutra.
+- RF-11.14 *(adiado, Q36: fica para entrega futura)* **Gráficos na exportação**: a exportação dos indicadores sai em PDF e Excel com as tabelas dos gráficos e as barras de execução em CSS, sem imagem de gráfico (ADR 0004, Decisão 6 A). Gráfico no PDF exige biblioteca nova e decisão do usuário (Q36).
+  - Dado a exportação dos indicadores de setembro/2026, quando comparada com a tela, então todos os valores das tabelas são iguais.
+
+**Fase 3: projeção da próxima PO (esboço, sem critérios de aceite)**
+- RF-11.15 **Projeção como base opcional** (detalha RF-03.3 e alimenta o RF-03.5 "Criar nova PO"). Ideia a validar com o usuário depois das fases 1 e 2:
+  - O usuário escolhe gerar uma projeção do próximo exercício. Ela é um **rascunho**, nunca substitui uma PO e nunca é usada no previsto × realizado.
+  - Para cada linha, o sistema propõe um valor por um **método visível e determinístico**, escolhido por linha. Métodos: repetir a PO vigente; média do realizado dos últimos N meses com fluxo; PO vigente + índice (IPCA, IGP-M, dissídio) com data-base; valor de contrato vigente com reajuste. Ao lado, a premissa e os números usados, com evidência.
+  - A IA, quando o modo permite (RF-09), pode sugerir premissas a partir das Observações da PO, dos contratos e das atas. Nunca escreve o número final sem o método. Tudo funciona no modo `DESLIGADO`.
+  - Pontos a decidir antes dos requisitos: de onde vêm os índices (fonte oficial, como o Banco Central, é decisão de arquitetura e precisa de ADR); quantos exercícios de histórico usar; tratamento de linhas sazonais (ex.: 1.6.21, pagamento anual); cenários (base, otimista, pessimista, RF-03.3); e como a projeção vira rascunho na tela "Criar nova PO".
+  - Depende de: fase 1 com pelo menos um exercício completo de fluxos (P5, P6), catálogo de linhas (RF-03.5) e contratos lidos.
+
+**Matriz de regras deste bloco**
+
+| Regra | Base | Parâmetro | Severidade |
+|---|---|---|---|
+| Coluna "Orçado anterior" difere da PO anterior enviada | Boa prática de conferência (RF-02.3) | R$ 0,01 por grupo (Q30) | Aviso (não é achado) |
+| Mês usando PO prorrogada | Decisão do Admin com justificativa (RF-11.3) | Mês final da prorrogação | Aviso informativo |
+| Exercícios sobrepostos | RF-03.1.3 (uma PO por mês) | Meses do exercício | Bloqueia a confirmação (não é achado) |
+
+Nenhum achado novo: os achados de cada exercício são os do RF-03.1 (regra dos 20%, conta sem linha da PO e teto do fundo de reserva).
 
 ---
 
@@ -628,6 +741,13 @@ Origem: "o cliente pode escolher se quer esse módulo ou não e podemos vender n
 | Q28 | ✔ Sim: a justificativa com ata (RF-02.9) fica fora desta entrega (RF-03.1.11, RF-03.1.12) (usuário, 04/10/2026) | Usuário |
 | Q29 | ✔ Sim: o Admin pode confirmar a PO "ciente da divergência", com justificativa, usando a soma das linhas (RF-03.1.2) (usuário, 04/10/2026) | Usuário |
 | Q30 | ✔ Tolerar 1 centavo: diferença de até R$ 0,01 entre a soma das linhas e o subtotal impresso vira aviso de arredondamento, e os cálculos usam a soma das linhas (previsto do mês do piloto 451.620,13) (RF-03.1.2) (usuário, 04/10/2026) | Usuário |
+| P6 | Enviar a PO 2025/2026 (e anteriores, se houver) e os fluxos de caixa desses exercícios, dizendo se eram da mesma administradora (layout). Define o caso real com dois exercícios (RF-11.9) e se o RF-00.5 vira bloqueio | Usuário |
+| Q31 | ✔ Sim (usuário, 06/10/2026). O menu "Análise da PO" substitui a seção "Orçamento" e mantém "PO" e "De-para" dentro dele? **Sim (recomendado)** / Não (PO e De-para vão para Administração) (RF-11.1) | Usuário |
+| Q32 | ✔ Sim, com a opção de substituir pelo arquivo da PO anterior quando ele for conseguido (usuário, 06/10/2026). Sem o arquivo da PO anterior, usar a coluna "Orçado anterior" impressa na PO atual como previsto do exercício anterior, marcada "coluna impressa"? **Sim (recomendado)** / Não (só compara com PO enviada) (RF-11.5) | Usuário |
+| Q33 | ✔ Sim (usuário, 06/10/2026). Comparar linha a linha entre exercícios por correspondência sugerida pela conta da PO e confirmada pelo Admin? **Sim (recomendado)** / Não (só por grupo) (RF-11.7) | Usuário |
+| Q34 | ✔ Sim (usuário, 06/10/2026). Mês entre dois exercícios: o Admin pode marcar a PO anterior como "prorrogada", com justificativa? **Sim (recomendado)** / Não (fica "sem PO aprovada") (RF-11.3) | Usuário |
+| Q35 | ✔ Sim (usuário, 06/10/2026). Os 7 indicadores do RF-11.11, com cor de alerta só para o excesso acima de 20%? **Sim (recomendado)** / Ajustar a lista ou os limites | Usuário |
+| Q36 | ✔ Sim, e por enquanto sem exportação em PDF ou Excel da comparação e dos indicadores (usuário, 06/10/2026). Gráficos só na tela, com tabelas e barras em CSS no PDF, sem biblioteca nova? **Sim (recomendado)** / Não (gráfico no PDF, com Batik, por ADR) (RF-11.14) | Usuário |
 | T* | Decisões de tecnologia (ver 03-tecnologias.md) | Usuário |
 
 ---

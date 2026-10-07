@@ -1,6 +1,6 @@
 # ADR 0005: Análise da PO (vários exercícios, comparação e indicadores)
 
-- **Status:** proposta (aguardando aprovação do usuário)
+- **Status:** aprovada pelo usuário em 07/10/2026 (todas as recomendações, perguntas 1 a 6)
 - **Complementa:** ADR 0004 (reaproveita a leitura da PO, o de-para, o `CalculoPrevistoRealizado` e o cálculo na consulta, sem mudar nenhum deles). Não muda a ADR 0002: não há fila, canal gRPC nem serviço novo.
 - **Requisitos atendidos:** RF-11.1 a RF-11.7, RF-11.9 a RF-11.13, com as respostas Q31 a Q36 de 06/10/2026. RF-11.8 e RF-11.14 (exportação) estão adiados pelo usuário (Q36). RF-11.15 (projeção) é só esboço e não é decidido aqui.
 - **Não decide:** PO de outras administradoras (RF-00.5), ferramentas MCP (RF-08.1), exportação, projeção.
@@ -165,13 +165,15 @@ Os passos 1, 2 e 3 podem correr em paralelo. O frontend começa quando o `openap
 - Os números continuam sem cópia gravada. Comparar mais exercícios custa mais consultas por abertura de tela; o cache fica previsto, não implementado.
 - O `rag` e o `leitor` não mudam; a PO anterior de outra administradora continua esperando o RF-00.5.
 
-## Pontos para o agente `requisitos` (lacunas encontradas, sem decisão aqui)
+## Pontos para o agente `requisitos` (lacunas encontradas; resolvidos no RF-11.3 e no RF-11.7 em 07/10/2026)
 
 1. Sugestão da correspondência: exigir mesma conta da PO **e mesmo grupo**, porque a mesma conta aparece em mais de uma linha (Decisão 1).
 2. PO confirmada sobre meses já prorrogados: a confirmação vale e a prorrogação é encurtada? (Decisão 4)
 3. Meses prorrogados fora do acumulado do exercício, mostrados depois dos 12 meses? (Decisão 4)
 
 ## Perguntas para o usuário
+
+Respondidas pelo usuário em 07/10/2026: **Sim** em todas, seguindo as recomendações.
 
 1. Decisão 1: correspondência entre exercícios por um catálogo de **rubricas** do condomínio (reaproveitado depois na "Criar nova PO")? **Sim (recomendado)** / Não (pares de linhas entre dois exercícios)
 2. Decisão 2: comparação calculada na consulta, sem gravar resultado, como no previsto × realizado? **Sim (recomendado)** / Não

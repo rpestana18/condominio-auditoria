@@ -20,6 +20,28 @@ public final class PoDoPiloto {
     private String subtotalPessoal = "69193.86";
     private String fundoReserva = null;
     private boolean aparelhosDeGinastica = false;
+    private boolean colunaAnterior = false;
+    private String totalAnterior = null;
+
+    /**
+     * Coluna "Orçado anterior" (2025/2026) com os valores reais do PDF nos grupos e nas linhas citadas (RF-11.5): total
+     * 441.304,38 sem os fundos, fundos 22.065,22, 1.3.20 17.195,00. Como no PDF, o grupo 1.6 imprime 18.525,42 e deixa
+     * de fora a linha 1.6.21 (220,83). As demais linhas de cada grupo foram somadas na linha "demais".
+     */
+    private static final java.util.Map<String, String> ANTERIOR = java.util.Map.ofEntries(
+            java.util.Map.entry("1|null", "441304.38"), java.util.Map.entry("1.1|null", "37661.43"),
+            java.util.Map.entry("1.1.5|1553 - Férias", "339.45"), java.util.Map.entry("1.1.1|1500 - Demais", "37321.98"),
+            java.util.Map.entry("1.2|null", "565.00"), java.util.Map.entry("1.2.1|1560 - Consumo", "565.00"),
+            java.util.Map.entry("1.3|null", "348631.55"), java.util.Map.entry("1.3.2|1598 - Bombas", "3200.00"),
+            java.util.Map.entry("1.3.20|1682 - Sindicatura Profissional", "17195.00"),
+            java.util.Map.entry("1.3.1|1692 - Demais", "328236.55"), java.util.Map.entry("1.5|null", "2350.00"),
+            java.util.Map.entry("1.5.1|1700 - Bens", "2350.00"), java.util.Map.entry("1.6|null", "18525.42"),
+            java.util.Map.entry("1.6.1|1710 - Demais", "18525.42"),
+            java.util.Map.entry("1.6.21|1346 - Outros Serviços Contratados", "220.83"),
+            java.util.Map.entry("1.7|null", "19300.00"), java.util.Map.entry("1.7.8|1606 - Material Hidráulico", "19300.00"),
+            java.util.Map.entry("1.8|null", "14270.99"), java.util.Map.entry("1.8.1|1693 - Serviços", "14270.99"),
+            java.util.Map.entry("1.9|null", "22065.22"), java.util.Map.entry("1.9.1|null", "13239.13"),
+            java.util.Map.entry("1.9.2|null", "8826.09"));
 
     public static PoDoPiloto padrao() {
         return new PoDoPiloto();
@@ -43,6 +65,19 @@ public final class PoDoPiloto {
      */
     public PoDoPiloto comAparelhosDeGinastica() {
         this.aparelhosDeGinastica = true;
+        return this;
+    }
+
+    /** Coluna "Orçado anterior" com os valores reais do PDF (ver {@link #ANTERIOR}). */
+    public PoDoPiloto comColunaAnterior() {
+        this.colunaAnterior = true;
+        return this;
+    }
+
+    /** Coluna "Orçado anterior" com outro total impresso (ex.: incluindo os fundos). */
+    public PoDoPiloto comTotalAnterior(String total) {
+        this.colunaAnterior = true;
+        this.totalAnterior = total;
         return this;
     }
 
@@ -75,6 +110,10 @@ public final class PoDoPiloto {
         add(TipoLinhaPo.GRUPO, "1.6", null, "Subtotal (soma linhas 57 a 77)", null, "DESPESAS ADMINISTRATIVAS", "17388.04", null);
         add(TipoLinhaPo.LINHA, "1.6.15", null, null, MarcaPo.RATEIO_A_PARTE, "Seguro predial", "0.00", null);
         add(TipoLinhaPo.LINHA, "1.6.1", "1710 - Demais", null, null, "Demais administrativas", "17388.04", null);
+        if (colunaAnterior) {
+            add(TipoLinhaPo.LINHA, "1.6.21", "1346 - Outros Serviços Contratados", null, null, "E-mail GoDaddy (anual)",
+                    "0.00", "-32,07%");
+        }
         add(TipoLinhaPo.GRUPO, "1.7", null, "Subtotal (soma linhas 79 a 90)", null, "MATERIAIS/SUPRIMENTOS", "15200.00", null);
         if (aparelhosDeGinastica) {
             add(TipoLinhaPo.LINHA, "1.7.2", "1606 - Aparelhos de Ginástica", null, null, "Peças de Ginástica", "0.00", null);
@@ -128,6 +167,16 @@ public final class PoDoPiloto {
     private void add(TipoLinhaPo tipo, String codigo, String conta, String contaTexto, MarcaPo marca, String descricao,
             String orcado, String percentual) {
         linhas.add(new LinhaPoLida(linhas.size() + 1, 1, tipo, codigo, conta, contaTexto, marca, descricao,
-                new BigDecimal("0.00"), new BigDecimal(orcado), percentual, null));
+                new BigDecimal(anterior(codigo, conta)), new BigDecimal(orcado), percentual, null));
+    }
+
+    private String anterior(String codigo, String conta) {
+        if (!colunaAnterior) {
+            return "0.00";
+        }
+        if (totalAnterior != null && codigo.equals("1") && conta == null) {
+            return totalAnterior;
+        }
+        return ANTERIOR.getOrDefault(codigo + "|" + conta, "0.00");
     }
 }

@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Exercícios do menu "Análise da PO", a conferência da coluna impressa e a comparação (RF-11.4 a RF-11.6). Todos os
- * perfis.
+ * Menu "Análise da PO": exercícios, conferência da coluna impressa, comparação e indicadores (RF-11.4 a RF-11.12).
+ * Todos os perfis.
  */
 @RestController
 @RequestMapping("/api/condominios/{condominioId}")
@@ -23,11 +23,14 @@ class ExercicioController {
     private final AcessoCondominio acesso;
     private final ServicoExercicios servico;
     private final ServicoComparacao comparacao;
+    private final ServicoIndicadores indicadores;
 
-    ExercicioController(AcessoCondominio acesso, ServicoExercicios servico, ServicoComparacao comparacao) {
+    ExercicioController(AcessoCondominio acesso, ServicoExercicios servico, ServicoComparacao comparacao,
+            ServicoIndicadores indicadores) {
         this.acesso = acesso;
         this.servico = servico;
         this.comparacao = comparacao;
+        this.indicadores = indicadores;
     }
 
     @GetMapping("/exercicios")
@@ -52,5 +55,14 @@ class ExercicioController {
             @RequestParam(defaultValue = "false") boolean mesmosMeses) {
         acesso.exigir(condominioId);
         return comparacao.comparar(condominioId, exercicios, fundo, mesmosMeses);
+    }
+
+    /** Indicadores de um exercício (RF-11.10 a RF-11.12); {@code po} vazio = o mais recente. */
+    @GetMapping("/indicadores")
+    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    Indicadores.Resultado indicadores(@PathVariable UUID condominioId, @RequestParam(required = false) UUID po,
+            @RequestParam(required = false) UUID fundo) {
+        acesso.exigir(condominioId);
+        return indicadores.indicadores(condominioId, po, fundo);
     }
 }

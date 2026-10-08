@@ -750,6 +750,24 @@ paths:
         "403": { description: Sem acesso ao condomínio }
         "404": { description: Exercício, PO, coluna ou fundo não encontrado }
         "422": { description: Menos de dois exercícios }
+  /condominios/{condominioId}/indicadores:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Séries dos 7 gráficos da tela "Indicadores" (todos os perfis, RF-11.10 a RF-11.12)
+      description: |
+        Números prontos, os mesmos da tela de previsto × realizado (o frontend só desenha). Mês sem fluxo carregado ou
+        com dois fluxos vem com os números nulos e a situação, nunca com zero. Cada ponto traz o mês e o "alvo" da
+        evidência no previsto × realizado (período = o mês do ponto; no gráfico 5, "acumulado"). Gráficos 1 a 5 são do
+        fundo Condomínio; o 6, dos fundos ligados às linhas 1.9; o 7, deste exercício contra o anterior da lista de
+        exercícios. Filtro de fundo: o fundo Condomínio tira o 6; outro fundo tira 1 a 5 e deixa no 6 só ele.
+      operationId: indicadores
+      parameters:
+        - { name: po, in: query, required: false, description: PO do exercício; vazio = o mais recente, schema: { type: string, format: uuid } }
+        - { name: fundo, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Indicadores" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO confirmada ou fundo não encontrado }
   /condominios/{condominioId}/previsoes/{poId}/coluna-impressa:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
     get:
@@ -1516,6 +1534,146 @@ components:
               realizado: { type: [number, "null"] }
               alvo: { type: [string, "null"] }
         avisos: { type: array, items: { type: string } }
+    Indicadores:
+      type: object
+      required: [poId, rotulo, inicio, fim, avisos]
+      properties:
+        poId: { type: string, format: uuid }
+        rotulo: { type: string }
+        inicio: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" }
+        fim: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" }
+        fundoId: { type: [string, "null"], format: uuid }
+        dadosDe: { type: [string, "null"], format: date-time, description: Envio mais recente dos fluxos usados }
+        limitePercentual: { type: [number, "null"], description: Limite da regra dos 20% (Conv. 16.2) }
+        execucaoMensal:
+          type: [array, "null"]
+          description: Gráfico 1, realizado ÷ previsto do mês (referência 100%)
+          items:
+            type: object
+            required: [mes, situacao]
+            properties:
+              mes: { type: string }
+              situacao: { type: string, enum: [COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS] }
+              previsto: { type: [number, "null"] }
+              realizado: { type: [number, "null"] }
+              execucao: { type: [number, "null"] }
+              alvo: { type: [string, "null"] }
+        regra20:
+          type: [array, "null"]
+          description: Gráfico 2; só "acimaDoLimite" usa cor de alerta (RF-11.13)
+          items:
+            type: object
+            required: [mes, situacao]
+            properties:
+              mes: { type: string }
+              situacao: { type: string, enum: [COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS] }
+              excesso: { type: [number, "null"] }
+              percentual: { type: [number, "null"] }
+              limitePercentual: { type: [number, "null"] }
+              cenarioMaximo: { type: [number, "null"] }
+              percentualCenarioMaximo: { type: [number, "null"] }
+              acimaDoLimite: { type: [boolean, "null"] }
+              provisorio: { type: [boolean, "null"] }
+              alvo: { type: [string, "null"] }
+        acumulado:
+          type: [array, "null"]
+          description: Gráfico 3, somas até o mês (só meses com fluxo entram)
+          items:
+            type: object
+            required: [mes, situacao]
+            properties:
+              mes: { type: string }
+              situacao: { type: string, enum: [COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS] }
+              previstoAcumulado: { type: [number, "null"] }
+              realizadoAcumulado: { type: [number, "null"] }
+              alvo: { type: [string, "null"] }
+        realizadoPorGrupo:
+          type: [array, "null"]
+          description: Gráfico 4, grupos 1.1 a 1.8
+          items:
+            type: object
+            required: [codigo, descricao, pontos]
+            properties:
+              codigo: { type: string }
+              descricao: { type: string }
+              pontos:
+                type: array
+                items:
+                  type: object
+                  required: [mes, situacao]
+                  properties:
+                    mes: { type: string }
+                    situacao: { type: string, enum: [COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS] }
+                    valor: { type: [number, "null"] }
+                    alvo: { type: [string, "null"] }
+        maioresDiferencas:
+          oneOf:
+            - { type: "null" }
+            - type: object
+              description: Gráfico 5, do acumulado; até 10 linhas de cada lado
+              required: [acima, abaixo]
+              properties:
+                acima: { type: array, items: { $ref: "#/components/schemas/DiferencaIndicador" } }
+                abaixo: { type: array, items: { $ref: "#/components/schemas/DiferencaIndicador" } }
+        fundos:
+          type: [array, "null"]
+          description: Gráfico 6, arrecadação × previsto
+          items:
+            type: object
+            required: [fundoId, fundo, pontos]
+            properties:
+              fundoId: { type: string, format: uuid }
+              fundo: { type: string }
+              linhaCodigo: { type: [string, "null"] }
+              pontos:
+                type: array
+                items:
+                  type: object
+                  required: [mes, situacao]
+                  properties:
+                    mes: { type: string }
+                    situacao: { type: string, enum: [COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS] }
+                    previsto: { type: [number, "null"] }
+                    arrecadado: { type: [number, "null"] }
+                    alvo: { type: [string, "null"] }
+        comparacao:
+          oneOf:
+            - { type: "null" }
+            - type: object
+              description: Gráfico 7; "previstoMes" de cada grupo na ordem de "exercicios"
+              required: [exercicios, grupos]
+              properties:
+                exercicios:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, rotulo]
+                    properties:
+                      id: { type: string }
+                      rotulo: { type: string }
+                      execucao: { type: [number, "null"] }
+                      periodo: { type: [string, "null"] }
+                grupos:
+                  type: array
+                  items:
+                    type: object
+                    required: [codigo, descricao, previstoMes]
+                    properties:
+                      codigo: { type: string }
+                      descricao: { type: string }
+                      previstoMes: { type: array, items: { type: [number, "null"] } }
+        avisos: { type: array, items: { type: string } }
+    DiferencaIndicador:
+      type: object
+      required: [linhaId, codigo, descricao, previsto, realizado, diferenca, alvo]
+      properties:
+        linhaId: { type: string, format: uuid }
+        codigo: { type: string }
+        descricao: { type: string }
+        previsto: { type: number }
+        realizado: { type: number }
+        diferenca: { type: number, description: Realizado menos previsto }
+        alvo: { type: string }
     PedidoProrrogacao:
       type: object
       required: [ate, justificativa]

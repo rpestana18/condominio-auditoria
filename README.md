@@ -201,8 +201,8 @@ rag/                serviço rag: leitura, interpretação e conferência dos do
 mcp/                serviço mcp: ferramentas MCP que chamam o backend por gRPC
 leitor/             leitor de documentos em Python (sem estado)
 libs/
-  armazenamento/    interface Armazenamento (pasta local; S3 depois), usada por backend e rag
-  contrato-grpc/    código gerado de contracts/grpc (usado por backend, rag e mcp)
+  storage/          interface Storage (pasta local; S3 depois), usada por backend e rag
+  grpc-contract/    código gerado de contracts/grpc (usado por backend, rag e mcp)
 frontend/           React + TypeScript + Vite
 contracts/          openapi.yaml, leitor/v1, mensagens/v1 e v2 (fila) e grpc/ (.proto)
 infra/              docker-compose, Dockerfile dos serviços Java e realm do Keycloak

@@ -3,7 +3,7 @@ package br.com.condominioauditoria.backend.arquivo;
 import br.com.condominioauditoria.backend.mensagens.PublicadorArquivos.ArquivoParaLer;
 import br.com.condominioauditoria.backend.mensagens.PublicadorIndexacao.ArquivoParaIndexar;
 import br.com.condominioauditoria.backend.modulo.Modulos;
-import br.com.condominioauditoria.armazenamento.Armazenamento;
+import br.com.condominioauditoria.storage.Storage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -30,12 +30,12 @@ import org.springframework.web.multipart.MultipartFile;
 public class ArquivoService {
 
     private final ArquivoRepository arquivos;
-    private final Armazenamento armazenamento;
+    private final Storage armazenamento;
     private final ApplicationEventPublisher eventos;
     private final HistoricoCategoriaRepository historico;
     private final Modulos modulos;
 
-    ArquivoService(ArquivoRepository arquivos, Armazenamento armazenamento, ApplicationEventPublisher eventos,
+    ArquivoService(ArquivoRepository arquivos, Storage armazenamento, ApplicationEventPublisher eventos,
             HistoricoCategoriaRepository historico, Modulos modulos) {
         this.arquivos = arquivos;
         this.armazenamento = armazenamento;
@@ -59,9 +59,9 @@ public class ArquivoService {
             String nome = nomeSeguro(envio.getOriginalFilename());
             String caminho = "%s/%s/%d/%s-%s".formatted(condominioId, categoria, Year.now().getValue(),
                     sha256.substring(0, 12), nome);
-            if (!armazenamento.existe(caminho)) {
+            if (!armazenamento.exists(caminho)) {
                 try (InputStream entrada = Files.newInputStream(temporario)) {
-                    armazenamento.guardar(caminho, entrada);
+                    armazenamento.store(caminho, entrada);
                 }
             }
             var novo = new Arquivo(condominioId, categoria, nome, caminho, sha256, Files.size(temporario),

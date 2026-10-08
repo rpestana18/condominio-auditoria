@@ -1,5 +1,5 @@
-// Gera as classes Java do contrato gRPC (contracts/grpc/*.proto). Backend (servidor) e mcp (cliente) usam este jar;
-// nenhuma classe de domínio é compartilhada, só o contrato.
+// Generates the Java classes of the gRPC contract (contracts/grpc/*.proto). Backend (server), rag and mcp use this jar;
+// no domain class is shared, only the contract.
 plugins {
     id("com.google.protobuf")
 }

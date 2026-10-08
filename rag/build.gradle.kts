@@ -5,8 +5,8 @@ plugins {
 tasks.named<Jar>("jar") { enabled = false }
 
 dependencies {
-    implementation(project(":libs:armazenamento"))
-    implementation(project(":libs:contrato-grpc"))
+    implementation(project(":libs:storage"))
+    implementation(project(":libs:grpc-contract"))
     implementation(platform(libs.spring.ai.bom))
 
     // webmvc só para o /actuator/health; a entrada de trabalho é a fila (e o gRPC do assistente)

@@ -81,6 +81,7 @@ final class CenarioPo {
     final ServicoDepara depara;
     final ServicoRubricas servicoRubricas;
     final ServicoProrrogacao prorrogacao;
+    final ServicoExercicios exercicios;
     final PrevisaoOrcamentariaRepository previsaoRepo;
     final LinhaPoRepository linhaRepo;
     final DeparaContaRepository deparaRepo;
@@ -312,6 +313,7 @@ final class CenarioPo {
                 linhaRepo, deparaRepo, realocacaoRepo, eventoRealocacaoRepo, publicados::add);
         recalculo = new RecalculoAchadosOrcamento(condominios, previsaoRepo, previstoRealizado, registro);
         prorrogacao = new ServicoProrrogacao(condominios, previsaoRepo, eventoRepo, consulta, publicados::add);
+        exercicios = new ServicoExercicios(previsaoRepo, linhaRepo, previstoRealizado, depara, servicoRubricas);
         ligacaoFundos = new LigacaoFundosPo(condominios, previsaoRepo, linhaRepo, poFundoRepo, fundoRepo, eventoRepo,
                 consulta, publicados::add);
 

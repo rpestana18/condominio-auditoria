@@ -974,6 +974,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/exercicios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Exercícios do condomínio, do mais recente para o mais antigo (todos os perfis, RF-11.4 e RF-11.5)
+         * @description Um item por PO confirmada (id "po:<uuid>"), com os meses do exercício e os prorrogados, a situação do fluxo de
+         *     cada mês e o estado do de-para e das rubricas. Quando a PO mais antiga não tem PO anterior confirmada (a que
+         *     cobre o mês anterior ao início dela), a coluna "Orçado anterior" dela entra logo depois como exercício
+         *     "AAAA/AAAA (coluna impressa)" (id "coluna:<uuid da PO>"), só com previsto. Quando a PO anterior é confirmada,
+         *     ela substitui a coluna sem ação extra: o item dela traz "colunaImpressa" e os avisos de diferença por grupo.
+         *     Nada é gravado.
+         */
+        get: operations["listarExercicios"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/coluna-impressa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Conferência da coluna "Orçado anterior" da PO (todos os perfis, RF-11.5)
+         * @description Soma das linhas de cada grupo contra o subtotal impresso, e total impresso contra a soma dos subtotais (com ou
+         *     sem os fundos), na tolerância da PO. Grupos, fundos e previsto do mês seguem a soma das linhas. Com PO anterior
+         *     confirmada, traz as diferenças por grupo entre ela e a coluna (aviso, não achado).
+         */
+        get: operations["colunaImpressa"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/condominios/{condominioId}/previsoes/{poId}/eventos": {
         parameters: {
             query?: never;
@@ -1535,6 +1587,83 @@ export interface components {
             /** Format: date-time */
             em: string;
         };
+        /**
+         * @description Um exercício da "Análise da PO". Na coluna impressa, "inicio" e "fim" são os 12 meses antes da PO que a
+         *     imprimiu, "meses" vem vazio (sem realizado) e prorrogação, de-para e rubricas vêm nulos.
+         */
+        Exercicio: {
+            /** @description "po:<uuid>" ou "coluna:<uuid da PO que imprimiu a coluna>" */
+            id: string;
+            /** @enum {string} */
+            tipo: "PO" | "COLUNA_IMPRESSA";
+            /** @description Ex.: "2026/2027" ou "2025/2026 (coluna impressa)" */
+            rotulo: string;
+            /** Format: uuid */
+            poId: string;
+            versao?: number | null;
+            inicio: string;
+            fim: string;
+            prorrogacao?: null | components["schemas"]["ProrrogacaoPo"];
+            /** @description Soma das linhas sem os fundos */
+            previstoMes: number;
+            meses: {
+                mes: string;
+                /** @enum {string} */
+                situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
+                prorrogado: boolean;
+            }[];
+            depara?: null | components["schemas"]["ResumoDepara"];
+            rubricas?: null | components["schemas"]["ResumoRubricas"];
+            /** @description Id da coluna impressa que este exercício substituiu (fica só como conferência) */
+            colunaImpressa?: string | null;
+            avisos: string[];
+        };
+        ConferenciaColuna: {
+            id: string;
+            rotulo: string;
+            /** Format: uuid */
+            poId: string;
+            /** @description Há PO anterior confirmada */
+            substituida: boolean;
+            /** Format: uuid */
+            poAnteriorId?: string | null;
+            poAnteriorRotulo?: string | null;
+            totalImpresso?: number | null;
+            /** @description O total impresso confere com os subtotais incluindo os fundos */
+            totalIncluiFundos: boolean;
+            fundos: number;
+            previstoMes: number;
+            grupos: {
+                /** Format: uuid */
+                linhaId?: string;
+                codigo: string;
+                descricao: string;
+                fundos: boolean;
+                impresso: number;
+                /** @description Soma das linhas (é o valor usado) */
+                valor: number;
+                /** @description Impresso menos a soma das linhas */
+                diferenca: number;
+                confere: boolean;
+                linhas: {
+                    /** Format: uuid */
+                    linhaId?: string;
+                    codigo: string;
+                    conta?: string | null;
+                    descricao: string;
+                    valor: number;
+                    /** @description O "%" impresso */
+                    percentualTexto?: string | null;
+                }[];
+            }[];
+            diferencas: {
+                codigo: string;
+                descricao: string;
+                poEnviada: number;
+                colunaImpressa: number;
+            }[];
+            avisos: string[];
+        };
         PedidoProrrogacao: {
             /** @description Último mês prorrogado (AAAA-MM) */
             ate: string;
@@ -1729,18 +1858,19 @@ export interface components {
             /** Format: date-time */
             atualizadoEm?: string | null;
         };
+        /** @description Sempre sobre todas as contas, sem o filtro ("N de M contas confirmadas") */
+        ResumoDepara: {
+            contas: number;
+            confirmadas: number;
+            sugeridas: number;
+            recusadas: number;
+            semDepara: number;
+        };
         DeparaLista: {
             /** Format: uuid */
             previsaoId: string;
             versao?: number | null;
-            /** @description Sempre sobre todas as contas, sem o filtro ("N de M contas confirmadas") */
-            resumo: {
-                contas: number;
-                confirmadas: number;
-                sugeridas: number;
-                recusadas: number;
-                semDepara: number;
-            };
+            resumo: components["schemas"]["ResumoDepara"];
             contas: components["schemas"]["ContaDepara"][];
         };
         PedidoDestino: {
@@ -1849,18 +1979,19 @@ export interface components {
             /** Format: date-time */
             atualizadoEm?: string | null;
         };
+        /** @description Sempre sobre todas as linhas, sem o filtro */
+        ResumoRubricas: {
+            linhas: number;
+            confirmadas: number;
+            sugeridas: number;
+            recusadas: number;
+            semRubrica: number;
+        };
         RubricasDaPo: {
             /** Format: uuid */
             previsaoId: string;
             versao?: number | null;
-            /** @description Sempre sobre todas as linhas, sem o filtro */
-            resumo: {
-                linhas: number;
-                confirmadas: number;
-                sugeridas: number;
-                recusadas: number;
-                semRubrica: number;
-            };
+            resumo: components["schemas"]["ResumoRubricas"];
             linhas: components["schemas"]["LinhaComRubrica"][];
         };
         PedidoNovaRubrica: {
@@ -4266,6 +4397,72 @@ export interface operations {
             };
             /** @description PO não confirmada */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listarExercicios: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exercicio"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    colunaImpressa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConferenciaColuna"];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não confirmada ou sem a coluna "Orçado anterior" */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

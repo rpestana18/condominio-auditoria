@@ -134,12 +134,7 @@ public class ConsultaPrevistoRealizado {
                 .collect(Collectors.toMap(PoFundo::getLinhaPoId, PoFundo::getFundoId));
         Map<UUID, String> nomes = fundos.findByCondominioId(condominioId).stream()
                 .collect(Collectors.toMap(Fundo::getId, Fundo::getNome));
-        List<Fluxo> fluxos = arquivos.findByCondominioIdAndCategoriaAndStatusIn(condominioId, Categoria.BALANCETE,
-                        FLUXO_LIDO).stream()
-                .filter(a -> a.getPeriodoInicio() != null && a.getPeriodoFim() != null)
-                .map(a -> new Fluxo(a.getId(), a.getNomeOriginal(), a.getSha256(), a.getPeriodoInicio(),
-                        a.getPeriodoFim(), a.getEnviadoEm(), a.getEnviadoPor()))
-                .sorted(Comparator.comparing(Fluxo::arquivoId)).toList();
+        List<Fluxo> fluxos = fluxos(condominioId);
 
         LocalDate inicio;
         LocalDate fim;
@@ -171,6 +166,15 @@ public class ConsultaPrevistoRealizado {
         return CalculoPrevistoRealizado.calcular(new Entrada(po, nomeArquivo, lidas,
                 deparas.findByPrevisaoIdOrderByContaCodigo(po.getId()), fundoPorLinha, nomes,
                 condominio.getFundoOrdinarioId(), fluxos, doPeriodo, ativas, limite, avisosDaPo, periodo));
+    }
+
+    /** Fluxos lidos do condomínio com período (balancetes concluídos ou a revisar). */
+    List<Fluxo> fluxos(UUID condominioId) {
+        return arquivos.findByCondominioIdAndCategoriaAndStatusIn(condominioId, Categoria.BALANCETE, FLUXO_LIDO)
+                .stream().filter(a -> a.getPeriodoInicio() != null && a.getPeriodoFim() != null)
+                .map(a -> new Fluxo(a.getId(), a.getNomeOriginal(), a.getSha256(), a.getPeriodoInicio(),
+                        a.getPeriodoFim(), a.getEnviadoEm(), a.getEnviadoPor()))
+                .sorted(Comparator.comparing(Fluxo::arquivoId)).toList();
     }
 
     private Optional<PrevisaoOrcamentaria> escolherPo(UUID condominioId, Periodo periodo, UUID poId) {

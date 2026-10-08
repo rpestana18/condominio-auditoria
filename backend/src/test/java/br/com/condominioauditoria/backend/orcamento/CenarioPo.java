@@ -70,12 +70,16 @@ final class CenarioPo {
     final List<RealocacaoLancamento> realocacoes = new ArrayList<>();
     final List<EventoRealocacao> eventosRealocacao = new ArrayList<>();
     final List<Fundo> fundos = new ArrayList<>();
+    final List<Rubrica> rubricas = new ArrayList<>();
+    final List<LinhaRubrica> linhasRubrica = new ArrayList<>();
+    final List<EventoRubrica> eventosRubrica = new ArrayList<>();
     /** Mudanças publicadas pelos serviços; {@link #aposCommit()} faz o papel do disparo depois do commit. */
     final List<Object> publicados = new ArrayList<>();
 
     final ConfirmacaoPrevisao confirmacao;
     final ConsultaPrevisao consulta;
     final ServicoDepara depara;
+    final ServicoRubricas servicoRubricas;
     final PrevisaoOrcamentariaRepository previsaoRepo;
     final LinhaPoRepository linhaRepo;
     final DeparaContaRepository deparaRepo;
@@ -201,8 +205,46 @@ final class CenarioPo {
         consulta = new ConsultaPrevisao(previsaoRepo, linhaRepo, conferenciaRepo, arquivoRepo, poFundoRepo, fundoRepo,
                 achadoRepo, reservaDaPo);
         registro = new RegistroAchados(achadoRepo, evidenciaRepo, eventoAchadoRepo);
+        RubricaRepository rubricaRepo = mock(RubricaRepository.class);
+        when(rubricaRepo.save(any())).thenAnswer(i -> {
+            if (!rubricas.contains(i.<Rubrica>getArgument(0))) {
+                rubricas.add(i.getArgument(0));
+            }
+            return i.getArgument(0);
+        });
+        when(rubricaRepo.existsByCondominioId(any())).thenAnswer(i -> rubricas.stream()
+                .anyMatch(r -> r.getCondominioId().equals(i.getArgument(0))));
+        when(rubricaRepo.findByCondominioIdOrderByNome(any())).thenAnswer(i -> rubricas.stream()
+                .filter(r -> r.getCondominioId().equals(i.getArgument(0))).sorted(Comparator.comparing(Rubrica::getNome))
+                .toList());
+        when(rubricaRepo.findById(any())).thenAnswer(i -> rubricas.stream()
+                .filter(r -> r.getId().equals(i.getArgument(0))).findFirst());
+        when(rubricaRepo.findByIdAndCondominioId(any(), any())).thenAnswer(i -> rubricas.stream()
+                .filter(r -> r.getId().equals(i.getArgument(0)) && r.getCondominioId().equals(i.getArgument(1)))
+                .findFirst());
+        LinhaRubricaRepository linhaRubricaRepo = mock(LinhaRubricaRepository.class);
+        when(linhaRubricaRepo.save(any())).thenAnswer(i -> {
+            if (!linhasRubrica.contains(i.<LinhaRubrica>getArgument(0))) {
+                linhasRubrica.add(i.getArgument(0));
+            }
+            return i.getArgument(0);
+        });
+        when(linhaRubricaRepo.findByPrevisaoId(any())).thenAnswer(i -> linhasRubrica.stream()
+                .filter(l -> l.getPrevisaoId().equals(i.getArgument(0))).toList());
+        when(linhaRubricaRepo.findByCondominioIdAndEstado(any(), any())).thenAnswer(i -> linhasRubrica.stream()
+                .filter(l -> l.getCondominioId().equals(i.getArgument(0)) && l.getEstado() == i.getArgument(1))
+                .toList());
+        EventoRubricaRepository eventoRubricaRepo = mock(EventoRubricaRepository.class);
+        when(eventoRubricaRepo.save(any())).thenAnswer(i -> {
+            eventosRubrica.add(i.getArgument(0));
+            return i.getArgument(0);
+        });
+        when(eventoRubricaRepo.findByPrevisaoIdOrderByEmAscLinhaCodigoAsc(any())).thenAnswer(i -> eventosRubrica.stream()
+                .filter(e -> i.getArgument(0).equals(e.getPrevisaoId())).toList());
+        servicoRubricas = new ServicoRubricas(condominios, previsaoRepo, linhaRepo, rubricaRepo, linhaRubricaRepo,
+                eventoRubricaRepo);
         confirmacao = new ConfirmacaoPrevisao(condominios, previsaoRepo, linhaRepo, poFundoRepo, eventoRepo,
-                arquivoRepo, fundoRepo, consulta, reservaDaPo, registro, publicados::add);
+                arquivoRepo, fundoRepo, consulta, reservaDaPo, registro, servicoRubricas, publicados::add);
         gravacao = new GravacaoPrevisao(previsaoRepo, linhaRepo, new PropriedadesOrcamento(new BigDecimal("0.01")));
 
         deparaRepo = mock(DeparaContaRepository.class);

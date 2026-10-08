@@ -19,6 +19,7 @@ public final class PoDoPiloto {
     private final List<LinhaPoLida> linhas = new ArrayList<>();
     private String subtotalPessoal = "69193.86";
     private String fundoReserva = null;
+    private boolean aparelhosDeGinastica = false;
 
     public static PoDoPiloto padrao() {
         return new PoDoPiloto();
@@ -36,6 +37,15 @@ public final class PoDoPiloto {
         return this;
     }
 
+    /**
+     * Cópia de teste com a conta 1606 "Aparelhos de Ginástica" em 1.3.5 e 1.7.2, como na PO real (RF-11.7), com
+     * valor zero para as somas continuarem batendo.
+     */
+    public PoDoPiloto comAparelhosDeGinastica() {
+        this.aparelhosDeGinastica = true;
+        return this;
+    }
+
     public PrevisaoLida previsao() {
         linhas.clear();
         String reserva = fundoReserva == null ? "13548.60" : fundoReserva;
@@ -49,6 +59,9 @@ public final class PoDoPiloto {
         add(TipoLinhaPo.LINHA, "1.2.1", "1560 - Consumo", null, null, "Consumo", "694.05", null);
         add(TipoLinhaPo.GRUPO, "1.3", null, "Subtotal (soma linhas 23 a 46)", null, "SERVIÇOS - CONTRATOS EFETIVOS", "336274.17", null);
         add(TipoLinhaPo.LINHA, "1.3.2", "1598 - Bombas", null, null, "Servirio Soluções Tecnicas Ltda", "3000.00", "-6,25%");
+        if (aparelhosDeGinastica) {
+            add(TipoLinhaPo.LINHA, "1.3.5", "1606 - Aparelhos de Ginástica", null, null, "Manutenção Academia", "0.00", null);
+        }
         add(TipoLinhaPo.LINHA, "1.3.20", "1682 - Sindicatura Profissional", null, null, "Obm - Sergio Diniz", "8000.00", "-53,47%");
         add(TipoLinhaPo.LINHA, "1.3.23", "1621 - Interfones", null, null, "Manutenção Preventiva De Interfones/Cftv", "0.00", null);
         add(TipoLinhaPo.LINHA, "1.3.1", "1692 - Demais", null, null, "Demais contratos", "323755.25", null);
@@ -63,6 +76,9 @@ public final class PoDoPiloto {
         add(TipoLinhaPo.LINHA, "1.6.15", null, null, MarcaPo.RATEIO_A_PARTE, "Seguro predial", "0.00", null);
         add(TipoLinhaPo.LINHA, "1.6.1", "1710 - Demais", null, null, "Demais administrativas", "17388.04", null);
         add(TipoLinhaPo.GRUPO, "1.7", null, "Subtotal (soma linhas 79 a 90)", null, "MATERIAIS/SUPRIMENTOS", "15200.00", null);
+        if (aparelhosDeGinastica) {
+            add(TipoLinhaPo.LINHA, "1.7.2", "1606 - Aparelhos de Ginástica", null, null, "Peças de Ginástica", "0.00", null);
+        }
         add(TipoLinhaPo.LINHA, "1.7.8", "1606 - Material Hidráulico", null, null, "Material Hidráulico", "15200.00", null);
         add(TipoLinhaPo.GRUPO, "1.8", null, "Subtotal (soma linhas 92 a 99)", null, "SERVIÇOS", "10020.00", null);
         add(TipoLinhaPo.LINHA, "1.8.1", "1693 - Serviços", null, null, "Serviços", "10020.00", null);

@@ -60,12 +60,13 @@ public class ConfirmacaoPrevisao {
     private final ConsultaPrevisao consulta;
     private final ReservaDaPo reserva;
     private final RegistroAchados achados;
+    private final ServicoRubricas rubricas;
     private final ApplicationEventPublisher publicador;
 
     ConfirmacaoPrevisao(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             LinhaPoRepository linhas, PoFundoRepository poFundos, EventoPrevisaoRepository eventos,
             ArquivoRepository arquivos, FundoRepository fundos, ConsultaPrevisao consulta, ReservaDaPo reserva,
-            RegistroAchados achados, ApplicationEventPublisher publicador) {
+            RegistroAchados achados, ServicoRubricas rubricas, ApplicationEventPublisher publicador) {
         this.condominios = condominios;
         this.previsoes = previsoes;
         this.linhas = linhas;
@@ -76,6 +77,7 @@ public class ConfirmacaoPrevisao {
         this.consulta = consulta;
         this.reserva = reserva;
         this.achados = achados;
+        this.rubricas = rubricas;
         this.publicador = publicador;
     }
 
@@ -136,6 +138,8 @@ public class ConfirmacaoPrevisao {
                 detalheDoEvento(po, ata, trocas, ligacoes, avaliacao, substituidas)));
 
         registrarAchadoDaReserva(po, estrutura);
+        // Rubricas (RF-11.7): a primeira PO do condomínio vira o catálogo; nas outras, só sugestões
+        rubricas.aoConfirmar(po, usuario, agora);
         // PO confirmada e fundos ligados: os achados dos meses do exercício são recalculados depois do commit
         publicador.publishEvent(MudancaOrcamento.de(condominioId, "PO versão " + versao + " confirmada (exercício "
                 + inicio + " a " + fim + ")", usuario, agora));

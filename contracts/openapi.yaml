@@ -357,6 +357,122 @@ paths:
           content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EventoDepara" } } } }
         "403": { description: Sem acesso ao condomínio }
         "404": { description: PO não encontrada }
+  /condominios/{condominioId}/rubricas:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Catálogo de rubricas do condomínio (todos os perfis, RF-11.7)
+      description: |
+        Linhas de exercícios diferentes ligadas à mesma rubrica correspondem na comparação entre exercícios
+        (ADR 0005, Decisão 1). A primeira PO confirmada do condomínio gera uma rubrica por linha. Rubrica nunca é apagada.
+      operationId: listarRubricas
+      responses:
+        "200":
+          description: OK, em ordem de nome
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Rubrica" } } } }
+        "403": { description: Sem acesso ao condomínio }
+    post:
+      summary: Cria uma rubrica no catálogo (só ADMIN, RF-11.7), com evento na trilha
+      operationId: criarRubrica
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoNovaRubrica" } } }
+      responses:
+        "201": { description: Criada, content: { application/json: { schema: { $ref: "#/components/schemas/Rubrica" } } } }
+        "403": { description: Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio }
+        "422": { description: Nome vazio ou acima de 300 caracteres }
+  /condominios/{condominioId}/rubricas/{rubricaId}:
+    parameters:
+      - { $ref: "#/components/parameters/CondominioId" }
+      - { name: rubricaId, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      summary: Troca o nome da rubrica (só ADMIN, RF-11.7), com evento na trilha
+      operationId: renomearRubrica
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoRenomearRubrica" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Rubrica" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "422": { description: Rubrica de outro condomínio, nome vazio ou acima de 300 caracteres }
+  /condominios/{condominioId}/previsoes/{poId}/rubricas:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    get:
+      summary: Rubrica de cada linha da PO (todos os perfis, RF-11.7)
+      description: |
+        Todas as linhas de despesa e de fundo da PO, na ordem do documento. Linha sem rubrica tem estado nulo. Só
+        CONFIRMADO entra na comparação por linha entre exercícios; o resto fica "sem correspondência".
+      operationId: listarRubricasDaPo
+      parameters:
+        - name: filtro
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/FiltroRubrica" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RubricasDaPo" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+  /condominios/{condominioId}/previsoes/{poId}/rubricas/{linhaId}:
+    parameters:
+      - { $ref: "#/components/parameters/CondominioId" }
+      - { $ref: "#/components/parameters/PoId" }
+      - { name: linhaId, in: path, required: true, description: Id da linha da PO, schema: { type: string, format: uuid } }
+    put:
+      summary: Admin escolhe a rubrica de uma linha (só ADMIN, RF-11.7)
+      description: |
+        Uma rubrica do catálogo (rubricaId) ou uma nova criada a partir da linha (novaRubrica, com o nome), nunca os
+        dois. Com confirmar nulo ou true, fica CONFIRMADO; com false, SUGERIDO. A trilha registra a rubrica e o estado
+        anteriores e novos.
+      operationId: definirRubricaDaLinha
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoRubricaLinha" } } }
+      responses:
+        "200": { description: Gravado, content: { application/json: { schema: { $ref: "#/components/schemas/LinhaComRubrica" } } } }
+        "403": { description: Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada }
+        "422": { description: Linha que não é de despesa ou de fundo desta PO, rubrica de outro condomínio, ou rubricaId e novaRubrica juntos }
+  /condominios/{condominioId}/previsoes/{poId}/rubricas/lote:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    post:
+      summary: Confirma ou recusa a rubrica de várias linhas (só ADMIN, RF-11.7), um evento por linha
+      operationId: loteRubricas
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoLoteRubrica" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ResultadoLoteRubrica" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada }
+        "422": { description: Sem ação ou sem linhas }
+  /condominios/{condominioId}/previsoes/{poId}/rubricas/sugestoes:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    post:
+      summary: Gera as rubricas da PO (só ADMIN, RF-11.7), sem IA
+      description: |
+        Também roda sozinho na confirmação da PO. Se o condomínio ainda não tem rubricas, cada linha desta PO vira uma
+        rubrica, já CONFIRMADA (primeiraPo). Senão, para cada linha ainda sem rubrica: primeiro a linha igual da versão
+        anterior do mesmo exercício (mesmo código efetivo e mesma conta); depois a rubrica das linhas confirmadas de
+        outras POs com a mesma conta da PO e o mesmo grupo. Conta repetida no mesmo grupo desta PO, conta em mais de
+        uma rubrica ou nenhuma: sem sugestão. Nunca usa o código do item. Tudo entra SUGERIDO, com o motivo.
+      operationId: sugerirRubricas
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ResultadoSugestoesRubrica" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "404": { description: PO ou condomínio não encontrado }
+        "409": { description: PO ainda não confirmada }
+  /condominios/{condominioId}/previsoes/{poId}/rubricas/eventos:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    get:
+      summary: Trilha das rubricas das linhas desta PO (todos os perfis), só de inserção
+      operationId: eventosRubricas
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EventoRubrica" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
   /condominios/{condominioId}/previsto-realizado:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }]
     get:
@@ -1361,6 +1477,129 @@ components:
         destinoNovo: { type: string }
         estadoNovo: { $ref: "#/components/schemas/EstadoDepara" }
         origem: { $ref: "#/components/schemas/OrigemDepara" }
+        motivo: { type: [string, "null"] }
+    EstadoRubrica:
+      type: string
+      enum: [SUGERIDO, CONFIRMADO, RECUSADO]
+    OrigemRubrica:
+      type: string
+      description: Primeira PO do condomínio; mesma conta da PO e mesmo grupo; linha igual da versão anterior; escolha do Admin
+      enum: [PRIMEIRA_PO, CONTA_PO, VERSAO_ANTERIOR, MANUAL]
+    FiltroRubrica:
+      type: string
+      description: PENDENTES = sem rubrica confirmada (sem rubrica, sugerida ou recusada)
+      enum: [TODAS, PENDENTES, SUGERIDO, CONFIRMADO, RECUSADO, SEM_RUBRICA]
+    Rubrica:
+      type: object
+      required: [id, nome, criadaPor, criadaEm]
+      properties:
+        id: { type: string, format: uuid }
+        nome: { type: string, description: Ex. "1682 - Sindicatura Profissional" }
+        grupo: { type: [string, "null"], description: Grupo da PO onde a rubrica nasceu (ex. 1.3); só informativo }
+        linhaOrigemId: { type: [string, "null"], format: uuid }
+        criadaPor: { type: string }
+        criadaEm: { type: string, format: date-time }
+    LinhaComRubrica:
+      type: object
+      required: [linhaId, codigo, conta, descricao, orcado]
+      properties:
+        linhaId: { type: string, format: uuid }
+        codigo: { type: string, description: Código efetivo da linha }
+        grupo: { type: [string, "null"], description: Código do grupo (ex. 1.3) }
+        conta: { type: string, description: "O que a sugestão compara: conta da PO, senão o texto da coluna de conta, senão a descrição" }
+        descricao: { type: string }
+        orcado: { type: number }
+        rubrica: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/Rubrica" }] }
+        estado: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/EstadoRubrica" }], description: Nulo = sem rubrica }
+        origem: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/OrigemRubrica" }] }
+        motivo: { type: [string, "null"], description: 'Ex. "mesma conta da PO e mesmo grupo: 1682 - Sindicatura Profissional, 1.3"' }
+        atualizadoPor: { type: [string, "null"] }
+        atualizadoEm: { type: [string, "null"], format: date-time }
+    RubricasDaPo:
+      type: object
+      required: [previsaoId, resumo, linhas]
+      properties:
+        previsaoId: { type: string, format: uuid }
+        versao: { type: [integer, "null"] }
+        resumo:
+          type: object
+          description: Sempre sobre todas as linhas, sem o filtro
+          required: [linhas, confirmadas, sugeridas, recusadas, semRubrica]
+          properties:
+            linhas: { type: integer }
+            confirmadas: { type: integer }
+            sugeridas: { type: integer }
+            recusadas: { type: integer }
+            semRubrica: { type: integer }
+        linhas: { type: array, items: { $ref: "#/components/schemas/LinhaComRubrica" } }
+    PedidoNovaRubrica:
+      type: object
+      required: [nome]
+      properties:
+        nome: { type: string, maxLength: 300 }
+        grupo: { type: [string, "null"] }
+    PedidoRenomearRubrica:
+      type: object
+      required: [nome]
+      properties: { nome: { type: string, maxLength: 300 } }
+    PedidoRubricaLinha:
+      type: object
+      properties:
+        rubricaId: { type: [string, "null"], format: uuid, description: Rubrica do catálogo }
+        novaRubrica: { type: [string, "null"], description: Nome de uma rubrica nova criada a partir da linha }
+        confirmar: { type: [boolean, "null"], description: Nulo ou true confirma; false deixa SUGERIDO }
+    PedidoLoteRubrica:
+      type: object
+      required: [acao, linhas]
+      properties:
+        acao: { type: string, enum: [CONFIRMAR, RECUSAR] }
+        linhas: { type: array, minItems: 1, items: { type: string, format: uuid } }
+    ResultadoLoteRubrica:
+      type: object
+      required: [alteradas, ignoradas]
+      properties:
+        alteradas: { type: integer }
+        ignoradas:
+          type: array
+          items:
+            type: object
+            required: [linhaId, motivo]
+            properties: { linhaId: { type: string, format: uuid }, motivo: { type: string } }
+    ResultadoSugestoesRubrica:
+      type: object
+      required: [primeiraPo, rubricasCriadas, sugeridas, daVersaoAnterior, pelaConta, semSugestao]
+      properties:
+        primeiraPo: { type: boolean, description: O condomínio não tinha rubricas; cada linha virou uma rubrica confirmada }
+        rubricasCriadas: { type: integer }
+        sugeridas: { type: integer }
+        daVersaoAnterior: { type: integer }
+        pelaConta: { type: integer }
+        semSugestao:
+          type: array
+          items:
+            type: object
+            required: [linhaId, codigo, conta, motivo]
+            properties:
+              linhaId: { type: string, format: uuid }
+              codigo: { type: string }
+              conta: { type: string }
+              motivo: { type: string }
+    EventoRubrica:
+      type: object
+      required: [id, acao, usuario, em, rubricaNova]
+      properties:
+        id: { type: string, format: uuid }
+        linhaId: { type: [string, "null"], format: uuid, description: Nulo na criação e na troca de nome da rubrica }
+        codigo: { type: [string, "null"] }
+        descricao: { type: [string, "null"] }
+        acao: { type: string, enum: [CRIADA, RENOMEADA, SUGERIDO, CONFIRMADO, RECUSADO, ALTERADO] }
+        usuario: { type: string }
+        em: { type: string, format: date-time }
+        rubricaAnterior: { type: [string, "null"] }
+        estadoAnterior: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/EstadoRubrica" }] }
+        rubricaNova: { type: string }
+        estadoNovo: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/EstadoRubrica" }] }
+        origem: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/OrigemRubrica" }] }
         motivo: { type: [string, "null"] }
     PrevistoRealizado:
       type: object

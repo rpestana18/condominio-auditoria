@@ -1,6 +1,7 @@
 package br.com.condominioauditoria.backend.orcamento;
 
 import br.com.condominioauditoria.backend.orcamento.ComparacaoExercicios.GrupoComparado;
+import br.com.condominioauditoria.backend.orcamento.ExercicioDtos.TipoExercicio;
 import br.com.condominioauditoria.backend.orcamento.PrevistoRealizado.FluxoUsado;
 import br.com.condominioauditoria.backend.orcamento.PrevistoRealizado.FundoResultado;
 import br.com.condominioauditoria.backend.orcamento.PrevistoRealizado.GrupoResultado;
@@ -86,10 +87,20 @@ public final class Indicadores {
     public record SerieFundo(UUID fundoId, String fundo, String linhaCodigo, List<PontoFundo> pontos) {
     }
 
-    public record ExercicioDaComparacao(String id, String rotulo, BigDecimal execucao, String periodo) {
+    /**
+     * {@code poId}: a PO cuja evidência o clique abre no previsto × realizado; nulo na coluna impressa, que não tem
+     * realizado.
+     */
+    public record ExercicioDaComparacao(String id, String rotulo, BigDecimal execucao, String periodo, UUID poId) {
     }
 
-    public record GrupoDaComparacao(String codigo, String descricao, List<BigDecimal> previstoMes) {
+    /**
+     * {@code alvos}: o alvo da evidência do grupo em cada exercício, na ordem de {@code exercicios} (o mesmo de
+     * {@link ComparacaoExercicios.ValorComparado#alvo()}); nulo quando o grupo não existe no exercício ou o exercício
+     * é a coluna impressa.
+     */
+    public record GrupoDaComparacao(String codigo, String descricao, List<BigDecimal> previstoMes,
+            List<String> alvos) {
     }
 
     /**
@@ -262,12 +273,13 @@ public final class Indicadores {
         for (int i = 0; i < c.exercicios().size(); i++) {
             var ex = c.exercicios().get(i);
             exercicios.add(new ExercicioDaComparacao(ex.id(), ex.rotulo(), c.resumo().get(i).execucao(),
-                    ex.periodo()));
+                    ex.periodo(), ex.tipo() == TipoExercicio.COLUNA_IMPRESSA ? null : ex.poId()));
         }
         List<GrupoDaComparacao> grupos = new ArrayList<>();
         for (GrupoComparado g : c.grupos()) {
             grupos.add(new GrupoDaComparacao(g.codigo(), g.descricao(),
-                    g.valores().stream().map(ComparacaoExercicios.ValorComparado::previstoMes).toList()));
+                    g.valores().stream().map(ComparacaoExercicios.ValorComparado::previstoMes).toList(),
+                    g.valores().stream().map(ComparacaoExercicios.ValorComparado::alvo).toList()));
         }
         return new Comparacao(List.copyOf(exercicios), List.copyOf(grupos));
     }

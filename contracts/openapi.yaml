@@ -1651,17 +1651,22 @@ components:
                     properties:
                       id: { type: string }
                       rotulo: { type: string }
+                      poId: { type: [string, "null"], format: uuid, description: nulo para a coluna impressa }
                       execucao: { type: [number, "null"] }
                       periodo: { type: [string, "null"] }
                 grupos:
                   type: array
                   items:
                     type: object
-                    required: [codigo, descricao, previstoMes]
+                    required: [codigo, descricao, previstoMes, alvos]
                     properties:
                       codigo: { type: string }
                       descricao: { type: string }
                       previstoMes: { type: array, items: { type: [number, "null"] } }
+                      alvos:
+                        type: array
+                        items: { type: [string, "null"] }
+                        description: Alvo do grupo em cada exercício, na ordem de "exercicios"; abre a evidência no previsto × realizado
         avisos: { type: array, items: { type: string } }
     DiferencaIndicador:
       type: object

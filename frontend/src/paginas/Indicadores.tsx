@@ -1,7 +1,7 @@
 import { useSearchParams } from "react-router";
 import { useExercicios, useIndicadores } from "../api/consultasAnalisePo";
 import { useFundos } from "../api/consultasOrcamento";
-import type { Exercicio, Indicadores as SeriesIndicadores } from "../api/tipos";
+import type { Indicadores as SeriesIndicadores } from "../api/tipos";
 import { NaoSeAplica } from "../componentes/indicadores/CartaoIndicador";
 import { useAbrirNoPrevisto, type ContextoGrafico } from "../componentes/indicadores/contexto";
 import { GraficoAcumulado } from "../componentes/indicadores/GraficoAcumulado";
@@ -55,7 +55,7 @@ export function Indicadores() {
       ) : consulta.error ? (
         <p className="aviso erro">{consulta.error.message}</p>
       ) : consulta.data ? (
-        <Graficos indicadores={consulta.data} exercicios={exercicios} fundoId={fundoId} />
+        <Graficos indicadores={consulta.data} fundoId={fundoId} />
       ) : (
         <p className="aviso">Nenhum exercício confirmado para mostrar indicadores.</p>
       )}
@@ -65,12 +65,11 @@ export function Indicadores() {
 
 interface PropsGraficos {
   indicadores: SeriesIndicadores;
-  exercicios: Exercicio[];
   fundoId: string | null;
 }
 
 /** Os 7 gráficos do RF-11.11. Série nula = não se aplica ao fundo escolhido (a API decide). */
-function Graficos({ indicadores: ind, exercicios, fundoId }: PropsGraficos) {
+function Graficos({ indicadores: ind, fundoId }: PropsGraficos) {
   const abrir = useAbrirNoPrevisto();
   const contexto: ContextoGrafico = {
     poId: ind.poId,
@@ -118,7 +117,7 @@ function Graficos({ indicadores: ind, exercicios, fundoId }: PropsGraficos) {
       )}
 
       {ind.comparacao ? (
-        <GraficoEntreExercicios comparacao={ind.comparacao} exercicios={exercicios} contexto={contexto} />
+        <GraficoEntreExercicios comparacao={ind.comparacao} contexto={contexto} />
       ) : (
         <NaoSeAplica titulo="7. Comparação entre exercícios" motivo="Sem comparação para este exercício (veja os avisos acima)." />
       )}

@@ -46,7 +46,7 @@ public final class VisaoPorFundo {
         String alvo = CalculoPrevistoRealizado.alvoFundo(fundoId);
         List<Aviso> avisos = r.avisos().stream().filter(a -> !AVISOS_DO_CONDOMINIO.contains(a.codigo())).toList();
         List<MesExercicio> meses = r.meses().stream().map(m -> new MesExercicio(m.mes(), m.situacao(), m.fluxos(),
-                null, null, null, null, null)).toList();
+                null, null, null, null, null, m.prorrogado())).toList();
         return new Calculo(new PrevistoRealizado(r.versaoCalculo(), r.periodo(), r.situacao(), r.mensagem(), r.po(),
                 meses, r.mesesSomados(), r.mesesSemFluxo(), r.mesesComDoisFluxos(), null, false, null, List.of(), null,
                 null, null, null, null, r.fundos().stream().filter(f -> fundoId.equals(f.fundoId())).toList(), avisos),

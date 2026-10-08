@@ -16,9 +16,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * Recalcula os achados do orçamento de um condomínio depois de cada mudança (ADR 0004, Decisão 5; RF-03.1.12): para
- * cada mês de uma PO confirmada, usa o mesmo cálculo da tela e grava pela chave única. Mês sem números (sem fluxo,
- * dois fluxos) não muda nenhum achado. Chamado por {@link DisparoRecalculoAchados} depois do commit; quem chama abre a
- * transação.
+ * cada mês de uma PO confirmada (exercício e meses prorrogados, RF-11.3), usa o mesmo cálculo da tela e grava pela
+ * chave única. Mês sem números (sem fluxo, dois fluxos) não muda nenhum achado. Chamado por
+ * {@link DisparoRecalculoAchados} depois do commit; quem chama abre a transação.
  */
 @Service
 public class RecalculoAchadosOrcamento {
@@ -48,7 +48,8 @@ public class RecalculoAchadosOrcamento {
         Set<YearMonth> meses = new TreeSet<>();
         previsoes.findByCondominioIdAndEstadoIn(condominioId,
                         EnumSet.of(EstadoPrevisao.CONFIRMADA, EstadoPrevisao.SUBSTITUIDA)).stream()
-                .map(VigenciaPo::de).flatMap(java.util.Optional::stream)
+                .flatMap(p -> java.util.stream.Stream.of(VigenciaPo.de(p), VigenciaPo.prorrogacao(p)))
+                .flatMap(java.util.Optional::stream)
                 .forEach(v -> meses.addAll(CalculoPrevistoRealizado.meses(v.inicio(), v.fim())));
         Map<YearMonth, Sincronizacao> resultado = new LinkedHashMap<>();
         for (YearMonth mes : meses) {

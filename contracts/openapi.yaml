@@ -671,6 +671,33 @@ paths:
         "404": { description: PO não encontrada }
         "409": { description: PO ainda não confirmada }
         "422": { description: Ligação recusada, com os motivos, content: { application/json: { schema: { $ref: "#/components/schemas/Problema" } } } }
+  /condominios/{condominioId}/previsoes/{poId}/prorrogacao:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
+    put:
+      summary: Marca a PO como prorrogada até um mês (só ADMIN, RF-11.3), com justificativa
+      description: |
+        Os meses do mês seguinte ao fim do exercício até "ate" usam esta PO e o seu de-para, com a marca "PO
+        prorrogada", e ficam fora do acumulado do exercício. Recusada sem justificativa, com mês que já tem PO
+        confirmada ou prorrogação de outra PO, ou com PO substituída. Uma PO confirmada depois sobre meses prorrogados
+        encurta a prorrogação, com evento automático. Nunca é automática.
+      operationId: prorrogarPo
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PedidoProrrogacao" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PrevisaoDetalhe" } } } }
+        "403": { description: Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO não confirmada ou substituída }
+        "422": { description: Sem justificativa, mês inválido ou mês com outra PO }
+    delete:
+      summary: Desfaz a prorrogação (só ADMIN, RF-11.3), com evento
+      operationId: desfazerProrrogacaoPo
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PrevisaoDetalhe" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO não confirmada, substituída ou sem prorrogação }
   /condominios/{condominioId}/previsoes/{poId}/eventos:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
     get:
@@ -1216,6 +1243,23 @@ components:
         lidaEm: { type: string, format: date-time }
         confirmadaPor: { type: [string, "null"] }
         confirmadaEm: { type: [string, "null"], format: date-time }
+        prorrogacao: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/ProrrogacaoPo" }], description: Nulo sem prorrogação (RF-11.3) }
+    ProrrogacaoPo:
+      type: object
+      description: A PO vale também de "de" até "ate", depois do exercício, quando nenhuma PO confirmada cobre o mês
+      required: [de, ate, justificativa, por, em]
+      properties:
+        de: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$", description: Mês seguinte ao fim do exercício }
+        ate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" }
+        justificativa: { type: string }
+        por: { type: string }
+        em: { type: string, format: date-time }
+    PedidoProrrogacao:
+      type: object
+      required: [ate, justificativa]
+      properties:
+        ate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$", description: Último mês prorrogado (AAAA-MM), depois do fim do exercício }
+        justificativa: { type: string, minLength: 1 }
     PrevisaoDetalhe:
       type: object
       required: [previsao, toleranciaArredondamento, linhas, conferencias, avisos, codigosRepetidos, fundos, achados]
@@ -1625,7 +1669,9 @@ components:
                 exercicioFim: { type: [string, "null"] }
         meses:
           type: array
-          description: No acumulado, os meses do exercício; no mês, só ele. Números só com COM_FLUXO
+          description: |
+            No acumulado, os meses do exercício e, depois deles, os meses prorrogados (fora da soma, RF-11.3); no mês,
+            só ele. Números só com COM_FLUXO
           items:
             type: object
             required: [mes, situacao, fluxos]
@@ -1638,6 +1684,7 @@ components:
               excesso: { type: [number, "null"] }
               percentualExcesso: { type: [number, "null"] }
               acimaDoLimite: { type: [boolean, "null"] }
+              prorrogado: { type: boolean, description: Mês depois do exercício em que a PO vale por prorrogação (marca "PO prorrogada") }
         mesesSomados: { type: array, items: { type: string } }
         mesesSemFluxo: { type: array, items: { type: string }, description: Meses sem fluxo antes do último mês com fluxo }
         mesesComDoisFluxos: { type: array, items: { type: string } }
@@ -1731,6 +1778,7 @@ components:
               debitos: { type: [number, "null"] }
         avisos:
           type: array
+          description: Inclui PO_PRORROGADA (mês prorrogado) e MESES_PRORROGADOS (acumulado com meses fora da soma)
           items:
             type: object
             required: [codigo, texto]

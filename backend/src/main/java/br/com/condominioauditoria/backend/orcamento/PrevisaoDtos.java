@@ -15,7 +15,23 @@ public final class PrevisaoDtos {
     public record PrevisaoResumo(UUID id, UUID arquivoId, String arquivoNome, String sha256, EstadoPrevisao estado,
             Integer versao, String titulo, String exercicioImpresso, String exercicioInicio, String exercicioFim,
             BigDecimal totalImpresso, BigDecimal previstoMes, Instant lidaEm, String confirmadaPor,
-            Instant confirmadaEm) {
+            Instant confirmadaEm, Prorrogacao prorrogacao) {
+    }
+
+    /**
+     * PO prorrogada pelo Admin (RF-11.3): vale de {@code de} até {@code ate} (AAAA-MM), depois do exercício. Nulo sem
+     * prorrogação.
+     */
+    public record Prorrogacao(String de, String ate, String justificativa, String por, Instant em) {
+
+        static Prorrogacao de(PrevisaoOrcamentaria p) {
+            return VigenciaPo.prorrogacao(p).map(v -> new Prorrogacao(v.inicio().toString(), v.fim().toString(),
+                    p.getProrrogacaoJustificativa(), p.getProrrogadaPor(), p.getProrrogadaEm())).orElse(null);
+        }
+    }
+
+    /** Admin marca a PO como prorrogada até {@code ate} (AAAA-MM), com justificativa obrigatória (RF-11.3). */
+    public record PedidoProrrogacao(String ate, String justificativa) {
     }
 
     public record PrevisaoDetalhe(PrevisaoResumo previsao, String colunaOrcadoAnterior, String colunaOrcado,

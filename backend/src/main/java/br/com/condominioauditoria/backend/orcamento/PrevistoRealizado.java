@@ -47,9 +47,18 @@ public record PrevistoRealizado(String versaoCalculo, String periodo, Situacao s
             Instant enviadoEm, String enviadoPor) {
     }
 
-    /** Um mês do exercício (a tela mostra os 12). Os números só existem com um fluxo, e só um. */
+    /**
+     * Um mês do exercício (a tela mostra os 12). Os números só existem com um fluxo, e só um. {@code prorrogado}: mês
+     * depois do exercício em que a PO vale por prorrogação (RF-11.3); no acumulado vem depois dos 12, fora da soma.
+     */
     public record MesExercicio(String mes, SituacaoMes situacao, List<FluxoUsado> fluxos, BigDecimal previsto,
-            BigDecimal despesaRealizada, BigDecimal excesso, BigDecimal percentualExcesso, Boolean acimaDoLimite) {
+            BigDecimal despesaRealizada, BigDecimal excesso, BigDecimal percentualExcesso, Boolean acimaDoLimite,
+            boolean prorrogado) {
+
+        MesExercicio comProrrogado(boolean valor) {
+            return new MesExercicio(mes, situacao, fluxos, previsto, despesaRealizada, excesso, percentualExcesso,
+                    acimaDoLimite, valor);
+        }
     }
 
     /** "N de M contas confirmadas": contas com débito no fundo Condomínio no período. */

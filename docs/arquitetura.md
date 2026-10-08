@@ -73,7 +73,7 @@ condominio-auditoria/
 └── README.md
 ```
 
-Regras: um serviço **nunca importa classe de outro** nem lê o schema de banco de outro. Conversa só por `contracts/`. `libs/` guarda só código técnico, sem regra de negócio. Dentro de cada serviço, a organização é por pacote (ex.: `rag.dominio`, `rag.leitura`, `rag.processamento`).
+Regras: um serviço **nunca importa classe de outro** nem lê o schema de banco de outro. Conversa só por `contracts/`. `libs/` guarda só código técnico, sem regra de negócio. Dentro de cada serviço Java, a organização é por camada, com o assunto dentro da camada, e o código é em inglês (ADR 0006, aprovada em 08/10/2026): `br.com.condominioauditoria.<papel>.{config, controller, dto, mapper, model, repository, service, event, listener, messaging, grpc, report, security, exception, util}`. O backend passa a se chamar `api` (pasta e pacote) na fase 1 da ADR 0006.
 
 ### 2.1 Arquivos × banco (decisão do usuário)
 - **Originais nunca vão para o banco.** Ficam em `dados/`, imutáveis, lidos pela interface `Armazenamento`.

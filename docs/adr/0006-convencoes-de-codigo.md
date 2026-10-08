@@ -1,9 +1,9 @@
 # ADR 0006: Convenções de código dos serviços Java (idioma, camadas e pacotes)
 
-- **Status:** proposta (aguarda aprovação do usuário)
+- **Status:** aprovada pelo usuário em 08/10/2026 (perguntas 1, 2, 3, 5 e 6 como recomendado, com os ajustes da pergunta 3; na pergunta 4 o usuário escolheu raiz única com nome por papel). Falta só confirmar o nome do papel do backend (`api` por padrão, ver Decisão 4)
 - **Vale para:** `backend`, `rag` e `mcp` (e os testes de cada um). A fase 3 estende o idioma ao `leitor` (Python) e ao código do `frontend`.
 - **Não muda:** a ADR 0002 (serviços separados, um schema por serviço, conversa só por `contracts/`), o stack da ADR 0001 nem nenhuma regra de negócio. Nenhuma biblioteca nova entra.
-- **Muda:** a regra do `CLAUDE.md` "Nomes no código também em português" e a frase de `docs/arquitetura.md:76` sobre a organização por pacote.
+- **Muda:** a regra do `CLAUDE.md` "Nomes no código também em português", a frase de `docs/arquitetura.md:76` sobre a organização por pacote e o nome da pasta e do pacote do backend.
 
 ## Contexto
 
@@ -31,7 +31,7 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | **B. Código em inglês: pacotes, classes, métodos, campos, enums, constantes, testes e comentários. Em português ficam os documentos (`docs/`), os textos da tela, as mensagens mostradas ao usuário, os relatórios, os commits e as descrições de PR** | Atende o pedido. Padrão do mercado. A conversa com o usuário e os documentos continuam em português | Termos brasileiros precisam de um glossário fixo (abaixo) para não ter três traduções do mesmo termo |
 | C. Inglês só nos nomes, comentários em português | Comentário de regra contábil fica mais fácil para o usuário ler | Mistura dois idiomas no mesmo arquivo |
 
-**Recomendação: B**, com o glossário abaixo como regra. Termo que não tiver tradução fiel entra no glossário antes de entrar no código; ninguém inventa tradução nova.
+**Decidido: B**, com o glossário abaixo como regra. Termo que não tiver tradução fiel entra no glossário antes de entrar no código; ninguém inventa tradução nova.
 
 ### Glossário (português → inglês no código)
 
@@ -82,7 +82,7 @@ Camadas, de fora para dentro: **controller → service → repository**, com **m
 3. **Repository** são as interfaces Spring Data JPA. Só o serviço usa.
 4. **Model** são as entidades JPA, os enums e os objetos de valor do domínio. Toda entidade declara `@Table` e toda coluna cujo nome não bate com o campo declara `@Column`, para o nome em inglês da classe não mudar a tabela sem migração.
 5. **DTO** é um `record` por necessidade de tela ou de endpoint (`BudgetSummaryResponse`, `ConfirmBudgetRequest`), um por arquivo. Sufixos: `Request` para entrada, `Response` para saída. Acabam as classes "sacola" (`ArquivoDtos`, `PrevisaoDtos`).
-6. **Mapper** é uma classe escrita à mão (`BudgetMapper`) que converte entidade ↔ DTO. Sem MapStruct: seria biblioteca nova e exigiria outra ADR (fica como opção na Pergunta 5).
+6. **Mapper** é uma classe escrita à mão (`BudgetMapper`) que converte entidade ↔ DTO. Sem MapStruct (decidido pelo usuário).
 7. **Cálculos puros** (como `CalculoPrevistoRealizado`, ADR 0004) ficam em `service` como classes sem estado, sem Spring e sem banco, testadas sozinhas.
 8. Classes passam a ser `public` onde a camada exigir. Hoje muita coisa é package-private porque o assunto inteiro estava no mesmo pacote.
 
@@ -96,49 +96,73 @@ Camadas, de fora para dentro: **controller → service → repository**, com **m
 | **B. Camada primeiro, assunto dentro da camada** | `service/budget/BudgetService`, `model/budget/Budget`, `controller/budget/BudgetController` | Atende o pedido (as camadas ficam no primeiro nível) e cresce bem. Os mesmos subpacotes de assunto se repetem em todas as camadas, então é fácil achar | Mais pastas. Um assunto fica espalhado por várias camadas |
 | C. Assunto primeiro, camada dentro | `budget/service/BudgetService`, `budget/model/Budget` | Cada assunto fica junto | Não é o que o usuário pediu. É a organização de hoje com subpastas |
 
-**Recomendação: B.** Assuntos do backend: `condominium`, `file`, `accounting`, `audit`, `budget`, `dashboard`, `feature`, `ai`, `assistant`. Camada pequena (menos de ~10 classes) pode dispensar o subpacote.
+**Decidido: B, com `model` (não `domain`).** Assuntos do backend: `condominium`, `file`, `accounting`, `audit`, `budget`, `dashboard`, `feature`, `ai`, `assistant`. Camada pequena (menos de ~10 classes) pode dispensar o subpacote.
 
 ### Backend
 
 ```
-backend/                                   # projeto Gradle (jar e contêiner)
-└── src/main/java/br/com/condominioauditoria/backend/
-    ├── BackendApplication.java
-    ├── config/          # @Configuration e @ConfigurationProperties
+api/                                       # projeto Gradle (jar e contêiner); hoje backend/
+└── src/main/java/br/com/condominioauditoria/api/
+    ├── ApiApplication.java
+    ├── config/          # @Configuration (beans, Jackson, Rabbit, gRPC)
+    │   └── properties/  # @ConfigurationProperties (records imutáveis)
     ├── controller/      # REST: só DTO entra e sai
     │   └── budget/ audit/ file/ …
-    ├── dto/             # records Request/Response por tela
+    ├── dto/             # records por tela
+    │   ├── request/     # entrada (…Request), com Bean Validation
+    │   └── response/    # saída (…Response)
+    │       (dentro de cada um, os mesmos subpacotes de assunto)
+    ├── mapper/          # entidade ↔ DTO, à mão, um por agregado (BudgetMapper)
+    ├── model/           # entidades JPA e objetos de valor (records @Embeddable)
+    │   ├── budget/ audit/ file/ …
+    │   └── enums/       # enums do domínio (BudgetStatus, Severity, FileCategory…)
+    ├── repository/      # interfaces Spring Data JPA (+ projeções de consulta)
     │   └── budget/ audit/ file/ …
-    ├── mapper/          # entidade ↔ DTO, à mão
-    ├── model/           # entidades JPA, enums, objetos de valor
-    │   └── budget/ audit/ file/ …
-    ├── repository/      # interfaces Spring Data JPA
-    │   └── budget/ audit/ file/ …
-    ├── service/         # regra de negócio, @Transactional, cálculos puros
-    │   └── budget/ audit/ audit/rule/ file/ …
+    ├── service/         # regra de negócio, @Transactional
+    │   ├── budget/ audit/ file/ …
+    │   ├── audit/rule/  # regras de auditoria (Strategy: uma classe por regra)
+    │   └── calculator/  # cálculos puros, sem Spring e sem banco (BudgetVsActualCalculator)
+    ├── event/           # eventos de aplicação (records: FeatureChanged, BudgetConfirmed…)
+    ├── listener/        # @EventListener / @TransactionalEventListener desses eventos
     ├── report/          # PDF (Thymeleaf + OpenHTMLtoPDF) e Excel (POI)
-    ├── messaging/       # RabbitMQ: publicadores, receptores e records das mensagens
-    ├── grpc/            # servidor de consulta (mcp) e cliente do assistente (rag)
+    ├── messaging/       # RabbitMQ: publicadores (outbox), @RabbitListener e records das mensagens
+    ├── grpc/
+    │   ├── server/      # servidor de consulta (chamado pelo mcp)
+    │   └── client/      # cliente do assistente (chama o rag)
     ├── security/        # Spring Security, Keycloak, acesso por condomínio
-    ├── exception/       # exceções e o @RestControllerAdvice
-    └── util/            # utilitários puros (ex.: formatação de dinheiro)
+    ├── exception/       # exceções de negócio e o @RestControllerAdvice
+    └── util/            # utilitários puros e final (MoneyFormatter)
 ```
+
+Por que cada pacote a mais (resposta à pergunta 3, seguindo as convenções Java e Spring):
+
+- `model/enums`: há 17 enums no backend hoje (`Severidade`, `StatusArquivo`, `EstadoPrevisao`…). Ficam juntos e usados tanto pelas entidades quanto pelos DTOs.
+- `dto/request` e `dto/response`: separa o que entra (validado) do que sai; nome do record termina em `Request` ou `Response`.
+- `config/properties`: hoje há 5 classes `@ConfigurationProperties` espalhadas (`PropriedadesOrcamento`, `PropriedadesDepara`…).
+- `event` e `listener`: 12 classes usam eventos de aplicação do Spring (ex.: `ModuloAlterado`, `DisparoRecalculoAchados`, `ReindexacaoAoLigarModulo`). Padrão Observer, com o evento separado de quem reage.
+- `service/calculator`: os cálculos puros da ADR 0004 e 0005 (`CalculoPrevistoRealizado`, `ComparacaoExercicios`, `Indicadores`) ficam separados dos serviços com banco, e são testados sem Spring.
+- `service/audit/rule`: cada regra de auditoria é uma classe que implementa a mesma interface (padrão Strategy), como já é hoje (`RegraExcessoMes`, `RegraTetoFundoReserva`…).
+- `grpc/server` e `grpc/client`: o backend é as duas coisas.
+- **Não** entram: `constants` (a constante fica na classe dona dela, como manda a convenção Java), `impl` (só há interface quando há mais de uma implementação ou fronteira, como `Storage`), `helper` e `common` (viram `util` ou ficam na classe que usa).
 
 Exemplo de para onde vai cada classe de hoje:
 
 | Hoje | Depois |
 |---|---|
 | `orcamento/PrevisaoOrcamentaria` | `model/budget/Budget` (`@Table(name = "previsao_orcamentaria")` até a fase 2) |
+| `orcamento/EstadoPrevisao` | `model/enums/BudgetStatus` |
 | `orcamento/PrevisaoOrcamentariaRepository` | `repository/budget/BudgetRepository` |
 | `orcamento/ConfirmacaoPrevisao` | `service/budget/BudgetConfirmationService` |
-| `orcamento/CalculoPrevistoRealizado` | `service/budget/BudgetVsActualCalculator` |
+| `orcamento/CalculoPrevistoRealizado` | `service/calculator/BudgetVsActualCalculator` |
 | `orcamento/PrevisaoController` | `controller/budget/BudgetController` |
-| `orcamento/PrevisaoDtos` | um record por arquivo em `dto/budget/` |
+| `orcamento/PrevisaoDtos` | um record por arquivo em `dto/request/budget/` e `dto/response/budget/` |
 | `orcamento/RelatorioPdf`, `RelatorioExcel` | `report/BudgetVsActualPdfReport`, `report/BudgetVsActualExcelReport` |
 | `orcamento/DinheiroBr` | `util/MoneyFormatter` |
 | `auditoria/RegraExcessoMes` | `service/audit/rule/MonthlyOverrunRule` |
 | `erro/TratadorDeErros` | `exception/GlobalExceptionHandler` |
 | `mensagens/PublicadorArquivos` | `messaging/FilePublisher` |
+| `modulo/ModuloAlterado` | `event/FeatureChanged` |
+| `orcamento/PropriedadesOrcamento` | `config/properties/BudgetProperties` |
 
 ### rag
 
@@ -148,10 +172,12 @@ O rag não tem controller REST: entra por fila e por gRPC. A mesma ideia, com as
 rag/src/main/java/br/com/condominioauditoria/rag/
 ├── RagApplication.java
 ├── config/
+│   └── properties/
 ├── messaging/       # receptores e publicadores da fila (porta de entrada)
 ├── grpc/            # servidor do assistente (porta de entrada)
-├── model/           # records do domínio lido: cashflow/, budget/ (hoje rag.dominio)
+├── model/           # records do domínio lido: cashflow/, budget/ (hoje rag.dominio); enums/
 ├── parser/          # interpretação da saída do leitor (hoje rag.leitura), dono: agente ingestao
+├── dto/             # pedidos e respostas do assistente (hoje PedidoPergunta, ResultadoPergunta)
 ├── service/         # processamento, indexação, perguntas (hoje rag.processamento e rag.assistente.pergunta)
 ├── repository/      # índice no pgvector (hoje rag.indice.RepositorioIndice)
 ├── search/          # corte em trechos, embeddings, busca híbrida (hoje rag.indice), dono: agente rag
@@ -166,6 +192,7 @@ rag/src/main/java/br/com/condominioauditoria/rag/
 mcp/src/main/java/br/com/condominioauditoria/mcp/
 ├── McpApplication.java
 ├── config/
+│   └── properties/
 ├── tool/            # ferramentas MCP (porta de entrada; hoje mcp.ferramentas)
 └── client/          # cliente gRPC do backend (hoje ClienteBackend)
 ```
@@ -178,13 +205,21 @@ mcp/src/main/java/br/com/condominioauditoria/mcp/
 
 ## Decisão 4: o nome do serviço dentro do pacote (`backend/…/backend`)
 
-| Opção | Pacote do backend | Prós | Contras |
-|---|---|---|---|
-| **A. Manter `br.com.condominioauditoria.<serviço>`** | `br.com.condominioauditoria.backend.service…` | Convenção do Maven/Gradle multi-módulo (grupo + artefato). Cada serviço tem raiz própria: log, stack trace e busca na IDE mostram de onde a classe é. Evita duas classes `…messaging.Queues` com o mesmo nome completo em serviços diferentes | Repete o nome da pasta, que foi o que incomodou |
-| B. Raiz única `br.com.condominioauditoria` em todos | `br.com.condominioauditoria.service…` no backend e no rag | Pacote mais curto | Três serviços com os mesmos pacotes (`…messaging`, `…grpc`, `…config`). Uma classe do rag e uma do backend podem ter o mesmo nome completo. Confunde log e IDE |
-| C. Nome do serviço por papel | `br.com.condominioauditoria.api` (backend), `…ingestion` (rag) | Pacote diz o que o serviço faz | Pasta e pacote ficam com nomes diferentes; dá para renomear as pastas também, mas aí mexe em Docker, compose e CI |
+Opções avaliadas: A (manter `br.com.condominioauditoria.<serviço>`), B (raiz única para todos, sem segmento de serviço) e C (nome por papel).
 
-**Recomendação: A**, agora escrita como regra: a pasta é o projeto Gradle, o segmento depois de `br.com.condominioauditoria` é o nome desse projeto, e **mais nenhum pacote repete** o nome do serviço nem do pacote pai (nada de `budget/BudgetModel` dentro de `model/budget`, nem `service/budget/budgetservice`).
+**Decidido pelo usuário: raiz única `br.com.condominioauditoria` e, abaixo dela, um nome por papel; o segmento `backend` sai.** O segmento por papel continua necessário para dois serviços não terem pacotes com o mesmo nome completo (o rag e o backend têm `messaging`, `grpc` e `config`).
+
+| Serviço | Pasta (projeto Gradle) | Pacote raiz |
+|---|---|---|
+| backend | `api/` (hoje `backend/`) | `br.com.condominioauditoria.api` |
+| rag | `rag/` | `br.com.condominioauditoria.rag` |
+| mcp | `mcp/` | `br.com.condominioauditoria.mcp` |
+| lib de armazenamento | `libs/storage/` (hoje `libs/armazenamento/`) | `br.com.condominioauditoria.storage` |
+| lib do contrato gRPC | `libs/grpc-contract/` (hoje `libs/contrato-grpc/`) | o pacote gerado pelo `.proto` (fase 2) |
+
+`rag` e `mcp` já são nomes de papel em inglês. O nome do backend (`api`) é o padrão até o usuário confirmar (cartão no thread de 08/10/2026); a alternativa é `core`. A pasta muda junto, para pasta e pacote terem sempre o mesmo nome; isso inclui o serviço no `infra/docker-compose.yml`, o `java.Dockerfile`, o `settings.gradle.kts`, os comandos do `CLAUDE.md` e os agentes.
+
+Regra: **nenhum pacote repete** o nome do serviço nem do pacote pai (nada de `budget/BudgetModel` dentro de `model/budget`, nem `api/apiservice`).
 
 ---
 
@@ -196,14 +231,14 @@ mcp/src/main/java/br/com/condominioauditoria/mcp/
 | **B. Tudo o que é técnico, em três fases** | Fase 1: Java. Fase 2: banco (migração Flyway que renomeia tabelas e colunas), contratos (nova versão de API, mensagens `v3`, gRPC `v2`) e papéis do Keycloak. Fase 3: código do leitor Python e do frontend (a tela continua em português) | Fica consistente de ponta a ponta. Cada fase é revisável sozinha e não muda comportamento | Mais PRs. A fase 2 muda contratos: os dois lados no mesmo PR, como o `CLAUDE.md` exige |
 | C. Tudo de uma vez | Igual a B num PR só | Termina antes | PR enorme, impossível de revisar; risco alto de quebrar os casos golden |
 
-**Recomendação: B.** Na fase 1 os records de DTO e de mensagem ganham nomes em inglês com `@JsonProperty("nomeAtual")`, e as entidades ganham `@Table`/`@Column` com o nome atual, para a API, a fila e o banco não mudarem. A fase 2 retira essas anotações junto com a migração e a nova versão dos contratos.
+**Decidido: B.** Na fase 1 os records de DTO e de mensagem ganham nomes em inglês com `@JsonProperty("nomeAtual")`, e as entidades ganham `@Table`/`@Column` com o nome atual, para a API, a fila e o banco não mudarem. A fase 2 retira essas anotações junto com a migração e a nova versão dos contratos.
 
 ---
 
 ## Decisão 6: como a refatoração é feita
 
 1. Só depois desta ADR aprovada. Primeiro PR: esta ADR + `CLAUDE.md` + `.claude/agents/` + `docs/arquitetura.md` com a convenção, para os agentes já seguirem a regra em código novo.
-2. **Fase 1, um PR por serviço**, na ordem `libs` → `backend` → `rag` → `mcp`. O backend pode ser dividido por assunto (`budget` sozinho é grande). Cada PR só move e renomeia, mais tirar os repositórios dos controllers para os serviços; nenhuma regra muda.
+2. **Fase 1, um PR por serviço**, na ordem `libs` → `backend` (vira `api`) → `rag` → `mcp`. O backend pode ser dividido por assunto (`budget` sozinho é grande). Cada PR só move e renomeia, mais tirar os repositórios dos controllers para os serviços; nenhuma regra muda.
 3. Em todo PR: `./gradlew test` verde, os casos de `data/golden/` sem piora, `contracts/openapi.yaml` sem diferença na fase 1, e o sistema subindo com `docker compose up --build`.
 4. **Fase 2 e fase 3** só depois da fase 1 inteira no `main`, cada uma com seu PR, os dois lados do contrato no mesmo PR.
 5. Código novo escrito durante a refatoração já segue esta ADR.
@@ -228,11 +263,11 @@ mcp/src/main/java/br/com/condominioauditoria/mcp/
 - Durante a fase 1 o banco, a API e a fila mantêm os nomes em português por anotação. Isso é temporário e some na fase 2.
 - Os PRs da fase 1 são grandes em número de arquivos, mas mecânicos; o histórico do Git acompanha os arquivos movidos (`git log --follow`).
 
-## Perguntas para o usuário
+## Respostas do usuário (08/10/2026)
 
-1. **Idioma (Decisão 1):** código e comentários em inglês, documentos e tela em português? (recomendado: sim, opção B)
-2. **Glossário:** algum termo da tabela você traduz diferente? Principalmente PO (`Budget`), rubrica (`BudgetItem`), conferência (`TotalsCheck`), síndico (`BuildingManager`) e módulo contratável (`Feature`).
-3. **Pacotes (Decisão 3):** camada primeiro com o assunto dentro (B, recomendado), ou camadas sem subpacote (A)? E `model` ou `domain` para as entidades? (recomendado: `model`)
-4. **Nome do serviço no pacote (Decisão 4):** manter `br.com.condominioauditoria.backend` (A, recomendado), raiz única (B) ou nome por papel (C)?
-5. **Mapper:** à mão (recomendado, nenhuma biblioteca nova) ou MapStruct (exige ADR própria)?
-6. **Escopo (Decisão 5):** inglês em tudo o que é técnico, em três fases (B, recomendado), ou só no Java (A)?
+1. Idioma: **sim** (B).
+2. Glossário: **ok**, como está.
+3. Pacotes: **camada primeiro (B), com `model`**; pediu para ver se faltavam pacotes "seguindo a convenção Java e padrões de projeto". Entraram `model/enums`, `dto/request` e `dto/response`, `config/properties`, `event`, `listener`, `service/calculator`, `grpc/server` e `grpc/client` (ver Decisão 3).
+4. Nome do serviço: **tirar o `backend`, raiz única com nome por papel** (ver Decisão 4). Nome do backend: `api` até confirmação.
+5. Mapper: **à mão**, sem MapStruct.
+6. Escopo: **tudo o que é código em inglês, opção B (três fases)**.

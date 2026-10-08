@@ -158,7 +158,7 @@ export function useRecarregarOrcamento() {
   return () => {
     const chaves = [
       "previsoes", "previsao", "previsao-eventos", "depara", "depara-eventos", "previsto-realizado", "evidencia", "painel",
-      "realocacoes", "achados", "exercicios", "comparacao-exercicios", "coluna-impressa", "rubricas", "rubricas-po", "rubricas-eventos",
+      "realocacoes", "achados", "exercicios", "comparacao-exercicios", "coluna-impressa", "rubricas", "rubricas-po", "rubricas-eventos", "indicadores",
     ];
     for (const chave of chaves) {
       void cliente.invalidateQueries({ queryKey: [chave] });

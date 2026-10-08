@@ -23,6 +23,7 @@ export function Layout() {
           <span className="menu-secao">Análise da PO</span>
           <NavLink to="/previsto-realizado">Previsto × realizado</NavLink>
           <NavLink to="/comparar-exercicios">Comparar exercícios</NavLink>
+          <NavLink to="/indicadores">Indicadores</NavLink>
           <NavLink to="/previsoes">PO</NavLink>
           <NavLink to="/depara">De-para</NavLink>
           {/* Só esconde o menu: o backend recusa (403) quem não é ADMIN */}

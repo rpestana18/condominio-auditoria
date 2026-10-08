@@ -116,3 +116,16 @@ export type PedidoLoteRubrica = Esquemas["PedidoLoteRubrica"];
 export type ResultadoLoteRubrica = Esquemas["ResultadoLoteRubrica"];
 export type ResultadoSugestoesRubrica = Esquemas["ResultadoSugestoesRubrica"];
 export type EventoRubrica = Esquemas["EventoRubrica"];
+
+// Indicadores (RF-11.10 a RF-11.13): séries prontas dos 7 gráficos. Série nula = não se aplica ao fundo escolhido.
+export type Indicadores = Esquemas["Indicadores"];
+export type PontoExecucao = NonNullable<Indicadores["execucaoMensal"]>[number];
+export type PontoRegra20 = NonNullable<Indicadores["regra20"]>[number];
+export type PontoAcumulado = NonNullable<Indicadores["acumulado"]>[number];
+export type SerieGrupoIndicador = NonNullable<Indicadores["realizadoPorGrupo"]>[number];
+export type MaioresDiferencas = NonNullable<Indicadores["maioresDiferencas"]>;
+export type DiferencaIndicador = Esquemas["DiferencaIndicador"];
+export type SerieFundoIndicador = NonNullable<Indicadores["fundos"]>[number];
+export type ComparacaoIndicador = NonNullable<Indicadores["comparacao"]>;
+/** Situação do mês em todas as séries: só COM_FLUXO tem números. */
+export type SituacaoMesIndicador = PontoExecucao["situacao"];

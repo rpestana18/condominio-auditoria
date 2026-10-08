@@ -355,3 +355,36 @@ code { font-family: ui-monospace, monospace; font-size: 0.85em; background: var(
 .tabela.comparada .inicio-exercicio { border-left: 1px solid var(--borda); }
 .tabela.comparada thead th.inicio-exercicio[colspan] { text-align: center; color: var(--texto); font-weight: 600; }
 .tabela tbody th[scope="row"] { font-weight: 500; color: var(--texto); font-size: 0.9rem; }
+
+/* Análise da PO: indicadores (RF-11.10 a RF-11.13). Séries em tons neutros; vermelho (--critico) só no excesso acima de 20% */
+:root {
+  --cor-neutra: #4f6d8a; --referencia: #5f6b67;
+  --serie-1: #4f6d8a; --serie-2: #8a94a6; --serie-3: #2f7f8f; --serie-4: #6f7f5a;
+  --serie-5: #74688f; --serie-6: #9aa9b8; --serie-7: #8c8466; --serie-8: #3f5e5a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cor-neutra: #8fb0d0; --referencia: #9aa6a1;
+    --serie-1: #8fb0d0; --serie-2: #8f9bb3; --serie-3: #6cc0cf; --serie-4: #a8b98f;
+    --serie-5: #b3a8d1; --serie-6: #5f7184; --serie-7: #cbc29c; --serie-8: #7fa8a1;
+  }
+}
+.indicador { margin-bottom: 20px; }
+.meta-indicador { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: -6px 0 8px; }
+.tabela-alternativa { margin-top: 8px; }
+.tabela-alternativa > summary { font-weight: 500; font-size: 0.88rem; color: var(--primaria); }
+.tabela-alternativa .tabela { margin-top: 8px; }
+.tabela-alternativa caption { text-align: left; padding: 6px 0; }
+.rotulo-eixo-nota { fill: var(--texto-discreto); font-size: 10px; font-style: italic; }
+.texto-critico { color: var(--critico); font-weight: 600; }
+.dica-grafico {
+  background: var(--superficie); border: 1px solid var(--borda); border-radius: 8px; padding: 8px 10px;
+  color: var(--texto); font-size: 0.82rem; box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+}
+.dica-grafico dl { margin: 6px 0 0; display: grid; gap: 2px; }
+.dica-grafico dl > div { display: flex; justify-content: space-between; gap: 16px; }
+.dica-grafico dt { color: var(--texto-discreto); }
+.dica-grafico dd { margin: 0; font-variant-numeric: tabular-nums; }
+.avisos-discretos { margin: 0 0 16px; padding-left: 18px; color: var(--texto-discreto); font-size: 0.82rem; }
+.indicador-nao-se-aplica { margin-bottom: 20px; }
+.indicador-nao-se-aplica h2 { color: var(--texto-discreto); }

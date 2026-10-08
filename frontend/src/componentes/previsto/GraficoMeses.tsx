@@ -18,12 +18,16 @@ interface Props {
  * nunca aparece como zero.
  */
 export function GraficoMeses({ meses, aoEscolherMes }: Props) {
-  const dados = meses.map((m) => ({
-    mes: m.mes,
-    rotulo: situacao[m.situacao] ? `${formatarMesCurto(m.mes)}\n${situacao[m.situacao]}` : formatarMesCurto(m.mes),
-    previsto: m.situacao === "COM_FLUXO" ? m.previsto : null,
-    realizado: m.situacao === "COM_FLUXO" ? m.despesaRealizada : null,
-  }));
+  const dados = meses.map((m) => {
+    // Segunda linha do eixo: a situação do mês e, depois dos 12 meses, a marca de prorrogado (RF-11.3)
+    const marca = [situacao[m.situacao], m.prorrogado ? "prorrogado" : ""].filter(Boolean).join(" · ");
+    return {
+      mes: m.mes,
+      rotulo: marca ? `${formatarMesCurto(m.mes)}\n${marca}` : formatarMesCurto(m.mes),
+      previsto: m.situacao === "COM_FLUXO" ? m.previsto : null,
+      realizado: m.situacao === "COM_FLUXO" ? m.despesaRealizada : null,
+    };
+  });
   return (
     <section className="bloco grafico">
       <h2>Mês a mês no exercício</h2>

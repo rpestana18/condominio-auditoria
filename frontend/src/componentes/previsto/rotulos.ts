@@ -1,5 +1,17 @@
 // Textos da tela para os códigos da API. Só rótulos: nenhuma regra mora aqui.
-import type { Achado, EstadoAchado, EstadoDepara, EstadoPrevisao, MarcaLinha, OrigemDepara, PrevistoRealizado, TipoDestino } from "../../api/tipos";
+import type {
+  Achado,
+  EstadoAchado,
+  EstadoDepara,
+  EstadoPrevisao,
+  EstadoRubrica,
+  EventoRubrica,
+  MarcaLinha,
+  OrigemDepara,
+  OrigemRubrica,
+  PrevistoRealizado,
+  TipoDestino,
+} from "../../api/tipos";
 
 export const rotuloEstadoPo: Record<EstadoPrevisao, string> = {
   LIDA: "Lida, aguarda confirmação",
@@ -54,4 +66,27 @@ export const rotuloEstadoAchado: Record<EstadoAchado, string> = {
   JUSTIFICADO: "justificado",
   RESOLVIDO: "resolvido",
   FALSO_POSITIVO: "falso positivo",
+};
+
+// Rubricas (RF-11.7)
+export const rotuloEstadoRubrica: Record<EstadoRubrica, string> = {
+  SUGERIDO: "Sugerido",
+  CONFIRMADO: "Confirmado",
+  RECUSADO: "Recusado",
+};
+
+export const rotuloOrigemRubrica: Record<OrigemRubrica, string> = {
+  PRIMEIRA_PO: "primeira PO do condomínio",
+  CONTA_PO: "mesma conta da PO e mesmo grupo",
+  VERSAO_ANTERIOR: "versão anterior",
+  MANUAL: "escolha do Admin",
+};
+
+export const rotuloAcaoRubrica: Record<EventoRubrica["acao"], string> = {
+  CRIADA: "rubrica criada",
+  RENOMEADA: "rubrica renomeada",
+  SUGERIDO: "sugerido",
+  CONFIRMADO: "confirmado",
+  RECUSADO: "recusado",
+  ALTERADO: "alterado",
 };

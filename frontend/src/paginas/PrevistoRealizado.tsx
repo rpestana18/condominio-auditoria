@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
+import { useExercicios } from "../api/consultasAnalisePo";
 import { useFundos, usePrevisoes, usePrevistoRealizado } from "../api/consultasOrcamento";
 import type { PrevistoRealizado as Resultado } from "../api/tipos";
 import { BlocosAParte } from "../componentes/previsto/BlocosAParte";
 import { BotoesExportacao } from "../componentes/previsto/BotoesExportacao";
 import { EstadoPrevisto } from "../componentes/previsto/EstadoPrevisto";
-import type { AlvoEvidencia } from "../componentes/previsto/evidencia";
+import { alvoDoEndereco, type AlvoEvidencia } from "../componentes/previsto/evidencia";
 import { AchadosDoMes } from "../componentes/previsto/AchadosDoMes";
 import { FiltrosPrevisto } from "../componentes/previsto/FiltrosPrevisto";
 import { GraficoGrupos } from "../componentes/previsto/GraficoGrupos";
@@ -13,6 +14,7 @@ import { GraficoMeses } from "../componentes/previsto/GraficoMeses";
 import { IndicadorRegra20 } from "../componentes/previsto/IndicadorRegra20";
 import { PainelEvidencia } from "../componentes/previsto/PainelEvidencia";
 import { PainelFundos } from "../componentes/previsto/PainelFundos";
+import { ResumoExercicio } from "../componentes/previsto/ResumoExercicio";
 import { ResumoPrevisto } from "../componentes/previsto/ResumoPrevisto";
 import { SemNumeros } from "../componentes/previsto/SemNumeros";
 import { TabelaPrevisto } from "../componentes/previsto/TabelaPrevisto";
@@ -20,15 +22,19 @@ import { useSessao } from "../contexto";
 import { formatarMes } from "../formato";
 
 /**
- * Tela "Previsto × realizado" (RF-03.1.13), para todos os perfis. Os filtros ficam no endereço
+ * Tela "Previsto × realizado" (RF-03.1.13 e RF-11.4), para todos os perfis. Os filtros ficam no endereço
  * (?periodo=2026-09&po=...&fundo=<id do fundo>), para o link da tela inicial e do de-para abrirem a mesma visão.
+ * O exercício é escolhido pela lista do GET /exercicios e vai para a API como o `po` daquele exercício; sem `po`,
+ * a API usa o exercício vigente. Com `?alvo=linha:<id>` (vindo de "Comparar exercícios"), a evidência já abre.
  */
 export function PrevistoRealizado() {
   const { condominioId } = useSessao();
   const [parametros, setParametros] = useSearchParams();
   const poId = parametros.get("po");
   const fundoId = parametros.get("fundo");
+  const alvoUrl = parametros.get("alvo");
 
+  const { data: exercicios = [] } = useExercicios(condominioId);
   const { data: previsoes = [] } = usePrevisoes(condominioId);
   const { data: fundos = [] } = useFundos(condominioId);
   // O acumulado traz os meses do exercício (para o filtro e o gráfico mês a mês)
@@ -38,11 +44,19 @@ export function PrevistoRealizado() {
   // O filtro de fundo vai para a API: ela devolve só o que pertence à visão escolhida
   const consulta = usePrevistoRealizado(condominioId, periodo, poId, fundoId);
 
-  const trocar = (nome: string, valor: string | null) =>
+  // Sem `po` no endereço, o exercício mostrado é o que a API escolheu (o vigente)
+  const poMostrada = poId ?? acumulado.data?.po?.id ?? null;
+  const exercicio = exercicios.find((e) => e.tipo === "PO" && e.poId === poMostrada);
+
+  /** Troca um filtro no endereço. A evidência aberta pelo link (?alvo=) fecha junto. */
+  const trocar = (mudancas: Record<string, string | null>) =>
     setParametros((atual) => {
       const novo = new URLSearchParams(atual);
-      if (valor) novo.set(nome, valor);
-      else novo.delete(nome);
+      novo.delete("alvo");
+      for (const [nome, valor] of Object.entries(mudancas)) {
+        if (valor) novo.set(nome, valor);
+        else novo.delete(nome);
+      }
       return novo;
     });
 
@@ -53,22 +67,33 @@ export function PrevistoRealizado() {
         {periodo && consulta.data?.situacao === "CALCULADO" && <BotoesExportacao periodo={periodo} poId={poId} fundoId={fundoId} />}
       </header>
       <FiltrosPrevisto
+        exercicios={exercicios}
         previsoes={previsoes}
-        poId={poId}
-        aoTrocarPo={(id) => trocar("po", id)}
+        poId={poMostrada}
+        // Outro exercício tem outros meses: o período volta ao padrão (último mês com fluxo)
+        aoTrocarPo={(id) => trocar({ po: id, periodo: null })}
         periodo={periodo ?? "acumulado"}
         meses={acumulado.data?.meses ?? []}
-        aoTrocarPeriodo={(p) => trocar("periodo", p)}
+        aoTrocarPeriodo={(p) => trocar({ periodo: p })}
         fundos={fundos}
         fundoId={fundoId}
-        aoTrocarFundo={(f) => trocar("fundo", f)}
+        aoTrocarFundo={(f) => trocar({ fundo: f })}
       />
+      {exercicio && <ResumoExercicio exercicio={exercicio} />}
       {consulta.isLoading || !periodo ? (
         <p className="aviso">Carregando…</p>
       ) : consulta.error ? (
         <p className="aviso erro">{consulta.error.message}</p>
       ) : consulta.data ? (
-        <Conteudo resultado={consulta.data} periodo={periodo} aoEscolherMes={(m) => trocar("periodo", m)} />
+        <Conteudo
+          // Um alvo novo no endereço remonta o conteúdo, para o painel abrir já nele
+          key={alvoUrl ?? ""}
+          resultado={consulta.data}
+          periodo={periodo}
+          alvoUrl={alvoUrl}
+          aoFecharAlvoUrl={() => trocar({})}
+          aoEscolherMes={(m) => trocar({ periodo: m })}
+        />
       ) : null}
     </>
   );
@@ -77,11 +102,18 @@ export function PrevistoRealizado() {
 interface PropsConteudo {
   resultado: Resultado;
   periodo: string;
+  /** Alvo da evidência vindo do endereço (ex.: clique num valor de "Comparar exercícios"). */
+  alvoUrl: string | null;
+  aoFecharAlvoUrl: () => void;
   aoEscolherMes: (mes: string) => void;
 }
 
-function Conteudo({ resultado, periodo, aoEscolherMes }: PropsConteudo) {
-  const [evidencia, setEvidencia] = useState<AlvoEvidencia | null>(null);
+function Conteudo({ resultado, periodo, alvoUrl, aoFecharAlvoUrl, aoEscolherMes }: PropsConteudo) {
+  const [evidencia, setEvidencia] = useState<AlvoEvidencia | null>(() => (alvoUrl ? alvoDoEndereco(resultado, alvoUrl) : null));
+  const fecharEvidencia = () => {
+    setEvidencia(null);
+    if (alvoUrl) aoFecharAlvoUrl();
+  };
   const { totais } = resultado;
 
   return (
@@ -118,7 +150,7 @@ function Conteudo({ resultado, periodo, aoEscolherMes }: PropsConteudo) {
         </p>
       </div>
       {evidencia && resultado.po && (
-        <PainelEvidencia periodo={periodo} po={resultado.po} alvo={evidencia} aoFechar={() => setEvidencia(null)} />
+        <PainelEvidencia periodo={periodo} po={resultado.po} alvo={evidencia} aoFechar={fecharEvidencia} />
       )}
     </div>
   );

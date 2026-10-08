@@ -91,3 +91,14 @@ export function formatarDolarTexto(decimal: string): string {
   const agrupado = inteiros.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return `${negativo ? "-" : ""}US$ ${agrupado},${centavos.padEnd(2, "0")}`;
 }
+
+/** Valor em reais que pode faltar (ex.: exercício sem realizado): nulo vira "—", nunca "R$ 0,00". */
+export function formatarMoedaOuTraco(valor: number | null | undefined): string {
+  return valor === null || valor === undefined ? "—" : moeda.format(valor);
+}
+
+/** Percentual que já vem calculado, com sinal explícito: 7.7 vira "+7,7%", -3.5 vira "-3,5%". Nulo vira "—". */
+export function formatarPercentualComSinal(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined) return "—";
+  return valor > 0 ? `+${formatarPercentual(valor)}` : formatarPercentual(valor);
+}

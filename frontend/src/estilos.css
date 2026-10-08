@@ -346,3 +346,12 @@ code { font-family: ui-monospace, monospace; font-size: 0.85em; background: var(
 .campo-chave { display: grid; gap: 8px; max-width: 420px; }
 .campo-chave .botao-link { justify-self: start; }
 .total-custo { font-size: 0.9rem; margin: 8px 0 0; }
+
+/* Análise da PO: comparar exercícios (RF-11.6) */
+.filtro-exercicios { border: 1px solid var(--borda); border-radius: 8px; padding: 8px 12px; margin: 0; display: grid; gap: 6px; }
+.filtro-exercicios legend { font-size: 0.85rem; color: var(--texto-discreto); padding: 0 4px; }
+.mesmos-meses { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.mesmos-meses .campo-linha { flex-basis: auto; }
+.tabela.comparada .inicio-exercicio { border-left: 1px solid var(--borda); }
+.tabela.comparada thead th.inicio-exercicio[colspan] { text-align: center; color: var(--texto); font-weight: 600; }
+.tabela tbody th[scope="row"] { font-weight: 500; color: var(--texto); font-size: 0.9rem; }

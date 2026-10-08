@@ -30,14 +30,14 @@ export type Periodo = string;
 export type FormatoExportacao = "pdf" | "xlsx";
 
 /** Monta "?a=1&b=2" ignorando os valores vazios. */
-function consulta(parametros: Record<string, string | null | undefined>): string {
+export function consulta(parametros: Record<string, string | null | undefined>): string {
   const busca = new URLSearchParams();
   for (const [nome, valor] of Object.entries(parametros)) if (valor) busca.set(nome, valor);
   const texto = busca.toString();
   return texto ? `?${texto}` : "";
 }
 
-const base = (condominioId: string) => `/condominios/${condominioId}`;
+export const base = (condominioId: string) => `/condominios/${condominioId}`;
 
 // ---------- PO ----------
 
@@ -149,11 +149,17 @@ export function useEventosDepara(condominioId: string, poId: string | undefined,
   });
 }
 
-/** Mudou PO ou de-para: o previsto × realizado, a tela inicial e as listas são recarregados. */
-function useRecarregarOrcamento() {
+/**
+ * Mudou PO, de-para ou rubrica: o previsto × realizado, a análise da PO, a tela inicial e as listas são recarregados.
+ * Exportada para as consultas da análise da PO (consultasAnalisePo.ts).
+ */
+export function useRecarregarOrcamento() {
   const cliente = useQueryClient();
   return () => {
-    const chaves = ["previsoes", "previsao", "previsao-eventos", "depara", "depara-eventos", "previsto-realizado", "evidencia", "painel", "realocacoes", "achados"];
+    const chaves = [
+      "previsoes", "previsao", "previsao-eventos", "depara", "depara-eventos", "previsto-realizado", "evidencia", "painel",
+      "realocacoes", "achados", "exercicios", "comparacao-exercicios", "coluna-impressa", "rubricas", "rubricas-po", "rubricas-eventos",
+    ];
     for (const chave of chaves) {
       void cliente.invalidateQueries({ queryKey: [chave] });
     }

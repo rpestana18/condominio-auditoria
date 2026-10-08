@@ -1,4 +1,4 @@
-# Imagem de um serviço Java (backend, rag ou mcp). O serviço vem no argumento SERVICO.
+# Imagem de um serviço Java (api, rag ou mcp). O serviço vem no argumento SERVICO.
 # Compila dentro do contêiner: ninguém precisa ter Java instalado para rodar.
 FROM eclipse-temurin:25-jdk AS build
 ARG SERVICO
@@ -7,7 +7,7 @@ COPY gradlew settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY gradle gradle
 COPY contracts contracts
 COPY libs libs
-COPY backend backend
+COPY api api
 COPY rag rag
 COPY mcp mcp
 # Remove CRLF e garante a permissão de execução: num clone do Windows o gradlew

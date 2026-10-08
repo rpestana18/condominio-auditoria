@@ -79,7 +79,7 @@ rag:
     voltas-ferramentas: ${RAG_VOLTAS_FERRAMENTAS:6}
     historico-maximo: 10
     # Ferramentas numéricas: gRPC Consulta do backend, com o mesmo token do usuário
-    backend-grpc: ${BACKEND_GRPC:backend:9090}
+    backend-grpc: ${BACKEND_GRPC:api:9090}
     prazo-ferramenta-segundos: ${RAG_PRAZO_FERRAMENTA:20}
     # RF-04.15 / ADR 0003 Q11: só entre aspas de citação literal
     termos-conduta: ${RAG_TERMOS_CONDUTA:desvio,desviou,fraude,fraudou,roubo,roubou,culpa,culpado}

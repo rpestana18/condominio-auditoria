@@ -3,16 +3,16 @@
 #            RabbitMQ http://localhost:15672 (condominio/condominio) · MCP http://localhost:8083/mcp
 #
 # Serviços e como conversam:
-#   frontend ──REST──▶ backend ──fila──▶ rag ──HTTP──▶ leitor (Python)
+#   frontend ──REST──▶ api ──fila──▶ rag ──HTTP──▶ leitor (Python)
 #                        ▲   ◀──fila────┘ │
 #   Claude ──MCP──▶ mcp ─┘ gRPC           └──HTTP──▶ ollama (embeddings bge-m3)
 #
 # Fluxos:
-#   leitura contábil: backend ─ArquivoRecebido (rag.arquivos-recebidos)─▶ rag ─resultado (backend.resultados)─▶ backend
-#   indexação (ADR 0003): backend ─IndexarArquivo (rag.indexacao)─▶ rag ─▶ leitor + ollama ─▶ schema rag no banco
-#                         rag ─ResultadoIndexacao (backend.indexacao)─▶ backend (situação da indexação do arquivo na API)
-#   busca nos documentos: Claude ─buscar_documentos─▶ mcp ─gRPC Consulta.BuscarDocumentos─▶ backend
-#                         backend ─gRPC Assistente.Buscar (rag:9091)─▶ rag (híbrida; só por palavra sem Ollama)
+#   leitura contábil: api ─ArquivoRecebido (rag.arquivos-recebidos)─▶ rag ─resultado (backend.resultados)─▶ api
+#   indexação (ADR 0003): api ─IndexarArquivo (rag.indexacao)─▶ rag ─▶ leitor + ollama ─▶ schema rag no banco
+#                         rag ─ResultadoIndexacao (backend.indexacao)─▶ api (situação da indexação do arquivo na API)
+#   busca nos documentos: Claude ─buscar_documentos─▶ mcp ─gRPC Consulta.BuscarDocumentos─▶ api
+#                         api ─gRPC Assistente.Buscar (rag:9091)─▶ rag (híbrida; só por palavra sem Ollama)
 #
 # Primeira subida: o passo ollama-modelo baixa o modelo bge-m3 (~1,2 GB) para o volume "ollama"; o rag só sobe
 # depois que ele termina. Nas próximas subidas o modelo já está no volume e o passo termina em segundos.
@@ -90,11 +90,11 @@ services:
     depends_on:
       ollama: { condition: service_healthy }
 
-  backend:
+  api:
     build:
       context: ..
       dockerfile: infra/java.Dockerfile
-      args: { SERVICO: backend }
+      args: { SERVICO: api }
     environment:
       BANCO_URL: jdbc:postgresql://banco:5432/condominio
       RABBITMQ_HOST: fila
@@ -133,7 +133,7 @@ services:
       OLLAMA_MODELO_EMBEDDINGS: bge-m3
       # O modelo vem do passo ollama-modelo; o rag nunca baixa sozinho
       OLLAMA_BAIXAR_MODELO: never
-      # gRPC do assistente (Assistente.Buscar), só na rede interna; quem chama é o backend
+      # gRPC do assistente (Assistente.Buscar), só na rede interna; quem chama é o api
       GRPC_PORTA: 9091
       RAG_PARALELISMO_INDEXACAO: 1
       # Chat do Assistente (ADR 0003, entrega 3). O par de chaves do rag cifra as chaves de API dos condomínios: só o
@@ -141,8 +141,8 @@ services:
       # perder o volume obriga a cadastrar de novo as chaves dos condomínios. Em produção: segredo ou cofre, sem gerar.
       RAG_CHAVE_PRIVADA_ARQUIVO: /chaves/rag.pem
       RAG_GERAR_CHAVE_DEV: "true"
-      # Ferramentas numéricas do chat: o rag consulta o backend com o token do próprio usuário
-      BACKEND_GRPC: backend:9090
+      # Ferramentas numéricas do chat: o rag consulta o api com o token do próprio usuário
+      BACKEND_GRPC: api:9090
     # Só lê os originais: a pasta entra como somente leitura
     volumes: [../dados:/dados:ro, chaves-rag:/chaves]
     ports: ["8082:8080"]
@@ -158,19 +158,19 @@ services:
       dockerfile: infra/java.Dockerfile
       args: { SERVICO: mcp }
     environment:
-      BACKEND_GRPC: backend:9090
+      BACKEND_GRPC: api:9090
       KEYCLOAK_EMISSOR: http://localhost:8180/realms/condominio
       KEYCLOAK_CHAVES: http://keycloak:8080/realms/condominio/protocol/openid-connect/certs
       PORTA: 8080
     ports: ["8083:8080"]
     depends_on:
       keycloak: { condition: service_healthy }
-      backend: { condition: service_started }
+      api: { condition: service_started }
 
   frontend:
     build: ../frontend
     ports: ["8080:80"]
-    depends_on: [backend]
+    depends_on: [api]
 
 volumes:
   banco:

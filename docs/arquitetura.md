@@ -47,7 +47,7 @@ condominio-auditoria/
 ├── settings.gradle.kts         # projetos Gradle: um por serviço Java + libs técnicas
 ├── build.gradle.kts
 ├── gradle/libs.versions.toml   # catálogo único de versões
-├── backend/                    # serviço: API REST, contábil, auditoria, orçamento, relatórios, registro dos arquivos
+├── api/                        # serviço (ex-backend, ADR 0006): API REST, contábil, auditoria, orçamento, relatórios, registro dos arquivos
 ├── rag/                        # serviço: leitura, interpretação de layouts, conferência, enriquecimento, embeddings, busca
 ├── mcp/                        # serviço: ferramentas MCP; chama o backend por gRPC com o token do usuário
 ├── leitor/                     # serviço Python: arquivo → JSON (sem estado)

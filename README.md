@@ -196,7 +196,7 @@ Claude ──MCP──▶ mcp ─┘ gRPC   backend ──gRPC──▶ rag └�
 ## Estrutura
 
 ```
-backend/            serviço backend (Java 25 + Spring Boot)
+api/                serviço api, o antigo backend (Java 25 + Spring Boot)
 rag/                serviço rag: leitura, interpretação e conferência dos documentos
 mcp/                serviço mcp: ferramentas MCP que chamam o backend por gRPC
 leitor/             leitor de documentos em Python (sem estado)
@@ -218,7 +218,7 @@ Para mexer no código com recarga rápida. Precisa de **Java 25**, **Node 22 + p
 cd infra && docker compose up -d banco fila keycloak leitor ollama ollama-modelo
 
 # 2. Cada serviço Java no seu terminal, na raiz do projeto
-PASTA_DADOS=$(pwd)/dados ./gradlew :backend:bootRun     # API na 8081, gRPC na 9090
+PASTA_DADOS=$(pwd)/dados ./gradlew :api:bootRun     # API na 8081, gRPC na 9090
 PASTA_DADOS=$(pwd)/dados ./gradlew :rag:bootRun         # 8082, gRPC na 9091
 ./gradlew :mcp:bootRun                                  # 8083
 

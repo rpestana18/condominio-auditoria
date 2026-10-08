@@ -715,6 +715,41 @@ paths:
           description: OK
           content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Exercicio" } } } }
         "403": { description: Sem acesso ao condomínio }
+  /condominios/{condominioId}/comparacao-exercicios:
+    parameters: [{ $ref: "#/components/parameters/CondominioId" }]
+    get:
+      summary: Comparar exercícios (todos os perfis, RF-11.6)
+      description: |
+        Três visões: resumo por exercício, por grupo (1.1 a 1.9, casados pelo código) e por linha (casadas pela rubrica
+        confirmada, RF-11.7; linha sem rubrica confirmada fica em "semCorrespondencia" e nunca é somada a outra).
+        Exercícios do mais recente para o mais antigo; a variação de cada um é contra o seguinte da lista. Variação em
+        % só com base diferente de zero; base zero com valor = "novaNoExercicio". O realizado vem do mesmo cálculo do
+        previsto × realizado; "alvo" abre a evidência nele (com o poId e o "periodo" do exercício). Nada é gravado.
+      operationId: compararExercicios
+      parameters:
+        - name: exercicios
+          in: query
+          required: false
+          description: Ids separados por vírgula ("po:<uuid>" ou o uuid, e "coluna:<uuid>"); vazio = os dois mais recentes
+          style: form
+          explode: false
+          schema: { type: array, items: { type: string } }
+        - name: fundo
+          in: query
+          required: false
+          description: Fundo Condomínio = sem os fundos 1.9; outro fundo = só a linha 1.9 dele (arrecadação); vazio = tudo
+          schema: { type: string, format: uuid }
+        - name: mesmosMeses
+          in: query
+          required: false
+          description: Compara só os meses (pelo número) com fluxo em todos os exercícios com PO
+          schema: { type: boolean, default: false }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ComparacaoExercicios" } } } }
+        "400": { description: Id de exercício inválido }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Exercício, PO, coluna ou fundo não encontrado }
+        "422": { description: Menos de dois exercícios }
   /condominios/{condominioId}/previsoes/{poId}/coluna-impressa:
     parameters: [{ $ref: "#/components/parameters/CondominioId" }, { $ref: "#/components/parameters/PoId" }]
     get:
@@ -1363,6 +1398,123 @@ components:
               descricao: { type: string }
               poEnviada: { type: number }
               colunaImpressa: { type: number }
+        avisos: { type: array, items: { type: string } }
+    VariacaoExercicio:
+      type: object
+      description: Atual menos anterior. "percentual" com 1 casa, nulo com base zero; "novaNoExercicio" quando a base é zero e o valor atual não
+      required: [valor, novaNoExercicio]
+      properties:
+        valor: { type: number }
+        percentual: { type: [number, "null"] }
+        novaNoExercicio: { type: boolean }
+    ValorComparado:
+      type: object
+      description: Valor de um exercício num grupo ou rubrica; nulos quando o exercício não tem o grupo ou o dado
+      required: [exercicioId, linhas]
+      properties:
+        exercicioId: { type: string }
+        previstoMes: { type: [number, "null"] }
+        previsto: { type: [number, "null"], description: Previsto dos meses comparados (nulo sem realizado) }
+        realizado: { type: [number, "null"], description: Fundos 1.9 = arrecadação }
+        variacaoPrevistoMes: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/VariacaoExercicio" }] }
+        variacaoRealizado: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/VariacaoExercicio" }] }
+        alvo: { type: [string, "null"], description: 'Alvo da evidência: "linha:<id>", "grupo:<id>", "fundo:<id>"' }
+        linhas:
+          type: array
+          items:
+            type: object
+            required: [linhaId, codigo, descricao]
+            properties:
+              linhaId: { type: string, format: uuid }
+              codigo: { type: string }
+              descricao: { type: string }
+              alvo: { type: [string, "null"] }
+    ComparacaoExercicios:
+      type: object
+      required: [exercicios, mesmosMeses, resumo, grupos, linhas, semCorrespondencia, avisos]
+      properties:
+        exercicios:
+          type: array
+          items:
+            type: object
+            required: [id, tipo, rotulo, poId, inicio, fim, meses]
+            properties:
+              id: { type: string }
+              tipo: { type: string, enum: [PO, COLUNA_IMPRESSA] }
+              rotulo: { type: string }
+              poId: { type: string, format: uuid }
+              versao: { type: [integer, "null"] }
+              inicio: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" }
+              fim: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" }
+              periodo: { type: [string, "null"], description: 'Período da evidência: "acumulado" ou AAAA-MM; nulo na coluna impressa' }
+              meses: { type: array, items: { type: string }, description: Meses somados no realizado }
+        fundoId: { type: [string, "null"], format: uuid }
+        mesmosMeses: { type: boolean }
+        comparando: { type: [string, "null"], description: 'Ex.: "comparando: setembro" (só com mesmosMeses)' }
+        resumo:
+          type: array
+          items:
+            type: object
+            required: [exercicioId, previstoMes, previstoExercicio, mesesComFluxo, provisorio]
+            properties:
+              exercicioId: { type: string }
+              previstoMes: { type: number }
+              previstoExercicio: { type: number }
+              mesesComFluxo: { type: integer }
+              previsto: { type: [number, "null"] }
+              realizado: { type: [number, "null"] }
+              execucao: { type: [number, "null"] }
+              maiorExcesso:
+                oneOf:
+                  - { type: "null" }
+                  - type: object
+                    required: [mes, valor]
+                    properties:
+                      mes: { type: string }
+                      valor: { type: number }
+                      percentual: { type: [number, "null"] }
+              mesesAcimaDoLimite: { type: [integer, "null"] }
+              achadosAbertos: { type: [integer, "null"] }
+              provisorio: { type: boolean }
+              variacaoPrevistoMes: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/VariacaoExercicio" }] }
+              variacaoRealizado: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/VariacaoExercicio" }] }
+              alvo: { type: [string, "null"] }
+        grupos:
+          type: array
+          items:
+            type: object
+            required: [codigo, descricao, fundos, valores]
+            properties:
+              codigo: { type: string }
+              descricao: { type: string }
+              fundos: { type: boolean }
+              valores: { type: array, items: { $ref: "#/components/schemas/ValorComparado" } }
+        linhas:
+          type: array
+          items:
+            type: object
+            required: [rubricaId, nome, valores]
+            properties:
+              rubricaId: { type: string, format: uuid }
+              nome: { type: string }
+              grupo: { type: [string, "null"] }
+              valores: { type: array, items: { $ref: "#/components/schemas/ValorComparado" } }
+        semCorrespondencia:
+          type: array
+          items:
+            type: object
+            required: [exercicioId, linhaId, codigo, descricao, previstoMes]
+            properties:
+              exercicioId: { type: string }
+              linhaId: { type: string, format: uuid }
+              codigo: { type: string }
+              conta: { type: [string, "null"] }
+              descricao: { type: string }
+              grupo: { type: string }
+              previstoMes: { type: number }
+              previsto: { type: [number, "null"] }
+              realizado: { type: [number, "null"] }
+              alvo: { type: [string, "null"] }
         avisos: { type: array, items: { type: string } }
     PedidoProrrogacao:
       type: object

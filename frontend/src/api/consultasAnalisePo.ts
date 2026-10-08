@@ -9,6 +9,7 @@ import type {
   EventoRubrica,
   Exercicio,
   FiltroRubrica,
+  Indicadores,
   LinhaComRubrica,
   PedidoLoteRubrica,
   PedidoRubricaLinha,
@@ -59,6 +60,19 @@ export function useColunaImpressa(condominioId: string, poId: string | null) {
     queryKey: ["coluna-impressa", condominioId, poId],
     queryFn: () => obter<ConferenciaColuna>(`${base(condominioId)}/previsoes/${poId}/coluna-impressa`),
     enabled: !!poId,
+  });
+}
+
+// ---------- Indicadores (RF-11.10 a RF-11.13) ----------
+
+/**
+ * Séries dos 7 gráficos do exercício da PO `poId` (vazio = o mais recente). Com o fundo Condomínio, a série de
+ * fundos vem nula; com outro fundo, as séries 1 a 5 vêm nulas. Nada é calculado aqui.
+ */
+export function useIndicadores(condominioId: string, poId: string | null, fundoId: string | null) {
+  return useQuery({
+    queryKey: ["indicadores", condominioId, poId ?? "vigente", fundoId ?? "todos"],
+    queryFn: () => obter<Indicadores>(`${base(condominioId)}/indicadores${consulta({ po: poId, fundo: fundoId })}`),
   });
 }
 

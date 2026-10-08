@@ -1,6 +1,6 @@
 import type { Exercicio, FundoFluxo, MesPrevistoRealizado, PrevisaoResumo } from "../../api/tipos";
 import { formatarMes } from "../../formato";
-import { rotuloEstadoPo } from "./rotulos";
+import { SeletorExercicio } from "./SeletorExercicio";
 import { SeletorFundo } from "./SeletorFundo";
 
 interface Props {
@@ -30,31 +30,9 @@ const situacaoMes: Record<MesPrevistoRealizado["situacao"], string> = {
 /** Filtros do RF-03.1.13 e do RF-11.4: exercício, mês ou acumulado, e fundo. */
 export function FiltrosPrevisto(props: Props) {
   const { exercicios, previsoes, poId, aoTrocarPo, periodo, meses, aoTrocarPeriodo, fundos, fundoId, aoTrocarFundo } = props;
-  // A coluna impressa não tem realizado nem exercício próprio: só aparece em "Comparar exercícios"
-  const comPo = exercicios.filter((e) => e.tipo === "PO");
-  // Uma versão de PO que não está na lista (ex.: ainda não confirmada) continua podendo ser aberta pelo link
-  const foraDaLista = poId && !comPo.some((e) => e.poId === poId) ? previsoes.find((p) => p.id === poId) : undefined;
-
   return (
     <div className="filtros">
-      <label>
-        Exercício
-        <select value={poId ?? ""} onChange={(e) => aoTrocarPo(e.target.value)} disabled={comPo.length === 0 && !foraDaLista}>
-          {comPo.length === 0 && !foraDaLista && <option value="">Nenhum exercício confirmado</option>}
-          {comPo.map((e) => (
-            <option key={e.id} value={e.poId}>
-              {e.rotulo}
-              {e.versao ? ` · versão ${e.versao}` : ""}
-              {e.prorrogacao ? ` · prorrogada até ${formatarMes(e.prorrogacao.ate)}` : ""}
-            </option>
-          ))}
-          {foraDaLista && (
-            <option value={foraDaLista.id}>
-              {foraDaLista.exercicioImpresso ?? foraDaLista.arquivoNome} · {rotuloEstadoPo[foraDaLista.estado]}
-            </option>
-          )}
-        </select>
-      </label>
+      <SeletorExercicio exercicios={exercicios} previsoes={previsoes} poId={poId} aoTrocar={aoTrocarPo} />
       <label>
         Período
         <select value={periodo} onChange={(e) => aoTrocarPeriodo(e.target.value)}>

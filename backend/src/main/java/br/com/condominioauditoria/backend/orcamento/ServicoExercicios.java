@@ -166,7 +166,7 @@ public class ServicoExercicios {
         return List.copyOf(meses);
     }
 
-    private static SituacaoMes situacao(YearMonth mes, List<Fluxo> fluxos) {
+    static SituacaoMes situacao(YearMonth mes, List<Fluxo> fluxos) {
         long n = fluxos.stream().filter(f -> f.cobre(mes)).count();
         return n == 0 ? SituacaoMes.SEM_FLUXO : n == 1 ? SituacaoMes.COM_FLUXO : SituacaoMes.DOIS_FLUXOS;
     }

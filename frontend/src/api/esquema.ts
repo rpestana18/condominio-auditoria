@@ -1027,6 +1027,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/indicadores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Séries dos 7 gráficos da tela "Indicadores" (todos os perfis, RF-11.10 a RF-11.12)
+         * @description Números prontos, os mesmos da tela de previsto × realizado (o frontend só desenha). Mês sem fluxo carregado ou
+         *     com dois fluxos vem com os números nulos e a situação, nunca com zero. Cada ponto traz o mês e o "alvo" da
+         *     evidência no previsto × realizado (período = o mês do ponto; no gráfico 5, "acumulado"). Gráficos 1 a 5 são do
+         *     fundo Condomínio; o 6, dos fundos ligados às linhas 1.9; o 7, deste exercício contra o anterior da lista de
+         *     exercícios. Filtro de fundo: o fundo Condomínio tira o 6; outro fundo tira 1 a 5 e deixa no 6 só ele.
+         */
+        get: operations["indicadores"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/condominios/{condominioId}/previsoes/{poId}/coluna-impressa": {
         parameters: {
             query?: never;
@@ -1784,6 +1810,111 @@ export interface components {
                 alvo?: string | null;
             }[];
             avisos: string[];
+        };
+        Indicadores: {
+            /** Format: uuid */
+            poId: string;
+            rotulo: string;
+            inicio: string;
+            fim: string;
+            /** Format: uuid */
+            fundoId?: string | null;
+            /**
+             * Format: date-time
+             * @description Envio mais recente dos fluxos usados
+             */
+            dadosDe?: string | null;
+            /** @description Limite da regra dos 20% (Conv. 16.2) */
+            limitePercentual?: number | null;
+            /** @description Gráfico 1, realizado ÷ previsto do mês (referência 100%) */
+            execucaoMensal?: {
+                mes: string;
+                /** @enum {string} */
+                situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
+                previsto?: number | null;
+                realizado?: number | null;
+                execucao?: number | null;
+                alvo?: string | null;
+            }[] | null;
+            /** @description Gráfico 2; só "acimaDoLimite" usa cor de alerta (RF-11.13) */
+            regra20?: {
+                mes: string;
+                /** @enum {string} */
+                situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
+                excesso?: number | null;
+                percentual?: number | null;
+                limitePercentual?: number | null;
+                cenarioMaximo?: number | null;
+                percentualCenarioMaximo?: number | null;
+                acimaDoLimite?: boolean | null;
+                provisorio?: boolean | null;
+                alvo?: string | null;
+            }[] | null;
+            /** @description Gráfico 3, somas até o mês (só meses com fluxo entram) */
+            acumulado?: {
+                mes: string;
+                /** @enum {string} */
+                situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
+                previstoAcumulado?: number | null;
+                realizadoAcumulado?: number | null;
+                alvo?: string | null;
+            }[] | null;
+            /** @description Gráfico 4, grupos 1.1 a 1.8 */
+            realizadoPorGrupo?: {
+                codigo: string;
+                descricao: string;
+                pontos: {
+                    mes: string;
+                    /** @enum {string} */
+                    situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
+                    valor?: number | null;
+                    alvo?: string | null;
+                }[];
+            }[] | null;
+            maioresDiferencas?: null | {
+                acima: components["schemas"]["DiferencaIndicador"][];
+                abaixo: components["schemas"]["DiferencaIndicador"][];
+            };
+            /** @description Gráfico 6, arrecadação × previsto */
+            fundos?: {
+                /** Format: uuid */
+                fundoId: string;
+                fundo: string;
+                linhaCodigo?: string | null;
+                pontos: {
+                    mes: string;
+                    /** @enum {string} */
+                    situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
+                    previsto?: number | null;
+                    arrecadado?: number | null;
+                    alvo?: string | null;
+                }[];
+            }[] | null;
+            comparacao?: null | {
+                exercicios: {
+                    id: string;
+                    rotulo: string;
+                    execucao?: number | null;
+                    periodo?: string | null;
+                }[];
+                grupos: {
+                    codigo: string;
+                    descricao: string;
+                    previstoMes: (number | null)[];
+                }[];
+            };
+            avisos: string[];
+        };
+        DiferencaIndicador: {
+            /** Format: uuid */
+            linhaId: string;
+            codigo: string;
+            descricao: string;
+            previsto: number;
+            realizado: number;
+            /** @description Realizado menos previsto */
+            diferenca: number;
+            alvo: string;
         };
         PedidoProrrogacao: {
             /** @description Último mês prorrogado (AAAA-MM) */
@@ -4604,6 +4735,46 @@ export interface operations {
             };
             /** @description Menos de dois exercícios */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    indicadores: {
+        parameters: {
+            query?: {
+                /** @description PO do exercício; vazio = o mais recente */
+                po?: string;
+                fundo?: string;
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Indicadores"];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO confirmada ou fundo não encontrado */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

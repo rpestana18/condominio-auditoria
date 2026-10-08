@@ -174,7 +174,7 @@ Os passos 1, 2 e 3 podem correr em paralelo. O frontend começa quando o `openap
 ## Notas da implementação
 
 - 08/10/2026: os números dos critérios de teste dos passos 3 e 4 foram corrigidos para os valores conferidos pelo `backend` e pelo teste ponta a ponta (PR #32). A decisão não mudou.
-- **Para confirmação do usuário:** "exercício anterior" foi implementado como a PO confirmada que cobre o mês anterior ao início do exercício (`ServicoExercicios.anterior`). Confirme se é essa a regra desejada; nada novo foi decidido aqui.
+- **Confirmado pelo usuário em 08/10/2026:** "exercício anterior" é o ano anterior, com a PO que foi executada nele. O sistema o encontra como a PO confirmada que cobre o mês anterior ao início do exercício (`ServicoExercicios.anterior`). Exemplo do piloto: a PO 2026/2027 começa em 05/2026; em 04/2026 valia a PO 2025/2026, que é o exercício anterior. Enquanto ela não é enviada, vale a coluna "Orçado anterior" impressa.
 
 ## Perguntas para o usuário
 

@@ -563,6 +563,168 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/rubricas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Catálogo de rubricas do condomínio (todos os perfis, RF-11.7)
+         * @description Linhas de exercícios diferentes ligadas à mesma rubrica correspondem na comparação entre exercícios
+         *     (ADR 0005, Decisão 1). A primeira PO confirmada do condomínio gera uma rubrica por linha. Rubrica nunca é apagada.
+         */
+        get: operations["listarRubricas"];
+        put?: never;
+        /** Cria uma rubrica no catálogo (só ADMIN, RF-11.7), com evento na trilha */
+        post: operations["criarRubrica"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/rubricas/{rubricaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                rubricaId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Troca o nome da rubrica (só ADMIN, RF-11.7), com evento na trilha */
+        put: operations["renomearRubrica"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/rubricas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Rubrica de cada linha da PO (todos os perfis, RF-11.7)
+         * @description Todas as linhas de despesa e de fundo da PO, na ordem do documento. Linha sem rubrica tem estado nulo. Só
+         *     CONFIRMADO entra na comparação por linha entre exercícios; o resto fica "sem correspondência".
+         */
+        get: operations["listarRubricasDaPo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/rubricas/{linhaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+                /** @description Id da linha da PO */
+                linhaId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Admin escolhe a rubrica de uma linha (só ADMIN, RF-11.7)
+         * @description Uma rubrica do catálogo (rubricaId) ou uma nova criada a partir da linha (novaRubrica, com o nome), nunca os
+         *     dois. Com confirmar nulo ou true, fica CONFIRMADO; com false, SUGERIDO. A trilha registra a rubrica e o estado
+         *     anteriores e novos.
+         */
+        put: operations["definirRubricaDaLinha"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/rubricas/lote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirma ou recusa a rubrica de várias linhas (só ADMIN, RF-11.7), um evento por linha */
+        post: operations["loteRubricas"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/rubricas/sugestoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gera as rubricas da PO (só ADMIN, RF-11.7), sem IA
+         * @description Também roda sozinho na confirmação da PO. Se o condomínio ainda não tem rubricas, cada linha desta PO vira uma
+         *     rubrica, já CONFIRMADA (primeiraPo). Senão, para cada linha ainda sem rubrica: primeiro a linha igual da versão
+         *     anterior do mesmo exercício (mesmo código efetivo e mesma conta); depois a rubrica das linhas confirmadas de
+         *     outras POs com a mesma conta da PO e o mesmo grupo. Conta repetida no mesmo grupo desta PO, conta em mais de
+         *     uma rubrica ou nenhuma: sem sugestão. Nunca usa o código do item. Tudo entra SUGERIDO, com o motivo.
+         */
+        post: operations["sugerirRubricas"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominios/{condominioId}/previsoes/{poId}/rubricas/eventos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        /** Trilha das rubricas das linhas desta PO (todos os perfis), só de inserção */
+        get: operations["eventosRubricas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/condominios/{condominioId}/previsto-realizado": {
         parameters: {
             query?: never;
@@ -1595,6 +1757,134 @@ export interface components {
             destinoNovo: string;
             estadoNovo: components["schemas"]["EstadoDepara"];
             origem: components["schemas"]["OrigemDepara"];
+            motivo?: string | null;
+        };
+        /** @enum {string} */
+        EstadoRubrica: "SUGERIDO" | "CONFIRMADO" | "RECUSADO";
+        /**
+         * @description Primeira PO do condomínio; mesma conta da PO e mesmo grupo; linha igual da versão anterior; escolha do Admin
+         * @enum {string}
+         */
+        OrigemRubrica: "PRIMEIRA_PO" | "CONTA_PO" | "VERSAO_ANTERIOR" | "MANUAL";
+        /**
+         * @description PENDENTES = sem rubrica confirmada (sem rubrica, sugerida ou recusada)
+         * @enum {string}
+         */
+        FiltroRubrica: "TODAS" | "PENDENTES" | "SUGERIDO" | "CONFIRMADO" | "RECUSADO" | "SEM_RUBRICA";
+        Rubrica: {
+            /** Format: uuid */
+            id: string;
+            /** @description Ex. "1682 - Sindicatura Profissional" */
+            nome: string;
+            /** @description Grupo da PO onde a rubrica nasceu (ex. 1.3); só informativo */
+            grupo?: string | null;
+            /** Format: uuid */
+            linhaOrigemId?: string | null;
+            criadaPor: string;
+            /** Format: date-time */
+            criadaEm: string;
+        };
+        LinhaComRubrica: {
+            /** Format: uuid */
+            linhaId: string;
+            /** @description Código efetivo da linha */
+            codigo: string;
+            /** @description Código do grupo (ex. 1.3) */
+            grupo?: string | null;
+            /** @description O que a sugestão compara: conta da PO, senão o texto da coluna de conta, senão a descrição */
+            conta: string;
+            descricao: string;
+            orcado: number;
+            rubrica?: null | components["schemas"]["Rubrica"];
+            /** @description Nulo = sem rubrica */
+            estado?: null | components["schemas"]["EstadoRubrica"];
+            origem?: null | components["schemas"]["OrigemRubrica"];
+            /** @description Ex. "mesma conta da PO e mesmo grupo: 1682 - Sindicatura Profissional, 1.3" */
+            motivo?: string | null;
+            atualizadoPor?: string | null;
+            /** Format: date-time */
+            atualizadoEm?: string | null;
+        };
+        RubricasDaPo: {
+            /** Format: uuid */
+            previsaoId: string;
+            versao?: number | null;
+            /** @description Sempre sobre todas as linhas, sem o filtro */
+            resumo: {
+                linhas: number;
+                confirmadas: number;
+                sugeridas: number;
+                recusadas: number;
+                semRubrica: number;
+            };
+            linhas: components["schemas"]["LinhaComRubrica"][];
+        };
+        PedidoNovaRubrica: {
+            nome: string;
+            grupo?: string | null;
+        };
+        PedidoRenomearRubrica: {
+            nome: string;
+        };
+        PedidoRubricaLinha: {
+            /**
+             * Format: uuid
+             * @description Rubrica do catálogo
+             */
+            rubricaId?: string | null;
+            /** @description Nome de uma rubrica nova criada a partir da linha */
+            novaRubrica?: string | null;
+            /** @description Nulo ou true confirma; false deixa SUGERIDO */
+            confirmar?: boolean | null;
+        };
+        PedidoLoteRubrica: {
+            /** @enum {string} */
+            acao: "CONFIRMAR" | "RECUSAR";
+            linhas: string[];
+        };
+        ResultadoLoteRubrica: {
+            alteradas: number;
+            ignoradas: {
+                /** Format: uuid */
+                linhaId: string;
+                motivo: string;
+            }[];
+        };
+        ResultadoSugestoesRubrica: {
+            /** @description O condomínio não tinha rubricas; cada linha virou uma rubrica confirmada */
+            primeiraPo: boolean;
+            rubricasCriadas: number;
+            sugeridas: number;
+            daVersaoAnterior: number;
+            pelaConta: number;
+            semSugestao: {
+                /** Format: uuid */
+                linhaId: string;
+                codigo: string;
+                conta: string;
+                motivo: string;
+            }[];
+        };
+        EventoRubrica: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Nulo na criação e na troca de nome da rubrica
+             */
+            linhaId?: string | null;
+            codigo?: string | null;
+            descricao?: string | null;
+            /** @enum {string} */
+            acao: "CRIADA" | "RENOMEADA" | "SUGERIDO" | "CONFIRMADO" | "RECUSADO" | "ALTERADO";
+            usuario: string;
+            /** Format: date-time */
+            em: string;
+            rubricaAnterior?: string | null;
+            estadoAnterior?: null | components["schemas"]["EstadoRubrica"];
+            rubricaNova: string;
+            estadoNovo?: null | components["schemas"]["EstadoRubrica"];
+            origem?: null | components["schemas"]["OrigemRubrica"];
             motivo?: string | null;
         };
         PrevistoRealizado: {
@@ -2933,6 +3223,348 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventoDepara"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listarRubricas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK, em ordem de nome */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rubrica"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    criarRubrica: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoNovaRubrica"];
+            };
+        };
+        responses: {
+            /** @description Criada */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rubrica"];
+                };
+            };
+            /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nome vazio ou acima de 300 caracteres */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    renomearRubrica: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                rubricaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoRenomearRubrica"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rubrica"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rubrica de outro condomínio */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listarRubricasDaPo: {
+        parameters: {
+            query?: {
+                filtro?: components["schemas"]["FiltroRubrica"];
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RubricasDaPo"];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    definirRubricaDaLinha: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+                /** @description Id da linha da PO */
+                linhaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoRubricaLinha"];
+            };
+        };
+        responses: {
+            /** @description Gravado */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinhaComRubrica"];
+                };
+            };
+            /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Linha que não é de despesa ou de fundo desta PO */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    loteRubricas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoLoteRubrica"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoLoteRubrica"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem ação ou sem linhas */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sugerirRubricas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoSugestoesRubrica"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ou condomínio não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    eventosRubricas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventoRubrica"][];
                 };
             };
             /** @description Sem acesso ao condomínio */

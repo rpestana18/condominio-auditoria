@@ -7,6 +7,7 @@ import { FormConfirmacaoPo } from "../componentes/po/FormConfirmacaoPo";
 import { LinhasPo } from "../componentes/po/LinhasPo";
 import { EditarFundosPo } from "../componentes/po/EditarFundosPo";
 import { EventosPo } from "../componentes/po/EventosPo";
+import { RubricasPo } from "../componentes/rubricas/RubricasPo";
 import { rotuloEstadoAchado, rotuloEstadoPo, rotuloSeveridade } from "../componentes/previsto/rotulos";
 import { useSessao } from "../contexto";
 import { formatarData, formatarDataHora, formatarMes, formatarMoeda } from "../formato";
@@ -47,6 +48,8 @@ export function PrevisaoPo() {
       )}
       {detalhe.achados.length > 0 && <Achados detalhe={detalhe} />}
       <EventosPo poId={previsao.id} />
+      {/* Rubricas só existem depois da confirmação (RF-11.7); a lista é para todos, a edição só do Admin */}
+      {(previsao.estado === "CONFIRMADA" || previsao.estado === "SUBSTITUIDA") && <RubricasPo previsao={previsao} />}
       <LinhasPo linhas={detalhe.linhas} colunaOrcadoAnterior={detalhe.colunaOrcadoAnterior} colunaOrcado={detalhe.colunaOrcado} />
     </>
   );

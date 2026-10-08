@@ -7,6 +7,7 @@ import { ProvedorConversa } from "./componentes/assistente/conversa";
 import { AdministracaoIa } from "./paginas/AdministracaoIa";
 import { AdministracaoModulos } from "./paginas/AdministracaoModulos";
 import { Arquivos } from "./paginas/Arquivos";
+import { CompararExercicios } from "./paginas/CompararExercicios";
 import { Assistente } from "./paginas/Assistente";
 import { Depara } from "./paginas/Depara";
 import { Inicio } from "./paginas/Inicio";
@@ -38,6 +39,7 @@ export function App() {
               <Route index element={<Inicio />} />
               <Route path="arquivos" element={<Arquivos />} />
               <Route path="previsto-realizado" element={<PrevistoRealizado />} />
+              <Route path="comparar-exercicios" element={<CompararExercicios />} />
               <Route path="depara" element={<Depara />} />
               <Route path="previsoes" element={<Previsoes />} />
               <Route path="previsoes/:poId" element={<PrevisaoPo />} />

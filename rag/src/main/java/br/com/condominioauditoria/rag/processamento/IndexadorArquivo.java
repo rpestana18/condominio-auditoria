@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.rag.processamento;
 
-import br.com.condominioauditoria.armazenamento.Armazenamento;
+import br.com.condominioauditoria.storage.Storage;
 import br.com.condominioauditoria.rag.indice.CortadorTrechos;
 import br.com.condominioauditoria.rag.indice.DocumentoCortado;
 import br.com.condominioauditoria.rag.indice.EmbeddingsIndisponiveisException;
@@ -42,12 +42,12 @@ class IndexadorArquivo {
 
     private final ContratoMensagens contrato;
     private final RabbitTemplate rabbit;
-    private final Armazenamento armazenamento;
+    private final Storage armazenamento;
     private final LeitorDocumentosHttp leitor;
     private final GeradorEmbeddings embeddings;
     private final RepositorioIndice repositorio;
 
-    IndexadorArquivo(ContratoMensagens contrato, RabbitTemplate rabbit, Armazenamento armazenamento,
+    IndexadorArquivo(ContratoMensagens contrato, RabbitTemplate rabbit, Storage armazenamento,
             LeitorDocumentosHttp leitor, GeradorEmbeddings embeddings, RepositorioIndice repositorio) {
         this.contrato = contrato;
         this.rabbit = rabbit;
@@ -122,7 +122,7 @@ class IndexadorArquivo {
                     + " não está disponível neste rag (disponível: " + embeddings.modelo() + ")");
         }
         byte[] conteudo;
-        try (InputStream entrada = armazenamento.abrir(pedido.caminho())) {
+        try (InputStream entrada = armazenamento.open(pedido.caminho())) {
             conteudo = entrada.readAllBytes();
         }
         DocumentoLido documento = leitor.ler(pedido.nomeOriginal(), conteudo);

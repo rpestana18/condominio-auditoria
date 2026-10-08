@@ -5,8 +5,8 @@ plugins {
 tasks.named<Jar>("jar") { enabled = false }
 
 dependencies {
-    implementation(project(":libs:armazenamento"))
-    implementation(project(":libs:contrato-grpc"))
+    implementation(project(":libs:storage"))
+    implementation(project(":libs:grpc-contract"))
 
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-validation")

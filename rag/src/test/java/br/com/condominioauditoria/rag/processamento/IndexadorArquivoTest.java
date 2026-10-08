@@ -12,7 +12,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import br.com.condominioauditoria.armazenamento.Armazenamento;
+import br.com.condominioauditoria.storage.Storage;
 import br.com.condominioauditoria.rag.indice.DocumentoCortado;
 import br.com.condominioauditoria.rag.indice.EmbeddingsIndisponiveisException;
 import br.com.condominioauditoria.rag.indice.GeradorEmbeddings;
@@ -44,7 +44,7 @@ class IndexadorArquivoTest {
 
     private final ContratoMensagens contrato = new ContratoMensagens();
     private final RabbitTemplate rabbit = mock(RabbitTemplate.class);
-    private final Armazenamento armazenamento = mock(Armazenamento.class);
+    private final Storage armazenamento = mock(Storage.class);
     private final LeitorDocumentosHttp leitor = mock(LeitorDocumentosHttp.class);
     private final GeradorEmbeddings embeddings = mock(GeradorEmbeddings.class);
     private final RepositorioIndice repositorio = mock(RepositorioIndice.class);
@@ -55,7 +55,7 @@ class IndexadorArquivoTest {
     void preparar() throws Exception {
         when(embeddings.modelo()).thenReturn("bge-m3");
         when(embeddings.aceita(any())).thenReturn(true);
-        when(armazenamento.abrir(anyString())).thenAnswer(i -> new ByteArrayInputStream(new byte[] {1}));
+        when(armazenamento.open(anyString())).thenAnswer(i -> new ByteArrayInputStream(new byte[] {1}));
         when(leitor.ler(anyString(), any())).thenReturn(new DocumentoLido("1", "t",
                 new DocumentoLido.Arquivo("ata.pdf", SHA, 1), "docx", List.of(), List.of(),
                 List.of(new DocumentoLido.Paragrafo(1, "Multa de 2% por atraso", null))));

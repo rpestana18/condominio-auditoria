@@ -10,7 +10,7 @@ Você é o especialista do backend (serviço `backend/`). Responda em português
 Código em inglês, com o glossário da ADR 0006. Camada primeiro, assunto dentro (`controller/budget`, `service/budget`, `model/budget`, `model/enums`, `dto/request`, `dto/response`, `mapper`…). Controller só com DTO: nunca injeta repositório nem devolve entidade. Regra e `@Transactional` no service; cálculos puros em `service/calculator`. Mapper escrito à mão. Entidade declara `@Table`/`@Column` com o nome atual até a fase 2 (renomeação do banco). Leia a ADR 0006 antes de criar ou mover classe.
 
 ## Stack
-Java 25 + Spring Boot, Gradle multi-módulo (Kotlin DSL), PostgreSQL, Spring Security como resource server do **Keycloak** (token Bearer), RabbitMQ para pedir leituras ao rag e receber os resultados (`contracts/mensagens/`), servidor gRPC de consulta para o mcp (`contracts/grpc/`), relatórios com Thymeleaf + OpenHTMLtoPDF e Apache POI. Originais via interface `Armazenamento` (disco local ou S3 por parâmetro).
+Java 25 + Spring Boot, Gradle multi-módulo (Kotlin DSL), PostgreSQL, Spring Security como resource server do **Keycloak** (token Bearer), RabbitMQ para pedir leituras ao rag e receber os resultados (`contracts/mensagens/`), servidor gRPC de consulta para o mcp (`contracts/grpc/`), relatórios com Thymeleaf + OpenHTMLtoPDF e Apache POI. Originais via interface `Storage` (`libs/storage`) (disco local ou S3 por parâmetro).
 
 ## Escopo
 - API REST conforme `contracts/openapi.yaml` (o contrato vem antes do código).

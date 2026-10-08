@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.rag.processamento;
 
-import br.com.condominioauditoria.armazenamento.Armazenamento;
+import br.com.condominioauditoria.storage.Storage;
 import br.com.condominioauditoria.rag.dominio.fluxo.ConferenciaFluxo;
 import br.com.condominioauditoria.rag.dominio.fluxo.FluxoDeCaixa;
 import br.com.condominioauditoria.rag.dominio.po.ConferenciaPo;
@@ -42,12 +42,12 @@ class ProcessadorArquivo {
 
     private final ContratoMensagens contrato;
     private final RabbitTemplate rabbit;
-    private final Armazenamento armazenamento;
+    private final Storage armazenamento;
     private final LeitorDocumentosHttp leitor;
     private final InterpretadorFluxoCaixa interpretadorFluxo;
     private final InterpretadorPoProtest interpretadorPo;
 
-    ProcessadorArquivo(ContratoMensagens contrato, RabbitTemplate rabbit, Armazenamento armazenamento,
+    ProcessadorArquivo(ContratoMensagens contrato, RabbitTemplate rabbit, Storage armazenamento,
             LeitorDocumentosHttp leitor, InterpretadorFluxoCaixa interpretadorFluxo,
             InterpretadorPoProtest interpretadorPo) {
         this.contrato = contrato;
@@ -76,7 +76,7 @@ class ProcessadorArquivo {
 
     private ResultadoProcessamento processar(ArquivoRecebido arquivo) throws Exception {
         byte[] conteudo;
-        try (InputStream entrada = armazenamento.abrir(arquivo.caminho())) {
+        try (InputStream entrada = armazenamento.open(arquivo.caminho())) {
             conteudo = entrada.readAllBytes();
         }
         return interpretar(arquivo, leitor.ler(arquivo.nomeOriginal(), conteudo));

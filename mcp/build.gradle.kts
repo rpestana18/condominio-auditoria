@@ -5,7 +5,7 @@ plugins {
 tasks.named<Jar>("jar") { enabled = false }
 
 dependencies {
-    implementation(project(":libs:contrato-grpc"))
+    implementation(project(":libs:grpc-contract"))
     implementation(platform(libs.spring.ai.bom))
 
     implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")

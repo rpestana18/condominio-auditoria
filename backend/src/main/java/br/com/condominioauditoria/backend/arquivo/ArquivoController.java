@@ -11,7 +11,7 @@ import br.com.condominioauditoria.backend.contabil.Fundo;
 import br.com.condominioauditoria.backend.contabil.FundoRepository;
 import br.com.condominioauditoria.backend.contabil.SaldoFundoRepository;
 import br.com.condominioauditoria.backend.seguranca.AcessoCondominio;
-import br.com.condominioauditoria.armazenamento.Armazenamento;
+import br.com.condominioauditoria.storage.Storage;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -45,13 +45,13 @@ class ArquivoController {
     private final ArquivoRepository arquivos;
     private final ArquivoService servico;
     private final AcessoCondominio acesso;
-    private final Armazenamento armazenamento;
+    private final Storage armazenamento;
     private final ConferenciaRepository conferencias;
     private final SaldoFundoRepository saldos;
     private final FundoRepository fundos;
 
     ArquivoController(ArquivoRepository arquivos, ArquivoService servico, AcessoCondominio acesso,
-            Armazenamento armazenamento, ConferenciaRepository conferencias, SaldoFundoRepository saldos,
+            Storage armazenamento, ConferenciaRepository conferencias, SaldoFundoRepository saldos,
             FundoRepository fundos) {
         this.arquivos = arquivos;
         this.servico = servico;
@@ -109,7 +109,7 @@ class ArquivoController {
                 .contentType(tipo)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.inline().filename(arquivo.getNomeOriginal()).build().toString())
-                .body(new InputStreamResource(armazenamento.abrir(arquivo.getCaminho())));
+                .body(new InputStreamResource(armazenamento.open(arquivo.getCaminho())));
     }
 
     @PostMapping(path = "/condominios/{condominioId}/arquivos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

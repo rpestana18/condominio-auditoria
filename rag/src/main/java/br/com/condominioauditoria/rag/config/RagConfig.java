@@ -1,7 +1,7 @@
 package br.com.condominioauditoria.rag.config;
 
-import br.com.condominioauditoria.armazenamento.Armazenamento;
-import br.com.condominioauditoria.armazenamento.ArmazenamentoLocal;
+import br.com.condominioauditoria.storage.Storage;
+import br.com.condominioauditoria.storage.LocalStorage;
 import br.com.condominioauditoria.rag.leitura.contrato.ContratoLeitor;
 import br.com.condominioauditoria.rag.leitura.fluxo.InterpretadorFluxoCaixa;
 import br.com.condominioauditoria.rag.leitura.po.InterpretadorPoProtest;
@@ -14,10 +14,10 @@ import org.springframework.context.annotation.Configuration;
 class RagConfig {
 
     @Bean
-    Armazenamento armazenamento(PropriedadesRag propriedades) throws IOException {
+    Storage armazenamento(PropriedadesRag propriedades) throws IOException {
         var config = propriedades.armazenamento();
         return switch (config.tipo()) {
-            case "local" -> new ArmazenamentoLocal(Path.of(config.pasta()));
+            case "local" -> new LocalStorage(Path.of(config.pasta()));
             default -> throw new IllegalStateException("Tipo de armazenamento não suportado: " + config.tipo());
         };
     }

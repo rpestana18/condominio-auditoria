@@ -82,6 +82,7 @@ final class CenarioPo {
     final ServicoRubricas servicoRubricas;
     final ServicoProrrogacao prorrogacao;
     final ServicoExercicios exercicios;
+    final ServicoComparacao comparacao;
     final PrevisaoOrcamentariaRepository previsaoRepo;
     final LinhaPoRepository linhaRepo;
     final DeparaContaRepository deparaRepo;
@@ -187,6 +188,8 @@ final class CenarioPo {
         when(achadoRepo.findByCondominioIdAndAlvoStartingWithOrderByCriadoEm(any(), anyString())).thenAnswer(i -> achados
                 .stream().filter(a -> a.getCondominioId().equals(i.getArgument(0))
                         && a.getAlvo().startsWith(i.getArgument(1))).toList());
+        when(achadoRepo.findByCondominioIdOrderByCompetenciaDescCriadoEmAsc(any())).thenAnswer(i -> achados.stream()
+                .filter(a -> a.getCondominioId().equals(i.getArgument(0))).toList());
         AchadoEvidenciaRepository evidenciaRepo = mock(AchadoEvidenciaRepository.class);
         when(evidenciaRepo.save(any())).thenAnswer(i -> {
             evidencias.add(i.getArgument(0));
@@ -314,6 +317,8 @@ final class CenarioPo {
         recalculo = new RecalculoAchadosOrcamento(condominios, previsaoRepo, previstoRealizado, registro);
         prorrogacao = new ServicoProrrogacao(condominios, previsaoRepo, eventoRepo, consulta, publicados::add);
         exercicios = new ServicoExercicios(previsaoRepo, linhaRepo, previstoRealizado, depara, servicoRubricas);
+        comparacao = new ServicoComparacao(condominios, previsaoRepo, linhaRepo, poFundoRepo, rubricaRepo,
+                linhaRubricaRepo, achadoRepo, previstoRealizado, exercicios);
         ligacaoFundos = new LigacaoFundosPo(condominios, previsaoRepo, linhaRepo, poFundoRepo, fundoRepo, eventoRepo,
                 consulta, publicados::add);
 

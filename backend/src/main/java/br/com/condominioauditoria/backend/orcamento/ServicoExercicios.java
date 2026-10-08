@@ -87,6 +87,21 @@ public class ServicoExercicios {
         return List.copyOf(lista);
     }
 
+    /** Ids dos exercícios ("po:" e "coluna:"), na ordem da lista, sem montar os resumos. */
+    @Transactional(readOnly = true)
+    public List<String> ids(UUID condominioId) {
+        List<PrevisaoOrcamentaria> confirmadas = confirmadas(condominioId);
+        List<String> ids = new ArrayList<>();
+        for (PrevisaoOrcamentaria po : confirmadas) {
+            ids.add("po:" + po.getId());
+            if (anterior(confirmadas, po).isEmpty()
+                    && ColunaImpressa.de(po, linhas.findByPrevisaoIdOrderByOrdem(po.getId())).isPresent()) {
+                ids.add(idColuna(po));
+            }
+        }
+        return List.copyOf(ids);
+    }
+
     /** Conferência da coluna "Orçado anterior" da PO (RF-11.5). 404 se a PO não está confirmada ou não tem coluna. */
     @Transactional(readOnly = true)
     public ConferenciaColuna colunaImpressa(UUID condominioId, UUID poId) {

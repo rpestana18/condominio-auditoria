@@ -1001,6 +1001,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/comparacao-exercicios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Comparar exercícios (todos os perfis, RF-11.6)
+         * @description Três visões: resumo por exercício, por grupo (1.1 a 1.9, casados pelo código) e por linha (casadas pela rubrica
+         *     confirmada, RF-11.7; linha sem rubrica confirmada fica em "semCorrespondencia" e nunca é somada a outra).
+         *     Exercícios do mais recente para o mais antigo; a variação de cada um é contra o seguinte da lista. Variação em
+         *     % só com base diferente de zero; base zero com valor = "novaNoExercicio". O realizado vem do mesmo cálculo do
+         *     previsto × realizado; "alvo" abre a evidência nele (com o poId e o "periodo" do exercício). Nada é gravado.
+         */
+        get: operations["compararExercicios"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/condominios/{condominioId}/previsoes/{poId}/coluna-impressa": {
         parameters: {
             query?: never;
@@ -1661,6 +1687,101 @@ export interface components {
                 descricao: string;
                 poEnviada: number;
                 colunaImpressa: number;
+            }[];
+            avisos: string[];
+        };
+        /** @description Atual menos anterior. "percentual" com 1 casa, nulo com base zero; "novaNoExercicio" quando a base é zero e o valor atual não */
+        VariacaoExercicio: {
+            valor: number;
+            percentual?: number | null;
+            novaNoExercicio: boolean;
+        };
+        /** @description Valor de um exercício num grupo ou rubrica; nulos quando o exercício não tem o grupo ou o dado */
+        ValorComparado: {
+            exercicioId: string;
+            previstoMes?: number | null;
+            /** @description Previsto dos meses comparados (nulo sem realizado) */
+            previsto?: number | null;
+            /** @description Fundos 1.9 = arrecadação */
+            realizado?: number | null;
+            variacaoPrevistoMes?: null | components["schemas"]["VariacaoExercicio"];
+            variacaoRealizado?: null | components["schemas"]["VariacaoExercicio"];
+            /** @description Alvo da evidência: "linha:<id>", "grupo:<id>", "fundo:<id>" */
+            alvo?: string | null;
+            linhas: {
+                /** Format: uuid */
+                linhaId: string;
+                codigo: string;
+                descricao: string;
+                alvo?: string | null;
+            }[];
+        };
+        ComparacaoExercicios: {
+            exercicios: {
+                id: string;
+                /** @enum {string} */
+                tipo: "PO" | "COLUNA_IMPRESSA";
+                rotulo: string;
+                /** Format: uuid */
+                poId: string;
+                versao?: number | null;
+                inicio: string;
+                fim: string;
+                /** @description Período da evidência: "acumulado" ou AAAA-MM; nulo na coluna impressa */
+                periodo?: string | null;
+                /** @description Meses somados no realizado */
+                meses: string[];
+            }[];
+            /** Format: uuid */
+            fundoId?: string | null;
+            mesmosMeses: boolean;
+            /** @description Ex.: "comparando: setembro" (só com mesmosMeses) */
+            comparando?: string | null;
+            resumo: {
+                exercicioId: string;
+                previstoMes: number;
+                previstoExercicio: number;
+                mesesComFluxo: number;
+                previsto?: number | null;
+                realizado?: number | null;
+                execucao?: number | null;
+                maiorExcesso?: null | {
+                    mes: string;
+                    valor: number;
+                    percentual?: number | null;
+                };
+                mesesAcimaDoLimite?: number | null;
+                achadosAbertos?: number | null;
+                provisorio: boolean;
+                variacaoPrevistoMes?: null | components["schemas"]["VariacaoExercicio"];
+                variacaoRealizado?: null | components["schemas"]["VariacaoExercicio"];
+                alvo?: string | null;
+            }[];
+            grupos: {
+                codigo: string;
+                descricao: string;
+                fundos: boolean;
+                valores: components["schemas"]["ValorComparado"][];
+            }[];
+            linhas: {
+                /** Format: uuid */
+                rubricaId: string;
+                nome: string;
+                grupo?: string | null;
+                valores: components["schemas"]["ValorComparado"][];
+            }[];
+            semCorrespondencia: {
+                exercicioId: string;
+                /** Format: uuid */
+                linhaId: string;
+                codigo: string;
+                conta?: string | null;
+                descricao: string;
+                grupo?: string;
+                previstoMes: number;
+                previsto?: number | null;
+                realizado?: number | null;
+                alvo?: string | null;
             }[];
             avisos: string[];
         };
@@ -4426,6 +4547,63 @@ export interface operations {
             };
             /** @description Sem acesso ao condomínio */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    compararExercicios: {
+        parameters: {
+            query?: {
+                /** @description Ids separados por vírgula ("po:<uuid>" ou o uuid, e "coluna:<uuid>"); vazio = os dois mais recentes */
+                exercicios?: string[];
+                /** @description Fundo Condomínio = sem os fundos 1.9; outro fundo = só a linha 1.9 dele (arrecadação); vazio = tudo */
+                fundo?: string;
+                /** @description Compara só os meses (pelo número) com fluxo em todos os exercícios com PO */
+                mesmosMeses?: boolean;
+            };
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparacaoExercicios"];
+                };
+            };
+            /** @description Id de exercício inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Exercício */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Menos de dois exercícios */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -22,7 +22,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
-/** RF-11.4 e RF-11.5: todos os perfis do condomínio consultam os exercícios e a coluna impressa; outro condomínio não. */
+/**
+ * RF-11.4 a RF-11.6: todos os perfis do condomínio consultam exercícios, coluna impressa e comparação; outro
+ * condomínio não.
+ */
 class ExercicioControllerPermissaoTest {
 
     private static final UUID CONDOMINIO = UUID.randomUUID();
@@ -31,6 +34,7 @@ class ExercicioControllerPermissaoTest {
     private AnnotationConfigApplicationContext contexto;
     private ExercicioController controller;
     private ServicoExercicios servico;
+    private ServicoComparacao comparacao;
 
     @Configuration
     @EnableMethodSecurity
@@ -46,8 +50,14 @@ class ExercicioControllerPermissaoTest {
         }
 
         @Bean
-        ExercicioController controller(AcessoCondominio acesso, ServicoExercicios servico) {
-            return new ExercicioController(acesso, servico);
+        ServicoComparacao comparacao() {
+            return mock(ServicoComparacao.class);
+        }
+
+        @Bean
+        ExercicioController controller(AcessoCondominio acesso, ServicoExercicios servico,
+                ServicoComparacao comparacao) {
+            return new ExercicioController(acesso, servico, comparacao);
         }
     }
 
@@ -56,6 +66,7 @@ class ExercicioControllerPermissaoTest {
         contexto = new AnnotationConfigApplicationContext(Config.class);
         controller = contexto.getBean(ExercicioController.class);
         servico = contexto.getBean(ServicoExercicios.class);
+        comparacao = contexto.getBean(ServicoComparacao.class);
     }
 
     @AfterEach
@@ -70,7 +81,9 @@ class ExercicioControllerPermissaoTest {
             logar(CONDOMINIO, "pessoa-" + perfil, perfil);
             controller.listar(CONDOMINIO);
             controller.colunaImpressa(CONDOMINIO, PO);
+            controller.comparar(CONDOMINIO, null, null, false);
         }
+        verify(comparacao, times(3)).comparar(CONDOMINIO, null, null, false);
         verify(servico, times(3)).listar(CONDOMINIO);
         verify(servico, times(3)).colunaImpressa(CONDOMINIO, PO);
     }
@@ -80,7 +93,9 @@ class ExercicioControllerPermissaoTest {
         logar(UUID.randomUUID(), "gestor", "GESTOR");
         assertThatThrownBy(() -> controller.listar(CONDOMINIO)).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> controller.colunaImpressa(CONDOMINIO, PO)).isInstanceOf(AccessDeniedException.class);
-        verifyNoInteractions(servico);
+        assertThatThrownBy(() -> controller.comparar(CONDOMINIO, null, null, false))
+                .isInstanceOf(AccessDeniedException.class);
+        verifyNoInteractions(servico, comparacao);
     }
 
     private static void logar(UUID condominio, String usuario, String perfil) {

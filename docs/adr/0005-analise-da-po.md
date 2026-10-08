@@ -150,8 +150,8 @@ Um PR por passo. O golden de setembro/2026 (RF-03.1.15) roda em todos e não pod
 |---|---|---|---|
 | 1 | Migração V14, rubricas (geração na primeira PO, sugestão por conta e grupo, confirmação, trilha) | `backend` | RF-11.7: 1682 sugerida com o motivo; 1598 e 1624 separadas; 1606 em 1.3.5 e 1.7.2 em rubricas diferentes; 403 para Gestor; um evento por linha no lote; `update` e `delete` na trilha recusados |
 | 2 | PO do mês com prorrogação | `backend` | RF-11.3: 04/2026 "sem PO aprovada"; prorrogada até 04/2026 usa a PO anterior com aviso; sem justificativa ou sem Admin, recusada; PO nova encurta a prorrogação |
-| 3 | Exercício virtual da coluna impressa e `GET /exercicios` | `backend` | RF-11.5: 441.304,38; 22.065,22; 419.239,16 e os grupos; 1.3.20 17.195,00 → 8.000,00; troca automática quando a PO anterior é confirmada; aviso de diferença com a cópia de teste (37.000,00 × 37.661,43) |
-| 4 | `ComparacaoExercicios` e `GET /comparacao-exercicios` | `backend` | RF-11.6: +32.380,97 e +7,7%; Contratos −12.357,37 e −3,5%; 1.3.25 "nova no exercício"; "mesmos meses"; golden de setembro sem mudança |
+| 3 | Exercício virtual da coluna impressa e `GET /exercicios` | `backend` | RF-11.5: 441.304,38; 22.065,22; previsto do mês 441.525,22 pela soma das linhas (o total impresso 441.304,38 não inclui os fundos) e os grupos; 1.3.20 17.195,00 → 8.000,00; troca automática quando a PO anterior é confirmada; aviso de diferença com a cópia de teste (37.000,00 × 37.661,43) |
+| 4 | `ComparacaoExercicios` e `GET /comparacao-exercicios` | `backend` | RF-11.6: +10.094,91 e +2,3%; Contratos −12.357,37 e −3,5%; 1.3.25 "nova no exercício"; "mesmos meses"; golden de setembro sem mudança |
 | 5 | `GET /indicadores` | `backend` | RF-11.11: 98,8%; 8,6% e cenário 8,8% "provisório"; 1.3.10 +6.793,38 entre as maiores; fundos 14.260,79 × 13.548,60 e 9.705,06 × 9.032,40; meses sem fluxo nulos |
 | 6 | Menu, filtro de exercício, "Comparar exercícios" e rubricas | `frontend` | `pnpm build`; RF-11.1 por perfil; clique leva à evidência |
 | 7 | "Indicadores" | `frontend` | RF-11.10 a RF-11.13: tabela alternativa igual ao gráfico; vermelho só acima de 20% |
@@ -170,6 +170,11 @@ Os passos 1, 2 e 3 podem correr em paralelo. O frontend começa quando o `openap
 1. Sugestão da correspondência: exigir mesma conta da PO **e mesmo grupo**, porque a mesma conta aparece em mais de uma linha (Decisão 1).
 2. PO confirmada sobre meses já prorrogados: a confirmação vale e a prorrogação é encurtada? (Decisão 4)
 3. Meses prorrogados fora do acumulado do exercício, mostrados depois dos 12 meses? (Decisão 4)
+
+## Notas da implementação
+
+- 08/10/2026: os números dos critérios de teste dos passos 3 e 4 foram corrigidos para os valores conferidos pelo `backend` e pelo teste ponta a ponta (PR #32). A decisão não mudou.
+- **Para confirmação do usuário:** "exercício anterior" foi implementado como a PO confirmada que cobre o mês anterior ao início do exercício (`ServicoExercicios.anterior`). Confirme se é essa a regra desejada; nada novo foi decidido aqui.
 
 ## Perguntas para o usuário
 

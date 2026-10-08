@@ -148,8 +148,9 @@ public class ConsultaPrevistoRealizado {
             inicio = m.mes().atDay(1);
             fim = m.mes().atEndOfMonth();
         } else if (vigencia.isPresent()) {
+            // Acumulado: o exercício e, depois dele, os meses prorrogados (mostrados fora da soma, RF-11.3)
             inicio = vigencia.get().inicio().atDay(1);
-            fim = vigencia.get().fim().atEndOfMonth();
+            fim = VigenciaPo.prorrogacao(po).map(VigenciaPo::fim).orElse(vigencia.get().fim()).atEndOfMonth();
         } else {
             inicio = LocalDate.MIN;
             fim = LocalDate.MIN;

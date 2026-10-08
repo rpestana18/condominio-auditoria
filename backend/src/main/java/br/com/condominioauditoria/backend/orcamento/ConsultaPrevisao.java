@@ -61,7 +61,10 @@ public class ConsultaPrevisao {
         this.reserva = reserva;
     }
 
-    /** A PO que vale no mês (RF-03.1.3), ou vazio: "sem PO aprovada para este mês". */
+    /**
+     * A PO que vale no mês (RF-03.1.3), pelo exercício ou por prorrogação (RF-11.3), ou vazio: "sem PO aprovada para
+     * este mês".
+     */
     @Transactional(readOnly = true)
     public Optional<PrevisaoOrcamentaria> vigenteNoMes(UUID condominioId, YearMonth mes) {
         return VigenciaPo.vigenteNoMes(previsoes.findByCondominioIdAndEstadoIn(condominioId,
@@ -193,7 +196,8 @@ public class ConsultaPrevisao {
         String nome = arquivos.findById(p.getArquivoId()).map(Arquivo::getNomeOriginal).orElse(null);
         return new PrevisaoResumo(p.getId(), p.getArquivoId(), nome, p.getSha256(), p.getEstado(), p.getVersao(),
                 p.getTitulo(), p.getExercicioImpresso(), mes(p.getExercicioInicio()), mes(p.getExercicioFim()),
-                p.getTotalImpresso(), p.getPrevistoMes(), p.getLidaEm(), p.getConfirmadaPor(), p.getConfirmadaEm());
+                p.getTotalImpresso(), p.getPrevistoMes(), p.getLidaEm(), p.getConfirmadaPor(), p.getConfirmadaEm(),
+                PrevisaoDtos.Prorrogacao.de(p));
     }
 
     static String mes(YearMonth m) {

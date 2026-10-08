@@ -137,6 +137,7 @@ public class ConfirmacaoPrevisao {
         eventos.save(new EventoPrevisao(po, EventoPrevisao.CONFIRMADA, usuario, agora, justificativa,
                 detalheDoEvento(po, ata, trocas, ligacoes, avaliacao, substituidas)));
 
+        encurtarProrrogacoes(po, inicio, fim, versao, substituidas, usuario, agora);
         registrarAchadoDaReserva(po, estrutura);
         // Rubricas (RF-11.7): a primeira PO do condomínio vira o catálogo; nas outras, só sugestões
         rubricas.aoConfirmar(po, usuario, agora);
@@ -308,6 +309,40 @@ public class ConfirmacaoPrevisao {
             throw new ConfirmacaoRecusadaException(HttpStatus.CONFLICT, motivos);
         }
         return conflitos.stream().map(VigenciaPo::previsao).toList();
+    }
+
+    /**
+     * RF-11.3 e ADR 0005, Decisão 4: a confirmação de uma PO sobre meses prorrogados vale, e a prorrogação da outra PO
+     * termina no mês anterior ao início desta. A PO substituída numa reaprovação perde a prorrogação (só a versão que
+     * vale pode ser prorrogada). Evento automático na trilha da PO que mudou.
+     */
+    private void encurtarProrrogacoes(PrevisaoOrcamentaria po, YearMonth inicio, YearMonth fim, int versao,
+            List<PrevisaoOrcamentaria> substituidas, String usuario, Instant agora) {
+        String motivo = "PO " + inicio.getYear() + "/" + fim.getYear() + " confirmada (versão " + versao + ", "
+                + inicio + " a " + fim + ")";
+        for (PrevisaoOrcamentaria outra : previsoes.findByCondominioIdAndEstadoIn(po.getCondominioId(),
+                EnumSet.of(EstadoPrevisao.CONFIRMADA, EstadoPrevisao.SUBSTITUIDA))) {
+            YearMonth ate = outra.getProrrogadaAte();
+            if (outra.getId().equals(po.getId()) || ate == null) {
+                continue;
+            }
+            YearMonth primeiro = outra.getExercicioFim().plusMonths(1);
+            boolean substituida = substituidas.stream().anyMatch(s -> s.getId().equals(outra.getId()));
+            if (!substituida && (ate.isBefore(inicio) || primeiro.isAfter(fim))) {
+                continue;
+            }
+            String antes = primeiro + " a " + ate;
+            if (substituida) {
+                outra.desfazerProrrogacao();
+            } else {
+                outra.encurtarProrrogacao(inicio.minusMonths(1));
+            }
+            previsoes.save(outra);
+            String depois = outra.getProrrogadaAte() == null ? "sem prorrogação"
+                    : "prorrogada de " + primeiro + " a " + outra.getProrrogadaAte();
+            eventos.save(new EventoPrevisao(outra, EventoPrevisao.PRORROGACAO_ENCURTADA, usuario, agora, motivo,
+                    "Prorrogação " + antes + " → " + depois + "."));
+        }
     }
 
     private void registrarAchadoDaReserva(PrevisaoOrcamentaria po, EstruturaPo estrutura) {

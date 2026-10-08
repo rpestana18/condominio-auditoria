@@ -363,7 +363,10 @@ public class ServicoDepara {
                 .max(Comparator.comparing(PrevisaoOrcamentaria::getVersao));
     }
 
-    /** Contas com débito no fundo Condomínio (fundo ordinário confirmado) no exercício da PO, pelo código. */
+    /**
+     * Contas com débito no fundo Condomínio (fundo ordinário confirmado) no exercício da PO e nos meses prorrogados,
+     * pelo código.
+     */
     Map<String, ContaDoFluxo> contasDoFluxo(PrevisaoOrcamentaria po) {
         if (po.getExercicioInicio() == null) {
             return Map.of();
@@ -373,7 +376,8 @@ public class ServicoDepara {
             return Map.of();
         }
         LocalDate inicio = po.getExercicioInicio().atDay(1);
-        LocalDate fim = po.getExercicioFim().atEndOfMonth();
+        // Os meses prorrogados usam o de-para desta PO (RF-11.3)
+        LocalDate fim = Optional.ofNullable(po.getProrrogadaAte()).orElse(po.getExercicioFim()).atEndOfMonth();
         return agrupar(lancamentos.debitosComConta(po.getCondominioId(), ordinario, inicio, fim));
     }
 

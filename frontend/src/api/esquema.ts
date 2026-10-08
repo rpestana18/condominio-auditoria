@@ -947,6 +947,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominios/{condominioId}/previsoes/{poId}/prorrogacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Marca a PO como prorrogada até um mês (só ADMIN, RF-11.3), com justificativa
+         * @description Os meses do mês seguinte ao fim do exercício até "ate" usam esta PO e o seu de-para, com a marca "PO
+         *     prorrogada", e ficam fora do acumulado do exercício. Recusada sem justificativa, com mês que já tem PO
+         *     confirmada ou prorrogação de outra PO, ou com PO substituída. Uma PO confirmada depois sobre meses prorrogados
+         *     encurta a prorrogação, com evento automático. Nunca é automática.
+         */
+        put: operations["prorrogarPo"];
+        post?: never;
+        /** Desfaz a prorrogação (só ADMIN, RF-11.3), com evento */
+        delete: operations["desfazerProrrogacaoPo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/condominios/{condominioId}/previsoes/{poId}/eventos": {
         parameters: {
             query?: never;
@@ -1495,6 +1522,23 @@ export interface components {
             confirmadaPor?: string | null;
             /** Format: date-time */
             confirmadaEm?: string | null;
+            /** @description Nulo sem prorrogação (RF-11.3) */
+            prorrogacao?: null | components["schemas"]["ProrrogacaoPo"];
+        };
+        /** @description A PO vale também de "de" até "ate", depois do exercício, quando nenhuma PO confirmada cobre o mês */
+        ProrrogacaoPo: {
+            /** @description Mês seguinte ao fim do exercício */
+            de: string;
+            ate: string;
+            justificativa: string;
+            por: string;
+            /** Format: date-time */
+            em: string;
+        };
+        PedidoProrrogacao: {
+            /** @description Último mês prorrogado (AAAA-MM) */
+            ate: string;
+            justificativa: string;
         };
         PrevisaoDetalhe: {
             previsao: components["schemas"]["PrevisaoResumo"];
@@ -1908,7 +1952,10 @@ export interface components {
                 exercicioInicio?: string | null;
                 exercicioFim?: string | null;
             };
-            /** @description No acumulado, os meses do exercício; no mês, só ele. Números só com COM_FLUXO */
+            /**
+             * @description No acumulado, os meses do exercício e, depois deles, os meses prorrogados (fora da soma, RF-11.3); no mês,
+             *     só ele. Números só com COM_FLUXO
+             */
             meses: {
                 mes: string;
                 /** @enum {string} */
@@ -1919,6 +1966,8 @@ export interface components {
                 excesso?: number | null;
                 percentualExcesso?: number | null;
                 acimaDoLimite?: boolean | null;
+                /** @description Mês depois do exercício em que a PO vale por prorrogação (marca "PO prorrogada") */
+                prorrogado?: boolean;
             }[];
             mesesSomados: string[];
             /** @description Meses sem fluxo antes do último mês com fluxo */
@@ -2001,6 +2050,7 @@ export interface components {
                 creditos?: number | null;
                 debitos?: number | null;
             }[];
+            /** @description Inclui PO_PRORROGADA (mês prorrogado) e MESES_PRORROGADOS (acumulado com meses fora da soma) */
             avisos: {
                 codigo: string;
                 texto: string;
@@ -4121,6 +4171,105 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Problema"];
                 };
+            };
+        };
+    };
+    prorrogarPo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoProrrogacao"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevisaoDetalhe"];
+                };
+            };
+            /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não confirmada ou substituída */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem justificativa */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    desfazerProrrogacaoPo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominioId: components["parameters"]["CondominioId"];
+                poId: components["parameters"]["PoId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevisaoDetalhe"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

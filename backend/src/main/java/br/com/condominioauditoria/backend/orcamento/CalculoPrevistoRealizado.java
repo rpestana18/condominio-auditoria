@@ -208,28 +208,34 @@ public final class CalculoPrevistoRealizado {
             return vazio(periodo, Situacao.PO_NAO_CONFIRMADA, "PO não confirmada: o Admin confirma a PO antes do"
                     + " previsto × realizado", resumoPo, List.of(), e);
         }
-        if (e.periodo() instanceof Mes m && !vigencia.cobre(m.mes())) {
+        // Prorrogação (RF-11.3): o mês depois do exercício usa esta PO, com a marca "PO prorrogada"
+        VigenciaPo prorrogacao = VigenciaPo.prorrogacao(po).orElse(null);
+        boolean mesProrrogado = e.periodo() instanceof Mes m && !vigencia.cobre(m.mes()) && prorrogacao != null
+                && prorrogacao.cobre(m.mes());
+        if (e.periodo() instanceof Mes m && !vigencia.cobre(m.mes()) && !mesProrrogado) {
             return vazio(periodo, Situacao.SEM_PO, "Sem PO aprovada para " + mmaaaa(m.mes()), resumoPo, List.of(), e);
         }
         if (e.fundoOrdinarioId() == null) {
             return vazio(periodo, Situacao.SEM_FUNDO_ORDINARIO, "Confirme o fundo ordinário (fundo Condomínio) do"
                     + " condomínio para calcular o realizado", resumoPo, List.of(), e);
         }
-        Base base = new Base(e);
+        Base base = new Base(comAviso(e, avisoProrrogacao(po, vigencia, prorrogacao, e.periodo(), mesProrrogado)));
 
         if (e.periodo() instanceof Mes m) {
             List<Fluxo> doMes = base.fluxosDoMes(m.mes());
             if (doMes.isEmpty()) {
                 return vazio(periodo, Situacao.SEM_FLUXO, "Sem fluxo carregado para " + mmaaaa(m.mes()), resumoPo,
-                        List.of(mesSemNumeros(m.mes(), SituacaoMes.SEM_FLUXO, doMes)), e);
+                        List.of(mesSemNumeros(m.mes(), SituacaoMes.SEM_FLUXO, doMes).comProrrogado(mesProrrogado)),
+                        base.e);
             }
             if (doMes.size() > 1) {
                 return vazio(periodo, Situacao.DOIS_FLUXOS, "Dois fluxos para " + mmaaaa(m.mes())
                                 + ": substitua, reclassifique ou exclua um", resumoPo,
-                        List.of(mesSemNumeros(m.mes(), SituacaoMes.DOIS_FLUXOS, doMes)), e);
+                        List.of(mesSemNumeros(m.mes(), SituacaoMes.DOIS_FLUXOS, doMes).comProrrogado(mesProrrogado)),
+                        base.e);
             }
             Apuracao ap = base.apurar(Map.of(m.mes(), doMes.getFirst()));
-            MesExercicio mes = base.resumoDoMes(m.mes(), doMes.getFirst(), ap);
+            MesExercicio mes = base.resumoDoMes(m.mes(), doMes.getFirst(), ap).comProrrogado(mesProrrogado);
             return base.montar(periodo, resumoPo, ap, 1, List.of(mes), List.of(m.mes().toString()), List.of(),
                     List.of(), true);
         }
@@ -260,10 +266,20 @@ public final class CalculoPrevistoRealizado {
                 duplos.add(mes.toString());
             }
         }
+        // Meses prorrogados: depois dos 12, com os números de cada mês, fora da soma do acumulado (RF-11.3)
+        if (prorrogacao != null) {
+            for (YearMonth mes : meses(prorrogacao.inicio(), prorrogacao.fim())) {
+                List<Fluxo> f = base.fluxosDoMes(mes);
+                MesExercicio m = f.size() == 1 ? base.resumoDoMes(mes, f.getFirst(), base.apurar(Map.of(mes, f.getFirst())))
+                        : mesSemNumeros(mes, f.isEmpty() ? SituacaoMes.SEM_FLUXO : SituacaoMes.DOIS_FLUXOS, f);
+                meses.add(m.comProrrogado(true));
+            }
+        }
         if (escolhidos.isEmpty()) {
             Situacao s = duplos.isEmpty() ? Situacao.SEM_FLUXO : Situacao.DOIS_FLUXOS;
             PrevistoRealizado r = vazio(periodo, s, duplos.isEmpty() ? "Nenhum mês do exercício com fluxo carregado"
-                    : "Os meses com fluxo têm dois fluxos cada: substitua, reclassifique ou exclua um", resumoPo, meses, e)
+                    : "Os meses com fluxo têm dois fluxos cada: substitua, reclassifique ou exclua um", resumoPo, meses,
+                    base.e)
                     .resultado();
             return new Calculo(new PrevistoRealizado(r.versaoCalculo(), r.periodo(), r.situacao(), r.mensagem(), r.po(),
                     r.meses(), List.of(), faltando.stream().map(YearMonth::toString).toList(), List.copyOf(duplos), null,
@@ -418,7 +434,8 @@ public final class CalculoPrevistoRealizado {
             var regra = e.limiteExcessoPercentual() == null ? null
                     : RegraExcessoMes.avaliar(excesso, previsto, e.limiteExcessoPercentual()).orElse(null);
             return new MesExercicio(mes.toString(), SituacaoMes.COM_FLUXO, List.of(f.usado()), previsto, despesa, excesso,
-                    regra == null ? null : umaCasa(regra.percentual()), regra == null ? null : regra.acimaDoLimite());
+                    regra == null ? null : umaCasa(regra.percentual()), regra == null ? null : regra.acimaDoLimite(),
+                    false);
         }
 
         BigDecimal excesso(Apuracao ap, int meses) {
@@ -689,9 +706,43 @@ public final class CalculoPrevistoRealizado {
                 List.copyOf(avisos)), Map.of());
     }
 
+    /** Aviso da prorrogação: no mês prorrogado, "PO prorrogada"; no acumulado, os meses que ficam fora da soma. */
+    private static Aviso avisoProrrogacao(PrevisaoOrcamentaria po, VigenciaPo vigencia, VigenciaPo prorrogacao,
+            Periodo periodo, boolean mesProrrogado) {
+        if (prorrogacao == null) {
+            return null;
+        }
+        String ate = mmaaaa(prorrogacao.fim());
+        if (mesProrrogado && periodo instanceof Mes m) {
+            return new Aviso("PO_PRORROGADA", "PO prorrogada: " + mmaaaa(m.mes()) + " usa a PO do exercício "
+                    + mmaaaa(vigencia.inicio()) + " a " + mmaaaa(vigencia.fim()) + ", prorrogada até " + ate + " por "
+                    + po.getProrrogadaPor() + ". Justificativa: " + po.getProrrogacaoJustificativa());
+        }
+        if (periodo instanceof Acumulado) {
+            List<String> prorrogados = meses(prorrogacao.inicio(), prorrogacao.fim()).stream().map(YearMonth::toString)
+                    .toList();
+            return new Aviso("MESES_PRORROGADOS", "PO prorrogada até " + ate + ": " + listaDeMeses(prorrogados)
+                    + " aparece" + (prorrogados.size() == 1 ? "" : "m") + " depois do exercício, marcado"
+                    + (prorrogados.size() == 1 ? "" : "s") + " \"prorrogado\", e não entra" + (prorrogados.size() == 1
+                    ? "" : "m") + " no acumulado.");
+        }
+        return null;
+    }
+
+    private static Entrada comAviso(Entrada e, Aviso aviso) {
+        if (aviso == null) {
+            return e;
+        }
+        List<Aviso> avisos = new ArrayList<>(e.avisosDaPo());
+        avisos.add(aviso);
+        return new Entrada(e.po(), e.poArquivoNome(), e.linhas(), e.deparas(), e.fundoPorLinha(), e.nomesFundos(),
+                e.fundoOrdinarioId(), e.fluxos(), e.lancamentos(), e.realocacoes(), e.limiteExcessoPercentual(), avisos,
+                e.periodo());
+    }
+
     private static MesExercicio mesSemNumeros(YearMonth mes, SituacaoMes situacao, List<Fluxo> fluxos) {
         return new MesExercicio(mes.toString(), situacao, fluxos.stream().map(Fluxo::usado).toList(), null, null, null,
-                null, null);
+                null, null, false);
     }
 
     static List<YearMonth> meses(YearMonth inicio, YearMonth fim) {

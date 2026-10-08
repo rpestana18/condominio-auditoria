@@ -45,6 +45,10 @@ public class PrevisaoOrcamentaria {
     private String justificativaDivergencia;
     private String confirmadaPor;
     private Instant confirmadaEm;
+    private LocalDate prorrogadaAte;
+    private String prorrogacaoJustificativa;
+    private String prorrogadaPor;
+    private Instant prorrogadaEm;
 
     protected PrevisaoOrcamentaria() {
     }
@@ -108,6 +112,45 @@ public class PrevisaoOrcamentaria {
             substituidaDesde = dia;
         }
         estado = EstadoPrevisao.SUBSTITUIDA;
+    }
+
+    /**
+     * RF-11.3: a PO vale também nos meses depois do exercício até {@code ate}, com justificativa. As validações
+     * (Admin, nenhum mês com PO confirmada) ficam no serviço de prorrogação.
+     */
+    public void prorrogar(YearMonth ate, String justificativa, String usuario, Instant quando) {
+        if (estado != EstadoPrevisao.CONFIRMADA) {
+            throw new IllegalStateException("Só PO confirmada (e não substituída) pode ser prorrogada");
+        }
+        if (!ate.isAfter(getExercicioFim())) {
+            throw new IllegalArgumentException("A prorrogação termina depois do fim do exercício");
+        }
+        this.prorrogadaAte = ate.atDay(1);
+        this.prorrogacaoJustificativa = justificativa;
+        this.prorrogadaPor = usuario;
+        this.prorrogadaEm = quando;
+    }
+
+    public void desfazerProrrogacao() {
+        this.prorrogadaAte = null;
+        this.prorrogacaoJustificativa = null;
+        this.prorrogadaPor = null;
+        this.prorrogadaEm = null;
+    }
+
+    /**
+     * PO nova confirmada sobre meses prorrogados (ADR 0005, Decisão 4): a prorrogação passa a terminar em {@code ate};
+     * se {@code ate} não passa do fim do exercício, a prorrogação acaba.
+     */
+    public void encurtarProrrogacao(YearMonth ate) {
+        if (prorrogadaAte == null) {
+            return;
+        }
+        if (!ate.isAfter(getExercicioFim())) {
+            desfazerProrrogacao();
+        } else if (ate.isBefore(getProrrogadaAte())) {
+            this.prorrogadaAte = ate.atDay(1);
+        }
     }
 
     public UUID getId() {
@@ -212,5 +255,22 @@ public class PrevisaoOrcamentaria {
 
     public Instant getConfirmadaEm() {
         return confirmadaEm;
+    }
+
+    /** Último mês prorrogado, ou nulo sem prorrogação. */
+    public YearMonth getProrrogadaAte() {
+        return prorrogadaAte == null ? null : YearMonth.from(prorrogadaAte);
+    }
+
+    public String getProrrogacaoJustificativa() {
+        return prorrogacaoJustificativa;
+    }
+
+    public String getProrrogadaPor() {
+        return prorrogadaPor;
+    }
+
+    public Instant getProrrogadaEm() {
+        return prorrogadaEm;
     }
 }

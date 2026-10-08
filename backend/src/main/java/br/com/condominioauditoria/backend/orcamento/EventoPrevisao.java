@@ -13,6 +13,12 @@ public class EventoPrevisao {
     public static final String SUBSTITUIDA = "SUBSTITUIDA";
     /** Ligação das linhas 1.9.x aos fundos alterada depois da confirmação (RF-03.1.9). */
     public static final String FUNDOS_ALTERADOS = "FUNDOS_ALTERADOS";
+    /** PO marcada como prorrogada pelo Admin, com justificativa (RF-11.3). */
+    public static final String PRORROGADA = "PRORROGADA";
+    /** Prorrogação desfeita pelo Admin. */
+    public static final String PRORROGACAO_DESFEITA = "PRORROGACAO_DESFEITA";
+    /** Prorrogação encurtada (ou desfeita) sozinha porque outra PO foi confirmada nos meses prorrogados (RF-11.3). */
+    public static final String PRORROGACAO_ENCURTADA = "PRORROGACAO_ENCURTADA";
 
     @Id
     private UUID id;

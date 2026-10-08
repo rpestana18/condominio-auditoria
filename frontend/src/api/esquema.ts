@@ -1894,6 +1894,11 @@ export interface components {
                 exercicios: {
                     id: string;
                     rotulo: string;
+                    /**
+                     * Format: uuid
+                     * @description nulo para a coluna impressa
+                     */
+                    poId?: string | null;
                     execucao?: number | null;
                     periodo?: string | null;
                 }[];
@@ -1901,6 +1906,8 @@ export interface components {
                     codigo: string;
                     descricao: string;
                     previstoMes: (number | null)[];
+                    /** @description Alvo do grupo em cada exercício, na ordem de "exercicios"; abre a evidência no previsto × realizado */
+                    alvos: (string | null)[];
                 }[];
             };
             avisos: string[];

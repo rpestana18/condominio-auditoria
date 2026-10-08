@@ -17,7 +17,9 @@ RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon -q :${SERVICO}
     && cp ${SERVICO}/build/libs/${SERVICO}-*.jar /app.jar
 
 FROM eclipse-temurin:25-jre
-RUN useradd --system --uid 1001 app && mkdir /dados && chown app /dados
+# /chaves: o volume nomeado do rag (chaves-rag) herda o dono da pasta da imagem; sem ela nasce do root e o rag
+# não consegue gravar o par de chaves na primeira subida
+RUN useradd --system --uid 1001 app && mkdir /dados /chaves && chown app /dados /chaves
 USER app
 COPY --from=build /app.jar /app.jar
 EXPOSE 8080

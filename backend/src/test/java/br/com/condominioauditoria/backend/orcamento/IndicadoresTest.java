@@ -53,6 +53,12 @@ class IndicadoresTest {
         assertThat(r.comparacao().grupos()).filteredOn(gr -> gr.codigo().equals("1.3")).singleElement()
                 .satisfies(gr -> assertThat(gr.previstoMes()).extracting(java.math.BigDecimal::toPlainString)
                         .containsExactly("336274.18", "348631.55"));
+        // RF-11.12: o clique abre a evidência do grupo; a coluna impressa não tem realizado, logo nem PO nem alvo
+        assertThat(r.comparacao().exercicios()).extracting(Indicadores.ExercicioDaComparacao::poId)
+                .containsExactly(po.getId(), null);
+        assertThat(r.comparacao().grupos()).allSatisfy(gr -> assertThat(gr.alvos()).hasSize(2).last().isNull());
+        assertThat(r.comparacao().grupos()).filteredOn(gr -> gr.codigo().equals("1.3")).singleElement()
+                .satisfies(gr -> assertThat(gr.alvos().getFirst()).startsWith("grupo:"));
         assertThat(r.avisos()).containsExactly(
                 "11 meses do exercício sem números (sem fluxo carregado ou com dois fluxos)");
     }

@@ -1,5 +1,5 @@
 import { Bar, BarChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { ComparacaoIndicador, Exercicio } from "../../api/tipos";
+import type { ComparacaoIndicador } from "../../api/tipos";
 import { formatarMoedaCurta, formatarMoedaOuTraco, formatarPercentual } from "../../formato";
 import { CartaoIndicador } from "./CartaoIndicador";
 import type { ContextoGrafico } from "./contexto";
@@ -9,8 +9,6 @@ import { dicaDaTabela, TabelaAlternativa, type ModeloTabela } from "./TabelaAlte
 
 interface Props {
   comparacao: ComparacaoIndicador;
-  /** Lista do GET /exercicios: dá a PO de cada exercício da comparação, para abrir o previsto × realizado. */
-  exercicios: Exercicio[];
   contexto: ContextoGrafico;
 }
 
@@ -18,26 +16,37 @@ interface Props {
  * Gráfico 7 (RF-11.11 e RF-11.6): previsto do mês de cada grupo em cada exercício (barras agrupadas) e a
  * execução acumulada de cada exercício. Valores na ordem de `comparacao.exercicios`, prontos da API.
  *
- * Lacuna de contrato: os grupos do gráfico 7 não trazem `alvo` (nem o id da linha do grupo), e os exercícios não
- * trazem o `poId`. O clique abre o exercício no período dele, sem a evidência do grupo; a PO vem do GET /exercicios.
+ * Clique: cada exercício traz o `poId` e o período; cada grupo traz o `alvo` em cada exercício (mesma ordem).
+ * A barra de um grupo abre o previsto × realizado daquele exercício já com a evidência do grupo; a barra da
+ * execução abre o exercício no período dele. A coluna impressa (`poId` nulo) e grupo sem alvo ficam sem link.
  */
-export function GraficoEntreExercicios({ comparacao, exercicios, contexto }: Props) {
+export function GraficoEntreExercicios({ comparacao, contexto }: Props) {
   const { grupos } = comparacao;
-  // Ação de cada exercício: só os de PO, com período (a coluna impressa não tem realizado nem período)
-  const acoes = comparacao.exercicios.map((ex) => {
-    const daLista = exercicios.find((e) => e.id === ex.id);
-    if (!daLista || daLista.tipo !== "PO" || !ex.periodo) return undefined;
-    return contexto.abrir({ poId: daLista.poId, periodo: ex.periodo, fundoId: contexto.fundoId });
-  });
+
+  /** Ação que abre o exercício `i` no previsto × realizado (com o alvo, se houver); `undefined` sem PO ou período. */
+  const abrirExercicio = (i: number, alvo?: string | null): (() => void) | undefined => {
+    const { poId, periodo } = comparacao.exercicios[i];
+    if (!poId || !periodo) return undefined;
+    return contexto.abrir({ poId, periodo, alvo, fundoId: contexto.fundoId });
+  };
+  /** Ação da barra do grupo `g` no exercício `i`: só com alvo (sem alvo não há evidência para abrir). */
+  const abrirGrupo = (g: number, i: number) => {
+    const alvo = grupos[g].alvos[i];
+    return alvo ? abrirExercicio(i, alvo) : undefined;
+  };
+  const acoesExecucao = comparacao.exercicios.map((_, i) => abrirExercicio(i));
 
   const tabelaGrupos: ModeloTabela = {
     legenda: "Previsto do mês por grupo da PO em cada exercício",
     colunaRotulo: "Grupo",
     colunas: comparacao.exercicios.map((ex) => `${ex.rotulo} (R$)`),
-    linhas: grupos.map((g) => ({
+    linhas: grupos.map((g, indiceGrupo) => ({
       chave: g.codigo,
       rotulo: `${g.codigo} ${g.descricao}`,
-      celulas: comparacao.exercicios.map((_, i) => ({ texto: formatarMoedaOuTraco(g.previstoMes[i]), aoAbrir: acoes[i] })),
+      celulas: comparacao.exercicios.map((_, i) => ({
+        texto: formatarMoedaOuTraco(g.previstoMes[i]),
+        aoAbrir: abrirGrupo(indiceGrupo, i),
+      })),
     })),
   };
   const tabelaExecucao: ModeloTabela = {
@@ -47,7 +56,7 @@ export function GraficoEntreExercicios({ comparacao, exercicios, contexto }: Pro
     linhas: comparacao.exercicios.map((ex, i) => ({
       chave: ex.id,
       rotulo: ex.rotulo,
-      celulas: [{ texto: formatarPercentual(ex.execucao), aoAbrir: acoes[i] }],
+      celulas: [{ texto: formatarPercentual(ex.execucao), aoAbrir: acoesExecucao[i] }],
     })),
   };
 
@@ -67,7 +76,7 @@ export function GraficoEntreExercicios({ comparacao, exercicios, contexto }: Pro
       periodo={periodo}
       unidade="R$ (previsto do mês) e % (execução acumulada)"
       dadosDe={contexto.dadosDe}
-      dica="Clique numa barra para abrir aquele exercício no previsto × realizado."
+      dica="Clique numa barra para abrir o grupo (ou o exercício) no previsto × realizado, com a evidência."
       tabela={
         <>
           <TabelaAlternativa modelo={tabelaGrupos} />
@@ -90,8 +99,8 @@ export function GraficoEntreExercicios({ comparacao, exercicios, contexto }: Pro
               name={ex.rotulo}
               fill={corDaSerie(i)}
               isAnimationActive={false}
-              cursor={acoes[i] ? "pointer" : undefined}
-              onClick={() => acoes[i]?.()}
+              cursor={acoesExecucao[i] ? "pointer" : undefined}
+              onClick={(item) => abrirGrupo((item.payload as { indice: number }).indice, i)?.()}
             />
           ))}
         </BarChart>
@@ -116,8 +125,8 @@ export function GraficoEntreExercicios({ comparacao, exercicios, contexto }: Pro
             name="Execução acumulada"
             fill="var(--cor-neutra)"
             isAnimationActive={false}
-            cursor="pointer"
-            onClick={(item) => acoes[(item.payload as { indice: number }).indice]?.()}
+            cursor={acoesExecucao.some(Boolean) ? "pointer" : undefined}
+            onClick={(item) => acoesExecucao[(item.payload as { indice: number }).indice]?.()}
           />
         </BarChart>
       </ResponsiveContainer>

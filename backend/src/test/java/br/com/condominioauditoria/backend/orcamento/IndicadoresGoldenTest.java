@@ -75,6 +75,16 @@ class IndicadoresGoldenTest {
         assertThat(r.comparacao().exercicios()).hasSize(2);
         assertThat(r.comparacao().exercicios().getFirst().execucao()).isEqualByComparingTo("98.8");
         assertThat(r.comparacao().exercicios().get(1).rotulo()).endsWith("(coluna impressa)");
+        assertThat(r.comparacao().exercicios()).extracting(Indicadores.ExercicioDaComparacao::poId)
+                .containsExactly(g.po.getId(), null);
+        Indicadores.GrupoDaComparacao g13 = r.comparacao().grupos().stream().filter(gr -> gr.codigo().equals("1.3"))
+                .findFirst().orElseThrow();
+        assertThat(g13.alvos()).hasSize(2);
+        assertThat(g13.alvos().get(1)).isNull();
+        assertThat(g13.alvos().getFirst()).isEqualTo(r.realizadoPorGrupo().stream()
+                .filter(s -> s.codigo().equals("1.3")).findFirst().orElseThrow().pontos().get(SETEMBRO).alvo());
+        assertThat(c.previstoRealizado.evidencia(c.condominioId, "2026-09", g.po.getId(), g13.alvos().getFirst()))
+                .isNotEmpty();
     }
 
     @Test

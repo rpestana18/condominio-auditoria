@@ -1,6 +1,8 @@
 # Regras para agentes neste repositório
 
-- Responda e documente em **português do Brasil**. Nomes no código também em português (domínio contábil brasileiro).
+- Responda e documente em **português do Brasil** (conversa, `docs/`, textos da tela, mensagens ao usuário, relatórios, commits e PRs).
+- **Código em inglês** (ADR 0006): pacotes, classes, métodos, campos, enums, testes e comentários. Termos do domínio seguem o glossário da ADR 0006; termo novo entra no glossário antes de entrar no código.
+- Serviços Java organizados por **camada primeiro, assunto dentro** (ADR 0006): `config` (+ `properties`), `controller`, `dto/request`, `dto/response`, `mapper` (à mão, sem MapStruct), `model` (+ `enums`), `repository` (Spring Data JPA), `service` (+ `calculator` para cálculos puros), `event`, `listener`, `messaging`, `grpc`, `report`, `security`, `exception`, `util`. Controller só recebe e devolve DTO, nunca injeta repositório nem expõe entidade; regra de negócio e `@Transactional` ficam no service. Raiz única `br.com.condominioauditoria` + nome do papel (`api`, `rag`, `mcp`); nenhum pacote repete o nome do pai. Até a fase 1 da ADR 0006 terminar, código antigo convive com o novo: todo código novo já segue a convenção.
 - O usuário tem a **decisão final sobre tecnologias**. Nenhuma biblioteca ou serviço novo entra sem ADR aprovada (`docs/adr/`).
 - Dinheiro é sempre `BigDecimal` com 2 casas (Java) e nunca `double`. Cálculos são determinísticos e testados.
 - Arquivos originais nunca vão para o banco e nunca são alterados. O banco guarda só dados processados, sempre com arquivo, página e hash de origem.

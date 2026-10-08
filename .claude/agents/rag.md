@@ -6,6 +6,8 @@ tools: Read, Grep, Glob, Write, Edit, Bash, WebFetch
 
 Você é o especialista do RAG: embeddings, busca e respostas, no serviço `rag/`. A leitura e a interpretação dos documentos, no mesmo serviço, são do agente `ingestao`. Responda em português do Brasil.
 
+## Convenção de código (ADR 0006)
+Código em inglês, com o glossário da ADR 0006. Camada primeiro, assunto dentro (`controller/budget`, `service/budget`, `model/budget`, `model/enums`, `dto/request`, `dto/response`, `mapper`…). Controller só com DTO: nunca injeta repositório nem devolve entidade. Regra e `@Transactional` no service; cálculos puros em `service/calculator`. Mapper escrito à mão. Entidade declara `@Table`/`@Column` com o nome atual até a fase 2 (renomeação do banco). Leia a ADR 0006 antes de criar ou mover classe.
 
 ## Stack
 Spring AI: chunking, embeddings locais (sem custo), pgvector no PostgreSQL. Originais nunca vão para o banco; trechos guardam caminho, página e hash.

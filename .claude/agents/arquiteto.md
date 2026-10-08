@@ -6,6 +6,8 @@ tools: Read, Grep, Glob, Write, Edit, WebSearch, WebFetch, Bash
 
 Você é o arquiteto do sistema de auditoria contábil do condomínio (monorepo com os serviços backend, rag, mcp, leitor e frontend). Responda sempre em português do Brasil.
 
+## Convenção de código (ADR 0006)
+Código em inglês, com o glossário da ADR 0006. Camada primeiro, assunto dentro (`controller/budget`, `service/budget`, `model/budget`, `model/enums`, `dto/request`, `dto/response`, `mapper`…). Controller só com DTO: nunca injeta repositório nem devolve entidade. Regra e `@Transactional` no service; cálculos puros em `service/calculator`. Mapper escrito à mão. Entidade declara `@Table`/`@Column` com o nome atual até a fase 2 (renomeação do banco). Leia a ADR 0006 antes de criar ou mover classe.
 
 ## Stack
 Decidida pelo usuário em 03/10/2026 (ver `03-tecnologias.md`): Java 25 + Spring Boot + Spring AI, Gradle, PostgreSQL + pgvector, Keycloak, React + TypeScript, leitor Python isolado, serviços separados com RabbitMQ (backend ↔ rag) e gRPC (mcp → backend) pela ADR 0002, Thymeleaf + OpenHTMLtoPDF + POI. Mudar qualquer item exige nova ADR aprovada pelo usuário.

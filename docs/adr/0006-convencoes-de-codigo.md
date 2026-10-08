@@ -1,6 +1,6 @@
 # ADR 0006: Convenções de código dos serviços Java (idioma, camadas e pacotes)
 
-- **Status:** aprovada pelo usuário em 08/10/2026 (perguntas 1, 2, 3, 5 e 6 como recomendado, com os ajustes da pergunta 3; na pergunta 4 o usuário escolheu raiz única com nome por papel). Falta só confirmar o nome do papel do backend (`api` por padrão, ver Decisão 4)
+- **Status:** aprovada pelo usuário em 08/10/2026 (perguntas 1, 2, 3, 5 e 6 como recomendado, com os ajustes da pergunta 3; na pergunta 4 o usuário escolheu raiz única com nome por papel). O usuário escolheu `api` para o backend no mesmo dia
 - **Vale para:** `backend`, `rag` e `mcp` (e os testes de cada um). A fase 3 estende o idioma ao `leitor` (Python) e ao código do `frontend`.
 - **Não muda:** a ADR 0002 (serviços separados, um schema por serviço, conversa só por `contracts/`), o stack da ADR 0001 nem nenhuma regra de negócio. Nenhuma biblioteca nova entra.
 - **Muda:** a regra do `CLAUDE.md` "Nomes no código também em português", a frase de `docs/arquitetura.md:76` sobre a organização por pacote e o nome da pasta e do pacote do backend.
@@ -217,7 +217,7 @@ Opções avaliadas: A (manter `br.com.condominioauditoria.<serviço>`), B (raiz 
 | lib de armazenamento | `libs/storage/` (hoje `libs/armazenamento/`) | `br.com.condominioauditoria.storage` |
 | lib do contrato gRPC | `libs/grpc-contract/` (hoje `libs/contrato-grpc/`) | o pacote gerado pelo `.proto` (fase 2) |
 
-`rag` e `mcp` já são nomes de papel em inglês. O nome do backend (`api`) é o padrão até o usuário confirmar (cartão no thread de 08/10/2026); a alternativa é `core`. A pasta muda junto, para pasta e pacote terem sempre o mesmo nome; isso inclui o serviço no `infra/docker-compose.yml`, o `java.Dockerfile`, o `settings.gradle.kts`, os comandos do `CLAUDE.md` e os agentes.
+`rag` e `mcp` já são nomes de papel em inglês. O nome do backend, `api`, foi escolhido pelo usuário em 08/10/2026 (as outras opções eram `core` e a raiz direta). A pasta muda junto, para pasta e pacote terem sempre o mesmo nome; isso inclui o serviço no `infra/docker-compose.yml`, o `java.Dockerfile`, o `settings.gradle.kts`, os comandos do `CLAUDE.md` e os agentes.
 
 Regra: **nenhum pacote repete** o nome do serviço nem do pacote pai (nada de `budget/BudgetModel` dentro de `model/budget`, nem `api/apiservice`).
 
@@ -268,6 +268,6 @@ Regra: **nenhum pacote repete** o nome do serviço nem do pacote pai (nada de `b
 1. Idioma: **sim** (B).
 2. Glossário: **ok**, como está.
 3. Pacotes: **camada primeiro (B), com `model`**; pediu para ver se faltavam pacotes "seguindo a convenção Java e padrões de projeto". Entraram `model/enums`, `dto/request` e `dto/response`, `config/properties`, `event`, `listener`, `service/calculator`, `grpc/server` e `grpc/client` (ver Decisão 3).
-4. Nome do serviço: **tirar o `backend`, raiz única com nome por papel** (ver Decisão 4). Nome do backend: `api` até confirmação.
+4. Nome do serviço: **tirar o `backend`, raiz única com nome por papel** (ver Decisão 4). Nome do backend: **`api`**.
 5. Mapper: **à mão**, sem MapStruct.
 6. Escopo: **tudo o que é código em inglês, opção B (três fases)**.

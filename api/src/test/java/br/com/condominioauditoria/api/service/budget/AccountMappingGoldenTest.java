@@ -8,7 +8,6 @@ import br.com.condominioauditoria.api.model.budget.AccountMapping;
 import br.com.condominioauditoria.api.model.enums.AccountMappingFilter;
 import br.com.condominioauditoria.api.model.enums.AccountMappingSource;
 import br.com.condominioauditoria.api.model.enums.AccountMappingStatus;
-import br.com.condominioauditoria.api.orcamento.GoldenSetembro;
 import br.com.condominioauditoria.api.service.calculator.EffectiveAccountMapping;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,59 +22,61 @@ class AccountMappingGoldenTest {
 
     @Test
     void sheetOf73AccountsComesInSuggestedAndLinksNoAccount() {
-        GoldenSetembro g = golden();
-        Optional<String> map = GoldenSetembro.mapa();
+        SeptemberGolden g = golden();
+        Optional<String> map = SeptemberGolden.map();
         assumeTrue(map.isPresent(), "mapa do piloto ausente no golden privado");
 
-        var r = g.cenario.depara.loadSheet(g.cenario.condominioId, g.po.getId(), "mapa-contas-fluxo-para-PO.csv",
+        var r = g.scenario.accountMapping.loadSheet(g.scenario.condominiumId, g.budget.getId(),
+                "mapa-contas-fluxo-para-PO.csv",
                 map.get(), "admin");
 
         assertThat(r.rejected()).isEmpty();
         assertThat(r.skipped()).isEmpty();
         assertThat(r.accepted()).isEqualTo(73);
-        var list = g.cenario.depara.list(g.cenario.condominioId, g.po.getId(), AccountMappingFilter.TODAS);
+        var list = g.scenario.accountMapping.list(g.scenario.condominiumId, g.budget.getId(),
+                AccountMappingFilter.TODAS);
         assertThat(list.summary()).isEqualTo(new AccountMappingSummaryResponse(73, 0, 73, 0, 0));
-        assertThat(g.cenario.deparas).allMatch(d -> d.getStatus() == AccountMappingStatus.SUGERIDO);
+        assertThat(g.scenario.mappings).allMatch(d -> d.getStatus() == AccountMappingStatus.SUGERIDO);
         // Suggested links no account: the numbers only use the confirmed (the month's calculation is in step 7)
-        assertThat(EffectiveAccountMapping.confirmed(g.cenario.deparas)).isEmpty();
+        assertThat(EffectiveAccountMapping.confirmed(g.scenario.mappings)).isEmpty();
 
-        AccountMapping plumbing = g.cenario.deparas.stream().filter(d -> d.getAccountCode().equals("1621")).findFirst()
+        AccountMapping plumbing = g.scenario.mappings.stream().filter(d -> d.getAccountCode().equals("1621")).findFirst()
                 .orElseThrow();
-        assertThat(plumbing.getBudgetLineId()).isEqualTo(g.linha("1.7.8").getId()).isNotEqualTo(g.linha("1.3.23").getId());
-        assertThat(g.cenario.deparas.stream().filter(d -> d.getAccountCode().equals("1073")).findFirst().orElseThrow()
-                .getBudgetLineId()).isEqualTo(g.linha("1.3.25").getId());
-        assertThat(g.cenario.eventosDepara).hasSize(73);
+        assertThat(plumbing.getBudgetLineId()).isEqualTo(g.line("1.7.8").getId()).isNotEqualTo(g.line("1.3.23").getId());
+        assertThat(g.scenario.mappings.stream().filter(d -> d.getAccountCode().equals("1073")).findFirst().orElseThrow()
+                .getBudgetLineId()).isEqualTo(g.line("1.3.25").getId());
+        assertThat(g.scenario.mappingEvents).hasSize(73);
     }
 
     @Test
     void nameSuggestionLinks1621To178AndNeverTo1323() {
-        GoldenSetembro g = golden();
+        SeptemberGolden g = golden();
 
-        var r = g.cenario.depara.suggest(g.cenario.condominioId, g.po.getId(), "admin");
+        var r = g.scenario.accountMapping.suggest(g.scenario.condominiumId, g.budget.getId(), "admin");
 
-        AccountMapping plumbing = g.cenario.deparas.stream().filter(d -> d.getAccountCode().equals("1621")).findFirst()
+        AccountMapping plumbing = g.scenario.mappings.stream().filter(d -> d.getAccountCode().equals("1621")).findFirst()
                 .orElseThrow();
-        assertThat(plumbing.getBudgetLineId()).isEqualTo(g.linha("1.7.8").getId());
+        assertThat(plumbing.getBudgetLineId()).isEqualTo(g.line("1.7.8").getId());
         assertThat(plumbing.getSource()).isEqualTo(AccountMappingSource.NOME);
-        assertThat(g.cenario.deparas).noneMatch(d -> g.linha("1.3.23").getId().equals(d.getBudgetLineId()));
-        assertThat(g.cenario.deparas).allMatch(d -> d.getStatus() == AccountMappingStatus.SUGERIDO);
+        assertThat(g.scenario.mappings).noneMatch(d -> g.line("1.3.23").getId().equals(d.getBudgetLineId()));
+        assertThat(g.scenario.mappings).allMatch(d -> d.getStatus() == AccountMappingStatus.SUGERIDO);
         assertThat(r.created() + r.withoutSuggestion().size()).isEqualTo(73);
 
         // Measure of the suggestion by name against the pilot's map: no suggestion disagrees with the map
-        Optional<String> map = GoldenSetembro.mapa();
+        Optional<String> map = SeptemberGolden.map();
         assumeTrue(map.isPresent());
         Map<String, String> expected = new HashMap<>();
         map.get().lines().skip(1).map(l -> l.split(";")).forEach(c -> expected.put(c[0], c[1]));
         Map<java.util.UUID, String> code = new HashMap<>();
-        g.cenario.linhas.forEach(l -> code.put(l.getId(), l.getEffectiveCode()));
-        long valid = g.cenario.deparas.stream()
+        g.scenario.lines.forEach(l -> code.put(l.getId(), l.getEffectiveCode()));
+        long valid = g.scenario.mappings.stream()
                 .filter(d -> code.get(d.getBudgetLineId()).equals(expected.get(d.getAccountCode()))).count();
         assertThat(valid).isEqualTo(r.created());
         assertThat(r.created()).isGreaterThanOrEqualTo(40);
     }
 
-    private static GoldenSetembro golden() {
-        Optional<GoldenSetembro> g = GoldenSetembro.carregar();
+    private static SeptemberGolden golden() {
+        Optional<SeptemberGolden> g = SeptemberGolden.load();
         assumeTrue(g.isPresent(), "golden privado ausente");
         return g.get();
     }

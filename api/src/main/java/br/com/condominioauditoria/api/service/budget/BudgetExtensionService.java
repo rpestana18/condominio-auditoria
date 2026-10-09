@@ -6,11 +6,11 @@ import br.com.condominioauditoria.api.event.BudgetChanged;
 import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.budget.BudgetEvent;
 import br.com.condominioauditoria.api.model.enums.BudgetStatus;
-import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado;
 import br.com.condominioauditoria.api.repository.budget.BudgetEventRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.service.calculator.BudgetValidity;
+import br.com.condominioauditoria.api.service.calculator.BudgetVsActualCalculator;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
@@ -70,12 +70,12 @@ public class BudgetExtensionService {
         List<Budget> others = budgets.findByCondominiumIdAndStatusIn(condominiumId,
                         EnumSet.of(BudgetStatus.CONFIRMADA, BudgetStatus.SUBSTITUIDA)).stream()
                 .filter(p -> !p.getId().equals(budget.getId())).toList();
-        for (YearMonth month : CalculoPrevistoRealizado.meses(first, until)) {
+        for (YearMonth month : BudgetVsActualCalculator.months(first, until)) {
             Optional<BudgetValidity.BudgetOfMonth> ofMonth = BudgetValidity.ofMonth(others, month);
             if (ofMonth.isPresent()) {
                 Budget other = ofMonth.get().budget();
                 throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT,
-                        CalculoPrevistoRealizado.mmaaaa(month)
+                        BudgetVsActualCalculator.mmyyyy(month)
                         + (ofMonth.get().extended() ? " já está na prorrogação de outra PO" : " já tem PO confirmada")
                         + " (versão " + other.getVersion() + ", exercício " + other.getFiscalYearStart() + " a "
                         + other.getFiscalYearEnd() + ")");

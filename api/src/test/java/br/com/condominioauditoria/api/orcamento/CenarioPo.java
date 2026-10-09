@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import br.com.condominioauditoria.api.config.properties.AccountMappingProperties;
+import br.com.condominioauditoria.api.config.properties.BudgetProperties;
 import br.com.condominioauditoria.api.dto.request.budget.BudgetConfirmationRequest;
 import br.com.condominioauditoria.api.dto.request.budget.EffectiveCodeRequest;
 import br.com.condominioauditoria.api.dto.request.budget.FundLinkRequest;
@@ -20,10 +22,15 @@ import br.com.condominioauditoria.api.model.audit.Finding;
 import br.com.condominioauditoria.api.model.audit.FindingEvent;
 import br.com.condominioauditoria.api.model.audit.FindingEvidence;
 import br.com.condominioauditoria.api.model.audit.RuleParameter;
+import br.com.condominioauditoria.api.model.budget.AccountMapping;
+import br.com.condominioauditoria.api.model.budget.AccountMappingEvent;
 import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.budget.BudgetEvent;
 import br.com.condominioauditoria.api.model.budget.BudgetFundLink;
+import br.com.condominioauditoria.api.model.budget.BudgetItem;
+import br.com.condominioauditoria.api.model.budget.BudgetItemEvent;
 import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.model.budget.BudgetLineItem;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
@@ -36,8 +43,13 @@ import br.com.condominioauditoria.api.repository.audit.FindingEventRepository;
 import br.com.condominioauditoria.api.repository.audit.FindingEvidenceRepository;
 import br.com.condominioauditoria.api.repository.audit.FindingRepository;
 import br.com.condominioauditoria.api.repository.audit.RuleParameterRepository;
+import br.com.condominioauditoria.api.repository.budget.AccountMappingEventRepository;
+import br.com.condominioauditoria.api.repository.budget.AccountMappingRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetEventRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetFundLinkRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetItemEventRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetItemRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetLineItemRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
@@ -45,10 +57,12 @@ import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.service.audit.FindingSyncService;
 import br.com.condominioauditoria.api.service.audit.rule.MonthlyOverrunRule;
 import br.com.condominioauditoria.api.service.audit.rule.ReserveFundCapRule;
+import br.com.condominioauditoria.api.service.budget.AccountMappingService;
 import br.com.condominioauditoria.api.service.budget.BudgetConfirmationService;
 import br.com.condominioauditoria.api.service.budget.BudgetExtensionService;
 import br.com.condominioauditoria.api.service.budget.BudgetFundLinkService;
 import br.com.condominioauditoria.api.service.budget.BudgetImportService;
+import br.com.condominioauditoria.api.service.budget.BudgetItemService;
 import br.com.condominioauditoria.api.service.budget.BudgetQueryService;
 import br.com.condominioauditoria.api.service.budget.BudgetReserveFundService;
 import java.math.BigDecimal;
@@ -82,31 +96,31 @@ public final class CenarioPo {
     public final List<Finding> achados = new ArrayList<>();
     public final List<FindingEvidence> evidencias = new ArrayList<>();
     public final List<RuleParameter> parametros = new ArrayList<>();
-    public final List<DeparaConta> deparas = new ArrayList<>();
-    public final List<EventoDepara> eventosDepara = new ArrayList<>();
+    public final List<AccountMapping> deparas = new ArrayList<>();
+    public final List<AccountMappingEvent> eventosDepara = new ArrayList<>();
     public final List<LedgerEntry> lancamentos = new ArrayList<>();
     public final List<FindingEvent> eventosAchado = new ArrayList<>();
     public final List<RealocacaoLancamento> realocacoes = new ArrayList<>();
     public final List<EventoRealocacao> eventosRealocacao = new ArrayList<>();
     public final List<Fund> fundos = new ArrayList<>();
-    public final List<Rubrica> rubricas = new ArrayList<>();
-    public final List<LinhaRubrica> linhasRubrica = new ArrayList<>();
-    public final List<EventoRubrica> eventosRubrica = new ArrayList<>();
+    public final List<BudgetItem> rubricas = new ArrayList<>();
+    public final List<BudgetLineItem> linhasRubrica = new ArrayList<>();
+    public final List<BudgetItemEvent> eventosRubrica = new ArrayList<>();
     /** Mudanças publicadas pelos serviços; {@link #aposCommit()} faz o papel do disparo depois do commit. */
     public final List<Object> publicados = new ArrayList<>();
 
     public final BudgetConfirmationService confirmacao;
     public final BudgetQueryService consulta;
-    public final ServicoDepara depara;
-    public final ServicoRubricas servicoRubricas;
+    public final AccountMappingService depara;
+    public final BudgetItemService servicoRubricas;
     public final BudgetExtensionService prorrogacao;
     public final ServicoExercicios exercicios;
     public final ServicoComparacao comparacao;
     public final ServicoIndicadores indicadores;
     public final BudgetRepository previsaoRepo;
     public final BudgetLineRepository linhaRepo;
-    public final DeparaContaRepository deparaRepo;
-    public final EventoDeparaRepository eventoDeparaRepo;
+    public final AccountMappingRepository deparaRepo;
+    public final AccountMappingEventRepository eventoDeparaRepo;
     public final ConsultaPrevistoRealizado previstoRealizado;
     public final ServicoRealocacao realocacao;
     public final RecalculoAchadosOrcamento recalculo;
@@ -205,7 +219,8 @@ public final class CenarioPo {
                         && a.getRule().equals(i.getArgument(1))
                         && a.getReferenceMonth().atDay(1).equals(i.getArgument(2)) && a.getTarget().equals(i.getArgument(3)))
                         .findFirst());
-        when(achadoRepo.findByCondominiumIdAndTargetStartingWithOrderByCreatedAt(any(), anyString())).thenAnswer(i -> achados
+        when(achadoRepo.findByCondominiumIdAndTargetStartingWithOrderByCreatedAt(any(),
+                anyString())).thenAnswer(i -> achados
                 .stream().filter(a -> a.getCondominiumId().equals(i.getArgument(0))
                         && a.getTarget().startsWith(i.getArgument(1))).toList());
         when(achadoRepo.findByCondominiumIdOrderByReferenceMonthDescCreatedAtAsc(any())).thenAnswer(i -> achados.stream()
@@ -230,69 +245,69 @@ public final class CenarioPo {
         consulta = new BudgetQueryService(previsaoRepo, linhaRepo, conferenciaRepo, arquivoRepo, poFundoRepo, fundoRepo,
                 achadoRepo, reservaDaPo, eventoRepo);
         registro = new FindingSyncService(achadoRepo, evidenciaRepo, eventoAchadoRepo);
-        RubricaRepository rubricaRepo = mock(RubricaRepository.class);
+        BudgetItemRepository rubricaRepo = mock(BudgetItemRepository.class);
         when(rubricaRepo.save(any())).thenAnswer(i -> {
-            if (!rubricas.contains(i.<Rubrica>getArgument(0))) {
+            if (!rubricas.contains(i.<BudgetItem>getArgument(0))) {
                 rubricas.add(i.getArgument(0));
             }
             return i.getArgument(0);
         });
-        when(rubricaRepo.existsByCondominioId(any())).thenAnswer(i -> rubricas.stream()
-                .anyMatch(r -> r.getCondominioId().equals(i.getArgument(0))));
-        when(rubricaRepo.findByCondominioIdOrderByNome(any())).thenAnswer(i -> rubricas.stream()
-                .filter(r -> r.getCondominioId().equals(i.getArgument(0))).sorted(Comparator.comparing(Rubrica::getNome))
+        when(rubricaRepo.existsByCondominiumId(any())).thenAnswer(i -> rubricas.stream()
+                .anyMatch(r -> r.getCondominiumId().equals(i.getArgument(0))));
+        when(rubricaRepo.findByCondominiumIdOrderByName(any())).thenAnswer(i -> rubricas.stream()
+                .filter(r -> r.getCondominiumId().equals(i.getArgument(0))).sorted(Comparator.comparing(BudgetItem::getName))
                 .toList());
         when(rubricaRepo.findById(any())).thenAnswer(i -> rubricas.stream()
                 .filter(r -> r.getId().equals(i.getArgument(0))).findFirst());
-        when(rubricaRepo.findByIdAndCondominioId(any(), any())).thenAnswer(i -> rubricas.stream()
-                .filter(r -> r.getId().equals(i.getArgument(0)) && r.getCondominioId().equals(i.getArgument(1)))
+        when(rubricaRepo.findByIdAndCondominiumId(any(), any())).thenAnswer(i -> rubricas.stream()
+                .filter(r -> r.getId().equals(i.getArgument(0)) && r.getCondominiumId().equals(i.getArgument(1)))
                 .findFirst());
-        LinhaRubricaRepository linhaRubricaRepo = mock(LinhaRubricaRepository.class);
+        BudgetLineItemRepository linhaRubricaRepo = mock(BudgetLineItemRepository.class);
         when(linhaRubricaRepo.save(any())).thenAnswer(i -> {
-            if (!linhasRubrica.contains(i.<LinhaRubrica>getArgument(0))) {
+            if (!linhasRubrica.contains(i.<BudgetLineItem>getArgument(0))) {
                 linhasRubrica.add(i.getArgument(0));
             }
             return i.getArgument(0);
         });
-        when(linhaRubricaRepo.findByPrevisaoId(any())).thenAnswer(i -> linhasRubrica.stream()
-                .filter(l -> l.getPrevisaoId().equals(i.getArgument(0))).toList());
-        when(linhaRubricaRepo.findByCondominioIdAndEstado(any(), any())).thenAnswer(i -> linhasRubrica.stream()
-                .filter(l -> l.getCondominioId().equals(i.getArgument(0)) && l.getEstado() == i.getArgument(1))
+        when(linhaRubricaRepo.findByBudgetId(any())).thenAnswer(i -> linhasRubrica.stream()
+                .filter(l -> l.getBudgetId().equals(i.getArgument(0))).toList());
+        when(linhaRubricaRepo.findByCondominiumIdAndStatus(any(), any())).thenAnswer(i -> linhasRubrica.stream()
+                .filter(l -> l.getCondominiumId().equals(i.getArgument(0)) && l.getStatus() == i.getArgument(1))
                 .toList());
-        EventoRubricaRepository eventoRubricaRepo = mock(EventoRubricaRepository.class);
+        BudgetItemEventRepository eventoRubricaRepo = mock(BudgetItemEventRepository.class);
         when(eventoRubricaRepo.save(any())).thenAnswer(i -> {
             eventosRubrica.add(i.getArgument(0));
             return i.getArgument(0);
         });
-        when(eventoRubricaRepo.findByPrevisaoIdOrderByEmAscLinhaCodigoAsc(any())).thenAnswer(i -> eventosRubrica.stream()
-                .filter(e -> i.getArgument(0).equals(e.getPrevisaoId())).toList());
-        servicoRubricas = new ServicoRubricas(condominios, previsaoRepo, linhaRepo, rubricaRepo, linhaRubricaRepo,
+        when(eventoRubricaRepo.findByBudgetIdOrderByOccurredAtAscLineCodeAsc(any())).thenAnswer(i -> eventosRubrica.stream()
+                .filter(e -> i.getArgument(0).equals(e.getBudgetId())).toList());
+        servicoRubricas = new BudgetItemService(condominios, previsaoRepo, linhaRepo, rubricaRepo, linhaRubricaRepo,
                 eventoRubricaRepo);
         confirmacao = new BudgetConfirmationService(condominios, previsaoRepo, linhaRepo, poFundoRepo, eventoRepo,
                 arquivoRepo, fundoRepo, consulta, reservaDaPo, registro, servicoRubricas, publicados::add);
-        gravacao = new BudgetImportService(previsaoRepo, linhaRepo, new PropriedadesOrcamento(new BigDecimal("0.01")));
+        gravacao = new BudgetImportService(previsaoRepo, linhaRepo, new BudgetProperties(new BigDecimal("0.01")));
 
-        deparaRepo = mock(DeparaContaRepository.class);
+        deparaRepo = mock(AccountMappingRepository.class);
         when(deparaRepo.save(any())).thenAnswer(i -> {
-            DeparaConta d = i.getArgument(0);
+            AccountMapping d = i.getArgument(0);
             if (!deparas.contains(d)) {
                 deparas.add(d);
             }
             return d;
         });
-        when(deparaRepo.findByPrevisaoIdOrderByContaCodigo(any())).thenAnswer(i -> deparas.stream()
-                .filter(d -> d.getPrevisaoId().equals(i.getArgument(0)))
-                .sorted(Comparator.comparing(DeparaConta::getContaCodigo)).toList());
-        when(deparaRepo.findByPrevisaoIdAndContaCodigo(any(), anyString())).thenAnswer(i -> deparas.stream()
-                .filter(d -> d.getPrevisaoId().equals(i.getArgument(0)) && d.getContaCodigo().equals(i.getArgument(1)))
+        when(deparaRepo.findByBudgetIdOrderByAccountCode(any())).thenAnswer(i -> deparas.stream()
+                .filter(d -> d.getBudgetId().equals(i.getArgument(0)))
+                .sorted(Comparator.comparing(AccountMapping::getAccountCode)).toList());
+        when(deparaRepo.findByBudgetIdAndAccountCode(any(), anyString())).thenAnswer(i -> deparas.stream()
+                .filter(d -> d.getBudgetId().equals(i.getArgument(0)) && d.getAccountCode().equals(i.getArgument(1)))
                 .findFirst());
-        eventoDeparaRepo = mock(EventoDeparaRepository.class);
+        eventoDeparaRepo = mock(AccountMappingEventRepository.class);
         when(eventoDeparaRepo.save(any())).thenAnswer(i -> {
             eventosDepara.add(i.getArgument(0));
             return i.getArgument(0);
         });
-        when(eventoDeparaRepo.findByPrevisaoIdOrderByEmAscContaCodigoAsc(any())).thenAnswer(i -> eventosDepara.stream()
-                .filter(e -> e.getPrevisaoId().equals(i.getArgument(0))).toList());
+        when(eventoDeparaRepo.findByBudgetIdOrderByOccurredAtAscAccountCodeAsc(any())).thenAnswer(i -> eventosDepara.stream()
+                .filter(e -> e.getBudgetId().equals(i.getArgument(0))).toList());
         LedgerEntryRepository lancamentoRepo = mock(LedgerEntryRepository.class);
         when(lancamentoRepo.debitsWithAccount(any(), any(), any(), any())).thenAnswer(i -> lancamentos.stream()
                 .filter(l -> l.getFundId().equals(i.getArgument(1)) && !l.getDate().isBefore(i.getArgument(2))
@@ -305,8 +320,9 @@ public final class CenarioPo {
                 .toList());
         when(lancamentoRepo.findById(any())).thenAnswer(i -> lancamentos.stream()
                 .filter(l -> l.getId().equals(i.getArgument(0))).findFirst());
-        depara = new ServicoDepara(condominios, previsaoRepo, linhaRepo, deparaRepo, eventoDeparaRepo, lancamentoRepo,
-                PropriedadesDepara.padrao(), publicados::add);
+        depara = new AccountMappingService(condominios, previsaoRepo, linhaRepo, deparaRepo, eventoDeparaRepo,
+                lancamentoRepo,
+                AccountMappingProperties.defaults(), publicados::add);
 
         RealocacaoLancamentoRepository realocacaoRepo = mock(RealocacaoLancamentoRepository.class);
         when(realocacaoRepo.save(any())).thenAnswer(i -> {
@@ -340,7 +356,8 @@ public final class CenarioPo {
         comparacao = new ServicoComparacao(condominios, previsaoRepo, linhaRepo, poFundoRepo, rubricaRepo,
                 linhaRubricaRepo, achadoRepo, previstoRealizado, exercicios);
         indicadores = new ServicoIndicadores(condominios, previsaoRepo, previstoRealizado, exercicios, comparacao);
-        ligacaoFundos = new BudgetFundLinkService(condominios, previsaoRepo, linhaRepo, poFundoRepo, fundoRepo, eventoRepo,
+        ligacaoFundos = new BudgetFundLinkService(condominios, previsaoRepo, linhaRepo, poFundoRepo, fundoRepo,
+                eventoRepo,
                 consulta, publicados::add);
 
         ata = arquivo(FileCategory.ATA, "ata-ago-2026-05.pdf");
@@ -402,7 +419,8 @@ public final class CenarioPo {
     }
 
     public SourceFile arquivo(FileCategory categoria, String nome) {
-        SourceFile a = new SourceFile(condominioId, categoria, nome, "c/" + nome, UUID.randomUUID().toString().replace("-", "")
+        SourceFile a = new SourceFile(condominioId, categoria, nome, "c/" + nome,
+                UUID.randomUUID().toString().replace("-", "")
                 + "0".repeat(32), 100, "application/pdf", "admin");
         arquivos.put(a.getId(), a);
         return a;

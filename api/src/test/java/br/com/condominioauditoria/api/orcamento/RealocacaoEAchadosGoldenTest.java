@@ -4,13 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import br.com.condominioauditoria.api.dto.request.budget.AccountMappingBatchRequest;
+import br.com.condominioauditoria.api.dto.request.budget.MappingTargetRequest;
 import br.com.condominioauditoria.api.event.BudgetChanged;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.model.audit.Finding;
 import br.com.condominioauditoria.api.model.audit.FindingEvent;
+import br.com.condominioauditoria.api.model.enums.AccountMappingBatchAction;
 import br.com.condominioauditoria.api.model.enums.FindingStatus;
+import br.com.condominioauditoria.api.model.enums.MappingTargetType;
 import br.com.condominioauditoria.api.model.enums.Severity;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Aviso;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Evidencia;
@@ -204,7 +208,7 @@ class RealocacaoEAchadosGoldenTest {
         Finding achado = achadosDe(c, YearMonth.of(2026, 9)).getFirst();
 
         // Q27: o Admin confirma o de-para da conta; o achado passa a "não se aplica mais", com o motivo
-        c.depara.definir(c.condominioId, g.po.getId(), "8888", new DeparaDtos.PedidoDestino(TipoDestino.LINHA_PO,
+        c.depara.setTarget(c.condominioId, g.po.getId(), "8888", new MappingTargetRequest(MappingTargetType.LINHA_PO,
                 g.linha("1.7.8").getId(), null, true), "admin");
         c.aposCommit();
 
@@ -215,7 +219,7 @@ class RealocacaoEAchadosGoldenTest {
         assertThat(c.evidencias).filteredOn(e -> e.getFindingId().equals(achado.getId())).hasSize(1);
 
         // O Admin desfaz o de-para: a condição volta, e o MESMO achado volta a "aberto"
-        c.depara.lote(c.condominioId, g.po.getId(), new DeparaDtos.PedidoLote(DeparaDtos.AcaoLote.RECUSAR,
+        c.depara.batch(c.condominioId, g.po.getId(), new AccountMappingBatchRequest(AccountMappingBatchAction.RECUSAR,
                 List.of("8888")), "admin");
         c.aposCommit();
 
@@ -247,7 +251,8 @@ class RealocacaoEAchadosGoldenTest {
                 .anyMatch(e -> e.getFileId().equals(g.arquivoFluxo));
 
         // A conta 1442 vira ajuste no de-para: o excesso cai abaixo de 20% e o achado não se aplica mais
-        c.depara.definir(c.condominioId, g.po.getId(), "1442", new DeparaDtos.PedidoDestino(TipoDestino.AJUSTE, null,
+        c.depara.setTarget(c.condominioId, g.po.getId(), "1442", new MappingTargetRequest(MappingTargetType.AJUSTE,
+                null,
                 "teste", true), "admin");
         c.aposCommit();
 
@@ -266,7 +271,7 @@ class RealocacaoEAchadosGoldenTest {
         Finding achado = achadosDe(c, YearMonth.of(2026, 9)).getFirst();
 
         c.fluxo("fluxo-corrigido-2026-09.pdf", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30), 0);
-        c.depara.definir(c.condominioId, g.po.getId(), "8888", new DeparaDtos.PedidoDestino(TipoDestino.LINHA_PO,
+        c.depara.setTarget(c.condominioId, g.po.getId(), "8888", new MappingTargetRequest(MappingTargetType.LINHA_PO,
                 g.linha("1.7.8").getId(), null, true), "admin");
         c.aposCommit();
 

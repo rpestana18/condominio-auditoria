@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.api.dto.response.budget;
 
-import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.model.enums.BudgetLineMark;
 import br.com.condominioauditoria.api.model.enums.BudgetLineType;
 import com.fasterxml.jackson.annotation.JsonProperty;

@@ -3,7 +3,10 @@ package br.com.condominioauditoria.api.orcamento;
 import br.com.condominioauditoria.api.model.audit.Finding;
 import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.budget.BudgetFundLink;
+import br.com.condominioauditoria.api.model.budget.BudgetItem;
+import br.com.condominioauditoria.api.model.budget.BudgetLineItem;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.model.enums.BudgetItemStatus;
 import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.model.enums.FindingStatus;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.Entrada;
@@ -15,6 +18,8 @@ import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Situacao;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
 import br.com.condominioauditoria.api.repository.audit.FindingRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetFundLinkRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetItemRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetLineItemRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
@@ -45,15 +50,15 @@ public class ServicoComparacao {
     private final BudgetRepository previsoes;
     private final BudgetLineRepository linhas;
     private final BudgetFundLinkRepository poFundos;
-    private final RubricaRepository rubricas;
-    private final LinhaRubricaRepository linhasRubrica;
+    private final BudgetItemRepository rubricas;
+    private final BudgetLineItemRepository linhasRubrica;
     private final FindingRepository achados;
     private final ConsultaPrevistoRealizado previstoRealizado;
     private final ServicoExercicios exercicios;
 
     ServicoComparacao(CondominiumRepository condominios, BudgetRepository previsoes,
-            BudgetLineRepository linhas, BudgetFundLinkRepository poFundos, RubricaRepository rubricas,
-            LinhaRubricaRepository linhasRubrica, FindingRepository achados,
+            BudgetLineRepository linhas, BudgetFundLinkRepository poFundos, BudgetItemRepository rubricas,
+            BudgetLineItemRepository linhasRubrica, FindingRepository achados,
             ConsultaPrevistoRealizado previstoRealizado, ServicoExercicios exercicios) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -104,14 +109,15 @@ public class ServicoComparacao {
         Map<String, PrevistoRealizado> acumulados = new java.util.HashMap<>();
         for (Escolhido x : escolhidos) {
             if (!x.coluna()) {
-                acumulados.put(x.id(), previstoRealizado.calcular(condominioId, "acumulado", x.po().getId()).resultado());
+                acumulados.put(x.id(), previstoRealizado.calcular(condominioId, "acumulado",
+                        x.po().getId()).resultado());
             }
         }
         Set<Month> comuns = mesmosMeses ? ComparacaoExercicios.mesmosMeses(acumulados.values()) : Set.of();
         List<Finding> todosAchados = achados.findByCondominiumIdOrderByReferenceMonthDescCreatedAtAsc(condominioId);
-        Map<UUID, RubricaDaLinha> catalogo = rubricas.findByCondominioIdOrderByNome(condominioId).stream()
-                .collect(Collectors.toMap(Rubrica::getId,
-                        r -> new RubricaDaLinha(r.getId(), r.getNome(), r.getGrupoCodigo())));
+        Map<UUID, RubricaDaLinha> catalogo = rubricas.findByCondominiumIdOrderByName(condominioId).stream()
+                .collect(Collectors.toMap(BudgetItem::getId,
+                        r -> new RubricaDaLinha(r.getId(), r.getName(), r.getGroupCode())));
 
         List<Entrada> entradas = new ArrayList<>();
         for (Escolhido x : escolhidos) {
@@ -134,9 +140,9 @@ public class ServicoComparacao {
                 periodo.add(acumulado);
                 meses.addAll(acumulado.mesesSomados());
             }
-            Map<UUID, RubricaDaLinha> daLinha = linhasRubrica.findByPrevisaoId(poId).stream()
-                    .filter(l -> l.getEstado() == EstadoRubrica.CONFIRMADO && catalogo.containsKey(l.getRubricaId()))
-                    .collect(Collectors.toMap(LinhaRubrica::getLinhaPoId, l -> catalogo.get(l.getRubricaId())));
+            Map<UUID, RubricaDaLinha> daLinha = linhasRubrica.findByBudgetId(poId).stream()
+                    .filter(l -> l.getStatus() == BudgetItemStatus.CONFIRMADO && catalogo.containsKey(l.getBudgetItemId()))
+                    .collect(Collectors.toMap(BudgetLineItem::getBudgetLineId, l -> catalogo.get(l.getBudgetItemId())));
             Integer abertos = x.coluna() ? null : (int) todosAchados.stream()
                     .filter(a -> a.getStatus() == FindingStatus.ABERTO && !a.getReferenceMonth().isBefore(x.inicio())
                             && !a.getReferenceMonth().isAfter(x.fim())).count();

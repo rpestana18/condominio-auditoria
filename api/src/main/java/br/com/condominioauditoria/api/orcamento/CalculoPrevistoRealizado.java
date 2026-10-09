@@ -2,8 +2,12 @@ package br.com.condominioauditoria.api.orcamento;
 
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntryFingerprint;
+import br.com.condominioauditoria.api.model.budget.AccountMapping;
 import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.model.budget.MappingTarget;
+import br.com.condominioauditoria.api.model.enums.AccountMappingStatus;
+import br.com.condominioauditoria.api.model.enums.MappingTargetType;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Aviso;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Bloco;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.ConferenciaFluxo;
@@ -23,9 +27,11 @@ import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoFundo;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Totais;
 import br.com.condominioauditoria.api.service.audit.rule.MonthlyOverrunRule;
+import br.com.condominioauditoria.api.service.budget.AccountMappingService;
 import br.com.condominioauditoria.api.service.budget.BudgetQueryService;
 import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import br.com.condominioauditoria.api.service.calculator.BudgetValidity;
+import br.com.condominioauditoria.api.service.calculator.EffectiveAccountMapping;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -131,7 +137,7 @@ public final class CalculoPrevistoRealizado {
      * @param limiteExcessoPercentual parâmetro da Conv. 16.2 vigente no período (nulo: regra não avaliada)
      * @param avisosDaPo avisos da própria PO (arredondamento, confirmada com divergência), repetidos no resultado
      */
-    public record Entrada(Budget po, String poArquivoNome, List<BudgetLine> linhas, List<DeparaConta> deparas,
+    public record Entrada(Budget po, String poArquivoNome, List<BudgetLine> linhas, List<AccountMapping> deparas,
             Map<UUID, UUID> fundoPorLinha, Map<UUID, String> nomesFundos, UUID fundoOrdinarioId, List<Fluxo> fluxos,
             List<LedgerEntry> lancamentos, List<Realocacao> realocacoes, BigDecimal limiteExcessoPercentual,
             List<Aviso> avisosDaPo, Periodo periodo) {
@@ -249,7 +255,8 @@ public final class CalculoPrevistoRealizado {
         List<YearMonth> exercicio = meses(vigencia.start(), vigencia.end());
         Map<YearMonth, List<Fluxo>> porMes = new LinkedHashMap<>();
         exercicio.forEach(mes -> porMes.put(mes, base.fluxosDoMes(mes)));
-        YearMonth ultimo = exercicio.stream().filter(mes -> !porMes.get(mes).isEmpty()).reduce((a, b) -> b).orElse(null);
+        YearMonth ultimo = exercicio.stream().filter(mes -> !porMes.get(mes).isEmpty()).reduce((a,
+                b) -> b).orElse(null);
         Map<YearMonth, Fluxo> escolhidos = new TreeMap<>();
         List<MesExercicio> meses = new ArrayList<>();
         List<String> somados = new ArrayList<>();
@@ -275,7 +282,8 @@ public final class CalculoPrevistoRealizado {
         if (prorrogacao != null) {
             for (YearMonth mes : meses(prorrogacao.start(), prorrogacao.end())) {
                 List<Fluxo> f = base.fluxosDoMes(mes);
-                MesExercicio m = f.size() == 1 ? base.resumoDoMes(mes, f.getFirst(), base.apurar(Map.of(mes, f.getFirst())))
+                MesExercicio m = f.size() == 1 ? base.resumoDoMes(mes, f.getFirst(), base.apurar(Map.of(mes,
+                        f.getFirst())))
                         : mesSemNumeros(mes, f.isEmpty() ? SituacaoMes.SEM_FLUXO : SituacaoMes.DOIS_FLUXOS, f);
                 meses.add(m.comProrrogado(true));
             }
@@ -287,7 +295,8 @@ public final class CalculoPrevistoRealizado {
                     base.e)
                     .resultado();
             return new Calculo(new PrevistoRealizado(r.versaoCalculo(), r.periodo(), r.situacao(), r.mensagem(), r.po(),
-                    r.meses(), List.of(), faltando.stream().map(YearMonth::toString).toList(), List.copyOf(duplos), null,
+                    r.meses(), List.of(), faltando.stream().map(YearMonth::toString).toList(), List.copyOf(duplos),
+                            null,
                     false, null, List.of(), null, null, null, null, null, List.of(), r.avisos()), Map.of());
         }
         Apuracao ap = base.apurar(escolhidos);
@@ -301,8 +310,8 @@ public final class CalculoPrevistoRealizado {
         final Entrada e;
         final BudgetStructure estrutura;
         final Map<UUID, BudgetLine> destinosValidos = new LinkedHashMap<>();
-        final Map<String, Destino> confirmados;
-        final Map<String, DeparaConta> deparaPorConta = new HashMap<>();
+        final Map<String, MappingTarget> confirmados;
+        final Map<String, AccountMapping> deparaPorConta = new HashMap<>();
         final Map<String, Realocacao> realocacoes = new HashMap<>();
         final Map<UUID, BudgetLine> linhaPorFundo = new HashMap<>();
         final List<BudgetLine> linhasDeFundo;
@@ -311,9 +320,9 @@ public final class CalculoPrevistoRealizado {
         Base(Entrada e) {
             this.e = e;
             this.estrutura = BudgetStructure.of(e.linhas());
-            ServicoDepara.destinosDeDebito(estrutura).forEach(l -> destinosValidos.put(l.getId(), l));
-            this.confirmados = DeparaEfetivo.confirmados(e.deparas());
-            e.deparas().forEach(d -> deparaPorConta.put(d.getContaCodigo(), d));
+            AccountMappingService.debitTargets(estrutura).forEach(l -> destinosValidos.put(l.getId(), l));
+            this.confirmados = EffectiveAccountMapping.confirmed(e.deparas());
+            e.deparas().forEach(d -> deparaPorConta.put(d.getAccountCode(), d));
             e.realocacoes().forEach(r -> realocacoes.put(r.chave(), r));
             this.linhasPorId = e.linhas().stream().collect(Collectors.toMap(BudgetLine::getId, Function.identity()));
             this.linhasDeFundo = estrutura.funds().map(BudgetStructure.Group::lines).orElse(List.of());
@@ -373,13 +382,13 @@ public final class CalculoPrevistoRealizado {
             if (conta != null) {
                 ap.contas.add(conta);
             }
-            Destino d = conta == null ? null : confirmados.get(conta);
-            if (d == null || (d.tipo() == TipoDestino.LINHA_PO && !destinosValidos.containsKey(d.linhaPoId()))) {
-                DeparaConta pendente = conta == null ? null : deparaPorConta.get(conta);
+            MappingTarget d = conta == null ? null : confirmados.get(conta);
+            if (d == null || (d.type() == MappingTargetType.LINHA_PO && !destinosValidos.containsKey(d.budgetLineId()))) {
+                AccountMapping pendente = conta == null ? null : deparaPorConta.get(conta);
                 String detalhe = conta == null ? "lançamento sem conta"
                         : pendente == null ? "sem de-para"
-                        : pendente.getEstado() == EstadoDepara.CONFIRMADO ? "destino inválido"
-                        : "de-para " + pendente.getEstado().name().toLowerCase();
+                        : pendente.getStatus() == AccountMappingStatus.CONFIRMADO ? "destino inválido"
+                        : "de-para " + pendente.getStatus().name().toLowerCase();
                 ap.semLinha.somar(conta, l.getAccountName(), detalhe, valor);
                 if (conta != null) {
                     ap.contasSemDepara.add(conta);
@@ -388,14 +397,14 @@ public final class CalculoPrevistoRealizado {
                 return;
             }
             ap.contasConfirmadas.add(conta);
-            switch (d.tipo()) {
-                case LINHA_PO -> ap.linha(d.linhaPoId(), valor, l, f, nome(l.getFundId()), null, null);
+            switch (d.type()) {
+                case LINHA_PO -> ap.linha(d.budgetLineId(), valor, l, f, nome(l.getFundId()), null, null);
                 case AJUSTE -> {
-                    ap.ajustes.somar(conta, l.getAccountName(), d.texto(), valor);
+                    ap.ajustes.somar(conta, l.getAccountName(), d.text(), valor);
                     ap.evidencia(ALVO_AJUSTES, l, f, nome(l.getFundId()), null);
                 }
                 case TRANSFERENCIA -> {
-                    ap.transferencias.somar(conta, l.getAccountName(), d.texto(), valor);
+                    ap.transferencias.somar(conta, l.getAccountName(), d.text(), valor);
                     ap.evidencia(ALVO_TRANSFERENCIAS, l, f, nome(l.getFundId()), null);
                 }
                 case A_REALOCAR -> {
@@ -407,7 +416,7 @@ public final class CalculoPrevistoRealizado {
                                 + destino.getEffectiveCode() + " " + destino.getDescription() + " por " + r.usuario()
                                 + " em " + DATA.format(r.em().atZone(FUSO)), r.id());
                     } else {
-                        ap.aRealocar.somar(conta, l.getAccountName(), d.texto(), valor);
+                        ap.aRealocar.somar(conta, l.getAccountName(), d.text(), valor);
                         ap.evidencia(ALVO_A_REALOCAR, l, f, nome(l.getFundId()), null);
                     }
                 }
@@ -438,7 +447,8 @@ public final class CalculoPrevistoRealizado {
             BigDecimal excesso = excesso(ap, 1);
             var regra = e.limiteExcessoPercentual() == null ? null
                     : MonthlyOverrunRule.assess(excesso, previsto, e.limiteExcessoPercentual()).orElse(null);
-            return new MesExercicio(mes.toString(), SituacaoMes.COM_FLUXO, List.of(f.usado()), previsto, despesa, excesso,
+            return new MesExercicio(mes.toString(), SituacaoMes.COM_FLUXO, List.of(f.usado()), previsto, despesa,
+                    excesso,
                     regra == null ? null : umaCasa(regra.percentage()), regra == null ? null : regra.aboveLimit(),
                     false);
         }
@@ -463,8 +473,8 @@ public final class CalculoPrevistoRealizado {
             List<GrupoResultado> grupos = new ArrayList<>();
             Map<UUID, List<String>> contasPorLinha = new HashMap<>();
             confirmados.forEach((conta, d) -> {
-                if (d.tipo() == TipoDestino.LINHA_PO) {
-                    contasPorLinha.computeIfAbsent(d.linhaPoId(), k -> new ArrayList<>()).add(conta);
+                if (d.type() == MappingTargetType.LINHA_PO) {
+                    contasPorLinha.computeIfAbsent(d.budgetLineId(), k -> new ArrayList<>()).add(conta);
                 }
             });
             BigDecimal previstoTotal = ZERO;
@@ -536,9 +546,11 @@ public final class CalculoPrevistoRealizado {
             Set<String> contas = new TreeSet<>(ap.contas);
             ResumoDeparaPeriodo depara = new ResumoDeparaPeriodo(contas.size(),
                     (int) contas.stream().filter(ap.contasConfirmadas::contains).count(), semDepara);
-            PrevistoRealizado r = new PrevistoRealizado(VERSAO, periodo, Situacao.CALCULADO, null, po, List.copyOf(meses),
+            PrevistoRealizado r = new PrevistoRealizado(VERSAO, periodo, Situacao.CALCULADO, null, po,
+                    List.copyOf(meses),
                     List.copyOf(somados), List.copyOf(faltando), List.copyOf(duplos), depara, provisorio, totais,
-                    List.copyOf(grupos), ajustes, aRealocar, semLinha, conferencia, regra20, fundos, List.copyOf(avisos));
+                    List.copyOf(grupos), ajustes, aRealocar, semLinha, conferencia, regra20, fundos,
+                            List.copyOf(avisos));
             Map<String, List<Evidencia>> evidencias = new TreeMap<>();
             ap.evidencias.forEach((k, v) -> evidencias.put(k, List.copyOf(v)));
             return new Calculo(r, evidencias);
@@ -596,7 +608,8 @@ public final class CalculoPrevistoRealizado {
                 return null;
             }
             BigDecimal cenario = excesso.add(aRealocar).add(semLinha);
-            return new Regra20(MonthlyOverrunRule.CODE, MonthlyOverrunRule.VERSION, e.limiteExcessoPercentual(), previsto,
+            return new Regra20(MonthlyOverrunRule.CODE, MonthlyOverrunRule.VERSION, e.limiteExcessoPercentual(),
+                    previsto,
                     excesso, umaCasa(avaliacao.percentage()), avaliacao.limit(), linhas.size(), List.copyOf(linhas),
                     aRealocar, semLinha, cenario, percentual(cenario, previsto), provisorio, avaliacao.aboveLimit());
         }
@@ -620,7 +633,8 @@ public final class CalculoPrevistoRealizado {
                             + " apurar a arrecadação (recebimento de cota)"));
                     continue;
                 }
-                lista.add(new FundoResultado(fundo, nome(fundo), l.getId(), l.getEffectiveCode(), SituacaoFundo.COMPARADO,
+                lista.add(new FundoResultado(fundo, nome(fundo), l.getId(), l.getEffectiveCode(),
+                        SituacaoFundo.COMPARADO,
                         previsto, m.arrecadado, m.arrecadado.subtract(previsto), percentual(m.arrecadado, previsto),
                         m.creditos, m.debitos));
             }

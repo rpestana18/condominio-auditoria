@@ -1,12 +1,15 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.dto.request.budget.AccountMappingBatchRequest;
 import br.com.condominioauditoria.api.event.BudgetChanged;
 import br.com.condominioauditoria.api.messaging.GoldenMessages;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage;
 import br.com.condominioauditoria.api.model.accounting.Fund;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.budget.AccountMapping;
 import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.model.enums.AccountMappingBatchAction;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -17,15 +20,15 @@ import java.util.UUID;
  * (exercício 05/2026 a 04/2027, 1.3.2 repetido → 1.3.25, 1.9.1 → "FUNDO DE RESERVA", 1.9.2 → "OBRAS / REFORMAS /
  * INFRA") e os lançamentos do fluxo de setembro/2026, lidos das mensagens v2 que o rag publica. Sem o golden, vazio.
  */
-final class GoldenSetembro {
+public final class GoldenSetembro {
 
-    final CenarioPo cenario;
-    final Budget po;
-    final ProcessingResultMessage fluxo;
-    final br.com.condominioauditoria.api.model.file.SourceFile arquivo;
-    final UUID arquivoFluxo;
+    public final CenarioPo cenario;
+    public final Budget po;
+    public final ProcessingResultMessage fluxo;
+    public final br.com.condominioauditoria.api.model.file.SourceFile arquivo;
+    public final UUID arquivoFluxo;
     /** Fundos do fluxo pelo nome impresso (os quatro do cenário mais os demais, criados aqui). */
-    final Map<String, Fund> fundos = new LinkedHashMap<>();
+    public final Map<String, Fund> fundos = new LinkedHashMap<>();
 
     private GoldenSetembro(CenarioPo cenario, Budget po, ProcessingResultMessage fluxo) {
         this.cenario = cenario;
@@ -68,7 +71,7 @@ final class GoldenSetembro {
                 + arquivo.getOriginalName() + " gravada", "sistema", java.time.Instant.now()));
     }
 
-    static Optional<GoldenSetembro> carregar() {
+    public static Optional<GoldenSetembro> carregar() {
         var poLida = GoldenMessages.read(GoldenMessages.BUDGET_2026_2027);
         var fluxo = GoldenMessages.read(GoldenMessages.SEPTEMBER_CASH_FLOW);
         if (poLida.isEmpty() || fluxo.isEmpty()) {
@@ -82,16 +85,17 @@ final class GoldenSetembro {
     }
 
     /** Planilha do piloto (mapa-contas-fluxo-para-PO.csv, copiada para o golden privado). */
-    static Optional<String> mapa() {
+    public static Optional<String> mapa() {
         return GoldenMessages.text("mapa-contas-fluxo-para-PO.csv");
     }
 
     /** Carrega o mapa das 73 contas e confirma todas, como o Admin faria sem mudança (RF-03.1.4). */
     void confirmarMapa() {
         String mapa = mapa().orElseThrow(() -> new IllegalStateException("mapa do piloto ausente no golden privado"));
-        cenario.depara.carregarPlanilha(cenario.condominioId, po.getId(), "mapa-contas-fluxo-para-PO.csv", mapa, "admin");
-        cenario.depara.lote(cenario.condominioId, po.getId(), new DeparaDtos.PedidoLote(DeparaDtos.AcaoLote.CONFIRMAR,
-                cenario.deparas.stream().map(DeparaConta::getContaCodigo).toList()), "admin");
+        cenario.depara.loadSheet(cenario.condominioId, po.getId(), "mapa-contas-fluxo-para-PO.csv", mapa, "admin");
+        cenario.depara.batch(cenario.condominioId, po.getId(),
+                new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRMAR,
+                cenario.deparas.stream().map(AccountMapping::getAccountCode).toList()), "admin");
     }
 
     CalculoPrevistoRealizado.Fluxo fluxoDeSetembro() {
@@ -110,17 +114,19 @@ final class GoldenSetembro {
         fundos.values().forEach(f -> nomes.put(f.getId(), f.getName()));
         return new CalculoPrevistoRealizado.Entrada(po, "PO-2026-2027-aprovada.pdf",
                 cenario.linhas.stream().filter(l -> l.getBudgetId().equals(po.getId())).toList(),
-                cenario.deparas.stream().filter(d -> d.getPrevisaoId().equals(po.getId())).toList(), fundoPorLinha, nomes,
-                cenario.ordinario.getId(), fluxos, cenario.lancamentos, realocacoes, new java.math.BigDecimal("20.0000"),
+                cenario.deparas.stream().filter(d -> d.getBudgetId().equals(po.getId())).toList(), fundoPorLinha, nomes,
+                cenario.ordinario.getId(), fluxos, cenario.lancamentos, realocacoes,
+                        new java.math.BigDecimal("20.0000"),
                 java.util.List.of(), periodo);
     }
 
     CalculoPrevistoRealizado.Calculo setembro() {
-        return CalculoPrevistoRealizado.calcular(entrada(new CalculoPrevistoRealizado.Mes(java.time.YearMonth.of(2026, 9)),
+        return CalculoPrevistoRealizado.calcular(entrada(new CalculoPrevistoRealizado.Mes(java.time.YearMonth.of(2026,
+                9)),
                 java.util.List.of(fluxoDeSetembro()), java.util.List.of()));
     }
 
-    BudgetLine linha(String codigoEfetivo) {
+    public BudgetLine linha(String codigoEfetivo) {
         return cenario.linhas.stream().filter(l -> l.getBudgetId().equals(po.getId())
                 && l.getEffectiveCode().equals(codigoEfetivo)).findFirst().orElseThrow();
     }

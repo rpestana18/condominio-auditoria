@@ -1,21 +1,22 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.dto.response.budget.BudgetExtensionResponse;
 import br.com.condominioauditoria.api.mapper.BudgetMapper;
 import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.model.enums.AccountMappingFilter;
+import br.com.condominioauditoria.api.model.enums.BudgetItemFilter;
 import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Fluxo;
 import br.com.condominioauditoria.api.orcamento.ColunaImpressa.DiferencaGrupo;
-import br.com.condominioauditoria.api.orcamento.DeparaDtos.FiltroDepara;
 import br.com.condominioauditoria.api.orcamento.ExercicioDtos.ConferenciaColuna;
 import br.com.condominioauditoria.api.orcamento.ExercicioDtos.Exercicio;
 import br.com.condominioauditoria.api.orcamento.ExercicioDtos.MesDoExercicio;
 import br.com.condominioauditoria.api.orcamento.ExercicioDtos.TipoExercicio;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
-import br.com.condominioauditoria.api.orcamento.RubricaDtos.FiltroRubrica;
 import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
+import br.com.condominioauditoria.api.service.budget.AccountMappingService;
+import br.com.condominioauditoria.api.service.budget.BudgetItemService;
 import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import br.com.condominioauditoria.api.service.calculator.BudgetValidity;
 import java.math.BigDecimal;
@@ -46,11 +47,11 @@ public class ServicoExercicios {
     private final BudgetRepository previsoes;
     private final BudgetLineRepository linhas;
     private final ConsultaPrevistoRealizado previstoRealizado;
-    private final ServicoDepara depara;
-    private final ServicoRubricas rubricas;
+    private final AccountMappingService depara;
+    private final BudgetItemService rubricas;
 
     ServicoExercicios(BudgetRepository previsoes, BudgetLineRepository linhas,
-            ConsultaPrevistoRealizado previstoRealizado, ServicoDepara depara, ServicoRubricas rubricas) {
+            ConsultaPrevistoRealizado previstoRealizado, AccountMappingService depara, BudgetItemService rubricas) {
         this.previsoes = previsoes;
         this.linhas = linhas;
         this.previstoRealizado = previstoRealizado;
@@ -83,10 +84,11 @@ public class ServicoExercicios {
             }
             lista.add(new Exercicio("po:" + po.getId(), TipoExercicio.PO, rotulo(po.getFiscalYearStart(),
                     po.getFiscalYearEnd()), po.getId(), po.getVersion(), po.getFiscalYearStart().toString(),
-                    po.getFiscalYearEnd().toString(), BudgetMapper.toExtensionResponse(po), BudgetStructure.of(daPo).monthlyPlannedFromLines()
+                    po.getFiscalYearEnd().toString(), BudgetMapper.toExtensionResponse(po),
+                            BudgetStructure.of(daPo).monthlyPlannedFromLines()
                             .setScale(2), meses(po, fluxos),
-                    depara.listar(condominioId, po.getId(), FiltroDepara.TODAS).resumo(),
-                    rubricas.listar(condominioId, po.getId(), FiltroRubrica.TODAS).resumo(), colunaSubstituida,
+                    depara.list(condominioId, po.getId(), AccountMappingFilter.TODAS).summary(),
+                    rubricas.list(condominioId, po.getId(), BudgetItemFilter.TODAS).summary(), colunaSubstituida,
                     avisos));
             if (anterior(confirmadas, po).isEmpty()) {
                 ColunaImpressa.de(po, daPo).ifPresent(c -> lista.add(colunaComoExercicio(po, c)));

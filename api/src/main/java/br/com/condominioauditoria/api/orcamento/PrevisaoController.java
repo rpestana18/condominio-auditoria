@@ -2,7 +2,7 @@ package br.com.condominioauditoria.api.orcamento;
 
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PrevisaoDetalhe;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PrevisaoResumo;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -21,14 +21,14 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/condominios/{condominioId}/previsoes")
 class PrevisaoController {
 
-    private final AcessoCondominio acesso;
+    private final CondominiumAccess acesso;
     private final ConsultaPrevisao consulta;
     private final ConfirmacaoPrevisao confirmacao;
     private final LigacaoFundosPo ligacao;
     private final EventoPrevisaoRepository eventos;
     private final PrevisaoOrcamentariaRepository previsoes;
 
-    PrevisaoController(AcessoCondominio acesso, ConsultaPrevisao consulta, ConfirmacaoPrevisao confirmacao,
+    PrevisaoController(CondominiumAccess acesso, ConsultaPrevisao consulta, ConfirmacaoPrevisao confirmacao,
             LigacaoFundosPo ligacao, EventoPrevisaoRepository eventos, PrevisaoOrcamentariaRepository previsoes) {
         this.acesso = acesso;
         this.consulta = consulta;
@@ -43,15 +43,15 @@ class PrevisaoController {
     @PreAuthorize("hasRole('ADMIN')")
     PrevisaoDetalhe alterarFundos(@PathVariable UUID condominioId, @PathVariable UUID poId,
             @RequestBody LigacaoFundosPo.PedidoFundos pedido) {
-        acesso.exigir(condominioId);
-        return ligacao.alterar(condominioId, poId, pedido, acesso.usuario());
+        acesso.require(condominioId);
+        return ligacao.alterar(condominioId, poId, pedido, acesso.username());
     }
 
     /** Trilha da PO (todos os perfis): confirmação, substituição e alterações da ligação dos fundos. */
     @GetMapping("/{poId}/eventos")
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     List<PrevisaoDtos.EventoPrevisaoDto> eventos(@PathVariable UUID condominioId, @PathVariable UUID poId) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         PrevisaoOrcamentaria po = previsoes.findByIdAndCondominioId(poId, condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada"));
         return eventos.findByPrevisaoIdOrderByEm(po.getId()).stream().map(PrevisaoDtos.EventoPrevisaoDto::de).toList();
@@ -60,14 +60,14 @@ class PrevisaoController {
     @GetMapping
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     List<PrevisaoResumo> listar(@PathVariable UUID condominioId) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return consulta.listar(condominioId);
     }
 
     @GetMapping("/{poId}")
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     PrevisaoDetalhe detalhe(@PathVariable UUID condominioId, @PathVariable UUID poId) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return consulta.detalhe(condominioId, poId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada"));
     }
@@ -77,10 +77,10 @@ class PrevisaoController {
     @PreAuthorize("hasRole('ADMIN')")
     PrevisaoDetalhe confirmar(@PathVariable UUID condominioId, @PathVariable UUID poId,
             @RequestBody PedidoConfirmacao pedido) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         if (pedido == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe os dados da confirmação");
         }
-        return confirmacao.confirmar(condominioId, poId, pedido, acesso.usuario());
+        return confirmacao.confirmar(condominioId, poId, pedido, acesso.username());
     }
 }

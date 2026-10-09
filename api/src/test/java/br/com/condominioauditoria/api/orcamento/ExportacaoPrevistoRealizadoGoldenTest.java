@@ -74,7 +74,7 @@ class ExportacaoPrevistoRealizadoGoldenTest {
             }
         }
         // Cabeçalho
-        assertThat(texto).contains(g.cenario.arquivos.get(g.po.getArquivoId()).getNomeOriginal(), "versão 1", "exercício 05/2026 a 04/2027",
+        assertThat(texto).contains(g.cenario.arquivos.get(g.po.getArquivoId()).getOriginalName(), "versão 1", "exercício 05/2026 a 04/2027",
                 g.po.getSha256(), "Período 09/2026", "04/10/2026 12:30", "Admin Teste (admin)",
                 "73 de 73 contas confirmadas");
     }
@@ -146,7 +146,7 @@ class ExportacaoPrevistoRealizadoGoldenTest {
                 if (r.getRowNum() == 0) {
                     continue;
                 }
-                assertThat(texto(r.getCell(9))).isEqualTo(g.arquivo.getNomeOriginal());
+                assertThat(texto(r.getCell(9))).isEqualTo(g.arquivo.getOriginalName());
                 assertThat(r.getCell(10).getNumericCellValue()).isPositive();
                 assertThat(texto(r.getCell(12))).hasSize(64);
                 if (texto(r.getCell(0)).startsWith("1.3.10 ")) {

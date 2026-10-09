@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.api.ia;
 
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
 import br.com.condominioauditoria.api.ia.CatalogoIa.ModeloIa;
 import br.com.condominioauditoria.api.ia.CatalogoIa.ProvedorIa;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Efetiva;
@@ -9,7 +8,8 @@ import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.PedidoEmbeddings;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.PedidoRespostas;
 import br.com.condominioauditoria.api.modulo.ModoIa;
 import br.com.condominioauditoria.api.modulo.PedidoInvalidoException;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -35,11 +35,11 @@ class IaController {
 
     private final ConfiguracaoIaServico servico;
     private final CatalogoIa catalogo;
-    private final AcessoCondominio acesso;
-    private final CondominioRepository condominios;
+    private final CondominiumAccess acesso;
+    private final CondominiumRepository condominios;
 
-    IaController(ConfiguracaoIaServico servico, CatalogoIa catalogo, AcessoCondominio acesso,
-            CondominioRepository condominios) {
+    IaController(ConfiguracaoIaServico servico, CatalogoIa catalogo, CondominiumAccess acesso,
+            CondominiumRepository condominios) {
         this.servico = servico;
         this.catalogo = catalogo;
         this.acesso = acesso;
@@ -64,18 +64,18 @@ class IaController {
         if (pedido == null || pedido.assistente() == null) {
             throw new PedidoInvalidoException("Informe o modo geral e a configuração do Assistente");
         }
-        return ConfiguracaoDto.de(servico.gravar(condominioId, pedido.paraServico(), acesso.usuario(), token()));
+        return ConfiguracaoDto.de(servico.gravar(condominioId, pedido.paraServico(), acesso.username(), token()));
     }
 
     private void exigirCondominio(UUID condominioId) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         if (!condominios.existsById(condominioId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado");
         }
     }
 
     private String token() {
-        return acesso.tokenBearer().orElseThrow(() -> new IllegalStateException("Token ausente"));
+        return acesso.bearerToken().orElseThrow(() -> new IllegalStateException("Token ausente"));
     }
 
     // ---- Contrato (contracts/openapi.yaml: ProvedorIa, ConfiguracaoIa, PedidoConfiguracaoIa) ----

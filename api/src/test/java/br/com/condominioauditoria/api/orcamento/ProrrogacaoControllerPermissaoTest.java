@@ -8,7 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PedidoProrrogacao;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -38,8 +38,8 @@ class ProrrogacaoControllerPermissaoTest {
     @EnableMethodSecurity
     static class Config {
         @Bean
-        AcessoCondominio acesso() {
-            return new AcessoCondominio();
+        CondominiumAccess acesso() {
+            return new CondominiumAccess();
         }
 
         @Bean
@@ -48,7 +48,7 @@ class ProrrogacaoControllerPermissaoTest {
         }
 
         @Bean
-        ProrrogacaoController controller(AcessoCondominio acesso, ServicoProrrogacao servico) {
+        ProrrogacaoController controller(CondominiumAccess acesso, ServicoProrrogacao servico) {
             return new ProrrogacaoController(acesso, servico);
         }
     }

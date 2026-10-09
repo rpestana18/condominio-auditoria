@@ -3,13 +3,13 @@ package br.com.condominioauditoria.api.orcamento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import br.com.condominioauditoria.api.arquivo.Arquivo;
-import br.com.condominioauditoria.api.contabil.Lancamento;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.Enriquecimento;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.LancamentoLido;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
+import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.GrupoComparado;
-import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.ResumoExercicio;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.Resultado;
+import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.ResumoExercicio;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.RubricaComparada;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.ValorComparado;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.Variacao;
@@ -205,10 +205,10 @@ class ComparacaoExerciciosTest {
         return po;
     }
 
-    private void debito(Arquivo fluxo, String valor, LocalDate data) {
-        var lido = new LancamentoLido(1, cenario.lancamentos.size() + 1, data, "9999", "Teste", "", "Teste",
+    private void debito(SourceFile fluxo, String valor, LocalDate data) {
+        var lido = new LedgerEntryData(1, cenario.lancamentos.size() + 1, data, "9999", "Teste", "", "Teste",
                 BigDecimal.ZERO.setScale(2), new BigDecimal(valor), BigDecimal.ZERO.setScale(2),
-                new Enriquecimento(null, null, null, false, false));
-        cenario.lancamentos.add(new Lancamento(cenario.condominioId, fluxo.getId(), cenario.ordinario.getId(), lido));
+                new Enrichment(null, null, null, false, false));
+        cenario.lancamentos.add(new LedgerEntry(cenario.condominioId, fluxo.getId(), cenario.ordinario.getId(), lido));
     }
 }

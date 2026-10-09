@@ -3,8 +3,7 @@ package br.com.condominioauditoria.api.orcamento;
 import br.com.condominioauditoria.api.auditoria.Achado;
 import br.com.condominioauditoria.api.auditoria.AchadoRepository;
 import br.com.condominioauditoria.api.auditoria.EstadoAchado;
-import br.com.condominioauditoria.api.condominio.Condominio;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
+import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.Entrada;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.Filtro;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.Resultado;
@@ -12,6 +11,7 @@ import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.RubricaDaLi
 import br.com.condominioauditoria.api.orcamento.ExercicioDtos.TipoExercicio;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Situacao;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import java.time.Month;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -35,7 +35,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class ServicoComparacao {
 
-    private final CondominioRepository condominios;
+    private final CondominiumRepository condominios;
     private final PrevisaoOrcamentariaRepository previsoes;
     private final LinhaPoRepository linhas;
     private final PoFundoRepository poFundos;
@@ -45,7 +45,7 @@ public class ServicoComparacao {
     private final ConsultaPrevistoRealizado previstoRealizado;
     private final ServicoExercicios exercicios;
 
-    ServicoComparacao(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes,
+    ServicoComparacao(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             LinhaPoRepository linhas, PoFundoRepository poFundos, RubricaRepository rubricas,
             LinhaRubricaRepository linhasRubrica, AchadoRepository achados,
             ConsultaPrevistoRealizado previstoRealizado, ServicoExercicios exercicios) {
@@ -78,7 +78,7 @@ public class ServicoComparacao {
      */
     @Transactional(readOnly = true)
     public Resultado comparar(UUID condominioId, List<String> ids, UUID fundoId, boolean mesmosMeses) {
-        Condominio condominio = condominios.findById(condominioId)
+        Condominium condominio = condominios.findById(condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
         if (fundoId != null) {
             previstoRealizado.fundoDoFiltro(condominioId, fundoId);
@@ -143,7 +143,7 @@ public class ServicoComparacao {
                             .collect(Collectors.toMap(PoFundo::getLinhaPoId, PoFundo::getFundoId)),
                     daLinha, acumulado, List.copyOf(periodo), List.copyOf(meses), abertos));
         }
-        return ComparacaoExercicios.comparar(entradas, new Filtro(fundoId, condominio.getFundoOrdinarioId(),
+        return ComparacaoExercicios.comparar(entradas, new Filtro(fundoId, condominio.getOperatingFundId(),
                 mesmosMeses, mesmosMeses ? ComparacaoExercicios.comparando(comuns) : null));
     }
 

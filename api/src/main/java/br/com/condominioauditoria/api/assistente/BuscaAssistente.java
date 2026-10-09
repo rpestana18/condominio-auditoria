@@ -6,7 +6,7 @@ import br.com.condominioauditoria.api.grpc.ClienteAssistente;
 import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.modulo.PedidoInvalidoException;
 import br.com.condominioauditoria.api.modulo.RegistroUso;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
 import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
@@ -38,13 +38,13 @@ class BuscaAssistente {
     static final String MSG_INDISPONIVEL = "Busca nos documentos indisponível no momento: o serviço rag não"
             + " respondeu. Tente de novo em instantes.";
 
-    private final AcessoCondominio acesso;
+    private final CondominiumAccess acesso;
     private final Modulos modulos;
     private final ClienteAssistente rag;
     private final BarreiraArquivos barreira;
     private final RegistroUso registroUso;
 
-    BuscaAssistente(AcessoCondominio acesso, Modulos modulos, ClienteAssistente rag, BarreiraArquivos barreira,
+    BuscaAssistente(CondominiumAccess acesso, Modulos modulos, ClienteAssistente rag, BarreiraArquivos barreira,
             RegistroUso registroUso) {
         this.acesso = acesso;
         this.modulos = modulos;
@@ -56,7 +56,7 @@ class BuscaAssistente {
     List<TrechoDocumento> buscar(UUID condominioId, PedidoBuscaDocumentos pedido) {
         modulos.exigir(condominioId, Modulos.ASSISTENTE);
         BuscarRequest pedidoRag = montar(condominioId, pedido);
-        String autorizacao = acesso.tokenBearer().orElseThrow(() -> new IllegalStateException("Token ausente"));
+        String autorizacao = acesso.bearerToken().orElseThrow(() -> new IllegalStateException("Token ausente"));
         BuscarResponse resposta;
         try {
             resposta = rag.buscar(pedidoRag, autorizacao);
@@ -70,7 +70,7 @@ class BuscaAssistente {
             log.warn("Busca nos documentos: {} trecho(s) do rag descartado(s) pela segunda barreira (condomínio {})",
                     resposta.getTrechosCount() - permitidos.size(), condominioId);
         }
-        registroUso.buscaDocumentos(condominioId, acesso.usuario());
+        registroUso.buscaDocumentos(condominioId, acesso.username());
         return permitidos.stream().map(TrechoDocumento::de).toList();
     }
 

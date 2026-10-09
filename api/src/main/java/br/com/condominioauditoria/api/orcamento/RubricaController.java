@@ -11,7 +11,7 @@ import br.com.condominioauditoria.api.orcamento.RubricaDtos.ResultadoLoteRubrica
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.ResultadoSugestoesRubrica;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.RubricaDto;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.RubricasDaPo;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -35,10 +35,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/condominios/{condominioId}")
 class RubricaController {
 
-    private final AcessoCondominio acesso;
+    private final CondominiumAccess acesso;
     private final ServicoRubricas servico;
 
-    RubricaController(AcessoCondominio acesso, ServicoRubricas servico) {
+    RubricaController(CondominiumAccess acesso, ServicoRubricas servico) {
         this.acesso = acesso;
         this.servico = servico;
     }
@@ -46,7 +46,7 @@ class RubricaController {
     @GetMapping("/rubricas")
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     List<RubricaDto> catalogo(@PathVariable UUID condominioId) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return servico.catalogo(condominioId);
     }
 
@@ -54,30 +54,30 @@ class RubricaController {
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
     RubricaDto criar(@PathVariable UUID condominioId, @RequestBody PedidoNovaRubrica pedido) {
-        acesso.exigir(condominioId);
-        return servico.criar(condominioId, pedido, acesso.usuario());
+        acesso.require(condominioId);
+        return servico.criar(condominioId, pedido, acesso.username());
     }
 
     @PutMapping("/rubricas/{rubricaId}")
     @PreAuthorize("hasRole('ADMIN')")
     RubricaDto renomear(@PathVariable UUID condominioId, @PathVariable UUID rubricaId,
             @RequestBody PedidoRenomear pedido) {
-        acesso.exigir(condominioId);
-        return servico.renomear(condominioId, rubricaId, pedido, acesso.usuario());
+        acesso.require(condominioId);
+        return servico.renomear(condominioId, rubricaId, pedido, acesso.username());
     }
 
     @GetMapping("/previsoes/{poId}/rubricas")
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     RubricasDaPo listar(@PathVariable UUID condominioId, @PathVariable UUID poId,
             @RequestParam(required = false) FiltroRubrica filtro) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return servico.listar(condominioId, poId, filtro);
     }
 
     @GetMapping("/previsoes/{poId}/rubricas/eventos")
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     List<EventoRubricaDto> eventos(@PathVariable UUID condominioId, @PathVariable UUID poId) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return servico.eventos(condominioId, poId);
     }
 
@@ -85,22 +85,22 @@ class RubricaController {
     @PreAuthorize("hasRole('ADMIN')")
     LinhaComRubrica definir(@PathVariable UUID condominioId, @PathVariable UUID poId, @PathVariable UUID linhaId,
             @RequestBody PedidoRubricaLinha pedido) {
-        acesso.exigir(condominioId);
-        return servico.definir(condominioId, poId, linhaId, pedido, acesso.usuario());
+        acesso.require(condominioId);
+        return servico.definir(condominioId, poId, linhaId, pedido, acesso.username());
     }
 
     @PostMapping("/previsoes/{poId}/rubricas/lote")
     @PreAuthorize("hasRole('ADMIN')")
     ResultadoLoteRubrica lote(@PathVariable UUID condominioId, @PathVariable UUID poId,
             @RequestBody PedidoLoteRubrica pedido) {
-        acesso.exigir(condominioId);
-        return servico.lote(condominioId, poId, pedido, acesso.usuario());
+        acesso.require(condominioId);
+        return servico.lote(condominioId, poId, pedido, acesso.username());
     }
 
     @PostMapping("/previsoes/{poId}/rubricas/sugestoes")
     @PreAuthorize("hasRole('ADMIN')")
     ResultadoSugestoesRubrica sugerir(@PathVariable UUID condominioId, @PathVariable UUID poId) {
-        acesso.exigir(condominioId);
-        return servico.sugerir(condominioId, poId, acesso.usuario());
+        acesso.require(condominioId);
+        return servico.sugerir(condominioId, poId, acesso.username());
     }
 }

@@ -11,9 +11,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import br.com.condominioauditoria.api.arquivo.Arquivo;
-import br.com.condominioauditoria.api.arquivo.ArquivoRepository;
-import br.com.condominioauditoria.api.arquivo.Categoria;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.FiltrosDocumentos;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.PedidoPergunta;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.SituacaoResposta;
@@ -22,12 +19,15 @@ import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Efetiva;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Embeddings;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Respostas;
+import br.com.condominioauditoria.api.model.enums.FileCategory;
+import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.modulo.ModoIa;
 import br.com.condominioauditoria.api.modulo.ModuloNaoContratadoException;
 import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.modulo.PedidoInvalidoException;
 import br.com.condominioauditoria.api.modulo.RegistroUso;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import br.com.condominioauditoria.contratos.assistente.v1.Andamento;
 import br.com.condominioauditoria.contratos.assistente.v1.DadoGravado;
 import br.com.condominioauditoria.contratos.assistente.v1.EtapaPergunta;
@@ -67,15 +67,15 @@ class PerguntaAssistenteTest {
     private static final UUID B = UUID.randomUUID();
     private static final byte[] CHAVE_CIFRADA = {1, 2, 3, 4};
 
-    private final ArquivoRepository arquivos = mock(ArquivoRepository.class);
+    private final SourceFileRepository arquivos = mock(SourceFileRepository.class);
     private final Modulos modulos = mock(Modulos.class);
     private final ConfiguracaoIaServico configuracao = mock(ConfiguracaoIaServico.class);
     private final RegistroUso registroUso = mock(RegistroUso.class);
-    private final Arquivo ataA = new Arquivo(A, Categoria.ATA, "ata.pdf", "a/ata.pdf", "a".repeat(64), 1,
+    private final SourceFile ataA = new SourceFile(A, FileCategory.ATA, "ata.pdf", "a/ata.pdf", "a".repeat(64), 1,
             "application/pdf", "gestor");
-    private final Arquivo contratoA = new Arquivo(A, Categoria.CONTRATO, "contrato.pdf", "a/contrato.pdf",
+    private final SourceFile contratoA = new SourceFile(A, FileCategory.CONTRATO, "contrato.pdf", "a/contrato.pdf",
             "c".repeat(64), 1, "application/pdf", "gestor");
-    private final Arquivo ataB = new Arquivo(B, Categoria.ATA, "ata-b.pdf", "b/ata.pdf", "b".repeat(64), 1,
+    private final SourceFile ataB = new SourceFile(B, FileCategory.ATA, "ata-b.pdf", "b/ata.pdf", "b".repeat(64), 1,
             "application/pdf", "gestor");
     private RagFalso rag;
     private PerguntaAssistente pergunta;
@@ -83,13 +83,13 @@ class PerguntaAssistenteTest {
     @BeforeEach
     void preparar() throws Exception {
         rag = new RagFalso();
-        when(arquivos.findByCondominioIdAndIdIn(eq(A), anyCollection())).thenAnswer(i -> {
+        when(arquivos.findByCondominiumIdAndIdIn(eq(A), anyCollection())).thenAnswer(i -> {
             var ids = i.<java.util.Collection<UUID>>getArgument(1);
             return List.of(ataA, contratoA, ataB).stream()
-                    .filter(a -> a.getCondominioId().equals(A) && ids.contains(a.getId())).toList();
+                    .filter(a -> a.getCondominiumId().equals(A) && ids.contains(a.getId())).toList();
         });
         configurar(ModoIa.API_KEY, CHAVE_CIFRADA, ModoIa.LOCAL);
-        pergunta = new PerguntaAssistente(new AcessoCondominio(), modulos, configuracao, rag.cliente,
+        pergunta = new PerguntaAssistente(new CondominiumAccess(), modulos, configuracao, rag.cliente,
                 new BarreiraArquivos(arquivos), registroUso, 6);
         logar("USUARIO");
     }
@@ -164,7 +164,7 @@ class PerguntaAssistenteTest {
                 .mapToObj(i -> new TrocaConversa("p" + i, "r" + i)).toList();
 
         pergunta.perguntar(A, new PedidoPergunta("  e o de portaria?  ", historico, new FiltrosDocumentos(
-                List.of(Categoria.CONTRATO), LocalDate.of(2025, 1, 1), null, List.of(contratoA.getId()))));
+                List.of(FileCategory.CONTRATO), LocalDate.of(2025, 1, 1), null, List.of(contratoA.getId()))));
 
         assertThat(rag.token.get()).isEqualTo("Bearer token-usuario");
         var pedido = rag.perguntas.getFirst();
@@ -332,11 +332,11 @@ class PerguntaAssistenteTest {
                 .setModelo("claude-sonnet-5-5").setVersaoPrompt("2026-10-05.1").setTentativas(1).build();
     }
 
-    private static Trecho trecho(String id, Arquivo arquivo, int pagina) {
+    private static Trecho trecho(String id, SourceFile arquivo, int pagina) {
         return Trecho.newBuilder().setTrechoId(id).setArquivoId(arquivo.getId().toString())
-                .setNomeArquivo(arquivo.getNomeOriginal()).setCategoria(arquivo.getCategoria().name())
+                .setNomeArquivo(arquivo.getOriginalName()).setCategoria(arquivo.getCategory().name())
                 .setLocalizacao(Localizacao.newBuilder().setPagina(LocalPagina.newBuilder().setPagina(pagina)))
-                .setTexto("texto de " + arquivo.getNomeOriginal()).setSha256(arquivo.getSha256()).build();
+                .setTexto("texto de " + arquivo.getOriginalName()).setSha256(arquivo.getSha256()).build();
     }
 
     private static PedidoPergunta pedido(String texto) {

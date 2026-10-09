@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.api.grpc;
 
-import br.com.condominioauditoria.api.config.PropriedadesCondominio;
+import br.com.condominioauditoria.api.config.properties.ApiProperties;
 import io.grpc.Grpc;
 import io.grpc.InsecureServerCredentials;
 import io.grpc.Server;
@@ -37,10 +37,10 @@ class ServidorGrpc implements SmartLifecycle {
     private Server servidor;
     private ExecutorService threads;
 
-    ServidorGrpc(ConsultaGrpcServico consulta, AutenticacaoGrpc autenticacao, PropriedadesCondominio propriedades) {
+    ServidorGrpc(ConsultaGrpcServico consulta, AutenticacaoGrpc autenticacao, ApiProperties propriedades) {
         this.consulta = consulta;
         this.autenticacao = autenticacao;
-        this.porta = propriedades.grpc().porta();
+        this.porta = propriedades.grpc().port();
     }
 
     @Override

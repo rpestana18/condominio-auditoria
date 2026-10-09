@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.api.ia;
 
-import br.com.condominioauditoria.api.config.PropriedadesCondominio;
+import br.com.condominioauditoria.api.config.properties.ApiProperties;
 import br.com.condominioauditoria.api.grpc.ClienteAssistente;
 import br.com.condominioauditoria.api.modulo.CustoUso.PrecoModelo;
 import br.com.condominioauditoria.contratos.assistente.v1.ListarProvedoresResponse;
@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Catálogo de provedores e modelos de IA, lido do rag (ListarProvedores; RF-09.6, ADR 0003) e guardado em memória por
- * alguns minutos (condominio.rag.catalogo-cache-segundos), para não chamar o rag a cada tela ou gravação. O catálogo
+ * alguns minutos (condominio.rag.catalog-cache-seconds), para não chamar o rag a cada tela ou gravação. O catálogo
  * é o mesmo para todos os usuários; o token só serve para o rag aceitar a chamada.
  */
 @Component
@@ -38,8 +38,8 @@ public class CatalogoIa {
     private volatile Lido guardado;
 
     @Autowired
-    public CatalogoIa(ClienteAssistente rag, PropriedadesCondominio propriedades) {
-        this(rag, Duration.ofSeconds(propriedades.rag().catalogoCacheSegundos()), Clock.systemUTC());
+    public CatalogoIa(ClienteAssistente rag, ApiProperties propriedades) {
+        this(rag, Duration.ofSeconds(propriedades.rag().catalogCacheSeconds()), Clock.systemUTC());
     }
 
     CatalogoIa(ClienteAssistente rag, Duration validade, Clock relogio) {

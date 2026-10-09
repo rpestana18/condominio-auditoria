@@ -1,13 +1,13 @@
 package br.com.condominioauditoria.api.modulo;
 
-import br.com.condominioauditoria.api.condominio.Condominio;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
 import br.com.condominioauditoria.api.ia.CatalogoIa;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.ContextoAssistente;
+import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.modulo.Modulos.EstadoModulo;
 import br.com.condominioauditoria.api.modulo.RegistroUso.ResumoUso;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -47,13 +47,13 @@ class ModuloController {
 
     private final Modulos modulos;
     private final RegistroUso registroUso;
-    private final AcessoCondominio acesso;
-    private final CondominioRepository condominios;
+    private final CondominiumAccess acesso;
+    private final CondominiumRepository condominios;
     private final ConfiguracaoIaServico configuracaoIa;
     private final CatalogoIa catalogoIa;
 
-    ModuloController(Modulos modulos, RegistroUso registroUso, AcessoCondominio acesso,
-            CondominioRepository condominios, ConfiguracaoIaServico configuracaoIa, CatalogoIa catalogoIa) {
+    ModuloController(Modulos modulos, RegistroUso registroUso, CondominiumAccess acesso,
+            CondominiumRepository condominios, ConfiguracaoIaServico configuracaoIa, CatalogoIa catalogoIa) {
         this.modulos = modulos;
         this.registroUso = registroUso;
         this.acesso = acesso;
@@ -68,14 +68,14 @@ class ModuloController {
      */
     @GetMapping("/contexto")
     ContextoCondominio contexto(@PathVariable UUID condominioId) {
-        Condominio condominio = condominio(condominioId);
-        return new ContextoCondominio(condominio.getId(), condominio.getNome(), modulos.ligados(condominioId),
+        Condominium condominio = condominio(condominioId);
+        return new ContextoCondominio(condominio.getId(), condominio.getName(), modulos.ligados(condominioId),
                 configuracaoIa.contexto(condominioId));
     }
 
     @GetMapping("/modulos")
     List<ModuloDoCondominio> listar(@PathVariable UUID condominioId) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return modulos.estados(condominioId).stream().map(ModuloDoCondominio::de).toList();
     }
 
@@ -85,20 +85,20 @@ class ModuloController {
             @Valid @RequestBody AlteracaoModulo pedido) {
         condominio(condominioId);
         return ModuloDoCondominio.de(modulos.alterar(condominioId, codigo, pedido.ligado(), pedido.motivo(),
-                acesso.usuario()));
+                acesso.username()));
     }
 
     @GetMapping("/modulos/{codigo}/eventos")
     @PreAuthorize("hasRole('ADMIN')")
     List<EventoDto> eventos(@PathVariable UUID condominioId, @PathVariable String codigo) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return modulos.eventos(condominioId, codigo).stream().map(EventoDto::de).toList();
     }
 
     @GetMapping("/modulos/{codigo}/periodos")
     @PreAuthorize("hasRole('ADMIN')")
     List<PeriodoAtivo> periodos(@PathVariable UUID condominioId, @PathVariable String codigo) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return modulos.periodos(condominioId, codigo);
     }
 
@@ -107,14 +107,14 @@ class ModuloController {
     UsoDto uso(@PathVariable UUID condominioId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         ResumoUso resumo = registroUso.resumo(condominioId, inicio, fim);
         return UsoDto.de(resumo, custo(condominioId, inicio, fim));
     }
 
     /** Custo estimado do período; nulo se o rag não respondeu o catálogo de preços (o uso sai mesmo assim). */
     private CustoUso.CustoDoPeriodo custo(UUID condominioId, LocalDate inicio, LocalDate fim) {
-        return acesso.tokenBearer().flatMap(catalogoIa::precos)
+        return acesso.bearerToken().flatMap(catalogoIa::precos)
                 .map(precos -> registroUso.custo(condominioId, inicio, fim, precos))
                 .orElse(null);
     }
@@ -128,7 +128,7 @@ class ModuloController {
     ResponseEntity<byte[]> exportar(@PathVariable UUID condominioId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim) {
-        Condominio condominio = condominio(condominioId);
+        Condominium condominio = condominio(condominioId);
         ResumoUso uso = registroUso.resumo(condominioId, inicio, fim);
         Instant de = RegistroUso.inicioDoDia(inicio);
         Instant ate = RegistroUso.inicioDoDia(fim.plusDays(1));
@@ -141,11 +141,11 @@ class ModuloController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(ExportacaoUsoExcel.TIPO))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(nome).build().toString())
-                .body(ExportacaoUsoExcel.gerar(condominio.getNome(), uso, periodos, custo));
+                .body(ExportacaoUsoExcel.gerar(condominio.getName(), uso, periodos, custo));
     }
 
-    private Condominio condominio(UUID condominioId) {
-        acesso.exigir(condominioId);
+    private Condominium condominio(UUID condominioId) {
+        acesso.require(condominioId);
         return condominios.findById(condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
     }

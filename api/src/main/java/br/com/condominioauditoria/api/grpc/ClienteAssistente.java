@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.api.grpc;
 
-import br.com.condominioauditoria.api.config.PropriedadesCondominio;
+import br.com.condominioauditoria.api.config.properties.ApiProperties;
 import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
@@ -32,10 +32,10 @@ public class ClienteAssistente {
     private final long prazoSegundos;
     private final long prazoPerguntaSegundos;
 
-    public ClienteAssistente(Channel canalRag, PropriedadesCondominio propriedades) {
+    public ClienteAssistente(Channel canalRag, ApiProperties propriedades) {
         this.canal = canalRag;
-        this.prazoSegundos = propriedades.rag().prazoSegundos();
-        this.prazoPerguntaSegundos = propriedades.rag().prazoPerguntaSegundos();
+        this.prazoSegundos = propriedades.rag().timeoutSeconds();
+        this.prazoPerguntaSegundos = propriedades.rag().questionTimeoutSeconds();
     }
 
     public BuscarResponse buscar(BuscarRequest pedido, String autorizacao) {

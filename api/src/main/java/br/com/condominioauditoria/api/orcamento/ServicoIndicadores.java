@@ -1,11 +1,11 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.condominio.Condominio;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
+import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Fluxo;
 import br.com.condominioauditoria.api.orcamento.Indicadores.MesCalculado;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Situacao;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,13 +23,13 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class ServicoIndicadores {
 
-    private final CondominioRepository condominios;
+    private final CondominiumRepository condominios;
     private final PrevisaoOrcamentariaRepository previsoes;
     private final ConsultaPrevistoRealizado previstoRealizado;
     private final ServicoExercicios exercicios;
     private final ServicoComparacao comparacao;
 
-    ServicoIndicadores(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes,
+    ServicoIndicadores(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             ConsultaPrevistoRealizado previstoRealizado, ServicoExercicios exercicios, ServicoComparacao comparacao) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -41,7 +41,7 @@ public class ServicoIndicadores {
     /** {@code poId} nulo = o exercício mais recente; {@code fundoId} nulo = todos. */
     @Transactional(readOnly = true)
     public Indicadores.Resultado indicadores(UUID condominioId, UUID poId, UUID fundoId) {
-        Condominio condominio = condominios.findById(condominioId)
+        Condominium condominio = condominios.findById(condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
         if (fundoId != null) {
             previstoRealizado.fundoDoFiltro(condominioId, fundoId);
@@ -77,7 +77,7 @@ public class ServicoIndicadores {
             semComparacao = "Comparação entre exercícios: sem exercício anterior a este";
         }
         return Indicadores.montar(new Indicadores.Entrada(po, ServicoExercicios.rotulo(po.getExercicioInicio(),
-                po.getExercicioFim()), acumulado, List.copyOf(meses), fundoId, condominio.getFundoOrdinarioId(),
+                po.getExercicioFim()), acumulado, List.copyOf(meses), fundoId, condominio.getOperatingFundId(),
                 comparado, semComparacao));
     }
 }

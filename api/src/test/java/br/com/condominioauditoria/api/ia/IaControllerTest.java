@@ -9,7 +9,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
 import br.com.condominioauditoria.api.grpc.ClienteAssistente;
 import br.com.condominioauditoria.api.ia.IaController.PedidoAssistenteDto;
 import br.com.condominioauditoria.api.ia.IaController.PedidoDto;
@@ -17,7 +16,8 @@ import br.com.condominioauditoria.api.ia.IaController.PedidoEmbeddingsDto;
 import br.com.condominioauditoria.api.ia.IaController.PedidoRespostasDto;
 import br.com.condominioauditoria.api.modulo.ModoIa;
 import br.com.condominioauditoria.api.modulo.Modulos;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -52,7 +52,7 @@ class IaControllerTest {
     private final ConfiguracaoIaRepository configuracoes = mock(ConfiguracaoIaRepository.class);
     private final EventoConfiguracaoIaRepository eventos = mock(EventoConfiguracaoIaRepository.class);
     private final ClienteAssistente rag = mock(ClienteAssistente.class);
-    private final CondominioRepository condominios = mock(CondominioRepository.class);
+    private final CondominiumRepository condominios = mock(CondominiumRepository.class);
     private final List<ConfiguracaoIa> linhas = new ArrayList<>();
     private AnnotationConfigApplicationContext contexto;
     private IaController controller;
@@ -62,8 +62,8 @@ class IaControllerTest {
     static class Config {
 
         @Bean
-        IaController iaController(ConfiguracaoIaServico servico, CatalogoIa catalogo, AcessoCondominio acesso,
-                CondominioRepository condominios) {
+        IaController iaController(ConfiguracaoIaServico servico, CatalogoIa catalogo, CondominiumAccess acesso,
+                CondominiumRepository condominios) {
             return new IaController(servico, catalogo, acesso, condominios);
         }
     }
@@ -86,8 +86,8 @@ class IaControllerTest {
         contexto = new AnnotationConfigApplicationContext();
         contexto.registerBean(ConfiguracaoIaServico.class, () -> servico);
         contexto.registerBean(CatalogoIa.class, () -> catalogo);
-        contexto.registerBean(AcessoCondominio.class, AcessoCondominio::new);
-        contexto.registerBean(CondominioRepository.class, () -> condominios);
+        contexto.registerBean(CondominiumAccess.class, CondominiumAccess::new);
+        contexto.registerBean(CondominiumRepository.class, () -> condominios);
         contexto.register(Config.class);
         contexto.refresh();
         controller = contexto.getBean(IaController.class);

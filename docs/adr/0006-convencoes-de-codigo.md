@@ -70,6 +70,17 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | IA | `Ai` | |
 | perfis Usuário, Gestor, Admin | `USER`, `MANAGER`, `ADMIN` | o texto da tela continua "Usuário", "Gestor" e "Admin" |
 | dinheiro | `Money` | |
+| fundo ordinário | `OperatingFund` | |
+| posição financeira (de um fundo) | `FundPosition` | |
+| saldo anterior, saldo atual | `openingBalance`, `closingBalance` | |
+| entradas, saídas | `inflows`, `outflows` | |
+| despesa | `Expense` | |
+| histórico (do lançamento) | `memo` | |
+| impressão do lançamento | `LedgerEntryFingerprint` | chave que identifica o lançamento entre reprocessamentos (ADR 0004) |
+| troca de categoria | `CategoryChange` | |
+| indexação | `Indexing` | |
+| recebimento de cota | `condoFeeReceipt` | |
+| transferência entre fundos | `interFundTransfer` | |
 
 ---
 

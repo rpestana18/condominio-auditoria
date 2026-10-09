@@ -2,7 +2,7 @@ package br.com.condominioauditoria.api.orcamento;
 
 import br.com.condominioauditoria.api.orcamento.RealocacaoDtos.PedidoRealocacao;
 import br.com.condominioauditoria.api.orcamento.RealocacaoDtos.RealocacaoDto;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,10 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/condominios/{condominioId}/realocacoes")
 class RealocacaoController {
 
-    private final AcessoCondominio acesso;
+    private final CondominiumAccess acesso;
     private final ServicoRealocacao servico;
 
-    RealocacaoController(AcessoCondominio acesso, ServicoRealocacao servico) {
+    RealocacaoController(CondominiumAccess acesso, ServicoRealocacao servico) {
         this.acesso = acesso;
         this.servico = servico;
     }
@@ -34,21 +34,21 @@ class RealocacaoController {
     @GetMapping
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     List<RealocacaoDto> listar(@PathVariable UUID condominioId, @RequestParam(name = "po") UUID poId) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return servico.listar(condominioId, poId);
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
     RealocacaoDto realocar(@PathVariable UUID condominioId, @RequestBody PedidoRealocacao pedido) {
-        acesso.exigir(condominioId);
-        return servico.realocar(condominioId, pedido, acesso.usuario());
+        acesso.require(condominioId);
+        return servico.realocar(condominioId, pedido, acesso.username());
     }
 
     @DeleteMapping("/{realocacaoId}")
     @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
     RealocacaoDto desfazer(@PathVariable UUID condominioId, @PathVariable UUID realocacaoId) {
-        acesso.exigir(condominioId);
-        return servico.desfazer(condominioId, realocacaoId, acesso.usuario());
+        acesso.require(condominioId);
+        return servico.desfazer(condominioId, realocacaoId, acesso.username());
     }
 }

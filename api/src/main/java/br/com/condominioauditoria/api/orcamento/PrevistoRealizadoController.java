@@ -1,13 +1,13 @@
 package br.com.condominioauditoria.api.orcamento;
 
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Evidencia;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,11 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/condominios/{condominioId}/previsto-realizado")
 class PrevistoRealizadoController {
 
-    private final AcessoCondominio acesso;
+    private final CondominiumAccess acesso;
     private final ConsultaPrevistoRealizado consulta;
     private final ExportacaoPrevistoRealizado exportacao;
 
-    PrevistoRealizadoController(AcessoCondominio acesso, ConsultaPrevistoRealizado consulta,
+    PrevistoRealizadoController(CondominiumAccess acesso, ConsultaPrevistoRealizado consulta,
             ExportacaoPrevistoRealizado exportacao) {
         this.acesso = acesso;
         this.consulta = consulta;
@@ -40,9 +40,9 @@ class PrevistoRealizadoController {
     ResponseEntity<byte[]> exportar(@PathVariable UUID condominioId, @RequestParam String formato,
             @RequestParam String periodo, @RequestParam(name = "po", required = false) UUID poId,
             @RequestParam(name = "fundo", required = false) UUID fundoId) {
-        acesso.exigir(condominioId);
-        String quem = acesso.nomeCompleto().equals(acesso.usuario()) ? acesso.usuario()
-                : acesso.nomeCompleto() + " (" + acesso.usuario() + ")";
+        acesso.require(condominioId);
+        String quem = acesso.fullName().equals(acesso.username()) ? acesso.username()
+                : acesso.fullName() + " (" + acesso.username() + ")";
         var arquivo = exportacao.exportar(condominioId, periodo, poId, fundoId, formato, quem);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(arquivo.tipo()))
@@ -60,7 +60,7 @@ class PrevistoRealizadoController {
     PrevistoRealizado consultar(@PathVariable UUID condominioId, @RequestParam String periodo,
             @RequestParam(name = "po", required = false) UUID poId,
             @RequestParam(name = "fundo", required = false) UUID fundoId) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return fundoId == null ? consulta.consultar(condominioId, periodo, poId)
                 : consulta.consultar(condominioId, periodo, poId, fundoId);
     }
@@ -69,7 +69,7 @@ class PrevistoRealizadoController {
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     List<Evidencia> evidencia(@PathVariable UUID condominioId, @RequestParam String periodo,
             @RequestParam(name = "po", required = false) UUID poId, @RequestParam String alvo) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return consulta.evidencia(condominioId, periodo, poId, alvo);
     }
 }

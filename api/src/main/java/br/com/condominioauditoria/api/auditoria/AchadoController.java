@@ -1,7 +1,7 @@
 package br.com.condominioauditoria.api.auditoria;
 
 import br.com.condominioauditoria.api.auditoria.ConsultaAchados.AchadoDetalhe;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,10 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/condominios/{condominioId}/achados")
 class AchadoController {
 
-    private final AcessoCondominio acesso;
+    private final CondominiumAccess acesso;
     private final ConsultaAchados consulta;
 
-    AchadoController(AcessoCondominio acesso, ConsultaAchados consulta) {
+    AchadoController(CondominiumAccess acesso, ConsultaAchados consulta) {
         this.acesso = acesso;
         this.consulta = consulta;
     }
@@ -28,7 +28,7 @@ class AchadoController {
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     List<AchadoDetalhe> listar(@PathVariable UUID condominioId,
             @RequestParam(required = false) String competencia) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return consulta.listar(condominioId, competencia);
     }
 }

@@ -5,33 +5,33 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import br.com.condominioauditoria.api.arquivo.Arquivo;
-import br.com.condominioauditoria.api.arquivo.ArquivoRepository;
-import br.com.condominioauditoria.api.arquivo.Categoria;
-import br.com.condominioauditoria.api.arquivo.StatusArquivo;
 import br.com.condominioauditoria.api.auditoria.Achado;
 import br.com.condominioauditoria.api.auditoria.AchadoEvidencia;
 import br.com.condominioauditoria.api.auditoria.AchadoEvidenciaRepository;
 import br.com.condominioauditoria.api.auditoria.AchadoRepository;
 import br.com.condominioauditoria.api.auditoria.EventoAchado;
 import br.com.condominioauditoria.api.auditoria.EventoAchadoRepository;
-import br.com.condominioauditoria.api.auditoria.RegraExcessoMes;
 import br.com.condominioauditoria.api.auditoria.ParametroRegra;
 import br.com.condominioauditoria.api.auditoria.ParametroRegraRepository;
 import br.com.condominioauditoria.api.auditoria.RegistroAchados;
+import br.com.condominioauditoria.api.auditoria.RegraExcessoMes;
 import br.com.condominioauditoria.api.auditoria.RegraTetoFundoReserva;
-import br.com.condominioauditoria.api.condominio.Condominio;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
-import br.com.condominioauditoria.api.contabil.Conferencia;
-import br.com.condominioauditoria.api.contabil.ConferenciaRepository;
-import br.com.condominioauditoria.api.contabil.Fundo;
-import br.com.condominioauditoria.api.contabil.FundoRepository;
-import br.com.condominioauditoria.api.contabil.Lancamento;
-import br.com.condominioauditoria.api.contabil.LancamentoRepository;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.ConferenciaLida;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.Enriquecimento;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.LancamentoLido;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.PrevisaoLida;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetData;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.TotalsCheckData;
+import br.com.condominioauditoria.api.model.accounting.Fund;
+import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.accounting.TotalsCheck;
+import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.model.enums.FileCategory;
+import br.com.condominioauditoria.api.model.enums.FileStatus;
+import br.com.condominioauditoria.api.model.file.SourceFile;
+import br.com.condominioauditoria.api.repository.accounting.FundRepository;
+import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
+import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -47,17 +47,17 @@ import java.util.UUID;
 final class CenarioPo {
 
     final UUID condominioId = UUID.randomUUID();
-    final Condominio condominio = mock(Condominio.class);
-    final Fundo ordinario = new Fundo(condominioId, "CONDOMÍNIO");
-    final Fundo reserva = new Fundo(condominioId, "FUNDO DE RESERVA");
-    final Fundo obrasInfra = new Fundo(condominioId, "OBRAS / REFORMAS / INFRA");
-    final Fundo obras = new Fundo(condominioId, "OBRAS");
-    final Arquivo ata;
+    final Condominium condominio = mock(Condominium.class);
+    final Fund ordinario = new Fund(condominioId, "CONDOMÍNIO");
+    final Fund reserva = new Fund(condominioId, "FUNDO DE RESERVA");
+    final Fund obrasInfra = new Fund(condominioId, "OBRAS / REFORMAS / INFRA");
+    final Fund obras = new Fund(condominioId, "OBRAS");
+    final SourceFile ata;
 
-    final Map<UUID, Arquivo> arquivos = new LinkedHashMap<>();
+    final Map<UUID, SourceFile> arquivos = new LinkedHashMap<>();
     final Map<UUID, PrevisaoOrcamentaria> previsoes = new LinkedHashMap<>();
     final List<LinhaPo> linhas = new ArrayList<>();
-    final List<Conferencia> conferencias = new ArrayList<>();
+    final List<TotalsCheck> conferencias = new ArrayList<>();
     final List<PoFundo> poFundos = new ArrayList<>();
     final List<EventoPrevisao> eventos = new ArrayList<>();
     final List<Achado> achados = new ArrayList<>();
@@ -65,11 +65,11 @@ final class CenarioPo {
     final List<ParametroRegra> parametros = new ArrayList<>();
     final List<DeparaConta> deparas = new ArrayList<>();
     final List<EventoDepara> eventosDepara = new ArrayList<>();
-    final List<Lancamento> lancamentos = new ArrayList<>();
+    final List<LedgerEntry> lancamentos = new ArrayList<>();
     final List<EventoAchado> eventosAchado = new ArrayList<>();
     final List<RealocacaoLancamento> realocacoes = new ArrayList<>();
     final List<EventoRealocacao> eventosRealocacao = new ArrayList<>();
-    final List<Fundo> fundos = new ArrayList<>();
+    final List<Fund> fundos = new ArrayList<>();
     final List<Rubrica> rubricas = new ArrayList<>();
     final List<LinhaRubrica> linhasRubrica = new ArrayList<>();
     final List<EventoRubrica> eventosRubrica = new ArrayList<>();
@@ -97,15 +97,15 @@ final class CenarioPo {
 
     CenarioPo() {
         when(condominio.getId()).thenReturn(condominioId);
-        when(condominio.getFundoOrdinarioId()).thenReturn(ordinario.getId());
-        CondominioRepository condominios = mock(CondominioRepository.class);
-        when(condominios.travar(condominioId)).thenReturn(Optional.of(condominio));
+        when(condominio.getOperatingFundId()).thenReturn(ordinario.getId());
+        CondominiumRepository condominios = mock(CondominiumRepository.class);
+        when(condominios.lockById(condominioId)).thenReturn(Optional.of(condominio));
         when(condominios.findById(condominioId)).thenReturn(Optional.of(condominio));
 
-        ArquivoRepository arquivoRepo = mock(ArquivoRepository.class);
+        SourceFileRepository arquivoRepo = mock(SourceFileRepository.class);
         when(arquivoRepo.findById(any())).thenAnswer(i -> Optional.ofNullable(arquivos.get(i.<UUID>getArgument(0))));
-        when(arquivoRepo.findByIdAndCondominioId(any(), any())).thenAnswer(i -> Optional
-                .ofNullable(arquivos.get(i.<UUID>getArgument(0))).filter(a -> a.getCondominioId().equals(i.getArgument(1))));
+        when(arquivoRepo.findByIdAndCondominiumId(any(), any())).thenAnswer(i -> Optional
+                .ofNullable(arquivos.get(i.<UUID>getArgument(0))).filter(a -> a.getCondominiumId().equals(i.getArgument(1))));
 
         previsaoRepo = mock(PrevisaoOrcamentariaRepository.class);
         when(previsaoRepo.save(any())).thenAnswer(i -> {
@@ -135,17 +135,17 @@ final class CenarioPo {
                 .filter(l -> l.getPrevisaoId().equals(i.getArgument(0))).sorted(Comparator.comparingInt(LinhaPo::getOrdem))
                 .toList());
 
-        ConferenciaRepository conferenciaRepo = mock(ConferenciaRepository.class);
-        when(conferenciaRepo.findByArquivoIdOrderByOrdem(any())).thenAnswer(i -> conferencias.stream()
-                .filter(c -> c.getArquivoId().equals(i.getArgument(0))).toList());
+        TotalsCheckRepository conferenciaRepo = mock(TotalsCheckRepository.class);
+        when(conferenciaRepo.findByFileIdOrderBySequence(any())).thenAnswer(i -> conferencias.stream()
+                .filter(c -> c.getFileId().equals(i.getArgument(0))).toList());
 
-        FundoRepository fundoRepo = mock(FundoRepository.class);
+        FundRepository fundoRepo = mock(FundRepository.class);
         fundos.addAll(List.of(ordinario, reserva, obrasInfra, obras));
-        when(fundoRepo.findByCondominioId(condominioId)).thenAnswer(i -> List.copyOf(fundos));
-        when(arquivoRepo.findByCondominioIdAndCategoriaAndStatusIn(any(), any(), any())).thenAnswer(i -> arquivos
-                .values().stream().filter(a -> a.getCondominioId().equals(i.getArgument(0))
-                        && a.getCategoria() == i.getArgument(1)
-                        && i.<Collection<StatusArquivo>>getArgument(2).contains(a.getStatus()))
+        when(fundoRepo.findByCondominiumId(condominioId)).thenAnswer(i -> List.copyOf(fundos));
+        when(arquivoRepo.findByCondominiumIdAndCategoryAndStatusIn(any(), any(), any())).thenAnswer(i -> arquivos
+                .values().stream().filter(a -> a.getCondominiumId().equals(i.getArgument(0))
+                        && a.getCategory() == i.getArgument(1)
+                        && i.<Collection<FileStatus>>getArgument(2).contains(a.getStatus()))
                 .toList());
 
         PoFundoRepository poFundoRepo = mock(PoFundoRepository.class);
@@ -274,15 +274,15 @@ final class CenarioPo {
         });
         when(eventoDeparaRepo.findByPrevisaoIdOrderByEmAscContaCodigoAsc(any())).thenAnswer(i -> eventosDepara.stream()
                 .filter(e -> e.getPrevisaoId().equals(i.getArgument(0))).toList());
-        LancamentoRepository lancamentoRepo = mock(LancamentoRepository.class);
-        when(lancamentoRepo.debitosComConta(any(), any(), any(), any())).thenAnswer(i -> lancamentos.stream()
-                .filter(l -> l.getFundoId().equals(i.getArgument(1)) && !l.getData().isBefore(i.getArgument(2))
-                        && !l.getData().isAfter(i.getArgument(3)) && l.getDebito().signum() != 0
-                        && !l.isTransferenciaEntreFundos() && l.getContaCodigo() != null)
-                .sorted(Comparator.comparing(Lancamento::getData)).toList());
-        when(lancamentoRepo.findByArquivoIdInAndDataBetween(any(), any(), any())).thenAnswer(i -> lancamentos.stream()
-                .filter(l -> i.<Collection<UUID>>getArgument(0).contains(l.getArquivoId())
-                        && !l.getData().isBefore(i.getArgument(1)) && !l.getData().isAfter(i.getArgument(2)))
+        LedgerEntryRepository lancamentoRepo = mock(LedgerEntryRepository.class);
+        when(lancamentoRepo.debitsWithAccount(any(), any(), any(), any())).thenAnswer(i -> lancamentos.stream()
+                .filter(l -> l.getFundId().equals(i.getArgument(1)) && !l.getDate().isBefore(i.getArgument(2))
+                        && !l.getDate().isAfter(i.getArgument(3)) && l.getDebit().signum() != 0
+                        && !l.isInterFundTransfer() && l.getAccountCode() != null)
+                .sorted(Comparator.comparing(LedgerEntry::getDate)).toList());
+        when(lancamentoRepo.findByFileIdInAndDateBetween(any(), any(), any())).thenAnswer(i -> lancamentos.stream()
+                .filter(l -> i.<Collection<UUID>>getArgument(0).contains(l.getFileId())
+                        && !l.getDate().isBefore(i.getArgument(1)) && !l.getDate().isAfter(i.getArgument(2)))
                 .toList());
         when(lancamentoRepo.findById(any())).thenAnswer(i -> lancamentos.stream()
                 .filter(l -> l.getId().equals(i.getArgument(0))).findFirst());
@@ -324,7 +324,7 @@ final class CenarioPo {
         ligacaoFundos = new LigacaoFundosPo(condominios, previsaoRepo, linhaRepo, poFundoRepo, fundoRepo, eventoRepo,
                 consulta, publicados::add);
 
-        ata = arquivo(Categoria.ATA, "ata-ago-2026-05.pdf");
+        ata = arquivo(FileCategory.ATA, "ata-ago-2026-05.pdf");
     }
 
     /**
@@ -340,27 +340,27 @@ final class CenarioPo {
     }
 
     /** Arquivo de fluxo da categoria de balancetes, lido (concluído), cobrindo o período. */
-    Arquivo fluxo(String nome, LocalDate inicio, LocalDate fim, int lancamentos) {
-        Arquivo a = arquivo(Categoria.BALANCETE, nome);
-        a.concluir(StatusArquivo.CONCLUIDO, "Todas as conferências passaram", "fluxo-protest", inicio, fim, lancamentos);
+    SourceFile fluxo(String nome, LocalDate inicio, LocalDate fim, int lancamentos) {
+        SourceFile a = arquivo(FileCategory.BALANCETE, nome);
+        a.complete(FileStatus.CONCLUIDO, "Todas as conferências passaram", "fluxo-protest", inicio, fim, lancamentos);
         return a;
     }
 
     /** Lê a PO como a GravacaoResultado faria (linhas e conferências gravadas). */
     PrevisaoOrcamentaria lerPo(PoDoPiloto po) {
-        Arquivo arquivo = arquivo(Categoria.PO, "PO-" + UUID.randomUUID() + ".pdf");
+        SourceFile arquivo = arquivo(FileCategory.PO, "PO-" + UUID.randomUUID() + ".pdf");
         var lidas = po.conferencias();
         for (int i = 0; i < lidas.size(); i++) {
-            conferencias.add(new Conferencia(arquivo.getId(), i + 1, lidas.get(i)));
+            conferencias.add(new TotalsCheck(arquivo.getId(), i + 1, lidas.get(i)));
         }
         return gravacao.gravar(arquivo, "po-protest", po.previsao(), lidas);
     }
 
     /** Lê uma PO qualquer (ex.: a do golden privado) como a GravacaoResultado faria. */
-    PrevisaoOrcamentaria lerPo(PrevisaoLida lida, List<ConferenciaLida> lidas) {
-        Arquivo arquivo = arquivo(Categoria.PO, "PO-" + UUID.randomUUID() + ".pdf");
+    PrevisaoOrcamentaria lerPo(BudgetData lida, List<TotalsCheckData> lidas) {
+        SourceFile arquivo = arquivo(FileCategory.PO, "PO-" + UUID.randomUUID() + ".pdf");
         for (int i = 0; i < lidas.size(); i++) {
-            conferencias.add(new Conferencia(arquivo.getId(), i + 1, lidas.get(i)));
+            conferencias.add(new TotalsCheck(arquivo.getId(), i + 1, lidas.get(i)));
         }
         return gravacao.gravar(arquivo, "po-protest", lida, lidas);
     }
@@ -373,17 +373,17 @@ final class CenarioPo {
     }
 
     /** Débito no fundo Condomínio (fundo ordinário), num fluxo da categoria de balancetes. */
-    Lancamento debito(String conta, String nome, String valor, LocalDate data) {
-        var lido = new LancamentoLido(1, lancamentos.size() + 1, data, conta, nome, "", "Teste " + nome,
+    LedgerEntry debito(String conta, String nome, String valor, LocalDate data) {
+        var lido = new LedgerEntryData(1, lancamentos.size() + 1, data, conta, nome, "", "Teste " + nome,
                 BigDecimal.ZERO.setScale(2), new BigDecimal(valor), BigDecimal.ZERO.setScale(2),
-                new Enriquecimento(null, null, null, false, false));
-        Lancamento l = new Lancamento(condominioId, UUID.randomUUID(), ordinario.getId(), lido);
+                new Enrichment(null, null, null, false, false));
+        LedgerEntry l = new LedgerEntry(condominioId, UUID.randomUUID(), ordinario.getId(), lido);
         lancamentos.add(l);
         return l;
     }
 
-    Arquivo arquivo(Categoria categoria, String nome) {
-        Arquivo a = new Arquivo(condominioId, categoria, nome, "c/" + nome, UUID.randomUUID().toString().replace("-", "")
+    SourceFile arquivo(FileCategory categoria, String nome) {
+        SourceFile a = new SourceFile(condominioId, categoria, nome, "c/" + nome, UUID.randomUUID().toString().replace("-", "")
                 + "0".repeat(32), 100, "application/pdf", "admin");
         arquivos.put(a.getId(), a);
         return a;

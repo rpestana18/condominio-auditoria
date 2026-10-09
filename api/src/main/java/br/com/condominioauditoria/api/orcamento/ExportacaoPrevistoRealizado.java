@@ -1,7 +1,7 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.condominio.Condominio;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
+import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
@@ -42,12 +42,12 @@ public class ExportacaoPrevistoRealizado {
     public record ArquivoExportado(String nome, String tipo, byte[] conteudo) {
     }
 
-    private final CondominioRepository condominios;
+    private final CondominiumRepository condominios;
     private final ConsultaPrevistoRealizado consulta;
     private final RelatorioPdf pdf;
     private final RelatorioExcel excel;
 
-    ExportacaoPrevistoRealizado(CondominioRepository condominios, ConsultaPrevistoRealizado consulta, RelatorioPdf pdf,
+    ExportacaoPrevistoRealizado(CondominiumRepository condominios, ConsultaPrevistoRealizado consulta, RelatorioPdf pdf,
             RelatorioExcel excel) {
         this.condominios = condominios;
         this.consulta = consulta;
@@ -59,13 +59,13 @@ public class ExportacaoPrevistoRealizado {
     public ArquivoExportado exportar(UUID condominioId, String periodo, UUID poId, UUID fundoId, String formatoTexto,
             String geradoPor) {
         Formato formato = Formato.de(formatoTexto);
-        Condominio condominio = condominios.findById(condominioId)
+        Condominium condominio = condominios.findById(condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
         var calculo = consulta.calcular(condominioId, periodo, poId, fundoId);
-        String fundo = fundoId == null ? null : fundoId.equals(condominio.getFundoOrdinarioId())
-                ? "Condomínio (fundo ordinário: " + consulta.fundoDoFiltro(condominioId, fundoId).getNome() + ")"
-                : consulta.fundoDoFiltro(condominioId, fundoId).getNome();
-        RelatorioPrevistoRealizado rel = RelatorioPrevistoRealizado.montar(condominio.getNome(), fundo, calculo,
+        String fundo = fundoId == null ? null : fundoId.equals(condominio.getOperatingFundId())
+                ? "Condomínio (fundo ordinário: " + consulta.fundoDoFiltro(condominioId, fundoId).getName() + ")"
+                : consulta.fundoDoFiltro(condominioId, fundoId).getName();
+        RelatorioPrevistoRealizado rel = RelatorioPrevistoRealizado.montar(condominio.getName(), fundo, calculo,
                 geradoPor, Instant.now());
         byte[] conteudo = formato == Formato.PDF ? pdf.gerar(rel) : excel.gerar(rel);
         String nome = "previsto-realizado-" + calculo.resultado().periodo() + "." + formato.extensao;

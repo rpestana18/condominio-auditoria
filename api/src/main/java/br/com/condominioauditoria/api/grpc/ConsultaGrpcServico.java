@@ -1,16 +1,16 @@
 package br.com.condominioauditoria.api.grpc;
 
-import br.com.condominioauditoria.api.arquivo.Arquivo;
-import br.com.condominioauditoria.api.arquivo.ArquivoRepository;
-import br.com.condominioauditoria.api.arquivo.Categoria;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
-import br.com.condominioauditoria.api.contabil.ConferenciaRepository;
-import br.com.condominioauditoria.api.contabil.Fundo;
-import br.com.condominioauditoria.api.contabil.FundoRepository;
-import br.com.condominioauditoria.api.contabil.LancamentoRepository;
+import br.com.condominioauditoria.api.model.accounting.Fund;
+import br.com.condominioauditoria.api.model.enums.FileCategory;
+import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.modulo.ModuloNaoContratadoException;
-import br.com.condominioauditoria.api.painel.PainelService;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.repository.accounting.FundRepository;
+import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
+import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
+import br.com.condominioauditoria.api.service.dashboard.DashboardService;
 import br.com.condominioauditoria.contratos.consulta.v1.ArquivoResumo;
 import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosRequest;
 import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosResponse;
@@ -56,18 +56,18 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
     private static final int LIMITE_PADRAO = 500;
     private static final int LIMITE_MAXIMO = 5000;
 
-    private final AcessoCondominio acesso;
-    private final CondominioRepository condominios;
-    private final ArquivoRepository arquivos;
-    private final ConferenciaRepository conferencias;
-    private final FundoRepository fundos;
-    private final LancamentoRepository lancamentos;
-    private final PainelService painel;
+    private final CondominiumAccess acesso;
+    private final CondominiumRepository condominios;
+    private final SourceFileRepository arquivos;
+    private final TotalsCheckRepository conferencias;
+    private final FundRepository fundos;
+    private final LedgerEntryRepository lancamentos;
+    private final DashboardService painel;
     private final BuscaDocumentos buscaDocumentos;
 
-    ConsultaGrpcServico(AcessoCondominio acesso, CondominioRepository condominios, ArquivoRepository arquivos,
-            ConferenciaRepository conferencias, FundoRepository fundos, LancamentoRepository lancamentos,
-            PainelService painel, BuscaDocumentos buscaDocumentos) {
+    ConsultaGrpcServico(CondominiumAccess acesso, CondominiumRepository condominios, SourceFileRepository arquivos,
+            TotalsCheckRepository conferencias, FundRepository fundos, LedgerEntryRepository lancamentos,
+            DashboardService painel, BuscaDocumentos buscaDocumentos) {
         this.acesso = acesso;
         this.condominios = condominios;
         this.arquivos = arquivos;
@@ -82,8 +82,8 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
     public void listarCondominios(ListarCondominiosRequest pedido, StreamObserver<ListarCondominiosResponse> resposta) {
         responder(resposta, () -> ListarCondominiosResponse.newBuilder()
                 .addAllCondominios(condominios.findAll().stream()
-                        .filter(c -> acesso.podeAcessar(c.getId()))
-                        .map(c -> CondominioResumo.newBuilder().setId(c.getId().toString()).setNome(c.getNome()).build())
+                        .filter(c -> acesso.canAccess(c.getId()))
+                        .map(c -> CondominioResumo.newBuilder().setId(c.getId().toString()).setNome(c.getName()).build())
                         .toList())
                 .build());
     }
@@ -92,23 +92,23 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
     public void resumoFundos(ResumoFundosRequest pedido, StreamObserver<ResumoFundosResponse> resposta) {
         responder(resposta, () -> {
             UUID condominioId = condominio(pedido.getCondominioId());
-            return painel.ultimo(condominioId).map(p -> ResumoFundosResponse.newBuilder()
+            return painel.latest(condominioId).map(p -> ResumoFundosResponse.newBuilder()
                     .setTemDados(true)
-                    .setArquivoId(p.arquivoId().toString())
-                    .setArquivoNome(p.arquivoNome())
-                    .setPeriodoInicio(texto(p.periodoInicio()))
-                    .setPeriodoFim(texto(p.periodoFim()))
-                    .setSaldoAnterior(dinheiro(p.saldoAnterior()))
-                    .setEntradas(dinheiro(p.entradas()))
-                    .setSaidas(dinheiro(p.saidas()))
-                    .setSaldoAtual(dinheiro(p.saldoAtual()))
-                    .setConferenciasComFalha((int) p.conferenciasComFalha())
-                    .addAllFundos(p.fundos().stream().map(f -> FundoNoPeriodo.newBuilder()
-                            .setFundo(f.fundo())
-                            .setSaldoAnterior(dinheiro(f.saldoAnterior()))
-                            .setEntradas(dinheiro(f.entradas()))
-                            .setSaidas(dinheiro(f.saidas()))
-                            .setSaldoAtual(dinheiro(f.saldoAtual()))
+                    .setArquivoId(p.fileId().toString())
+                    .setArquivoNome(p.fileName())
+                    .setPeriodoInicio(texto(p.periodStart()))
+                    .setPeriodoFim(texto(p.periodEnd()))
+                    .setSaldoAnterior(dinheiro(p.openingBalance()))
+                    .setEntradas(dinheiro(p.inflows()))
+                    .setSaidas(dinheiro(p.outflows()))
+                    .setSaldoAtual(dinheiro(p.closingBalance()))
+                    .setConferenciasComFalha((int) p.failedChecks())
+                    .addAllFundos(p.funds().stream().map(f -> FundoNoPeriodo.newBuilder()
+                            .setFundo(f.fund())
+                            .setSaldoAnterior(dinheiro(f.openingBalance()))
+                            .setEntradas(dinheiro(f.inflows()))
+                            .setSaidas(dinheiro(f.outflows()))
+                            .setSaldoAtual(dinheiro(f.closingBalance()))
                             .build()).toList())
                     .build())
                     .orElse(ResumoFundosResponse.newBuilder().setTemDados(false).build());
@@ -120,9 +120,9 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
         responder(resposta, () -> {
             UUID condominioId = condominio(pedido.getCondominioId());
             int limite = limite(pedido.getLimite(), 50, 500);
-            List<Arquivo> lista = pedido.getCategoria().isBlank()
-                    ? arquivos.findByCondominioIdOrderByEnviadoEmDesc(condominioId)
-                    : arquivos.findByCondominioIdAndCategoriaOrderByEnviadoEmDesc(condominioId, categoria(pedido.getCategoria()));
+            List<SourceFile> lista = pedido.getCategoria().isBlank()
+                    ? arquivos.findByCondominiumIdOrderByUploadedAtDesc(condominioId)
+                    : arquivos.findByCondominiumIdAndCategoryOrderByUploadedAtDesc(condominioId, categoria(pedido.getCategoria()));
             return ListarArquivosResponse.newBuilder()
                     .addAllArquivos(lista.stream().limit(limite).map(ConsultaGrpcServico::resumo).toList())
                     .build();
@@ -135,12 +135,12 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
         responder(resposta, () -> {
             UUID condominioId = condominio(pedido.getCondominioId());
             UUID arquivoId = uuid(pedido.getArquivoId(), "arquivo_id");
-            arquivos.findByIdAndCondominioId(arquivoId, condominioId)
+            arquivos.findByIdAndCondominiumId(arquivoId, condominioId)
                     .orElseThrow(() -> Status.NOT_FOUND.withDescription("Arquivo não encontrado").asRuntimeException());
             return ConferenciasDoArquivoResponse.newBuilder()
-                    .addAllConferencias(conferencias.findByArquivoIdOrderByOrdem(arquivoId).stream()
-                            .map(c -> Conferencia.newBuilder().setCodigo(c.getCodigo()).setDescricao(c.getDescricao())
-                                    .setOk(c.isOk()).setDetalhe(Objects.toString(c.getDetalhe(), "")).build())
+                    .addAllConferencias(conferencias.findByFileIdOrderBySequence(arquivoId).stream()
+                            .map(c -> Conferencia.newBuilder().setCodigo(c.getCode()).setDescricao(c.getDescription())
+                                    .setOk(c.isOk()).setDetalhe(Objects.toString(c.getDetail(), "")).build())
                             .toList())
                     .build();
         });
@@ -151,8 +151,8 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
     public void listarLancamentos(ListarLancamentosRequest pedido, StreamObserver<Lancamento> resposta) {
         try {
             UUID condominioId = condominio(pedido.getCondominioId());
-            Map<UUID, String> nomes = fundos.findByCondominioId(condominioId).stream()
-                    .collect(Collectors.toMap(Fundo::getId, Fundo::getNome));
+            Map<UUID, String> nomes = fundos.findByCondominiumId(condominioId).stream()
+                    .collect(Collectors.toMap(Fund::getId, Fund::getName));
             String filtroFundo = pedido.getFundo().trim().toLowerCase();
             List<UUID> fundosFiltrados = filtroFundo.isEmpty() ? List.of(UUID.randomUUID())
                     : nomes.entrySet().stream().filter(e -> e.getValue().toLowerCase().contains(filtroFundo))
@@ -162,28 +162,28 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
                 return;
             }
             String texto = pedido.getTexto().isBlank() ? "" : "%" + pedido.getTexto().trim().toLowerCase() + "%";
-            var lista = lancamentos.filtrar(condominioId,
+            var lista = lancamentos.search(condominioId,
                     data(pedido.getDataInicio(), LocalDate.of(1900, 1, 1)),
                     data(pedido.getDataFim(), LocalDate.of(9999, 12, 31)),
                     filtroFundo.isEmpty(), fundosFiltrados, texto, pedido.getSomenteSaidas(),
                     Limit.of(limite(pedido.getLimite(), LIMITE_PADRAO, LIMITE_MAXIMO)));
             for (var l : lista) {
                 resposta.onNext(Lancamento.newBuilder()
-                        .setData(texto(l.getData()))
-                        .setFundo(Objects.toString(nomes.get(l.getFundoId()), ""))
-                        .setContaCodigo(Objects.toString(l.getContaCodigo(), ""))
-                        .setContaNome(Objects.toString(l.getContaNome(), ""))
-                        .setDocumento(Objects.toString(l.getDocumento(), ""))
-                        .setHistorico(l.getHistorico())
-                        .setCredito(dinheiro(l.getCredito()))
-                        .setDebito(dinheiro(l.getDebito()))
-                        .setSaldo(dinheiro(l.getSaldo()))
-                        .setFornecedor(Objects.toString(l.getFornecedor(), ""))
-                        .setNotaFiscal(Objects.toString(l.getNotaFiscal(), ""))
-                        .setMeioPagamento(Objects.toString(l.getMeioPagamento(), ""))
-                        .setTransferenciaEntreFundos(l.isTransferenciaEntreFundos())
-                        .setArquivoId(l.getArquivoId().toString())
-                        .setPagina(l.getPagina())
+                        .setData(texto(l.getDate()))
+                        .setFundo(Objects.toString(nomes.get(l.getFundId()), ""))
+                        .setContaCodigo(Objects.toString(l.getAccountCode(), ""))
+                        .setContaNome(Objects.toString(l.getAccountName(), ""))
+                        .setDocumento(Objects.toString(l.getDocument(), ""))
+                        .setHistorico(l.getMemo())
+                        .setCredito(dinheiro(l.getCredit()))
+                        .setDebito(dinheiro(l.getDebit()))
+                        .setSaldo(dinheiro(l.getBalance()))
+                        .setFornecedor(Objects.toString(l.getSupplier(), ""))
+                        .setNotaFiscal(Objects.toString(l.getInvoiceNumber(), ""))
+                        .setMeioPagamento(Objects.toString(l.getPaymentMethod(), ""))
+                        .setTransferenciaEntreFundos(l.isInterFundTransfer())
+                        .setArquivoId(l.getFileId().toString())
+                        .setPagina(l.getPage())
                         .build());
             }
             resposta.onCompleted();
@@ -229,7 +229,7 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
 
     private UUID condominio(String id) {
         UUID condominioId = uuid(id, "condominio_id");
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return condominioId;
     }
 
@@ -241,9 +241,9 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
         }
     }
 
-    private static Categoria categoria(String valor) {
+    private static FileCategory categoria(String valor) {
         try {
-            return Categoria.valueOf(valor.trim().toUpperCase());
+            return FileCategory.valueOf(valor.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Categoria desconhecida: " + valor);
         }
@@ -272,18 +272,18 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
         return valor == null ? "" : valor.toString();
     }
 
-    private static ArquivoResumo resumo(Arquivo a) {
+    private static ArquivoResumo resumo(SourceFile a) {
         return ArquivoResumo.newBuilder()
                 .setId(a.getId().toString())
-                .setCategoria(a.getCategoria().name())
-                .setNome(a.getNomeOriginal())
+                .setCategoria(a.getCategory().name())
+                .setNome(a.getOriginalName())
                 .setStatus(a.getStatus().name())
-                .setMensagem(Objects.toString(a.getMensagem(), ""))
-                .setPeriodoInicio(texto(a.getPeriodoInicio()))
-                .setPeriodoFim(texto(a.getPeriodoFim()))
-                .setTotalLancamentos(a.getTotalLancamentos() == null ? 0 : a.getTotalLancamentos())
-                .setEnviadoPor(a.getEnviadoPor())
-                .setEnviadoEm(texto(a.getEnviadoEm()))
+                .setMensagem(Objects.toString(a.getMessage(), ""))
+                .setPeriodoInicio(texto(a.getPeriodStart()))
+                .setPeriodoFim(texto(a.getPeriodEnd()))
+                .setTotalLancamentos(a.getEntryCount() == null ? 0 : a.getEntryCount())
+                .setEnviadoPor(a.getUploadedBy())
+                .setEnviadoEm(texto(a.getUploadedAt()))
                 .build();
     }
 }

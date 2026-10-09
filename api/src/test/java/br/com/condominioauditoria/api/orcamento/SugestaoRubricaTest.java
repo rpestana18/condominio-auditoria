@@ -2,8 +2,8 @@ package br.com.condominioauditoria.api.orcamento;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.LinhaPoLida;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.TipoLinhaPo;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetLineData;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetLineType;
 import br.com.condominioauditoria.api.orcamento.SugestaoRubrica.Confirmada;
 import br.com.condominioauditoria.api.orcamento.SugestaoRubrica.LinhaComGrupo;
 import br.com.condominioauditoria.api.orcamento.SugestaoRubrica.SemSugestao;
@@ -93,7 +93,7 @@ class SugestaoRubricaTest {
     }
 
     private static LinhaComGrupo linha(PrevisaoOrcamentaria previsao, String codigo, String conta, String grupo) {
-        LinhaPo l = GravacaoPrevisao.linha(previsao, new LinhaPoLida(1, 1, TipoLinhaPo.LINHA, codigo, conta, null, null,
+        LinhaPo l = GravacaoPrevisao.linha(previsao, new BudgetLineData(1, 1, BudgetLineType.LINHA, codigo, conta, null, null,
                 "Fornecedor " + codigo, BigDecimal.ZERO.setScale(2), new BigDecimal("100.00"), null, null));
         return new LinhaComGrupo(l, grupo);
     }

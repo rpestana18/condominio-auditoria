@@ -3,10 +3,10 @@ package br.com.condominioauditoria.api.orcamento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import br.com.condominioauditoria.api.contabil.Lancamento;
-import br.com.condominioauditoria.api.mensagens.MensagensGolden;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.Enriquecimento;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.LancamentoLido;
+import br.com.condominioauditoria.api.messaging.GoldenMessages;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
+import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Acumulado;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Mes;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.FundoResultado;
@@ -96,7 +96,7 @@ class PrevistoRealizadoGoldenTest {
     @Test
     void cadaLinhaDoCsvCentavoACentavo() {
         GoldenSetembro g = golden();
-        Optional<String> csv = MensagensGolden.texto("previsto-realizado-2026-09.csv");
+        Optional<String> csv = GoldenMessages.text("previsto-realizado-2026-09.csv");
         assumeTrue(csv.isPresent(), "previsto-realizado-2026-09.csv ausente no golden privado");
         g.confirmarMapa();
         PrevistoRealizado r = g.setembro().resultado();
@@ -233,10 +233,10 @@ class PrevistoRealizadoGoldenTest {
     void lancamentoDeTesteSemDeparaFicaEmSemLinhaDaPo() {
         GoldenSetembro g = golden();
         g.confirmarMapa();
-        var lido = new LancamentoLido(99, 1, LocalDate.of(2026, 9, 30), "8888", "CONTA DE TESTE", "", "Teste",
+        var lido = new LedgerEntryData(99, 1, LocalDate.of(2026, 9, 30), "8888", "CONTA DE TESTE", "", "Teste",
                 BigDecimal.ZERO.setScale(2), new BigDecimal("500.00"), BigDecimal.ZERO.setScale(2),
-                new Enriquecimento(null, null, null, false, false));
-        g.cenario.lancamentos.add(new Lancamento(g.cenario.condominioId, g.arquivoFluxo, g.cenario.ordinario.getId(), lido));
+                new Enrichment(null, null, null, false, false));
+        g.cenario.lancamentos.add(new LedgerEntry(g.cenario.condominioId, g.arquivoFluxo, g.cenario.ordinario.getId(), lido));
 
         PrevistoRealizado r = g.setembro().resultado();
 
@@ -257,10 +257,10 @@ class PrevistoRealizadoGoldenTest {
         GoldenSetembro g = golden();
         g.confirmarMapa();
         List<CalculoPrevistoRealizado.Realocacao> realocacoes = g.cenario.lancamentos.stream()
-                .filter(l -> "1064".equals(l.getContaCodigo()) && l.getDebito().signum() != 0)
+                .filter(l -> "1064".equals(l.getAccountCode()) && l.getDebit().signum() != 0)
                 .map(l -> new CalculoPrevistoRealizado.Realocacao(UUID.randomUUID(),
-                        br.com.condominioauditoria.api.contabil.ImpressaoLancamento.chave(l), l.getArquivoId(),
-                        l.getData(), l.getContaCodigo(), l.getDebito(), l.getPagina(), g.linha("1.7.9").getId(),
+                        br.com.condominioauditoria.api.model.accounting.LedgerEntryFingerprint.key(l), l.getFileId(),
+                        l.getDate(), l.getAccountCode(), l.getDebit(), l.getPage(), g.linha("1.7.9").getId(),
                         "gestor", Instant.EPOCH))
                 .toList();
 

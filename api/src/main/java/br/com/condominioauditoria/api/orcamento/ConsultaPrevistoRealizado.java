@@ -1,18 +1,14 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.arquivo.Arquivo;
-import br.com.condominioauditoria.api.arquivo.ArquivoRepository;
-import br.com.condominioauditoria.api.arquivo.Categoria;
-import br.com.condominioauditoria.api.arquivo.StatusArquivo;
 import br.com.condominioauditoria.api.auditoria.ParametroRegra;
 import br.com.condominioauditoria.api.auditoria.ParametroRegraRepository;
 import br.com.condominioauditoria.api.auditoria.RegraExcessoMes;
-import br.com.condominioauditoria.api.condominio.Condominio;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
-import br.com.condominioauditoria.api.contabil.Fundo;
-import br.com.condominioauditoria.api.contabil.FundoRepository;
-import br.com.condominioauditoria.api.contabil.Lancamento;
-import br.com.condominioauditoria.api.contabil.LancamentoRepository;
+import br.com.condominioauditoria.api.model.accounting.Fund;
+import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.model.enums.FileCategory;
+import br.com.condominioauditoria.api.model.enums.FileStatus;
+import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Acumulado;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Calculo;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Entrada;
@@ -22,6 +18,10 @@ import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Periodo
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.CodigoAviso;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Aviso;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Evidencia;
+import br.com.condominioauditoria.api.repository.accounting.FundRepository;
+import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -47,25 +47,25 @@ import org.springframework.web.server.ResponseStatusException;
 public class ConsultaPrevistoRealizado {
 
     /** Arquivos de fluxo lidos (com ou sem conferência falhando), como no painel. */
-    static final Set<StatusArquivo> FLUXO_LIDO = EnumSet.of(StatusArquivo.CONCLUIDO, StatusArquivo.PRECISA_REVISAO);
+    static final Set<FileStatus> FLUXO_LIDO = EnumSet.of(FileStatus.CONCLUIDO, FileStatus.PRECISA_REVISAO);
     private static final Set<CodigoAviso> AVISOS_DA_PO = EnumSet.of(CodigoAviso.ARREDONDAMENTO,
             CodigoAviso.CONFIRMADA_COM_DIVERGENCIA);
 
-    private final CondominioRepository condominios;
+    private final CondominiumRepository condominios;
     private final PrevisaoOrcamentariaRepository previsoes;
     private final LinhaPoRepository linhas;
     private final DeparaContaRepository deparas;
     private final PoFundoRepository poFundos;
-    private final FundoRepository fundos;
-    private final ArquivoRepository arquivos;
-    private final LancamentoRepository lancamentos;
+    private final FundRepository fundos;
+    private final SourceFileRepository arquivos;
+    private final LedgerEntryRepository lancamentos;
     private final ParametroRegraRepository parametros;
     private final ConsultaPrevisao consultaPrevisao;
     private final RealocacaoLancamentoRepository realocacoes;
 
-    ConsultaPrevistoRealizado(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes,
+    ConsultaPrevistoRealizado(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             LinhaPoRepository linhas, DeparaContaRepository deparas, PoFundoRepository poFundos,
-            FundoRepository fundos, ArquivoRepository arquivos, LancamentoRepository lancamentos,
+            FundRepository fundos, SourceFileRepository arquivos, LedgerEntryRepository lancamentos,
             ParametroRegraRepository parametros, ConsultaPrevisao consultaPrevisao,
             RealocacaoLancamentoRepository realocacoes) {
         this.condominios = condominios;
@@ -93,8 +93,8 @@ public class ConsultaPrevistoRealizado {
     }
 
     /** O fundo do filtro, que tem de ser deste condomínio (404 se não for). */
-    Fundo fundoDoFiltro(UUID condominioId, UUID fundoId) {
-        return fundos.findByCondominioId(condominioId).stream().filter(f -> f.getId().equals(fundoId)).findFirst()
+    Fund fundoDoFiltro(UUID condominioId, UUID fundoId) {
+        return fundos.findByCondominiumId(condominioId).stream().filter(f -> f.getId().equals(fundoId)).findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Fundo não encontrado"));
     }
 
@@ -104,7 +104,7 @@ public class ConsultaPrevistoRealizado {
             return calcular(condominioId, periodo, poId);
         }
         fundoDoFiltro(condominioId, fundoId);
-        UUID ordinario = condominios.findById(condominioId).map(Condominio::getFundoOrdinarioId).orElse(null);
+        UUID ordinario = condominios.findById(condominioId).map(Condominium::getOperatingFundId).orElse(null);
         return VisaoPorFundo.filtrar(calcular(condominioId, periodo, poId), fundoId, ordinario);
     }
 
@@ -121,19 +121,19 @@ public class ConsultaPrevistoRealizado {
     }
 
     Calculo calcular(UUID condominioId, String periodoTexto, UUID poId) {
-        Condominio condominio = condominios.findById(condominioId)
+        Condominium condominio = condominios.findById(condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
         Periodo periodo = periodo(periodoTexto);
         PrevisaoOrcamentaria po = escolherPo(condominioId, periodo, poId).orElse(null);
         if (po == null) {
             return CalculoPrevistoRealizado.calcular(new Entrada(null, null, null, null, null, null,
-                    condominio.getFundoOrdinarioId(), null, null, null, null, null, periodo));
+                    condominio.getOperatingFundId(), null, null, null, null, null, periodo));
         }
         List<LinhaPo> lidas = linhas.findByPrevisaoIdOrderByOrdem(po.getId());
         Map<UUID, UUID> fundoPorLinha = poFundos.findByPrevisaoId(po.getId()).stream()
                 .collect(Collectors.toMap(PoFundo::getLinhaPoId, PoFundo::getFundoId));
-        Map<UUID, String> nomes = fundos.findByCondominioId(condominioId).stream()
-                .collect(Collectors.toMap(Fundo::getId, Fundo::getNome));
+        Map<UUID, String> nomes = fundos.findByCondominiumId(condominioId).stream()
+                .collect(Collectors.toMap(Fund::getId, Fund::getName));
         List<Fluxo> fluxos = fluxos(condominioId);
 
         LocalDate inicio;
@@ -150,8 +150,8 @@ public class ConsultaPrevistoRealizado {
             inicio = LocalDate.MIN;
             fim = LocalDate.MIN;
         }
-        List<Lancamento> doPeriodo = fluxos.isEmpty() || inicio.equals(LocalDate.MIN) ? List.of()
-                : lancamentos.findByArquivoIdInAndDataBetween(fluxos.stream().map(Fluxo::arquivoId).toList(), inicio,
+        List<LedgerEntry> doPeriodo = fluxos.isEmpty() || inicio.equals(LocalDate.MIN) ? List.of()
+                : lancamentos.findByFileIdInAndDateBetween(fluxos.stream().map(Fluxo::arquivoId).toList(), inicio,
                         fim);
         BigDecimal limite = po.getExercicioInicio() == null ? null
                 : parametros.vigente(condominioId, RegraExcessoMes.PARAMETRO, inicio.equals(LocalDate.MIN)
@@ -159,21 +159,21 @@ public class ConsultaPrevistoRealizado {
         List<Aviso> avisosDaPo = consultaPrevisao.detalhe(po).avisos().stream()
                 .filter(a -> AVISOS_DA_PO.contains(a.codigo())).map(a -> new Aviso(a.codigo().name(), a.texto()))
                 .toList();
-        String nomeArquivo = arquivos.findById(po.getArquivoId()).map(Arquivo::getNomeOriginal).orElse(null);
+        String nomeArquivo = arquivos.findById(po.getArquivoId()).map(SourceFile::getOriginalName).orElse(null);
         // Realocações ativas desta versão da PO (RF-03.1.7), religadas aos lançamentos pela chave estável
         List<CalculoPrevistoRealizado.Realocacao> ativas = realocacoes.findByPrevisaoIdAndDesfeitaEmIsNull(po.getId())
                 .stream().map(RealocacaoLancamento::paraCalculo).toList();
         return CalculoPrevistoRealizado.calcular(new Entrada(po, nomeArquivo, lidas,
                 deparas.findByPrevisaoIdOrderByContaCodigo(po.getId()), fundoPorLinha, nomes,
-                condominio.getFundoOrdinarioId(), fluxos, doPeriodo, ativas, limite, avisosDaPo, periodo));
+                condominio.getOperatingFundId(), fluxos, doPeriodo, ativas, limite, avisosDaPo, periodo));
     }
 
     /** Fluxos lidos do condomínio com período (balancetes concluídos ou a revisar). */
     List<Fluxo> fluxos(UUID condominioId) {
-        return arquivos.findByCondominioIdAndCategoriaAndStatusIn(condominioId, Categoria.BALANCETE, FLUXO_LIDO)
-                .stream().filter(a -> a.getPeriodoInicio() != null && a.getPeriodoFim() != null)
-                .map(a -> new Fluxo(a.getId(), a.getNomeOriginal(), a.getSha256(), a.getPeriodoInicio(),
-                        a.getPeriodoFim(), a.getEnviadoEm(), a.getEnviadoPor()))
+        return arquivos.findByCondominiumIdAndCategoryAndStatusIn(condominioId, FileCategory.BALANCETE, FLUXO_LIDO)
+                .stream().filter(a -> a.getPeriodStart() != null && a.getPeriodEnd() != null)
+                .map(a -> new Fluxo(a.getId(), a.getOriginalName(), a.getSha256(), a.getPeriodStart(),
+                        a.getPeriodEnd(), a.getUploadedAt(), a.getUploadedBy()))
                 .sorted(Comparator.comparing(Fluxo::arquivoId)).toList();
     }
 

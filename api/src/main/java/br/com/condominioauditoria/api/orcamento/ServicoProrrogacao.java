@@ -1,8 +1,8 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PedidoProrrogacao;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PrevisaoDetalhe;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
@@ -28,13 +28,13 @@ public class ServicoProrrogacao {
 
     private static final Logger log = LoggerFactory.getLogger(ServicoProrrogacao.class);
 
-    private final CondominioRepository condominios;
+    private final CondominiumRepository condominios;
     private final PrevisaoOrcamentariaRepository previsoes;
     private final EventoPrevisaoRepository eventos;
     private final ConsultaPrevisao consulta;
     private final ApplicationEventPublisher publicador;
 
-    ServicoProrrogacao(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes,
+    ServicoProrrogacao(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             EventoPrevisaoRepository eventos, ConsultaPrevisao consulta, ApplicationEventPublisher publicador) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -102,7 +102,7 @@ public class ServicoProrrogacao {
 
     private PrevisaoOrcamentaria poParaEscrita(UUID condominioId, UUID poId) {
         // Uma mudança de PO por vez no condomínio, como na confirmação
-        condominios.travar(condominioId)
+        condominios.lockById(condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
         PrevisaoOrcamentaria po = previsoes.findByIdAndCondominioId(poId, condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada"));

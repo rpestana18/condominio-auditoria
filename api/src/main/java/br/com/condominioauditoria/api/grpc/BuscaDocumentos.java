@@ -1,13 +1,13 @@
 package br.com.condominioauditoria.api.grpc;
 
-import br.com.condominioauditoria.api.arquivo.Arquivo;
-import br.com.condominioauditoria.api.arquivo.ArquivoRepository;
-import br.com.condominioauditoria.api.arquivo.Categoria;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
+import br.com.condominioauditoria.api.model.enums.FileCategory;
+import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.modulo.ModoIa;
 import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.modulo.RegistroUso;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
 import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
@@ -58,14 +58,14 @@ class BuscaDocumentos {
     static final int LIMITE_PADRAO = 10;
     static final int LIMITE_MAXIMO = 50;
 
-    private final AcessoCondominio acesso;
-    private final ArquivoRepository arquivos;
+    private final CondominiumAccess acesso;
+    private final SourceFileRepository arquivos;
     private final ClienteAssistente rag;
     private final Modulos modulos;
     private final RegistroUso registroUso;
     private final ConfiguracaoIaServico configuracaoIa;
 
-    BuscaDocumentos(AcessoCondominio acesso, ArquivoRepository arquivos, ClienteAssistente rag, Modulos modulos,
+    BuscaDocumentos(CondominiumAccess acesso, SourceFileRepository arquivos, ClienteAssistente rag, Modulos modulos,
             RegistroUso registroUso, ConfiguracaoIaServico configuracaoIa) {
         this.acesso = acesso;
         this.arquivos = arquivos;
@@ -85,7 +85,7 @@ class BuscaDocumentos {
                 .setModeloEmbeddings(embeddings.modo() == ModoIa.LOCAL && embeddings.modelo() != null
                         ? embeddings.modelo() : "")
                 .build();
-        String autorizacao = acesso.tokenBearer()
+        String autorizacao = acesso.bearerToken()
                 .orElseThrow(() -> Status.UNAUTHENTICATED.withDescription("Token ausente").asRuntimeException());
         BuscarResponse resposta;
         try {
@@ -93,7 +93,7 @@ class BuscaDocumentos {
         } catch (StatusRuntimeException erro) {
             throw traduzirErroDoRag(erro);
         }
-        registroUso.chamadaMcp(condominioId, acesso.usuario(), resposta.getModoUsado() == ModoBusca.MODO_BUSCA_HIBRIDA);
+        registroUso.chamadaMcp(condominioId, acesso.username(), resposta.getModoUsado() == ModoBusca.MODO_BUSCA_HIBRIDA);
         return BuscarDocumentosResponse.newBuilder()
                 .addAllTrechos(permitidos(condominioId, resposta.getTrechosList()).stream()
                         .map(BuscaDocumentos::converter).toList())
@@ -147,8 +147,8 @@ class BuscaDocumentos {
             uuidOpcional(t.getArquivoId()).ifPresent(citados::add);
         }
         Set<String> doCondominio = citados.isEmpty() ? Set.of()
-                : arquivos.findByCondominioIdAndIdIn(condominioId, citados).stream()
-                        .map(Arquivo::getId).map(UUID::toString).collect(Collectors.toSet());
+                : arquivos.findByCondominiumIdAndIdIn(condominioId, citados).stream()
+                        .map(SourceFile::getId).map(UUID::toString).collect(Collectors.toSet());
         List<Trecho> lista = trechos.stream()
                 .filter(t -> uuidOpcional(t.getArquivoId()).map(UUID::toString).filter(doCondominio::contains).isPresent())
                 .toList();
@@ -213,7 +213,7 @@ class BuscaDocumentos {
 
     private static String categoria(String valor) {
         try {
-            return Categoria.valueOf(valor.strip().toUpperCase()).name();
+            return FileCategory.valueOf(valor.strip().toUpperCase()).name();
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Categoria desconhecida: " + valor);
         }

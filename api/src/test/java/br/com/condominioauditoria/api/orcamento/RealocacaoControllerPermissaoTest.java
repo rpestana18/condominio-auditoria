@@ -8,7 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import br.com.condominioauditoria.api.orcamento.RealocacaoDtos.PedidoRealocacao;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -38,8 +38,8 @@ class RealocacaoControllerPermissaoTest {
     @EnableMethodSecurity
     static class Config {
         @Bean
-        AcessoCondominio acesso() {
-            return new AcessoCondominio();
+        CondominiumAccess acesso() {
+            return new CondominiumAccess();
         }
 
         @Bean
@@ -48,7 +48,7 @@ class RealocacaoControllerPermissaoTest {
         }
 
         @Bean
-        RealocacaoController controller(AcessoCondominio acesso, ServicoRealocacao servico) {
+        RealocacaoController controller(CondominiumAccess acesso, ServicoRealocacao servico) {
             return new RealocacaoController(acesso, servico);
         }
     }

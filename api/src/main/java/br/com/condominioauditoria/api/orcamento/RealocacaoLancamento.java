@@ -1,7 +1,7 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.contabil.ImpressaoLancamento;
-import br.com.condominioauditoria.api.contabil.Lancamento;
+import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.accounting.LedgerEntryFingerprint;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -43,22 +43,22 @@ public class RealocacaoLancamento {
     protected RealocacaoLancamento() {
     }
 
-    public RealocacaoLancamento(PrevisaoOrcamentaria po, Lancamento l, String sha256, LinhaPo destino, String usuario,
+    public RealocacaoLancamento(PrevisaoOrcamentaria po, LedgerEntry l, String sha256, LinhaPo destino, String usuario,
             Instant em) {
         this.id = UUID.randomUUID();
         this.condominioId = po.getCondominioId();
         this.previsaoId = po.getId();
-        this.chaveLancamento = ImpressaoLancamento.chave(l);
-        this.arquivoId = l.getArquivoId();
+        this.chaveLancamento = LedgerEntryFingerprint.key(l);
+        this.arquivoId = l.getFileId();
         this.sha256 = sha256;
-        this.pagina = l.getPagina();
-        this.ordem = l.getOrdem();
-        this.data = l.getData();
-        this.contaCodigo = l.getContaCodigo();
-        this.contaNome = l.getContaNome();
-        this.documento = l.getDocumento();
-        this.historico = l.getHistorico();
-        this.valor = l.getDebito();
+        this.pagina = l.getPage();
+        this.ordem = l.getSequence();
+        this.data = l.getDate();
+        this.contaCodigo = l.getAccountCode();
+        this.contaNome = l.getAccountName();
+        this.documento = l.getDocument();
+        this.historico = l.getMemo();
+        this.valor = l.getDebit();
         this.linhaPoId = destino.getId();
         this.realocadaPor = usuario;
         this.realocadaEm = em;

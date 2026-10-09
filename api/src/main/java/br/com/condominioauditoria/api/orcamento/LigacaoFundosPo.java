@@ -1,11 +1,11 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.condominio.Condominio;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
-import br.com.condominioauditoria.api.contabil.Fundo;
-import br.com.condominioauditoria.api.contabil.FundoRepository;
+import br.com.condominioauditoria.api.model.accounting.Fund;
+import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.orcamento.PedidoConfirmacao.LigacaoFundo;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PrevisaoDetalhe;
+import br.com.condominioauditoria.api.repository.accounting.FundRepository;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,17 +43,17 @@ public class LigacaoFundosPo {
     public record PedidoFundos(List<LigacaoFundo> fundos) {
     }
 
-    private final CondominioRepository condominios;
+    private final CondominiumRepository condominios;
     private final PrevisaoOrcamentariaRepository previsoes;
     private final LinhaPoRepository linhas;
     private final PoFundoRepository poFundos;
-    private final FundoRepository fundos;
+    private final FundRepository fundos;
     private final EventoPrevisaoRepository eventos;
     private final ConsultaPrevisao consulta;
     private final ApplicationEventPublisher publicador;
 
-    LigacaoFundosPo(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes,
-            LinhaPoRepository linhas, PoFundoRepository poFundos, FundoRepository fundos,
+    LigacaoFundosPo(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
+            LinhaPoRepository linhas, PoFundoRepository poFundos, FundRepository fundos,
             EventoPrevisaoRepository eventos, ConsultaPrevisao consulta, ApplicationEventPublisher publicador) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -67,7 +67,7 @@ public class LigacaoFundosPo {
 
     @Transactional
     public PrevisaoDetalhe alterar(UUID condominioId, UUID poId, PedidoFundos pedido, String usuario) {
-        Condominio condominio = condominios.travar(condominioId)
+        Condominium condominio = condominios.lockById(condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
         PrevisaoOrcamentaria po = previsoes.findByIdAndCondominioId(poId, condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada"));
@@ -79,8 +79,8 @@ public class LigacaoFundosPo {
         List<LinhaPo> deFundo = EstruturaPo.de(linhas.findByPrevisaoIdOrderByOrdem(po.getId())).fundos()
                 .map(EstruturaPo.Grupo::linhas).orElse(List.of());
         Map<UUID, LinhaPo> porId = deFundo.stream().collect(Collectors.toMap(LinhaPo::getId, Function.identity()));
-        Map<UUID, Fundo> doCondominio = fundos.findByCondominioId(condominioId).stream()
-                .collect(Collectors.toMap(Fundo::getId, Function.identity()));
+        Map<UUID, Fund> doCondominio = fundos.findByCondominiumId(condominioId).stream()
+                .collect(Collectors.toMap(Fund::getId, Function.identity()));
 
         List<String> motivos = new ArrayList<>();
         Map<UUID, UUID> novo = new LinkedHashMap<>();
@@ -99,14 +99,14 @@ public class LigacaoFundosPo {
             if (f.fundoId() == null) {
                 continue;
             }
-            Fundo fundo = doCondominio.get(f.fundoId());
+            Fund fundo = doCondominio.get(f.fundoId());
             if (fundo == null) {
                 motivos.add("O fundo informado para a linha " + linha.getCodigoEfetivo() + " não é deste condomínio.");
-            } else if (fundo.getId().equals(condominio.getFundoOrdinarioId())) {
-                motivos.add("O fundo \"" + fundo.getNome() + "\" é o fundo ordinário e não pode ser ligado à linha "
+            } else if (fundo.getId().equals(condominio.getOperatingFundId())) {
+                motivos.add("O fundo \"" + fundo.getName() + "\" é o fundo ordinário e não pode ser ligado à linha "
                         + linha.getCodigoEfetivo() + ".");
             } else if (!fundosUsados.add(fundo.getId())) {
-                motivos.add("O fundo \"" + fundo.getNome() + "\" foi ligado a mais de uma linha de fundo.");
+                motivos.add("O fundo \"" + fundo.getName() + "\" foi ligado a mais de uma linha de fundo.");
             } else {
                 novo.put(linha.getId(), fundo.getId());
             }
@@ -140,11 +140,11 @@ public class LigacaoFundosPo {
         return consulta.detalhe(po);
     }
 
-    private static String nome(Map<UUID, Fundo> fundos, UUID id) {
+    private static String nome(Map<UUID, Fund> fundos, UUID id) {
         if (id == null) {
             return SEM_FUNDO;
         }
-        Fundo f = fundos.get(id);
-        return f == null ? "fundo " + id : f.getNome();
+        Fund f = fundos.get(id);
+        return f == null ? "fundo " + id : f.getName();
     }
 }

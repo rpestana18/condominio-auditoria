@@ -14,18 +14,18 @@ import static org.mockito.Mockito.when;
 import br.com.condominioauditoria.api.config.properties.FeatureCatalogTest;
 import br.com.condominioauditoria.api.dto.request.feature.ChangeFeatureRequest;
 import br.com.condominioauditoria.api.dto.response.feature.FeatureResponse;
-import br.com.condominioauditoria.api.ia.CatalogoIa;
-import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.report.UsageExcelReport;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.security.CondominiumAccess;
+import br.com.condominioauditoria.api.service.ai.AiCatalog;
+import br.com.condominioauditoria.api.service.ai.AiConfigurationService;
 import br.com.condominioauditoria.api.service.condominium.CondominiumService;
-import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.api.service.feature.FeatureService.FeatureState;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.api.service.usage.UsageReportService;
-import br.com.condominioauditoria.api.service.usage.UsageService;
 import br.com.condominioauditoria.api.service.usage.UsageService.UsageSummary;
+import br.com.condominioauditoria.api.service.usage.UsageService;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -84,13 +84,13 @@ class FeatureControllerPermissionTest {
         }
 
         @Bean
-        ConfiguracaoIaServico aiConfig() {
-            return mock(ConfiguracaoIaServico.class);
+        AiConfigurationService aiConfig() {
+            return mock(AiConfigurationService.class);
         }
 
         @Bean
-        CatalogoIa aiCatalog() {
-            return mock(CatalogoIa.class);
+        AiCatalog aiCatalog() {
+            return mock(AiCatalog.class);
         }
 
         @Bean
@@ -100,13 +100,13 @@ class FeatureControllerPermissionTest {
 
         @Bean
         CondominiumService condominiumService(CondominiumRepository condominiums, FeatureService features,
-                ConfiguracaoIaServico aiConfig) {
+                AiConfigurationService aiConfig) {
             return new CondominiumService(condominiums, features, aiConfig);
         }
 
         @Bean
         UsageReportService usageReports(UsageService usage, FeatureService features,
-                CondominiumService condominiumService, CatalogoIa aiCatalog) {
+                CondominiumService condominiumService, AiCatalog aiCatalog) {
             return new UsageReportService(usage, features, condominiumService, aiCatalog);
         }
 

@@ -1,9 +1,9 @@
 package br.com.condominioauditoria.api.service.condominium;
 
 import br.com.condominioauditoria.api.dto.response.feature.CondominiumContextResponse;
-import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.service.ai.AiConfigurationService;
 import br.com.condominioauditoria.api.service.feature.FeatureService;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -17,10 +17,10 @@ public class CondominiumService {
 
     private final CondominiumRepository condominiums;
     private final FeatureService features;
-    private final ConfiguracaoIaServico aiConfig;
+    private final AiConfigurationService aiConfig;
 
     public CondominiumService(CondominiumRepository condominiums, FeatureService features,
-            ConfiguracaoIaServico aiConfig) {
+            AiConfigurationService aiConfig) {
         this.condominiums = condominiums;
         this.features = features;
         this.aiConfig = aiConfig;
@@ -34,7 +34,7 @@ public class CondominiumService {
     public CondominiumContextResponse context(UUID condominiumId) {
         Condominium condominium = find(condominiumId);
         return new CondominiumContextResponse(condominium.getId(), condominium.getName(),
-                features.enabledCodes(condominiumId), aiConfig.contexto(condominiumId));
+                features.enabledCodes(condominiumId), aiConfig.assistantContext(condominiumId));
     }
 
     /** The condominium's name; 404 if it does not exist. */
@@ -43,8 +43,20 @@ public class CondominiumService {
         return find(condominiumId).getName();
     }
 
+    /** 404 if the condominium does not exist. */
+    @Transactional(readOnly = true)
+    public void requireExists(UUID condominiumId) {
+        if (!condominiums.existsById(condominiumId)) {
+            throw notFound();
+        }
+    }
+
     private Condominium find(UUID condominiumId) {
         return condominiums.findById(condominiumId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
+                .orElseThrow(CondominiumService::notFound);
+    }
+
+    private static ResponseStatusException notFound() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado");
     }
 }

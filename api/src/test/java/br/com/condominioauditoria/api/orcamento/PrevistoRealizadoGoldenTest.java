@@ -210,7 +210,7 @@ class PrevistoRealizadoGoldenTest {
     @Test
     void as73ContasSugeridasNaoSomamNada() {
         GoldenSetembro g = golden();
-        g.cenario.depara.carregarPlanilha(g.cenario.condominioId, g.po.getId(), "mapa.csv", GoldenSetembro.mapa()
+        g.cenario.depara.loadSheet(g.cenario.condominioId, g.po.getId(), "mapa.csv", GoldenSetembro.mapa()
                 .orElseThrow(), "admin");
 
         PrevistoRealizado r = g.setembro().resultado();
@@ -236,7 +236,8 @@ class PrevistoRealizadoGoldenTest {
         var lido = new LedgerEntryData(99, 1, LocalDate.of(2026, 9, 30), "8888", "CONTA DE TESTE", "", "Teste",
                 BigDecimal.ZERO.setScale(2), new BigDecimal("500.00"), BigDecimal.ZERO.setScale(2),
                 new Enrichment(null, null, null, false, false));
-        g.cenario.lancamentos.add(new LedgerEntry(g.cenario.condominioId, g.arquivoFluxo, g.cenario.ordinario.getId(), lido));
+        g.cenario.lancamentos.add(new LedgerEntry(g.cenario.condominioId, g.arquivoFluxo, g.cenario.ordinario.getId(),
+                lido));
 
         PrevistoRealizado r = g.setembro().resultado();
 

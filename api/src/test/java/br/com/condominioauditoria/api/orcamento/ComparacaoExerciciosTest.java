@@ -90,7 +90,7 @@ class ComparacaoExerciciosTest {
     void linhaSemRubricaConfirmadaFicaSemCorrespondenciaENaoESomada() {
         Budget po = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
         BudgetLine sindicatura = cenario.linha(po, "1.3.20", 0);
-        cenario.linhasRubrica.removeIf(l -> l.getLinhaPoId().equals(sindicatura.getId()));
+        cenario.linhasRubrica.removeIf(l -> l.getBudgetLineId().equals(sindicatura.getId()));
 
         Resultado r = cenario.comparacao.comparar(cenario.condominioId, null, null, false);
 

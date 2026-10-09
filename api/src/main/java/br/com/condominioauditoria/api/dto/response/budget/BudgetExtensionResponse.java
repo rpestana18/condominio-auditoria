@@ -1,7 +1,5 @@
 package br.com.condominioauditoria.api.dto.response.budget;
 
-import br.com.condominioauditoria.api.model.budget.Budget;
-import br.com.condominioauditoria.api.service.calculator.BudgetValidity;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 

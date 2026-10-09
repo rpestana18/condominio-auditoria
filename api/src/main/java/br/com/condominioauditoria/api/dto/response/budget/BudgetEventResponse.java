@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.api.dto.response.budget;
 
-import br.com.condominioauditoria.api.model.budget.BudgetEvent;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** Budget audit trail: confirmation, supersession and fund link changes. */

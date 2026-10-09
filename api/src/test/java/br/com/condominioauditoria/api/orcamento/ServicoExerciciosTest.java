@@ -47,7 +47,7 @@ class ServicoExerciciosTest {
         assertThat(atual.previstoMes()).isEqualByComparingTo("451620.13");
         assertThat(atual.meses()).hasSize(12).allMatch(m -> m.situacao() == SituacaoMes.SEM_FLUXO && !m.prorrogado());
         assertThat(atual.depara()).isNotNull();
-        assertThat(atual.rubricas().linhas()).isPositive();
+        assertThat(atual.rubricas().lines()).isPositive();
         assertThat(atual.colunaImpressa()).isNull();
 
         Exercicio coluna = lista.get(1);

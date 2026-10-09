@@ -1,10 +1,10 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.dto.response.budget.AccountMappingSummaryResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetExtensionResponse;
+import br.com.condominioauditoria.api.dto.response.budget.BudgetItemSummaryResponse;
 import br.com.condominioauditoria.api.orcamento.ColunaImpressa.GrupoColuna;
-import br.com.condominioauditoria.api.orcamento.DeparaDtos.ResumoDepara;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
-import br.com.condominioauditoria.api.orcamento.RubricaDtos.ResumoRubricas;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -32,7 +32,8 @@ public final class ExercicioDtos {
      */
     public record Exercicio(String id, TipoExercicio tipo, String rotulo, UUID poId, Integer versao, String inicio,
             String fim, BudgetExtensionResponse prorrogacao, BigDecimal previstoMes, List<MesDoExercicio> meses,
-            ResumoDepara depara, ResumoRubricas rubricas, String colunaImpressa, List<String> avisos) {
+            AccountMappingSummaryResponse depara, BudgetItemSummaryResponse rubricas, String colunaImpressa,
+                    List<String> avisos) {
     }
 
     /**

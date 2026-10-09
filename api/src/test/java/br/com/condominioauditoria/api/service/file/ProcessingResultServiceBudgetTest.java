@@ -8,6 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import br.com.condominioauditoria.api.config.properties.BudgetProperties;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Status;
 import br.com.condominioauditoria.api.model.accounting.TotalsCheck;
@@ -18,7 +19,6 @@ import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.orcamento.PoDoPiloto;
-import br.com.condominioauditoria.api.orcamento.PropriedadesOrcamento;
 import br.com.condominioauditoria.api.repository.accounting.FundBalanceRepository;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
@@ -49,7 +49,7 @@ class ProcessingResultServiceBudgetTest {
     private final BudgetLineRepository lines = mock(BudgetLineRepository.class);
     private final ProcessingResultService service = new ProcessingResultService(files, mock(FundRepository.class),
             entries, balances, totalsChecks,
-            new BudgetImportService(budgets, lines, new PropriedadesOrcamento(new BigDecimal("0.01"))), event -> { });
+            new BudgetImportService(budgets, lines, new BudgetProperties(new BigDecimal("0.01"))), event -> { });
 
     private final List<Budget> saved = new ArrayList<>();
     private SourceFile file;

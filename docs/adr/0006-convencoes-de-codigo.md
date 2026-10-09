@@ -121,6 +121,19 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | vigência da PO, PO do mês | `BudgetValidity`, `BudgetOfMonth` | |
 | marca da linha da PO | `BudgetLineMark` | |
 | mudança no orçamento (evento) | `BudgetChanged` | |
+| rubrica da linha, trilha das rubricas | `BudgetLineItem`, `BudgetItemEvent` | |
+| sugestão da rubrica | `BudgetItemSuggestion` | |
+| conta do fluxo, conta da PO | `account` (`accountCode`, `accountName`) | o nome da conta continua o texto lido |
+| destino (do de-para), tipo de destino | `MappingTarget`, `MappingTargetType` | |
+| trilha do de-para | `AccountMappingEvent` | |
+| de-para efetivo (só o confirmado) | `EffectiveAccountMapping` | |
+| sugestão pelo nome, nota, palavras vazias, abreviações | `NameSuggestion`, `score`, `stopWords`, `abbreviations` | |
+| planilha do de-para | `AccountMappingSheet` | |
+| cópia da versão anterior, igual à versão anterior | `PreviousVersionCopy`, `sameAsPreviousVersion` | |
+| sugerido, confirmado, recusado (estado) | `status` (`SUGERIDO`, `CONFIRMADO`, `RECUSADO`) | as constantes ficam até a fase 2 |
+| origem (da sugestão), motivo | `source`, `reason` | |
+| lote (confirmar ou recusar vários) | `batch` | |
+| ignorada (no lote), recusada (na planilha) | `skipped`, `rejected` | |
 
 ---
 

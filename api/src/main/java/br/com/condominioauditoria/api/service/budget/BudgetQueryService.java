@@ -4,10 +4,8 @@ import br.com.condominioauditoria.api.dto.response.budget.BudgetCheckResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetConfirmationResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetDetailResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetEventResponse;
-import br.com.condominioauditoria.api.dto.response.budget.BudgetExtensionResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetFindingResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetFundLineResponse;
-import br.com.condominioauditoria.api.dto.response.budget.BudgetLineResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetSummaryResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetWarningResponse;
 import br.com.condominioauditoria.api.dto.response.budget.RepeatedCodeResponse;
@@ -97,7 +95,6 @@ public class BudgetQueryService {
     public Optional<BudgetDetailResponse> detail(UUID condominiumId, UUID id) {
         return budgets.findByIdAndCondominiumId(id, condominiumId).map(this::detail);
     }
-
 
     /** The budget's audit trail (every role): confirmation, supersession and fund link changes. Empty = not found. */
     @Transactional(readOnly = true)

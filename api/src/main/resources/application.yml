@@ -61,16 +61,16 @@ condominio:
     max-attempts: 3
   grpc:
     port: ${GRPC_PORTA:9090}
-  orcamento:
+  budget:
     # Diferença até este valor entre o impresso na PO e a soma é aviso de arredondamento, não divergência.
     # Os cálculos usam sempre a soma das linhas. 0.00 desliga (decisão do usuário, Q30).
-    tolerancia-arredondamento: ${PO_TOLERANCIA_ARREDONDAMENTO:0.01}
+    rounding-tolerance: ${PO_TOLERANCIA_ARREDONDAMENTO:0.01}
     # Sugestão do de-para pelo nome (ADR 0004, Decisão 4): comparação de texto, sem IA. Dígitos são sempre descartados.
-    depara:
+    account-mapping:
       # Proporção mínima de palavras em comum (Jaccard) para sugerir; empate não sugere
-      nota-minima: 0.5
-      palavras-vazias: [A, O, AS, OS, DE, DA, DO, DAS, DOS, E, C, COM, EM, NO, NA, NOS, NAS, P, PARA, POR]
-      abreviacoes:
+      min-score: 0.5
+      stop-words: [A, O, AS, OS, DE, DA, DO, DAS, DOS, E, C, COM, EM, NO, NA, NOS, NAS, P, PARA, POR]
+      abbreviations:
         DESP: DESPESA
         DESPS: DESPESAS
         MAT: MATERIAL

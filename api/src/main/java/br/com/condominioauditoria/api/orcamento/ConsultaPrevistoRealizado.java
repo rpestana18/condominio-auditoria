@@ -23,6 +23,7 @@ import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Evidencia;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
 import br.com.condominioauditoria.api.repository.audit.RuleParameterRepository;
+import br.com.condominioauditoria.api.repository.budget.AccountMappingRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetFundLinkRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
@@ -63,7 +64,7 @@ public class ConsultaPrevistoRealizado {
     private final CondominiumRepository condominios;
     private final BudgetRepository previsoes;
     private final BudgetLineRepository linhas;
-    private final DeparaContaRepository deparas;
+    private final AccountMappingRepository deparas;
     private final BudgetFundLinkRepository poFundos;
     private final FundRepository fundos;
     private final SourceFileRepository arquivos;
@@ -73,7 +74,7 @@ public class ConsultaPrevistoRealizado {
     private final RealocacaoLancamentoRepository realocacoes;
 
     ConsultaPrevistoRealizado(CondominiumRepository condominios, BudgetRepository previsoes,
-            BudgetLineRepository linhas, DeparaContaRepository deparas, BudgetFundLinkRepository poFundos,
+            BudgetLineRepository linhas, AccountMappingRepository deparas, BudgetFundLinkRepository poFundos,
             FundRepository fundos, SourceFileRepository arquivos, LedgerEntryRepository lancamentos,
             RuleParameterRepository parametros, BudgetQueryService consultaPrevisao,
             RealocacaoLancamentoRepository realocacoes) {
@@ -173,7 +174,7 @@ public class ConsultaPrevistoRealizado {
         List<CalculoPrevistoRealizado.Realocacao> ativas = realocacoes.findByPrevisaoIdAndDesfeitaEmIsNull(po.getId())
                 .stream().map(RealocacaoLancamento::paraCalculo).toList();
         return CalculoPrevistoRealizado.calcular(new Entrada(po, nomeArquivo, lidas,
-                deparas.findByPrevisaoIdOrderByContaCodigo(po.getId()), fundoPorLinha, nomes,
+                deparas.findByBudgetIdOrderByAccountCode(po.getId()), fundoPorLinha, nomes,
                 condominio.getOperatingFundId(), fluxos, doPeriodo, ativas, limite, avisosDaPo, periodo));
     }
 

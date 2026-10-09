@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.api.service.budget;
 
+import br.com.condominioauditoria.api.config.properties.BudgetProperties;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetData;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetLineData;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.TotalsCheckData;
@@ -8,7 +9,6 @@ import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.model.enums.BudgetLineMark;
 import br.com.condominioauditoria.api.model.enums.BudgetLineType;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.orcamento.PropriedadesOrcamento;
 import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.service.calculator.BudgetReadingAssessment;
@@ -29,10 +29,10 @@ public class BudgetImportService {
 
     private final BudgetRepository budgets;
     private final BudgetLineRepository lines;
-    private final PropriedadesOrcamento properties;
+    private final BudgetProperties properties;
 
     public BudgetImportService(BudgetRepository budgets, BudgetLineRepository lines,
-            PropriedadesOrcamento properties) {
+            BudgetProperties properties) {
         this.budgets = budgets;
         this.lines = lines;
         this.properties = properties;
@@ -63,13 +63,13 @@ public class BudgetImportService {
 
         BudgetStructure structure = BudgetStructure.of(newLines);
         var assessment = BudgetReadingAssessment.assess(structure, toAssessment(checks),
-                properties.toleranciaArredondamento());
+                properties.roundingTolerance());
         List<String> columns = read.budgetColumns() == null ? List.of() : read.budgetColumns();
         budget.recordReading(parser, read.title(), read.printedFiscalYear(),
                 columns.size() > 1 ? columns.get(0) : null, columns.isEmpty() ? null : columns.getLast(),
                 assessment.status(), structure.total() == null ? null : structure.total().getBudgeted(),
                 structure.printedMonthlyPlanned().orElse(null), structure.monthlyPlannedFromLines(),
-                properties.toleranciaArredondamento(), Instant.now());
+                properties.roundingTolerance(), Instant.now());
         budgets.save(budget);
         lines.saveAll(newLines);
         return budget;

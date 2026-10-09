@@ -17,7 +17,6 @@ import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.orcamento.ServicoRubricas;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetEventRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetFundLinkRepository;
@@ -77,14 +76,14 @@ public class BudgetConfirmationService {
     private final BudgetQueryService query;
     private final BudgetReserveFundService reserveFund;
     private final FindingSyncService findings;
-    private final ServicoRubricas budgetItems;
+    private final BudgetItemService budgetItems;
     private final ApplicationEventPublisher publisher;
 
     public BudgetConfirmationService(CondominiumRepository condominiums, BudgetRepository budgets,
             BudgetLineRepository lines, BudgetFundLinkRepository fundLinks, BudgetEventRepository events,
             SourceFileRepository files, FundRepository funds, BudgetQueryService query,
                     BudgetReserveFundService reserveFund,
-            FindingSyncService findings, ServicoRubricas rubricas, ApplicationEventPublisher publisher) {
+            FindingSyncService findings, BudgetItemService rubricas, ApplicationEventPublisher publisher) {
         this.condominiums = condominiums;
         this.budgets = budgets;
         this.lines = lines;
@@ -162,7 +161,7 @@ public class BudgetConfirmationService {
         shortenExtensions(budget, start, end, version, supersededBudgets, username, now);
         recordReserveFundFinding(budget, structure);
         // Budget items (RF-11.7): the condominium's first budget becomes the catalog; on the others, only suggestions
-        budgetItems.aoConfirmar(budget, username, now);
+        budgetItems.onConfirm(budget, username, now);
         // Budget confirmed and funds linked: the findings of the fiscal year's months are recalculated after the commit
         publisher.publishEvent(BudgetChanged.of(condominiumId, "PO versão " + version + " confirmada (exercício "
                 + start + " a " + end + ")", username, now));
@@ -252,7 +251,8 @@ public class BudgetConfirmationService {
             }
         }
         Map<String, List<BudgetLine>> linesByCode = new LinkedHashMap<>();
-        budgetLines.forEach(l -> linesByCode.computeIfAbsent(effectiveByLine.getOrDefault(l.getId(), l.getEffectiveCode()),
+        budgetLines.forEach(l -> linesByCode.computeIfAbsent(effectiveByLine.getOrDefault(l.getId(),
+                l.getEffectiveCode()),
                 k -> new ArrayList<>()).add(l));
         linesByCode.forEach((code, sameCode) -> {
             if (sameCode.size() > 1) {

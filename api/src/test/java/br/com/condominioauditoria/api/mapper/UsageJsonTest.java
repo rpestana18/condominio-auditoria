@@ -2,7 +2,6 @@ package br.com.condominioauditoria.api.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import br.com.condominioauditoria.api.dto.response.feature.UsageResponse;
 import br.com.condominioauditoria.api.model.enums.UsageFunction;
 import br.com.condominioauditoria.api.model.usage.UsageTotal;
 import br.com.condominioauditoria.api.service.calculator.UsageCostCalculator;

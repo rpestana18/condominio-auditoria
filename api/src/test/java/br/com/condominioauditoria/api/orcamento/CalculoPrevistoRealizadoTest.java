@@ -5,8 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.budget.AccountMapping;
 import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.model.budget.MappingTarget;
+import br.com.condominioauditoria.api.model.enums.AccountMappingSource;
+import br.com.condominioauditoria.api.model.enums.AccountMappingStatus;
 import br.com.condominioauditoria.api.model.enums.BudgetLineType;
 import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Acumulado;
@@ -147,7 +151,8 @@ class CalculoPrevistoRealizadoTest {
     @Test
     void fundosSemRecebimentoDeCotaGravadoPedemReprocessoELinhaSemFundoNaoTemNumero() throws Exception {
         Po po = poComFundo();
-        LedgerEntry cota = lancamento(arquivoSet, RESERVA, null, "300.00", "0.00", false, true, LocalDate.of(2026, 9, 2));
+        LedgerEntry cota = lancamento(arquivoSet, RESERVA, null, "300.00", "0.00", false, true, LocalDate.of(2026, 9,
+                2));
         LedgerEntry rendimento = lancamento(arquivoSet, RESERVA, null, "100.00", "0.00", false, false,
                 LocalDate.of(2026, 9, 3));
         lancamentos.addAll(List.of(cota, rendimento));
@@ -189,7 +194,7 @@ class CalculoPrevistoRealizadoTest {
     // ---- montagem
 
     /** PO confirmada 05/2026 a 04/2027 com um grupo de uma linha (1.1.1) e de-para 1001 → 1.1.1 confirmado. */
-    private record Po(Budget previsao, List<BudgetLine> linhas, List<DeparaConta> deparas,
+    private record Po(Budget previsao, List<BudgetLine> linhas, List<AccountMapping> deparas,
             Map<UUID, UUID> fundoPorLinha) {
     }
 
@@ -198,8 +203,9 @@ class CalculoPrevistoRealizadoTest {
         BudgetLine total = linha(p, 1, BudgetLineType.TOTAL, "1", null, "TOTAL", orcado);
         BudgetLine grupo = linha(p, 2, BudgetLineType.GRUPO, "1.1", null, "PESSOAL", orcado);
         BudgetLine l = linha(p, 3, BudgetLineType.LINHA, "1.1.1", "1545 - Salários", "Salários", orcado);
-        DeparaConta d = new DeparaConta(p, "1001", "SALARIO", Destino.linha(l), EstadoDepara.CONFIRMADO,
-                OrigemDepara.ADMIN, null, false, "admin", Instant.EPOCH);
+        AccountMapping d = new AccountMapping(p, "1001", "SALARIO", MappingTarget.line(l),
+                AccountMappingStatus.CONFIRMADO,
+                AccountMappingSource.ADMIN, null, false, "admin", Instant.EPOCH);
         return new Po(p, List.of(total, grupo, l), List.of(d), Map.of());
     }
 
@@ -207,7 +213,8 @@ class CalculoPrevistoRealizadoTest {
         Budget p = confirmada();
         BudgetLine grupo = linha(p, 1, BudgetLineType.GRUPO, "1.1", null, "PESSOAL", "1000.00");
         BudgetLine l = linha(p, 2, BudgetLineType.LINHA, "1.1.1", "1545 - Salários", "Salários", "1000.00");
-        BudgetLine fundos = new BudgetLine(p, 3, 1, BudgetLineType.GRUPO, "1.9", null, "Fundos", null, "Fundos do Condomínio",
+        BudgetLine fundos = new BudgetLine(p, 3, 1, BudgetLineType.GRUPO, "1.9", null, "Fundos", null,
+                "Fundos do Condomínio",
                 BigDecimal.ZERO.setScale(2), new BigDecimal("50.00"), null, null);
         BudgetLine reserva = linha(p, 4, BudgetLineType.LINHA, "1.9.1", null, "Fundo de Reserva", "30.00");
         BudgetLine obras = linha(p, 5, BudgetLineType.LINHA, "1.9.2", null, "Fundo de Obras", "20.00");
@@ -235,7 +242,8 @@ class CalculoPrevistoRealizadoTest {
 
     private LedgerEntry lancamento(UUID arquivo, UUID fundo, String conta, String credito, String debito,
             boolean transferencia, boolean cota, LocalDate data) {
-        var lido = new LedgerEntryData(1, lancamentos.size() + 1, data, conta, conta == null ? "" : "CONTA " + conta, "",
+        var lido = new LedgerEntryData(1, lancamentos.size() + 1, data, conta, conta == null ? "" : "CONTA " + conta,
+                "",
                 "Teste", new BigDecimal(credito), new BigDecimal(debito), BigDecimal.ZERO.setScale(2),
                 new Enrichment(null, null, null, transferencia, cota));
         return new LedgerEntry(CONDOMINIO, arquivo, fundo, lido);

@@ -3,18 +3,23 @@ package br.com.condominioauditoria.api.orcamento;
 import br.com.condominioauditoria.api.event.BudgetChanged;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntryFingerprint;
+import br.com.condominioauditoria.api.model.budget.AccountMapping;
 import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.model.enums.AccountMappingStatus;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
+import br.com.condominioauditoria.api.model.enums.MappingTargetType;
 import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.orcamento.RealocacaoDtos.PedidoRealocacao;
 import br.com.condominioauditoria.api.orcamento.RealocacaoDtos.RealocacaoDto;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
+import br.com.condominioauditoria.api.repository.budget.AccountMappingRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.budget.AccountMappingService;
 import br.com.condominioauditoria.api.service.budget.BudgetQueryService;
 import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import java.time.Instant;
@@ -51,14 +56,15 @@ public class ServicoRealocacao {
     private final BudgetQueryService consultaPrevisao;
     private final BudgetRepository previsoes;
     private final BudgetLineRepository linhas;
-    private final DeparaContaRepository deparas;
+    private final AccountMappingRepository deparas;
     private final RealocacaoLancamentoRepository realocacoes;
     private final EventoRealocacaoRepository eventos;
     private final ApplicationEventPublisher publicador;
 
-    ServicoRealocacao(CondominiumRepository condominios, LedgerEntryRepository lancamentos, SourceFileRepository arquivos,
+    ServicoRealocacao(CondominiumRepository condominios, LedgerEntryRepository lancamentos,
+            SourceFileRepository arquivos,
             BudgetQueryService consultaPrevisao, BudgetRepository previsoes, BudgetLineRepository linhas,
-            DeparaContaRepository deparas, RealocacaoLancamentoRepository realocacoes,
+            AccountMappingRepository deparas, RealocacaoLancamentoRepository realocacoes,
             EventoRealocacaoRepository eventos, ApplicationEventPublisher publicador) {
         this.condominios = condominios;
         this.lancamentos = lancamentos;
@@ -97,15 +103,15 @@ public class ServicoRealocacao {
         Budget po = consultaPrevisao.activeInMonth(condominioId, mes)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Sem PO aprovada para "
                         + CalculoPrevistoRealizado.mmaaaa(mes)));
-        DeparaConta depara = l.getAccountCode() == null ? null
-                : deparas.findByPrevisaoIdAndContaCodigo(po.getId(), l.getAccountCode()).orElse(null);
-        if (depara == null || depara.getEstado() != EstadoDepara.CONFIRMADO
-                || depara.getTipoDestino() != TipoDestino.A_REALOCAR) {
+        AccountMapping depara = l.getAccountCode() == null ? null
+                : deparas.findByBudgetIdAndAccountCode(po.getId(), l.getAccountCode()).orElse(null);
+        if (depara == null || depara.getStatus() != AccountMappingStatus.CONFIRMADO
+                || depara.getTargetType() != MappingTargetType.A_REALOCAR) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "Só lançamentos \"a realocar\" são"
                     + " realocados: a conta " + l.getAccountCode() + " não tem de-para confirmado para REALOCAR");
         }
         List<BudgetLine> lidas = linhas.findByBudgetIdOrderByPosition(po.getId());
-        BudgetLine destino = ServicoDepara.destinosDeDebito(BudgetStructure.of(lidas)).stream()
+        BudgetLine destino = AccountMappingService.debitTargets(BudgetStructure.of(lidas)).stream()
                 .filter(x -> x.getId().equals(pedido.linhaId())).findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT,
                         "A linha informada não é uma linha de despesa (1.1 a 1.8) da PO que vale em "

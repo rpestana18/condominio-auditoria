@@ -1,11 +1,11 @@
 package br.com.condominioauditoria.rag.indice;
 
-import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido;
-import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Celula;
-import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Pagina;
-import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Palavra;
-import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Paragrafo;
-import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Planilha;
+import br.com.condominioauditoria.rag.model.document.ReadDocument;
+import br.com.condominioauditoria.rag.model.document.ReadDocument.Cell;
+import br.com.condominioauditoria.rag.model.document.ReadDocument.Page;
+import br.com.condominioauditoria.rag.model.document.ReadDocument.Paragraph;
+import br.com.condominioauditoria.rag.model.document.ReadDocument.Sheet;
+import br.com.condominioauditoria.rag.model.document.ReadDocument.Word;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -42,25 +42,25 @@ public final class CortadorTrechos {
     private CortadorTrechos() {
     }
 
-    public static DocumentoCortado cortar(DocumentoLido documento) {
-        return switch (documento.tipo()) {
-            case "pdf" -> cortarPdf(documento.paginas());
-            case "xlsx" -> cortarPlanilhas(documento.planilhas());
-            case "docx" -> cortarParagrafos(documento.paragrafos());
-            default -> throw new IllegalArgumentException("Tipo de documento não suportado: " + documento.tipo());
+    public static DocumentoCortado cortar(ReadDocument documento) {
+        return switch (documento.type()) {
+            case "pdf" -> cortarPdf(documento.pages());
+            case "xlsx" -> cortarPlanilhas(documento.sheets());
+            case "docx" -> cortarParagrafos(documento.paragraphs());
+            default -> throw new IllegalArgumentException("Tipo de documento não suportado: " + documento.type());
         };
     }
 
     // ---------------------------------------------------------------- PDF
 
-    private static DocumentoCortado cortarPdf(List<Pagina> paginas) {
+    private static DocumentoCortado cortarPdf(List<Page> paginas) {
         var trechos = new Trechos();
-        for (Pagina pagina : paginas) {
-            if ("sem_texto".equals(pagina.metodo()) || pagina.palavras().isEmpty()) {
+        for (Page pagina : paginas) {
+            if ("sem_texto".equals(pagina.method()) || pagina.words().isEmpty()) {
                 continue;
             }
-            var local = new Localizacao.Pagina(pagina.numero());
-            for (String texto : dividir(linhasDaPagina(pagina.palavras()))) {
+            var local = new Localizacao.Pagina(pagina.number());
+            for (String texto : dividir(linhasDaPagina(pagina.words()))) {
                 trechos.add(local, texto);
             }
         }
@@ -73,18 +73,18 @@ public final class CortadorTrechos {
     }
 
     /** Agrupa as palavras por altura e devolve o texto de cada linha, de cima para baixo. */
-    static List<String> linhasDaPagina(List<Palavra> palavras) {
-        List<Palavra> ordenadas = palavras.stream().sorted(Comparator.comparingDouble(Palavra::topo)).toList();
+    public static List<String> linhasDaPagina(List<Word> palavras) {
+        List<Word> ordenadas = palavras.stream().sorted(Comparator.comparingDouble(Word::top)).toList();
         List<String> linhas = new ArrayList<>();
-        List<Palavra> atual = new ArrayList<>();
+        List<Word> atual = new ArrayList<>();
         double topoAtual = Double.NaN;
-        for (Palavra p : ordenadas) {
-            if (!atual.isEmpty() && p.topo() - topoAtual > TOLERANCIA_LINHA) {
+        for (Word p : ordenadas) {
+            if (!atual.isEmpty() && p.top() - topoAtual > TOLERANCIA_LINHA) {
                 linhas.add(textoDaLinha(atual));
                 atual = new ArrayList<>();
             }
             if (atual.isEmpty()) {
-                topoAtual = p.topo();
+                topoAtual = p.top();
             }
             atual.add(p);
         }
@@ -94,8 +94,8 @@ public final class CortadorTrechos {
         return linhas.stream().filter(l -> !l.isBlank()).toList();
     }
 
-    private static String textoDaLinha(List<Palavra> palavras) {
-        return palavras.stream().sorted(Comparator.comparingDouble(Palavra::x0)).map(Palavra::texto)
+    private static String textoDaLinha(List<Word> palavras) {
+        return palavras.stream().sorted(Comparator.comparingDouble(Word::x0)).map(Word::text)
                 .collect(Collectors.joining(" ")).strip();
     }
 
@@ -103,7 +103,7 @@ public final class CortadorTrechos {
      * Junta as linhas em textos de até {@link #MAX_CARACTERES}. Cada texto novo começa repetindo as últimas linhas do
      * anterior (até {@link #SOBREPOSICAO} caracteres). Linha maior que o limite é quebrada nas palavras.
      */
-    static List<String> dividir(List<String> linhas) {
+    public static List<String> dividir(List<String> linhas) {
         List<String> pedacos = new ArrayList<>();
         for (String linha : linhas) {
             pedacos.addAll(quebrarLinhaLonga(linha, MAX_CARACTERES - SOBREPOSICAO - 1));
@@ -144,7 +144,7 @@ public final class CortadorTrechos {
         return fim;
     }
 
-    static List<String> quebrarLinhaLonga(String linha, int limite) {
+    public static List<String> quebrarLinhaLonga(String linha, int limite) {
         if (linha.length() <= limite) {
             return List.of(linha);
         }
@@ -176,17 +176,17 @@ public final class CortadorTrechos {
 
     // ---------------------------------------------------------------- Excel
 
-    private static DocumentoCortado cortarPlanilhas(List<Planilha> planilhas) {
+    private static DocumentoCortado cortarPlanilhas(List<Sheet> planilhas) {
         var trechos = new Trechos();
-        for (Planilha planilha : planilhas) {
-            Map<Integer, String> linhas = linhasDaPlanilha(planilha.celulas());
+        for (Sheet planilha : planilhas) {
+            Map<Integer, String> linhas = linhasDaPlanilha(planilha.cells());
             if (linhas.isEmpty()) {
                 continue;
             }
             var iterador = linhas.entrySet().iterator();
             var cabecalho = iterador.next();
             if (!iterador.hasNext()) { // aba com uma linha só
-                trechos.add(new Localizacao.Planilha(planilha.nome(), cabecalho.getKey(), cabecalho.getKey()),
+                trechos.add(new Localizacao.Planilha(planilha.name(), cabecalho.getKey(), cabecalho.getKey()),
                         cabecalho.getValue());
                 continue;
             }
@@ -196,14 +196,14 @@ public final class CortadorTrechos {
                 var linha = iterador.next();
                 if (!bloco.isEmpty() && (bloco.size() == LINHAS_POR_BLOCO
                         || tamanho + 1 + linha.getValue().length() > MAX_CARACTERES)) {
-                    fecharBloco(trechos, planilha.nome(), cabecalho.getValue(), bloco);
+                    fecharBloco(trechos, planilha.name(), cabecalho.getValue(), bloco);
                     bloco = new ArrayList<>();
                     tamanho = cabecalho.getValue().length();
                 }
                 bloco.add(linha);
                 tamanho += 1 + linha.getValue().length();
             }
-            fecharBloco(trechos, planilha.nome(), cabecalho.getValue(), bloco);
+            fecharBloco(trechos, planilha.name(), cabecalho.getValue(), bloco);
         }
         String motivo = trechos.lista.isEmpty() ? "Planilha sem células preenchidas" : null;
         return new DocumentoCortado(planilhas.size(), trechos.lista, motivo);
@@ -213,16 +213,16 @@ public final class CortadorTrechos {
      * Texto de cada linha da aba (células em ordem de coluna, separadas por " | "), por número de linha. A primeira
      * linha com conteúdo é tratada como cabeçalho.
      */
-    static Map<Integer, String> linhasDaPlanilha(List<Celula> celulas) {
-        Map<Integer, List<Celula>> porLinha = new TreeMap<>();
-        for (Celula c : celulas) {
-            if (c.valor() != null && !c.valor().isBlank()) {
-                porLinha.computeIfAbsent(c.linha(), l -> new ArrayList<>()).add(c);
+    public static Map<Integer, String> linhasDaPlanilha(List<Cell> celulas) {
+        Map<Integer, List<Cell>> porLinha = new TreeMap<>();
+        for (Cell c : celulas) {
+            if (c.value() != null && !c.value().isBlank()) {
+                porLinha.computeIfAbsent(c.row(), l -> new ArrayList<>()).add(c);
             }
         }
         Map<Integer, String> linhas = new TreeMap<>();
         porLinha.forEach((numero, doLinha) -> linhas.put(numero, doLinha.stream()
-                .sorted(Comparator.comparingInt(Celula::coluna)).map(c -> c.valor().strip())
+                .sorted(Comparator.comparingInt(Cell::column)).map(c -> c.value().strip())
                 .collect(Collectors.joining(" | "))));
         return linhas;
     }
@@ -239,12 +239,12 @@ public final class CortadorTrechos {
 
     // ---------------------------------------------------------------- Word
 
-    private static DocumentoCortado cortarParagrafos(List<Paragrafo> paragrafos) {
+    private static DocumentoCortado cortarParagrafos(List<Paragraph> paragrafos) {
         var trechos = new Trechos();
-        List<Paragrafo> grupo = new ArrayList<>();
+        List<Paragraph> grupo = new ArrayList<>();
         int tamanho = 0;
-        for (Paragrafo p : paragrafos) {
-            String texto = p.texto() == null ? "" : p.texto().strip();
+        for (Paragraph p : paragrafos) {
+            String texto = p.text() == null ? "" : p.text().strip();
             if (texto.isEmpty()) {
                 continue;
             }
@@ -253,7 +253,7 @@ public final class CortadorTrechos {
                 grupo = new ArrayList<>();
                 tamanho = 0;
                 for (String parte : dividir(quebrarLinhaLonga(texto, MAX_CARACTERES - SOBREPOSICAO - 1))) {
-                    trechos.add(new Localizacao.Paragrafos(p.ordem(), p.ordem(), ""), parte);
+                    trechos.add(new Localizacao.Paragrafos(p.sequence(), p.sequence(), ""), parte);
                 }
                 continue;
             }
@@ -262,7 +262,7 @@ public final class CortadorTrechos {
                 grupo = new ArrayList<>();
                 tamanho = 0;
             }
-            grupo.add(new Paragrafo(p.ordem(), texto, p.tabela()));
+            grupo.add(new Paragraph(p.sequence(), texto, p.table()));
             tamanho += (tamanho == 0 ? 0 : 1) + texto.length();
         }
         fecharGrupo(trechos, grupo);
@@ -270,19 +270,19 @@ public final class CortadorTrechos {
         return new DocumentoCortado(1, trechos.lista, motivo);
     }
 
-    private static void fecharGrupo(Trechos trechos, List<Paragrafo> grupo) {
+    private static void fecharGrupo(Trechos trechos, List<Paragraph> grupo) {
         if (grupo.isEmpty()) {
             return;
         }
-        String texto = grupo.stream().map(Paragrafo::texto).collect(Collectors.joining("\n"));
-        trechos.add(new Localizacao.Paragrafos(grupo.getFirst().ordem(), grupo.getLast().ordem(), ""), texto);
+        String texto = grupo.stream().map(Paragraph::text).collect(Collectors.joining("\n"));
+        trechos.add(new Localizacao.Paragrafos(grupo.getFirst().sequence(), grupo.getLast().sequence(), ""), texto);
     }
 
     /** Numera os trechos na ordem do documento. */
     private static final class Trechos {
         private final List<TrechoCortado> lista = new ArrayList<>();
 
-        void add(Localizacao local, String texto) {
+        public void add(Localizacao local, String texto) {
             lista.add(new TrechoCortado(lista.size() + 1, local, texto));
         }
     }

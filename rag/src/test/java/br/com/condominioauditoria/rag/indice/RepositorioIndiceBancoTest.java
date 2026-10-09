@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.condominioauditoria.rag.indice.RepositorioIndice.Achado;
 import br.com.condominioauditoria.rag.indice.RepositorioIndice.FiltrosBusca;
-import br.com.condominioauditoria.rag.mensagens.IndexarArquivo;
+import br.com.condominioauditoria.rag.messaging.IndexFileMessage;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -31,13 +31,13 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Cada teste usa um condomínio novo, então pode rodar de novo no mesmo banco.
  */
 @EnabledIfEnvironmentVariable(named = "RAG_TESTE_BANCO_URL", matches = ".+")
-class RepositorioIndiceBancoTest {
+public class RepositorioIndiceBancoTest {
 
     private static RepositorioIndice repositorio;
     private static JdbcClient jdbc;
 
     @BeforeAll
-    static void migrar() {
+    public static void migrar() {
         String url = System.getenv("RAG_TESTE_BANCO_URL") + "?currentSchema=rag,public";
         var dados = new DriverManagerDataSource(url, "condominio", "condominio");
         Flyway.configure().dataSource(dados).schemas("rag").defaultSchema("rag").load().migrate();
@@ -47,10 +47,10 @@ class RepositorioIndiceBancoTest {
     }
 
     @Test
-    void indexaBuscaPorPalavraSemAcentoEPorVetorComFiltros() {
+    public void indexaBuscaPorPalavraSemAcentoEPorVetorComFiltros() {
         UUID condominio = UUID.randomUUID();
-        IndexarArquivo ata = pedido(condominio, "ATA", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
-        IndexarArquivo contrato = pedido(condominio, "CONTRATO", null, null);
+        IndexFileMessage ata = pedido(condominio, "ATA", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+        IndexFileMessage contrato = pedido(condominio, "CONTRATO", null, null);
         gravar(ata, List.of(
                 trecho(1, new Localizacao.Pagina(1), "A assembleia aprovou a manutenção do elevador."),
                 trecho(2, new Localizacao.Pagina(2), "Multa de 2% por atraso no pagamento da cota.")), 0);
@@ -78,7 +78,7 @@ class RepositorioIndiceBancoTest {
         assertThat(repositorio.buscarPorPalavra(new FiltrosBusca(condominio, null, null, LocalDate.of(2026, 8, 31),
                 null), "manutencao", 10)).isEmpty();
         assertThat(repositorio.buscarPorPalavra(new FiltrosBusca(condominio, null, null, null,
-                List.of(contrato.arquivoId())), "manutencao", 10)).hasSize(1);
+                List.of(contrato.fileId())), "manutencao", 10)).hasSize(1);
         assertThat(repositorio.buscarPorPalavra(new FiltrosBusca(UUID.randomUUID(), null, null, null, null),
                 "manutencao", 10)).isEmpty();
 
@@ -92,16 +92,16 @@ class RepositorioIndiceBancoTest {
                 eixo(2), "bge-m3", 10)).hasSize(2);
 
         // Exclusão lógica: some das duas buscas, mas continua no banco
-        assertThat(repositorio.retirar(ata.arquivoId(), UUID.randomUUID())).isTrue();
+        assertThat(repositorio.retirar(ata.fileId(), UUID.randomUUID())).isTrue();
         assertThat(repositorio.buscarPorPalavra(todos, "elevador", 10)).isEmpty();
         assertThat(repositorio.buscarPorVetor(todos, eixo(0), "bge-m3", 10)).hasSize(2);
-        assertThat(repositorio.buscar(ata.arquivoId()).orElseThrow().retirado()).isTrue();
+        assertThat(repositorio.buscar(ata.fileId()).orElseThrow().retirado()).isTrue();
     }
 
     @Test
-    void reindexarSubstituiOsTrechosESemTextoNaoDeixaNada() {
+    public void reindexarSubstituiOsTrechosESemTextoNaoDeixaNada() {
         UUID condominio = UUID.randomUUID();
-        IndexarArquivo ata = pedido(condominio, "ATA", null, null);
+        IndexFileMessage ata = pedido(condominio, "ATA", null, null);
         gravar(ata, List.of(trecho(1, new Localizacao.Pagina(1), "primeira versão"),
                 trecho(2, new Localizacao.Pagina(2), "segunda página")), 0);
         var todos = new FiltrosBusca(condominio, null, null, null, null);
@@ -110,27 +110,27 @@ class RepositorioIndiceBancoTest {
         gravar(ata, List.of(trecho(1, new Localizacao.Pagina(1), "texto novo")), 0);
         assertThat(repositorio.buscarPorPalavra(todos, "página", 10)).isEmpty();
         assertThat(repositorio.buscarPorPalavra(todos, "novo", 10)).hasSize(1);
-        assertThat(repositorio.buscar(ata.arquivoId()).orElseThrow().trechos()).isEqualTo(1);
+        assertThat(repositorio.buscar(ata.fileId()).orElseThrow().trechos()).isEqualTo(1);
 
         repositorio.substituir(ata, new DocumentoCortado(3, List.of(), "PDF sem texto extraível"), null, null);
-        var doc = repositorio.buscar(ata.arquivoId()).orElseThrow();
+        var doc = repositorio.buscar(ata.fileId()).orElseThrow();
         assertThat(doc.estado()).isEqualTo("sem_texto");
         assertThat(doc.motivo()).isEqualTo("PDF sem texto extraível");
         assertThat(doc.modeloEmbeddings()).isNull();
-        assertThat(jdbc.sql("select count(*) from trecho where arquivo_id = :a").param("a", ata.arquivoId())
+        assertThat(jdbc.sql("select count(*) from trecho where arquivo_id = :a").param("a", ata.fileId())
                 .query(Integer.class).single()).isZero();
     }
 
     @Test
-    void erroGuardaMotivoSemMexerNosTrechosAntigos() {
+    public void erroGuardaMotivoSemMexerNosTrechosAntigos() {
         UUID condominio = UUID.randomUUID();
-        IndexarArquivo ata = pedido(condominio, "ATA", null, null);
+        IndexFileMessage ata = pedido(condominio, "ATA", null, null);
         gravar(ata, List.of(trecho(1, new Localizacao.Pagina(1), "conteúdo antigo")), 0);
 
         repositorio.marcarIndexando(ata);
-        repositorio.marcarErro(ata.arquivoId(), ata.indexacaoId(), "Ollama fora do ar");
+        repositorio.marcarErro(ata.fileId(), ata.indexingId(), "Ollama fora do ar");
 
-        var doc = repositorio.buscar(ata.arquivoId()).orElseThrow();
+        var doc = repositorio.buscar(ata.fileId()).orElseThrow();
         assertThat(doc.estado()).isEqualTo("erro");
         assertThat(doc.motivo()).isEqualTo("Ollama fora do ar");
         assertThat(repositorio.buscarPorPalavra(new FiltrosBusca(condominio, null, null, null, null), "antigo", 10))
@@ -138,9 +138,9 @@ class RepositorioIndiceBancoTest {
     }
 
     @Test
-    void barraValeComoEspacoEExclusaoEFraseValemNoLadoVetorial() {
+    public void barraValeComoEspacoEExclusaoEFraseValemNoLadoVetorial() {
         UUID condominio = UUID.randomUUID();
-        IndexarArquivo folha = pedido(condominio, "FOLHA", null, null);
+        IndexFileMessage folha = pedido(condominio, "FOLHA", null, null);
         gravar(folha, List.of(
                 trecho(1, new Localizacao.Pagina(1), "Salário base do zelador"),
                 trecho(2, new Localizacao.Pagina(2), "Salário e Vale Transporte"),
@@ -168,14 +168,14 @@ class RepositorioIndiceBancoTest {
     }
 
     @Test
-    void indexadoSemVetorEntraNaBuscaPorPalavraComAviso() {
+    public void indexadoSemVetorEntraNaBuscaPorPalavraComAviso() {
         UUID condominio = UUID.randomUUID();
-        IndexarArquivo ata = pedido(condominio, "ATA", null, null);
+        IndexFileMessage ata = pedido(condominio, "ATA", null, null);
         repositorio.marcarIndexando(ata);
         repositorio.substituir(ata, new DocumentoCortado(1, List.of(trecho(1, new Localizacao.Pagina(1),
                 "Multa por atraso")), null), null, null, "Indexado só para a busca por palavra: Ollama fora");
 
-        var doc = repositorio.buscar(ata.arquivoId()).orElseThrow();
+        var doc = repositorio.buscar(ata.fileId()).orElseThrow();
         assertThat(doc.estado()).isEqualTo("indexado");
         assertThat(doc.modeloEmbeddings()).isNull();
         assertThat(doc.motivo()).contains("Ollama fora");
@@ -184,7 +184,7 @@ class RepositorioIndiceBancoTest {
         assertThat(repositorio.buscarPorVetor(todos, eixo(0), "bge-m3", 10)).isEmpty();
     }
 
-    private static void gravar(IndexarArquivo pedido, List<TrechoCortado> trechos, int primeiroEixo) {
+    private static void gravar(IndexFileMessage pedido, List<TrechoCortado> trechos, int primeiroEixo) {
         repositorio.marcarIndexando(pedido);
         List<float[]> vetores = new java.util.ArrayList<>();
         for (int i = 0; i < trechos.size(); i++) {
@@ -204,9 +204,9 @@ class RepositorioIndiceBancoTest {
         return new TrechoCortado(ordem, local, texto);
     }
 
-    private static IndexarArquivo pedido(UUID condominio, String categoria, LocalDate inicio, LocalDate fim) {
+    private static IndexFileMessage pedido(UUID condominio, String categoria, LocalDate inicio, LocalDate fim) {
         UUID arquivo = UUID.randomUUID();
-        return new IndexarArquivo(1, IndexarArquivo.Operacao.INDEXAR, UUID.randomUUID(), arquivo, condominio,
+        return new IndexFileMessage(1, IndexFileMessage.Operation.INDEXAR, UUID.randomUUID(), arquivo, condominio,
                 categoria, categoria.toLowerCase() + ".pdf", "c/" + arquivo + ".pdf",
                 UUID.randomUUID().toString().replace("-", "").repeat(2), inicio, fim, 1, null, null);
     }

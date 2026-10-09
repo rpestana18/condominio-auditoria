@@ -155,6 +155,20 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | achados do mês | `MonthFindings` | |
 | recálculo dos achados | `BudgetFindingRecalculationService`, `BudgetFindingRecalculationListener` | |
 | cenário de teste, PO do piloto, golden de setembro | `BudgetScenario`, `PilotBudget`, `SeptemberGolden` | só nos testes |
+| leitor (de documentos), documento lido, contrato do leitor | `reader`, `ReadDocument`, `ReaderContract` | o serviço `leitor/` mantém o nome até a fase 3 |
+| interpretador (de layout), leitura | `parser`, `Reading` | |
+| interpretador da PO da Protest, do fluxo de caixa | `ProtestBudgetParser`, `CashFlowParser` | |
+| linha (de texto da página), palavra, célula, planilha, parágrafo | `TextLine`, `Word`, `Cell`, `Sheet`, `Paragraph` | |
+| enriquecimento, enriquecedor | `Enrichment`, `EntryEnricher` | |
+| nota fiscal, fornecedor, meio de pagamento | `invoiceNumber`, `supplier`, `paymentMethod` | |
+| empreendimento | `property` | |
+| seção do fundo (no fluxo) | `FundSection` | |
+| total informado (créditos, débitos) | `reportedCreditTotal`, `reportedDebitTotal` | |
+| conferência da PO, do fluxo; verificação | `BudgetCheck`, `CashFlowCheck`, `TotalsCheck` | |
+| valor da PO, dinheiro em formato brasileiro | `BudgetAmount`, `BrazilianMoney` | |
+| arquivo recebido, resultado do processamento, indexar arquivo, resultado da indexação (mensagens) | `FileReceivedMessage`, `ProcessingResultMessage`, `IndexFileMessage`, `IndexingResultMessage` | os mesmos nomes do api |
+| processamento, indexação (do arquivo, no rag) | `FileProcessingService`, `FileIndexingService` | |
+| ordem (de leitura) | `sequence` | |
 | ignorada (no lote), recusada (na planilha) | `skipped`, `rejected` | |
 
 ---

@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.rag.indice;
 
-import br.com.condominioauditoria.rag.mensagens.IndexarArquivo;
+import br.com.condominioauditoria.rag.messaging.IndexFileMessage;
 import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.ResultSet;
@@ -36,7 +36,7 @@ public class RepositorioIndice {
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transacao;
 
-    RepositorioIndice(JdbcClient jdbc, JdbcTemplate jdbcTemplate, TransactionTemplate transacao) {
+    public RepositorioIndice(JdbcClient jdbc, JdbcTemplate jdbcTemplate, TransactionTemplate transacao) {
         this.jdbc = jdbc;
         this.jdbcTemplate = jdbcTemplate;
         this.transacao = transacao;
@@ -60,7 +60,7 @@ public class RepositorioIndice {
     }
 
     /** Começo do trabalho. Linha nova nasce com os dados do pedido; linha existente só muda estado (ver classe). */
-    public void marcarIndexando(IndexarArquivo p) {
+    public void marcarIndexando(IndexFileMessage p) {
         jdbc.sql("""
                 insert into documento_indexado (arquivo_id, condominio_id, categoria, nome_original, caminho, sha256,
                     competencia_inicio, competencia_fim, versao_arquivo, estado, indexacao_id)
@@ -82,7 +82,7 @@ public class RepositorioIndice {
     }
 
     /** Pedido repetido de conteúdo já indexado: atualiza só os dados do documento e volta a mostrá-lo na busca. */
-    public void confirmarSemReindexar(IndexarArquivo p) {
+    public void confirmarSemReindexar(IndexFileMessage p) {
         jdbc.sql("""
                 update documento_indexado
                    set condominio_id = :condominio, categoria = :categoria, nome_original = :nome, caminho = :caminho,
@@ -106,12 +106,12 @@ public class RepositorioIndice {
      * Substitui, numa transação só, os trechos e vetores do arquivo pelos novos e grava os dados do documento.
      * Sem trechos = estado sem_texto. {@code vetores} nulo = embeddings desligados (só busca por palavra).
      */
-    public void substituir(IndexarArquivo p, DocumentoCortado cortado, List<float[]> vetores, String modelo) {
+    public void substituir(IndexFileMessage p, DocumentoCortado cortado, List<float[]> vetores, String modelo) {
         substituir(p, cortado, vetores, modelo, null);
     }
 
     /** {@code aviso}: guardado em motivo quando indexado (ex.: sem vetores porque o Ollama estava fora). */
-    public void substituir(IndexarArquivo p, DocumentoCortado cortado, List<float[]> vetores, String modelo,
+    public void substituir(IndexFileMessage p, DocumentoCortado cortado, List<float[]> vetores, String modelo,
             String aviso) {
         if (vetores != null && vetores.size() != cortado.trechos().size()) {
             throw new IllegalArgumentException("Vetores (" + vetores.size() + ") e trechos ("
@@ -135,17 +135,17 @@ public class RepositorioIndice {
                      where arquivo_id = :arquivo""")
                     .params(dados)
                     .update();
-            jdbc.sql("delete from trecho where arquivo_id = :arquivo").param("arquivo", p.arquivoId()).update();
+            jdbc.sql("delete from trecho where arquivo_id = :arquivo").param("arquivo", p.fileId()).update();
 
             List<TrechoCortado> trechos = cortado.trechos();
-            List<UUID> ids = trechos.stream().map(t -> idDoTrecho(p.arquivoId(), p.sha256(), t.ordem())).toList();
+            List<UUID> ids = trechos.stream().map(t -> idDoTrecho(p.fileId(), p.sha256(), t.ordem())).toList();
             jdbcTemplate.batchUpdate("""
                     insert into trecho (id, arquivo_id, condominio_id, ordem, pagina, aba, linha_inicio, linha_fim,
                         secao, paragrafo_inicio, paragrafo_fim, texto)
                     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", trechos, 200, (ps, t) -> {
                 ps.setObject(1, ids.get(t.ordem() - 1));
-                ps.setObject(2, p.arquivoId());
-                ps.setObject(3, p.condominioId());
+                ps.setObject(2, p.fileId());
+                ps.setObject(3, p.condominiumId());
                 ps.setInt(4, t.ordem());
                 Integer pagina = null, linhaInicio = null, linhaFim = null, paragrafoInicio = null, paragrafoFim = null;
                 String aba = null, secao = null;
@@ -191,23 +191,23 @@ public class RepositorioIndice {
      * Id estável: o mesmo arquivo, conteúdo, regra de corte e posição geram sempre o mesmo id. Reindexar sem mudança
      * não quebra citações antigas.
      */
-    static UUID idDoTrecho(UUID arquivoId, String sha256, int ordem) {
+    public static UUID idDoTrecho(UUID arquivoId, String sha256, int ordem) {
         String chave = arquivoId + ":" + sha256 + ":" + CortadorTrechos.VERSAO + ":" + ordem;
         return UUID.nameUUIDFromBytes(chave.getBytes(StandardCharsets.UTF_8));
     }
 
-    private static Map<String, Object> dadosDoPedido(IndexarArquivo p) {
+    private static Map<String, Object> dadosDoPedido(IndexFileMessage p) {
         Map<String, Object> dados = new HashMap<>();
-        dados.put("arquivo", p.arquivoId());
-        dados.put("condominio", p.condominioId());
-        dados.put("categoria", p.categoria());
-        dados.put("nome", p.nomeOriginal());
-        dados.put("caminho", p.caminho());
+        dados.put("arquivo", p.fileId());
+        dados.put("condominio", p.condominiumId());
+        dados.put("categoria", p.category());
+        dados.put("nome", p.originalName());
+        dados.put("caminho", p.path());
         dados.put("sha256", p.sha256());
-        dados.put("inicio", p.competenciaInicio());
-        dados.put("fim", p.competenciaFim());
-        dados.put("versaoArquivo", p.versaoArquivo());
-        dados.put("indexacao", p.indexacaoId());
+        dados.put("inicio", p.periodStart());
+        dados.put("fim", p.periodEnd());
+        dados.put("versaoArquivo", p.fileVersion());
+        dados.put("indexacao", p.indexingId());
         return dados;
     }
 
@@ -330,7 +330,7 @@ public class RepositorioIndice {
         private final Map<String, Object> parametros = new HashMap<>();
         private final String sql;
 
-        Filtro(FiltrosBusca f) {
+        public Filtro(FiltrosBusca f) {
             List<String> condicoes = new ArrayList<>();
             condicoes.add("d.condominio_id = :condominio");
             condicoes.add("d.retirado = false");

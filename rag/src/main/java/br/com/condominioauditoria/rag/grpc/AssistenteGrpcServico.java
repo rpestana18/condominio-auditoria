@@ -1,18 +1,18 @@
 package br.com.condominioauditoria.rag.grpc;
 
+import br.com.condominioauditoria.contratos.assistente.v1.Andamento;
 import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.LocalPagina;
-import br.com.condominioauditoria.contratos.assistente.v1.LocalParagrafos;
-import br.com.condominioauditoria.contratos.assistente.v1.LocalPlanilha;
-import br.com.condominioauditoria.contratos.assistente.v1.Andamento;
 import br.com.condominioauditoria.contratos.assistente.v1.DadoGravado;
 import br.com.condominioauditoria.contratos.assistente.v1.EtapaPergunta;
+import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
 import br.com.condominioauditoria.contratos.assistente.v1.LinhaDado;
 import br.com.condominioauditoria.contratos.assistente.v1.ListarProvedoresRequest;
 import br.com.condominioauditoria.contratos.assistente.v1.ListarProvedoresResponse;
+import br.com.condominioauditoria.contratos.assistente.v1.LocalPagina;
+import br.com.condominioauditoria.contratos.assistente.v1.LocalParagrafos;
+import br.com.condominioauditoria.contratos.assistente.v1.LocalPlanilha;
 import br.com.condominioauditoria.contratos.assistente.v1.ModeloProvedor;
 import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
 import br.com.condominioauditoria.contratos.assistente.v1.ParagrafoDocumentos;
@@ -23,8 +23,8 @@ import br.com.condominioauditoria.contratos.assistente.v1.Provedor;
 import br.com.condominioauditoria.contratos.assistente.v1.RespostaPergunta;
 import br.com.condominioauditoria.contratos.assistente.v1.SituacaoResposta;
 import br.com.condominioauditoria.contratos.assistente.v1.Trecho;
-import br.com.condominioauditoria.contratos.assistente.v1.UsoProvedor;
 import br.com.condominioauditoria.contratos.assistente.v1.UsoPergunta;
+import br.com.condominioauditoria.contratos.assistente.v1.UsoProvedor;
 import br.com.condominioauditoria.rag.assistente.catalogo.CatalogoProvedores;
 import br.com.condominioauditoria.rag.assistente.catalogo.PropriedadesIa;
 import br.com.condominioauditoria.rag.assistente.chave.ChavesRag;
@@ -59,7 +59,7 @@ import org.springframework.stereotype.Component;
  * Nenhuma mensagem de erro carrega a chave de IA nem pedaço dela.
  */
 @Component
-class AssistenteGrpcServico extends AssistenteGrpc.AssistenteImplBase {
+public class AssistenteGrpcServico extends AssistenteGrpc.AssistenteImplBase {
 
     private static final Logger log = LoggerFactory.getLogger(AssistenteGrpcServico.class);
 
@@ -69,7 +69,7 @@ class AssistenteGrpcServico extends AssistenteGrpc.AssistenteImplBase {
     private final CatalogoProvedores catalogo;
     private final ChavesRag chaves;
 
-    AssistenteGrpcServico(BuscaDocumentos busca, GeradorEmbeddings embeddings, ServicoPergunta perguntas,
+    public AssistenteGrpcServico(BuscaDocumentos busca, GeradorEmbeddings embeddings, ServicoPergunta perguntas,
             CatalogoProvedores catalogo, ChavesRag chaves) {
         this.busca = busca;
         this.embeddings = embeddings;
@@ -329,7 +329,7 @@ class AssistenteGrpcServico extends AssistenteGrpc.AssistenteImplBase {
         }
     }
 
-    static Trecho trecho(TrechoEncontrado t) {
+    public static Trecho trecho(TrechoEncontrado t) {
         var local = br.com.condominioauditoria.contratos.assistente.v1.Localizacao.newBuilder();
         switch (t.localizacao()) {
             case Localizacao.Pagina l -> local.setPagina(LocalPagina.newBuilder().setPagina(l.numero()));

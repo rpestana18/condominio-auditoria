@@ -2,28 +2,28 @@ package br.com.condominioauditoria.rag.indice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido;
-import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Celula;
-import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Pagina;
-import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Palavra;
-import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Paragrafo;
-import br.com.condominioauditoria.rag.leitura.contrato.DocumentoLido.Planilha;
+import br.com.condominioauditoria.rag.model.document.ReadDocument;
+import br.com.condominioauditoria.rag.model.document.ReadDocument.Cell;
+import br.com.condominioauditoria.rag.model.document.ReadDocument.Page;
+import br.com.condominioauditoria.rag.model.document.ReadDocument.Paragraph;
+import br.com.condominioauditoria.rag.model.document.ReadDocument.Sheet;
+import br.com.condominioauditoria.rag.model.document.ReadDocument.Word;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Corte dos trechos pela localização (ADR 0003, Decisão 3): nunca atravessa página nem aba. */
-class CortadorTrechosTest {
+public class CortadorTrechosTest {
 
     // ---------------------------------------------------------------- PDF
 
     @Test
-    void pdfUmTrechoPorPaginaComLinhasNaOrdemDaLeitura() {
+    public void pdfUmTrechoPorPaginaComLinhasNaOrdemDaLeitura() {
         var p1 = pagina(1, List.of(
-                new Palavra("mundo", 60, 90, 10.5, 20), // mesma linha de "Olá", um pouco mais baixa
-                new Palavra("Olá", 10, 50, 10, 20),
-                new Palavra("Segunda", 10, 60, 30, 40)));
-        var p2 = pagina(2, List.of(new Palavra("Página", 10, 50, 10, 20), new Palavra("dois", 55, 80, 10, 20)));
+                new Word("mundo", 60, 90, 10.5, 20), // mesma linha de "Olá", um pouco mais baixa
+                new Word("Olá", 10, 50, 10, 20),
+                new Word("Segunda", 10, 60, 30, 40)));
+        var p2 = pagina(2, List.of(new Word("Página", 10, 50, 10, 20), new Word("dois", 55, 80, 10, 20)));
 
         DocumentoCortado cortado = CortadorTrechos.cortar(pdf(p1, p2));
 
@@ -36,14 +36,14 @@ class CortadorTrechosTest {
     }
 
     @Test
-    void pdfPaginaLongaViraVariosTrechosTodosDaMesmaPaginaComSobreposicao() {
-        var palavras = new ArrayList<Palavra>();
+    public void pdfPaginaLongaViraVariosTrechosTodosDaMesmaPaginaComSobreposicao() {
+        var palavras = new ArrayList<Word>();
         for (int linha = 0; linha < 200; linha++) { // 200 linhas de ~50 caracteres = ~10 mil caracteres
-            palavras.add(new Palavra("linha%03d".formatted(linha), 10, 60, linha * 12.0, linha * 12.0 + 10));
-            palavras.add(new Palavra("texto de exemplo para a página longa do PDF", 70, 300, linha * 12.0,
+            palavras.add(new Word("linha%03d".formatted(linha), 10, 60, linha * 12.0, linha * 12.0 + 10));
+            palavras.add(new Word("texto de exemplo para a página longa do PDF", 70, 300, linha * 12.0,
                     linha * 12.0 + 10));
         }
-        var curta = pagina(4, List.of(new Palavra("fim", 10, 30, 10, 20)));
+        var curta = pagina(4, List.of(new Word("fim", 10, 30, 10, 20)));
 
         DocumentoCortado cortado = CortadorTrechos.cortar(pdf(pagina(3, palavras), curta));
 
@@ -72,9 +72,9 @@ class CortadorTrechosTest {
     }
 
     @Test
-    void pdfPulaPaginaSemTextoENumeraNaOrdem() {
-        var escaneada = new Pagina(1, 595, 842, "sem_texto", List.of());
-        var comTexto = pagina(2, List.of(new Palavra("Ata", 10, 30, 10, 20)));
+    public void pdfPulaPaginaSemTextoENumeraNaOrdem() {
+        var escaneada = new Page(1, 595, 842, "sem_texto", List.of());
+        var comTexto = pagina(2, List.of(new Word("Ata", 10, 30, 10, 20)));
 
         DocumentoCortado cortado = CortadorTrechos.cortar(pdf(escaneada, comTexto));
 
@@ -86,9 +86,9 @@ class CortadorTrechosTest {
     }
 
     @Test
-    void pdfSemTextoNenhumTemMotivo() {
-        var p1 = new Pagina(1, 595, 842, "sem_texto", List.of());
-        var p2 = new Pagina(2, 595, 842, "sem_texto", List.of());
+    public void pdfSemTextoNenhumTemMotivo() {
+        var p1 = new Page(1, 595, 842, "sem_texto", List.of());
+        var p2 = new Page(2, 595, 842, "sem_texto", List.of());
 
         DocumentoCortado cortado = CortadorTrechos.cortar(pdf(p1, p2));
 
@@ -98,7 +98,7 @@ class CortadorTrechosTest {
     }
 
     @Test
-    void linhaGiganteSemEspacoEhCortadaSemPerderTexto() {
+    public void linhaGiganteSemEspacoEhCortadaSemPerderTexto() {
         String gigante = "x".repeat(7000);
         List<String> partes = CortadorTrechos.quebrarLinhaLonga(gigante, 3000);
         assertThat(partes).hasSize(3);
@@ -108,16 +108,16 @@ class CortadorTrechosTest {
     // ---------------------------------------------------------------- Excel
 
     @Test
-    void excelBlocosDeTrintaLinhasRepetindoOCabecalho() {
-        var celulas = new ArrayList<Celula>();
-        celulas.add(new Celula(1, 1, "Data", "texto"));
-        celulas.add(new Celula(1, 2, "Valor", "texto"));
+    public void excelBlocosDeTrintaLinhasRepetindoOCabecalho() {
+        var celulas = new ArrayList<Cell>();
+        celulas.add(new Cell(1, 1, "Data", "texto"));
+        celulas.add(new Cell(1, 2, "Valor", "texto"));
         for (int linha = 2; linha <= 71; linha++) { // 70 linhas de dados
-            celulas.add(new Celula(linha, 2, "%d.00".formatted(linha), "numero")); // fora de ordem de coluna
-            celulas.add(new Celula(linha, 1, "2026-09-%02d".formatted(linha % 28 + 1), "data"));
+            celulas.add(new Cell(linha, 2, "%d.00".formatted(linha), "numero")); // fora de ordem de coluna
+            celulas.add(new Cell(linha, 1, "2026-09-%02d".formatted(linha % 28 + 1), "data"));
         }
 
-        DocumentoCortado cortado = CortadorTrechos.cortar(xlsx(new Planilha("Despesas", celulas)));
+        DocumentoCortado cortado = CortadorTrechos.cortar(xlsx(new Sheet("Despesas", celulas)));
 
         assertThat(cortado.paginas()).isEqualTo(1);
         assertThat(cortado.trechos()).extracting(TrechoCortado::localizacao).containsExactly(
@@ -130,10 +130,10 @@ class CortadorTrechosTest {
     }
 
     @Test
-    void excelNuncaJuntaAbasEPulaAbaVazia() {
-        var a = new Planilha("Janeiro", List.of(new Celula(1, 1, "Item", "texto"), new Celula(2, 1, "Água", "texto")));
-        var vazia = new Planilha("Vazia", List.of(new Celula(1, 1, "  ", "texto")));
-        var b = new Planilha("Fevereiro", List.of(new Celula(3, 1, "Só cabeçalho", "texto")));
+    public void excelNuncaJuntaAbasEPulaAbaVazia() {
+        var a = new Sheet("Janeiro", List.of(new Cell(1, 1, "Item", "texto"), new Cell(2, 1, "Água", "texto")));
+        var vazia = new Sheet("Vazia", List.of(new Cell(1, 1, "  ", "texto")));
+        var b = new Sheet("Fevereiro", List.of(new Cell(3, 1, "Só cabeçalho", "texto")));
 
         DocumentoCortado cortado = CortadorTrechos.cortar(xlsx(a, vazia, b));
 
@@ -145,8 +145,8 @@ class CortadorTrechosTest {
     }
 
     @Test
-    void excelSemCelulasEhSemTexto() {
-        DocumentoCortado cortado = CortadorTrechos.cortar(xlsx(new Planilha("A", List.of())));
+    public void excelSemCelulasEhSemTexto() {
+        DocumentoCortado cortado = CortadorTrechos.cortar(xlsx(new Sheet("A", List.of())));
         assertThat(cortado.semTexto()).isTrue();
         assertThat(cortado.motivoSemTexto()).isNotBlank();
     }
@@ -154,12 +154,12 @@ class CortadorTrechosTest {
     // ---------------------------------------------------------------- Word
 
     @Test
-    void wordAgrupaParagrafosAteOLimiteEPulaVazios() {
-        var paragrafos = new ArrayList<Paragrafo>();
-        paragrafos.add(new Paragrafo(1, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS", null));
-        paragrafos.add(new Paragrafo(2, "   ", null));
+    public void wordAgrupaParagrafosAteOLimiteEPulaVazios() {
+        var paragrafos = new ArrayList<Paragraph>();
+        paragrafos.add(new Paragraph(1, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS", null));
+        paragrafos.add(new Paragraph(2, "   ", null));
         for (int i = 3; i <= 12; i++) { // 10 parágrafos de 1000 caracteres
-            paragrafos.add(new Paragrafo(i, "p%02d ".formatted(i) + "a".repeat(996), null));
+            paragrafos.add(new Paragraph(i, "p%02d ".formatted(i) + "a".repeat(996), null));
         }
 
         DocumentoCortado cortado = CortadorTrechos.cortar(docx(paragrafos));
@@ -176,10 +176,10 @@ class CortadorTrechosTest {
     }
 
     @Test
-    void wordParagrafoLongoViraVariosTrechosDoMesmoParagrafo() {
+    public void wordParagrafoLongoViraVariosTrechosDoMesmoParagrafo() {
         String longo = ("cláusula " + "b".repeat(40) + " ").repeat(200); // ~10 mil caracteres
-        var paragrafos = List.of(new Paragrafo(1, "Antes", null), new Paragrafo(2, longo, null),
-                new Paragrafo(3, "Depois", null));
+        var paragrafos = List.of(new Paragraph(1, "Antes", null), new Paragraph(2, longo, null),
+                new Paragraph(3, "Depois", null));
 
         DocumentoCortado cortado = CortadorTrechos.cortar(docx(paragrafos));
 
@@ -191,30 +191,30 @@ class CortadorTrechosTest {
     }
 
     @Test
-    void mesmoDocumentoGeraSempreOsMesmosTrechos() {
-        var doc = docx(List.of(new Paragrafo(1, "Um", null), new Paragrafo(2, "Dois", null)));
+    public void mesmoDocumentoGeraSempreOsMesmosTrechos() {
+        var doc = docx(List.of(new Paragraph(1, "Um", null), new Paragraph(2, "Dois", null)));
         assertThat(CortadorTrechos.cortar(doc)).isEqualTo(CortadorTrechos.cortar(doc));
     }
 
     // ---------------------------------------------------------------- apoio
 
-    private static Pagina pagina(int numero, List<Palavra> palavras) {
-        return new Pagina(numero, 595, 842, "texto", palavras);
+    private static Page pagina(int numero, List<Word> palavras) {
+        return new Page(numero, 595, 842, "texto", palavras);
     }
 
-    private static DocumentoLido pdf(Pagina... paginas) {
-        return new DocumentoLido("1", "teste", arquivo("a.pdf"), "pdf", List.of(paginas), List.of(), List.of());
+    private static ReadDocument pdf(Page... paginas) {
+        return new ReadDocument("1", "teste", arquivo("a.pdf"), "pdf", List.of(paginas), List.of(), List.of());
     }
 
-    private static DocumentoLido xlsx(Planilha... planilhas) {
-        return new DocumentoLido("1", "teste", arquivo("a.xlsx"), "xlsx", List.of(), List.of(planilhas), List.of());
+    private static ReadDocument xlsx(Sheet... planilhas) {
+        return new ReadDocument("1", "teste", arquivo("a.xlsx"), "xlsx", List.of(), List.of(planilhas), List.of());
     }
 
-    private static DocumentoLido docx(List<Paragrafo> paragrafos) {
-        return new DocumentoLido("1", "teste", arquivo("a.docx"), "docx", List.of(), List.of(), paragrafos);
+    private static ReadDocument docx(List<Paragraph> paragrafos) {
+        return new ReadDocument("1", "teste", arquivo("a.docx"), "docx", List.of(), List.of(), paragrafos);
     }
 
-    private static DocumentoLido.Arquivo arquivo(String nome) {
-        return new DocumentoLido.Arquivo(nome, "a".repeat(64), 100);
+    private static ReadDocument.FileInfo arquivo(String nome) {
+        return new ReadDocument.FileInfo(nome, "a".repeat(64), 100);
     }
 }

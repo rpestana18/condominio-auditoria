@@ -1,20 +1,20 @@
 package br.com.condominioauditoria.rag.config;
 
-import br.com.condominioauditoria.storage.Storage;
+import br.com.condominioauditoria.rag.parser.ReaderContract;
+import br.com.condominioauditoria.rag.parser.budget.ProtestBudgetParser;
+import br.com.condominioauditoria.rag.parser.cashflow.CashFlowParser;
 import br.com.condominioauditoria.storage.LocalStorage;
-import br.com.condominioauditoria.rag.leitura.contrato.ContratoLeitor;
-import br.com.condominioauditoria.rag.leitura.fluxo.InterpretadorFluxoCaixa;
-import br.com.condominioauditoria.rag.leitura.po.InterpretadorPoProtest;
+import br.com.condominioauditoria.storage.Storage;
 import java.io.IOException;
 import java.nio.file.Path;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-class RagConfig {
+public class RagConfig {
 
     @Bean
-    Storage armazenamento(PropriedadesRag propriedades) throws IOException {
+    public Storage armazenamento(PropriedadesRag propriedades) throws IOException {
         var config = propriedades.armazenamento();
         return switch (config.tipo()) {
             case "local" -> new LocalStorage(Path.of(config.pasta()));
@@ -23,17 +23,17 @@ class RagConfig {
     }
 
     @Bean
-    ContratoLeitor contratoLeitor() {
-        return new ContratoLeitor();
+    public ReaderContract contratoLeitor() {
+        return new ReaderContract();
     }
 
     @Bean
-    InterpretadorFluxoCaixa interpretadorFluxoCaixa() {
-        return new InterpretadorFluxoCaixa();
+    public CashFlowParser interpretadorFluxoCaixa() {
+        return new CashFlowParser();
     }
 
     @Bean
-    InterpretadorPoProtest interpretadorPoProtest() {
-        return new InterpretadorPoProtest();
+    public ProtestBudgetParser interpretadorPoProtest() {
+        return new ProtestBudgetParser();
     }
 }

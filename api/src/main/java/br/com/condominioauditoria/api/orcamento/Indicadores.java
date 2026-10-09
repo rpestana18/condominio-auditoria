@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.GrupoComparado;
 import br.com.condominioauditoria.api.orcamento.ExercicioDtos.TipoExercicio;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.FluxoUsado;
@@ -43,7 +44,7 @@ public final class Indicadores {
     public record MesCalculado(YearMonth mes, SituacaoMes situacao, PrevistoRealizado resultado) {
     }
 
-    public record Entrada(PrevisaoOrcamentaria po, String rotulo, PrevistoRealizado acumulado,
+    public record Entrada(Budget po, String rotulo, PrevistoRealizado acumulado,
             List<MesCalculado> meses, UUID fundoId, UUID fundoOrdinarioId, ComparacaoExercicios.Resultado comparacao,
             String semComparacao) {
     }
@@ -132,8 +133,8 @@ public final class Indicadores {
         BigDecimal limite = e.meses().stream().map(MesCalculado::resultado).filter(Objects::nonNull)
                 .map(PrevistoRealizado::regra20).filter(Objects::nonNull).map(Regra20::limitePercentual).findFirst()
                 .orElse(null);
-        return new Resultado(e.po().getId(), e.rotulo(), e.po().getExercicioInicio().toString(),
-                e.po().getExercicioFim().toString(), e.fundoId(), dadosDe(e), limite,
+        return new Resultado(e.po().getId(), e.rotulo(), e.po().getFiscalYearStart().toString(),
+                e.po().getFiscalYearEnd().toString(), e.fundoId(), dadosDe(e), limite,
                 outroFundo ? null : execucao(e), outroFundo ? null : regra20(e), outroFundo ? null : acumulado(e),
                 outroFundo ? null : porGrupo(e), outroFundo ? null : maioresDiferencas(e.acumulado()),
                 soCondominio ? null : fundos(e), comparacao(e.comparacao()), List.copyOf(avisos));

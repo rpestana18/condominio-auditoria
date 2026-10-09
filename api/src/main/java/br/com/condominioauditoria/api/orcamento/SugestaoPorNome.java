@@ -1,5 +1,8 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.model.enums.BudgetLineMark;
+import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.Normalizer;
@@ -46,7 +49,7 @@ public final class SugestaoPorNome {
         String motivo();
     }
 
-    public record Sugerida(LinhaPo linha, Nota nota, String motivo) implements Resultado {
+    public record Sugerida(BudgetLine linha, Nota nota, String motivo) implements Resultado {
     }
 
     public record SemSugestao(String motivo) implements Resultado {
@@ -63,9 +66,9 @@ public final class SugestaoPorNome {
     }
 
     /** Linhas que podem receber débito do fundo Condomínio: linhas de despesa (sem fundos 1.9) e sem "rateio à parte". */
-    public static List<LinhaPo> candidatas(EstruturaPo estrutura) {
-        return estrutura.gruposSemFundos().stream().flatMap(g -> g.linhas().stream())
-                .filter(l -> l.getMarca() != MarcaPo.RATEIO_A_PARTE).toList();
+    public static List<BudgetLine> candidatas(BudgetStructure estrutura) {
+        return estrutura.groupsWithoutFunds().stream().flatMap(g -> g.lines().stream())
+                .filter(l -> l.getMark() != BudgetLineMark.RATEIO_A_PARTE).toList();
     }
 
     /** Maiúsculas, sem acento, sem pontuação e sem dígitos; abreviações expandidas e palavras vazias fora. */
@@ -90,17 +93,17 @@ public final class SugestaoPorNome {
         return List.copyOf(palavras);
     }
 
-    public Resultado sugerir(String nomeFluxo, List<LinhaPo> candidatas) {
+    public Resultado sugerir(String nomeFluxo, List<BudgetLine> candidatas) {
         List<String> fluxo = normalizar(nomeFluxo);
         if (fluxo.isEmpty()) {
             return new SemSugestao("nome da conta do fluxo sem palavras para comparar");
         }
         Nota melhor = Nota.ZERO;
-        List<LinhaPo> empatadas = new ArrayList<>();
+        List<BudgetLine> empatadas = new ArrayList<>();
         List<String> nomeDaMelhor = List.of();
-        for (LinhaPo linha : candidatas) {
-            List<String> conta = normalizar(linha.getConta());
-            List<String> descricao = normalizar(linha.getDescricao());
+        for (BudgetLine linha : candidatas) {
+            List<String> conta = normalizar(linha.getAccount());
+            List<String> descricao = normalizar(linha.getDescription());
             Nota pelaConta = nota(fluxo, conta);
             Nota pelaDescricao = nota(fluxo, descricao);
             boolean contaGanha = pelaConta.compareTo(pelaDescricao) >= 0;
@@ -120,18 +123,18 @@ public final class SugestaoPorNome {
             return new SemSugestao("fluxo: " + fluxoTexto + "; nenhuma linha da PO com palavras em comum");
         }
         if (!melhor.alcanca(notaMinima)) {
-            return new SemSugestao("fluxo: " + fluxoTexto + "; melhor linha " + empatadas.getFirst().getCodigoEfetivo()
+            return new SemSugestao("fluxo: " + fluxoTexto + "; melhor linha " + empatadas.getFirst().getEffectiveCode()
                     + " com nota " + exibir(melhor.valor()) + ", abaixo do mínimo " + exibir(notaMinima));
         }
         if (empatadas.size() > 1) {
             return new SemSugestao("fluxo: " + fluxoTexto + "; empate entre as linhas " + empatadas.stream()
-                    .map(LinhaPo::getCodigoEfetivo).collect(Collectors.joining(", ")) + " (nota "
+                    .map(BudgetLine::getEffectiveCode).collect(Collectors.joining(", ")) + " (nota "
                     + exibir(melhor.valor()) + "): escolha na lista");
         }
-        LinhaPo escolhida = empatadas.getFirst();
+        BudgetLine escolhida = empatadas.getFirst();
         Set<String> comuns = new LinkedHashSet<>(fluxo);
         comuns.retainAll(nomeDaMelhor);
-        return new Sugerida(escolhida, melhor, "fluxo: " + fluxoTexto + "; PO " + escolhida.getCodigoEfetivo() + ": "
+        return new Sugerida(escolhida, melhor, "fluxo: " + fluxoTexto + "; PO " + escolhida.getEffectiveCode() + ": "
                 + String.join(" ", nomeDaMelhor) + " (em comum: " + String.join(", ", comuns) + "; nota "
                 + exibir(melhor.valor()) + ")");
     }

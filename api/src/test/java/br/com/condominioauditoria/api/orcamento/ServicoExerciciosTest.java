@@ -3,13 +3,15 @@ package br.com.condominioauditoria.api.orcamento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.condominioauditoria.api.dto.request.budget.BudgetConfirmationRequest;
+import br.com.condominioauditoria.api.dto.request.budget.BudgetExtensionRequest;
+import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.orcamento.ColunaImpressa.GrupoColuna;
 import br.com.condominioauditoria.api.orcamento.ColunaImpressa.LinhaColuna;
 import br.com.condominioauditoria.api.orcamento.ExercicioDtos.ConferenciaColuna;
 import br.com.condominioauditoria.api.orcamento.ExercicioDtos.Exercicio;
 import br.com.condominioauditoria.api.orcamento.ExercicioDtos.MesDoExercicio;
 import br.com.condominioauditoria.api.orcamento.ExercicioDtos.TipoExercicio;
-import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PedidoProrrogacao;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -33,7 +35,7 @@ class ServicoExerciciosTest {
 
     @Test
     void semPoAnteriorAColunaImpressaViraOExercicio2025de2026SoComPrevisto() {
-        PrevisaoOrcamentaria po = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
+        Budget po = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
 
         List<Exercicio> lista = cenario.exercicios.listar(cenario.condominioId);
 
@@ -64,7 +66,7 @@ class ServicoExerciciosTest {
 
     @Test
     void conferenciaDaColunaMostraGruposFundosELinha1320() {
-        PrevisaoOrcamentaria po = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
+        Budget po = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
 
         ConferenciaColuna c = cenario.exercicios.colunaImpressa(cenario.condominioId, po.getId());
 
@@ -94,16 +96,16 @@ class ServicoExerciciosTest {
                 .findFirst().orElseThrow();
         assertThat(sindicatura.valor()).isEqualByComparingTo("17195.00");
         assertThat(sindicatura.percentualTexto()).isEqualTo("-53,47%");
-        assertThat(cenario.linha(po, "1.3.20", 0).getOrcado()).isEqualByComparingTo("8000.00");
+        assertThat(cenario.linha(po, "1.3.20", 0).getBudgeted()).isEqualByComparingTo("8000.00");
         assertThat(c.diferencas()).isEmpty();
         assertThat(c.avisos()).containsExactly(AVISO_1_6, AVISO_TOTAL);
     }
 
     @Test
     void poAnteriorConfirmadaDepoisSubstituiAColunaComAvisoPorGrupo() {
-        PrevisaoOrcamentaria atual = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
+        Budget atual = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
         // Cópia de teste da PO do piloto confirmada como 2025/2026: Pessoal 69.193,86 pela soma das linhas
-        PrevisaoOrcamentaria anterior = confirmar(PoDoPiloto.padrao(), "2025-05", "2026-04");
+        Budget anterior = confirmar(PoDoPiloto.padrao(), "2025-05", "2026-04");
 
         List<Exercicio> lista = cenario.exercicios.listar(cenario.condominioId);
 
@@ -123,22 +125,22 @@ class ServicoExerciciosTest {
 
     @Test
     void mesesMostramFluxoEProrrogacao() {
-        PrevisaoOrcamentaria po = confirmar(PoDoPiloto.padrao(), "2026-05", "2027-04");
+        Budget po = confirmar(PoDoPiloto.padrao(), "2026-05", "2027-04");
         cenario.fluxo("fluxo-2026-09.pdf", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30), 0);
-        cenario.prorrogacao.prorrogar(cenario.condominioId, po.getId(),
-                new PedidoProrrogacao("2027-05", "PO 2027/2028 ainda não aprovada"), "admin");
+        cenario.prorrogacao.extend(cenario.condominioId, po.getId(),
+                new BudgetExtensionRequest("2027-05", "PO 2027/2028 ainda não aprovada"), "admin");
 
         Exercicio ex = cenario.exercicios.listar(cenario.condominioId).getFirst();
 
         assertThat(ex.meses()).hasSize(13);
         assertThat(ex.meses().get(4)).isEqualTo(new MesDoExercicio("2026-09", SituacaoMes.COM_FLUXO, false));
         assertThat(ex.meses().getLast()).isEqualTo(new MesDoExercicio("2027-05", SituacaoMes.SEM_FLUXO, true));
-        assertThat(ex.prorrogacao().ate()).isEqualTo("2027-05");
+        assertThat(ex.prorrogacao().until()).isEqualTo("2027-05");
     }
 
     @Test
     void poSemAColunaNaoTemExercicioVirtual() {
-        PrevisaoOrcamentaria po = confirmar(PoDoPiloto.padrao(), "2026-05", "2027-04");
+        Budget po = confirmar(PoDoPiloto.padrao(), "2026-05", "2027-04");
 
         assertThat(cenario.exercicios.listar(cenario.condominioId)).extracting(Exercicio::id)
                 .containsExactly("po:" + po.getId());
@@ -156,7 +158,7 @@ class ServicoExerciciosTest {
 
     @Test
     void colunaConfereComTotalQueIncluiOsFundosSemAviso() {
-        PrevisaoOrcamentaria po = confirmar(PoDoPiloto.padrao().comColunaAnterior().comTotalAnterior("463369.60"),
+        Budget po = confirmar(PoDoPiloto.padrao().comColunaAnterior().comTotalAnterior("463369.60"),
                 "2026-05", "2027-04");
 
         ConferenciaColuna c = cenario.exercicios.colunaImpressa(cenario.condominioId, po.getId());
@@ -166,11 +168,11 @@ class ServicoExerciciosTest {
         assertThat(c.previstoMes()).isEqualByComparingTo(new BigDecimal("441525.22"));
     }
 
-    private PrevisaoOrcamentaria confirmar(PoDoPiloto piloto, String inicio, String fim) {
-        PrevisaoOrcamentaria po = cenario.lerPo(piloto);
+    private Budget confirmar(PoDoPiloto piloto, String inicio, String fim) {
+        Budget po = cenario.lerPo(piloto);
         var p = cenario.pedidoDoPiloto(po);
-        cenario.confirmacao.confirmar(cenario.condominioId, po.getId(), new PedidoConfirmacao(inicio, fim,
-                p.ataArquivoId(), false, LocalDate.of(2026, 5, 20), p.codigosEfetivos(), p.fundos(), false, false,
+        cenario.confirmacao.confirm(cenario.condominioId, po.getId(), new BudgetConfirmationRequest(inicio, fim,
+                p.minutesFileId(), false, LocalDate.of(2026, 5, 20), p.effectiveCodes(), p.funds(), false, false,
                 null), "admin");
         return po;
     }

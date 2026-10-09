@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -31,11 +32,11 @@ public class LinhaRubrica {
     protected LinhaRubrica() {
     }
 
-    public LinhaRubrica(LinhaPo linha, Rubrica rubrica, EstadoRubrica estado, OrigemRubrica origem, String motivo,
+    public LinhaRubrica(BudgetLine linha, Rubrica rubrica, EstadoRubrica estado, OrigemRubrica origem, String motivo,
             String usuario, Instant quando) {
         this.id = UUID.randomUUID();
-        this.condominioId = linha.getCondominioId();
-        this.previsaoId = linha.getPrevisaoId();
+        this.condominioId = linha.getCondominiumId();
+        this.previsaoId = linha.getBudgetId();
         this.linhaPoId = linha.getId();
         alterar(rubrica, estado, origem, motivo, usuario, quando);
     }

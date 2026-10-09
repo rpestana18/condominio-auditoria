@@ -4,10 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetLineData;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetLineType;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.orcamento.SugestaoRubrica.Confirmada;
 import br.com.condominioauditoria.api.orcamento.SugestaoRubrica.LinhaComGrupo;
 import br.com.condominioauditoria.api.orcamento.SugestaoRubrica.SemSugestao;
 import br.com.condominioauditoria.api.orcamento.SugestaoRubrica.Sugerida;
+import br.com.condominioauditoria.api.service.budget.BudgetImportService;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -16,8 +19,8 @@ import org.junit.jupiter.api.Test;
 /** RF-11.7: a sugestão só existe quando uma rubrica só casa pela conta da PO e pelo grupo. Função pura. */
 class SugestaoRubricaTest {
 
-    private final PrevisaoOrcamentaria po = new PrevisaoOrcamentaria(UUID.randomUUID(), UUID.randomUUID(), "a".repeat(64));
-    private final PrevisaoOrcamentaria outra = new PrevisaoOrcamentaria(UUID.randomUUID(), UUID.randomUUID(),
+    private final Budget po = new Budget(UUID.randomUUID(), UUID.randomUUID(), "a".repeat(64));
+    private final Budget outra = new Budget(UUID.randomUUID(), UUID.randomUUID(),
             "b".repeat(64));
 
     @Test
@@ -92,8 +95,8 @@ class SugestaoRubricaTest {
         });
     }
 
-    private static LinhaComGrupo linha(PrevisaoOrcamentaria previsao, String codigo, String conta, String grupo) {
-        LinhaPo l = GravacaoPrevisao.linha(previsao, new BudgetLineData(1, 1, BudgetLineType.LINHA, codigo, conta, null, null,
+    private static LinhaComGrupo linha(Budget previsao, String codigo, String conta, String grupo) {
+        BudgetLine l = BudgetImportService.line(previsao, new BudgetLineData(1, 1, BudgetLineType.LINHA, codigo, conta, null, null,
                 "Fornecedor " + codigo, BigDecimal.ZERO.setScale(2), new BigDecimal("100.00"), null, null));
         return new LinhaComGrupo(l, grupo);
     }

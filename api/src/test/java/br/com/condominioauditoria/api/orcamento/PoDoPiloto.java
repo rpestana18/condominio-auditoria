@@ -5,6 +5,10 @@ import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetLi
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetLineMark;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetLineType;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.TotalsCheckData;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.service.budget.BudgetImportService;
+import br.com.condominioauditoria.api.service.calculator.BudgetReadingAssessment;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -146,12 +150,12 @@ public final class PoDoPiloto {
     }
 
     /** Linhas como o backend grava, para testar as funções puras sem banco. */
-    public List<LinhaPo> linhasGravadas(PrevisaoOrcamentaria previsao) {
-        return previsao().lines().stream().map(l -> GravacaoPrevisao.linha(previsao, l)).toList();
+    public List<BudgetLine> linhasGravadas(Budget previsao) {
+        return previsao().lines().stream().map(l -> BudgetImportService.line(previsao, l)).toList();
     }
 
-    public List<AvaliacaoLeituraPo.ConferenciaPo> conferenciasParaAvaliacao() {
-        return GravacaoPrevisao.paraAvaliacao(conferencias());
+    public List<BudgetReadingAssessment.BudgetCheck> conferenciasParaAvaliacao() {
+        return BudgetImportService.toAssessment(conferencias());
     }
 
     private static TotalsCheckData ok(String grupo) {

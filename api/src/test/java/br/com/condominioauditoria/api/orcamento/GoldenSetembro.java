@@ -1,9 +1,12 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.event.BudgetChanged;
 import br.com.condominioauditoria.api.messaging.GoldenMessages;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage;
 import br.com.condominioauditoria.api.model.accounting.Fund;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -17,14 +20,14 @@ import java.util.UUID;
 final class GoldenSetembro {
 
     final CenarioPo cenario;
-    final PrevisaoOrcamentaria po;
+    final Budget po;
     final ProcessingResultMessage fluxo;
     final br.com.condominioauditoria.api.model.file.SourceFile arquivo;
     final UUID arquivoFluxo;
     /** Fundos do fluxo pelo nome impresso (os quatro do cenário mais os demais, criados aqui). */
     final Map<String, Fund> fundos = new LinkedHashMap<>();
 
-    private GoldenSetembro(CenarioPo cenario, PrevisaoOrcamentaria po, ProcessingResultMessage fluxo) {
+    private GoldenSetembro(CenarioPo cenario, Budget po, ProcessingResultMessage fluxo) {
         this.cenario = cenario;
         this.po = po;
         this.fluxo = fluxo;
@@ -61,7 +64,7 @@ final class GoldenSetembro {
     void reprocessarFluxo() {
         cenario.lancamentos.removeIf(l -> l.getFileId().equals(arquivoFluxo));
         gravarLancamentos();
-        cenario.publicados.add(MudancaOrcamento.de(cenario.condominioId, "leitura do arquivo "
+        cenario.publicados.add(BudgetChanged.of(cenario.condominioId, "leitura do arquivo "
                 + arquivo.getOriginalName() + " gravada", "sistema", java.time.Instant.now()));
     }
 
@@ -73,8 +76,8 @@ final class GoldenSetembro {
         }
         CenarioPo cenario = new CenarioPo();
         // O cenário chama o fundo ordinário de "CONDOMÍNIO", como no fluxo do piloto
-        PrevisaoOrcamentaria po = cenario.lerPo(poLida.get().budget(), poLida.get().totalsChecks());
-        cenario.confirmacao.confirmar(cenario.condominioId, po.getId(), cenario.pedidoDoPiloto(po), "admin");
+        Budget po = cenario.lerPo(poLida.get().budget(), poLida.get().totalsChecks());
+        cenario.confirmacao.confirm(cenario.condominioId, po.getId(), cenario.pedidoDoPiloto(po), "admin");
         return Optional.of(new GoldenSetembro(cenario, po, fluxo.get()));
     }
 
@@ -101,12 +104,12 @@ final class GoldenSetembro {
             java.util.List<CalculoPrevistoRealizado.Fluxo> fluxos,
             java.util.List<CalculoPrevistoRealizado.Realocacao> realocacoes) {
         Map<UUID, UUID> fundoPorLinha = new LinkedHashMap<>();
-        cenario.poFundos.stream().filter(f -> f.getPrevisaoId().equals(po.getId()))
-                .forEach(f -> fundoPorLinha.put(f.getLinhaPoId(), f.getFundoId()));
+        cenario.poFundos.stream().filter(f -> f.getBudgetId().equals(po.getId()))
+                .forEach(f -> fundoPorLinha.put(f.getBudgetLineId(), f.getFundId()));
         Map<UUID, String> nomes = new LinkedHashMap<>();
         fundos.values().forEach(f -> nomes.put(f.getId(), f.getName()));
         return new CalculoPrevistoRealizado.Entrada(po, "PO-2026-2027-aprovada.pdf",
-                cenario.linhas.stream().filter(l -> l.getPrevisaoId().equals(po.getId())).toList(),
+                cenario.linhas.stream().filter(l -> l.getBudgetId().equals(po.getId())).toList(),
                 cenario.deparas.stream().filter(d -> d.getPrevisaoId().equals(po.getId())).toList(), fundoPorLinha, nomes,
                 cenario.ordinario.getId(), fluxos, cenario.lancamentos, realocacoes, new java.math.BigDecimal("20.0000"),
                 java.util.List.of(), periodo);
@@ -117,8 +120,8 @@ final class GoldenSetembro {
                 java.util.List.of(fluxoDeSetembro()), java.util.List.of()));
     }
 
-    LinhaPo linha(String codigoEfetivo) {
-        return cenario.linhas.stream().filter(l -> l.getPrevisaoId().equals(po.getId())
-                && l.getCodigoEfetivo().equals(codigoEfetivo)).findFirst().orElseThrow();
+    BudgetLine linha(String codigoEfetivo) {
+        return cenario.linhas.stream().filter(l -> l.getBudgetId().equals(po.getId())
+                && l.getEffectiveCode().equals(codigoEfetivo)).findFirst().orElseThrow();
     }
 }

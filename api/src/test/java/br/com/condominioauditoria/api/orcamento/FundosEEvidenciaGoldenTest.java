@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import br.com.condominioauditoria.api.orcamento.LigacaoFundosPo.PedidoFundos;
-import br.com.condominioauditoria.api.orcamento.PedidoConfirmacao.LigacaoFundo;
+import br.com.condominioauditoria.api.dto.request.budget.BudgetFundsRequest;
+import br.com.condominioauditoria.api.dto.request.budget.FundLinkRequest;
+import br.com.condominioauditoria.api.event.BudgetChanged;
+import br.com.condominioauditoria.api.exception.BudgetConfirmationRejectedException;
+import br.com.condominioauditoria.api.model.budget.BudgetEvent;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Evidencia;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.FundoResultado;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.GrupoResultado;
@@ -100,8 +103,8 @@ class FundosEEvidenciaGoldenTest {
 
         // RF-03.1.9: 1.9.2 ligada ao fundo "OBRAS" por engano
         c.publicados.clear();
-        c.ligacaoFundos.alterar(c.condominioId, g.po.getId(), new PedidoFundos(List.of(
-                new LigacaoFundo(l191, c.reserva.getId()), new LigacaoFundo(l192, c.obras.getId()))), "admin");
+        c.ligacaoFundos.change(c.condominioId, g.po.getId(), new BudgetFundsRequest(List.of(
+                new FundLinkRequest(l191, c.reserva.getId()), new FundLinkRequest(l192, c.obras.getId()))), "admin");
         PrevistoRealizado errado = consultar(g, null);
 
         FundoResultado obras = fundo(errado, "OBRAS");
@@ -110,29 +113,29 @@ class FundosEEvidenciaGoldenTest {
                 .usingElementComparator(BigDecimal::compareTo)
                 .containsExactly(new BigDecimal("25.13"), new BigDecimal("-9007.27"), new BigDecimal("0.3"));
         assertThat(fundo(errado, "OBRAS / REFORMAS / INFRA").situacao()).isEqualTo(SituacaoFundo.SEM_PREVISTO_NA_PO);
-        assertThat(c.publicados).filteredOn(MudancaOrcamento.class::isInstance).hasSize(1);
+        assertThat(c.publicados).filteredOn(BudgetChanged.class::isInstance).hasSize(1);
 
         // O Admin corrige: os números voltam, e a trilha registra o anterior e o novo, com quem
-        c.ligacaoFundos.alterar(c.condominioId, g.po.getId(), new PedidoFundos(List.of(
-                new LigacaoFundo(l191, c.reserva.getId()), new LigacaoFundo(l192, c.obrasInfra.getId()))), "admin");
+        c.ligacaoFundos.change(c.condominioId, g.po.getId(), new BudgetFundsRequest(List.of(
+                new FundLinkRequest(l191, c.reserva.getId()), new FundLinkRequest(l192, c.obrasInfra.getId()))), "admin");
         PrevistoRealizado certo = consultar(g, null);
 
         assertThat(fundo(certo, "OBRAS / REFORMAS / INFRA").arrecadado()).isEqualByComparingTo("9705.06");
         assertThat(fundo(certo, "OBRAS").situacao()).isEqualTo(SituacaoFundo.SEM_PREVISTO_NA_PO);
-        var alteracoes = c.eventos.stream().filter(e -> e.getTipo().equals(EventoPrevisao.FUNDOS_ALTERADOS)).toList();
-        assertThat(alteracoes).hasSize(2).allMatch(e -> e.getUsuario().equals("admin"));
-        assertThat(alteracoes.get(0).getDetalhe()).contains("1.9.2", "OBRAS / REFORMAS / INFRA → OBRAS");
-        assertThat(alteracoes.get(1).getDetalhe()).contains("1.9.2", "OBRAS → OBRAS / REFORMAS / INFRA")
+        var alteracoes = c.eventos.stream().filter(e -> e.getType().equals(BudgetEvent.FUNDS_CHANGED)).toList();
+        assertThat(alteracoes).hasSize(2).allMatch(e -> e.getUsername().equals("admin"));
+        assertThat(alteracoes.get(0).getDetail()).contains("1.9.2", "OBRAS / REFORMAS / INFRA → OBRAS");
+        assertThat(alteracoes.get(1).getDetail()).contains("1.9.2", "OBRAS → OBRAS / REFORMAS / INFRA")
                 .doesNotContain("1.9.1");
 
         // Sem mudança: nenhum evento novo
-        c.ligacaoFundos.alterar(c.condominioId, g.po.getId(), new PedidoFundos(List.of(
-                new LigacaoFundo(l191, c.reserva.getId()), new LigacaoFundo(l192, c.obrasInfra.getId()))), "admin");
-        assertThat(c.eventos).filteredOn(e -> e.getTipo().equals(EventoPrevisao.FUNDOS_ALTERADOS)).hasSize(2);
+        c.ligacaoFundos.change(c.condominioId, g.po.getId(), new BudgetFundsRequest(List.of(
+                new FundLinkRequest(l191, c.reserva.getId()), new FundLinkRequest(l192, c.obrasInfra.getId()))), "admin");
+        assertThat(c.eventos).filteredOn(e -> e.getType().equals(BudgetEvent.FUNDS_CHANGED)).hasSize(2);
 
         // Desligar uma linha: "linha 1.9.2 sem fundo ligado"
-        c.ligacaoFundos.alterar(c.condominioId, g.po.getId(), new PedidoFundos(List.of(
-                new LigacaoFundo(l191, c.reserva.getId()))), "admin");
+        c.ligacaoFundos.change(c.condominioId, g.po.getId(), new BudgetFundsRequest(List.of(
+                new FundLinkRequest(l191, c.reserva.getId()))), "admin");
         assertThat(consultar(g, null).fundos()).anyMatch(f -> "1.9.2".equals(f.linhaCodigo())
                 && f.situacao() == SituacaoFundo.LINHA_SEM_FUNDO);
     }
@@ -145,20 +148,20 @@ class FundosEEvidenciaGoldenTest {
         UUID l192 = g.linha("1.9.2").getId();
         int antes = c.poFundos.size();
 
-        assertThatThrownBy(() -> c.ligacaoFundos.alterar(c.condominioId, g.po.getId(), new PedidoFundos(List.of(
-                new LigacaoFundo(l191, c.obras.getId()), new LigacaoFundo(l192, c.obras.getId()))), "admin"))
-                .isInstanceOf(ConfirmacaoRecusadaException.class);
-        assertThatThrownBy(() -> c.ligacaoFundos.alterar(c.condominioId, g.po.getId(), new PedidoFundos(List.of(
-                new LigacaoFundo(l191, c.reserva.getId()), new LigacaoFundo(l191, c.obras.getId()))), "admin"))
-                .isInstanceOf(ConfirmacaoRecusadaException.class);
-        assertThatThrownBy(() -> c.ligacaoFundos.alterar(c.condominioId, g.po.getId(), new PedidoFundos(List.of(
-                new LigacaoFundo(l191, c.ordinario.getId()))), "admin"))
-                .isInstanceOf(ConfirmacaoRecusadaException.class);
-        assertThatThrownBy(() -> c.ligacaoFundos.alterar(c.condominioId, g.po.getId(), new PedidoFundos(List.of(
-                new LigacaoFundo(g.linha("1.3.10").getId(), c.obras.getId()))), "admin"))
-                .isInstanceOf(ConfirmacaoRecusadaException.class);
+        assertThatThrownBy(() -> c.ligacaoFundos.change(c.condominioId, g.po.getId(), new BudgetFundsRequest(List.of(
+                new FundLinkRequest(l191, c.obras.getId()), new FundLinkRequest(l192, c.obras.getId()))), "admin"))
+                .isInstanceOf(BudgetConfirmationRejectedException.class);
+        assertThatThrownBy(() -> c.ligacaoFundos.change(c.condominioId, g.po.getId(), new BudgetFundsRequest(List.of(
+                new FundLinkRequest(l191, c.reserva.getId()), new FundLinkRequest(l191, c.obras.getId()))), "admin"))
+                .isInstanceOf(BudgetConfirmationRejectedException.class);
+        assertThatThrownBy(() -> c.ligacaoFundos.change(c.condominioId, g.po.getId(), new BudgetFundsRequest(List.of(
+                new FundLinkRequest(l191, c.ordinario.getId()))), "admin"))
+                .isInstanceOf(BudgetConfirmationRejectedException.class);
+        assertThatThrownBy(() -> c.ligacaoFundos.change(c.condominioId, g.po.getId(), new BudgetFundsRequest(List.of(
+                new FundLinkRequest(g.linha("1.3.10").getId(), c.obras.getId()))), "admin"))
+                .isInstanceOf(BudgetConfirmationRejectedException.class);
         assertThat(c.poFundos).hasSize(antes);
-        assertThat(c.eventos).noneMatch(e -> e.getTipo().equals(EventoPrevisao.FUNDOS_ALTERADOS));
+        assertThat(c.eventos).noneMatch(e -> e.getType().equals(BudgetEvent.FUNDS_CHANGED));
     }
 
     private static PrevistoRealizado consultar(GoldenSetembro g, UUID fundo) {

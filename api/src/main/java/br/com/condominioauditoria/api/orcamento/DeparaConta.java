@@ -1,5 +1,7 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -36,11 +38,11 @@ public class DeparaConta {
     protected DeparaConta() {
     }
 
-    public DeparaConta(PrevisaoOrcamentaria previsao, String contaCodigo, String contaNome, Destino destino,
+    public DeparaConta(Budget previsao, String contaCodigo, String contaNome, Destino destino,
             EstadoDepara estado, OrigemDepara origem, String motivo, boolean igualVersaoAnterior, String usuario,
             Instant quando) {
         this.id = UUID.randomUUID();
-        this.condominioId = previsao.getCondominioId();
+        this.condominioId = previsao.getCondominiumId();
         this.previsaoId = previsao.getId();
         this.contaCodigo = contaCodigo;
         this.contaNome = contaNome;
@@ -78,9 +80,9 @@ public class DeparaConta {
         return new Destino(tipoDestino, linhaPoId, null, null, detalheDestino);
     }
 
-    public Destino destino(java.util.Map<UUID, LinhaPo> linhas) {
-        LinhaPo l = linhaPoId == null ? null : linhas.get(linhaPoId);
-        return l == null ? destino() : new Destino(tipoDestino, linhaPoId, l.getCodigoEfetivo(), l.getDescricao(), null);
+    public Destino destino(java.util.Map<UUID, BudgetLine> linhas) {
+        BudgetLine l = linhaPoId == null ? null : linhas.get(linhaPoId);
+        return l == null ? destino() : new Destino(tipoDestino, linhaPoId, l.getEffectiveCode(), l.getDescription(), null);
     }
 
     public UUID getId() {

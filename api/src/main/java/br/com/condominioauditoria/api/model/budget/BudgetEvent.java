@@ -1,0 +1,84 @@
+package br.com.condominioauditoria.api.model.budget;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+
+/** Budget audit trail: who, when, what. Insert only (the database rejects update and delete). */
+@Entity
+@Table(name = "evento_previsao")
+public class BudgetEvent {
+
+    public static final String CONFIRMED = "CONFIRMADA";
+    public static final String SUPERSEDED = "SUBSTITUIDA";
+    /** Link of the 1.9.x lines to the funds changed after confirmation (RF-03.1.9). */
+    public static final String FUNDS_CHANGED = "FUNDOS_ALTERADOS";
+    /** Budget marked as extended by the Admin, with a justification (RF-11.3). */
+    public static final String EXTENDED = "PRORROGADA";
+    /** Extension undone by the Admin. */
+    public static final String EXTENSION_UNDONE = "PRORROGACAO_DESFEITA";
+    /**
+     * Extension shortened (or undone) automatically because another budget was confirmed in the extended months
+     * (RF-11.3).
+     */
+    public static final String EXTENSION_SHORTENED = "PRORROGACAO_ENCURTADA";
+
+    @Id
+    private UUID id;
+    @Column(name = "previsao_id")
+    private UUID budgetId;
+    @Column(name = "condominio_id")
+    private UUID condominiumId;
+    @Column(name = "tipo")
+    private String type;
+    @Column(name = "usuario")
+    private String username;
+    @Column(name = "em")
+    private Instant occurredAt;
+    @Column(name = "justificativa")
+    private String justification;
+    @Column(name = "detalhe")
+    private String detail;
+
+    protected BudgetEvent() {
+    }
+
+    public BudgetEvent(Budget budget, String type, String username, Instant at, String justification,
+            String detail) {
+        this.id = UUID.randomUUID();
+        this.budgetId = budget.getId();
+        this.condominiumId = budget.getCondominiumId();
+        this.type = type;
+        this.username = username;
+        this.occurredAt = at;
+        this.justification = justification;
+        this.detail = detail;
+    }
+
+    public UUID getBudgetId() {
+        return budgetId;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public Instant getOccurredAt() {
+        return occurredAt;
+    }
+
+    public String getJustification() {
+        return justification;
+    }
+
+    public String getDetail() {
+        return detail;
+    }
+}

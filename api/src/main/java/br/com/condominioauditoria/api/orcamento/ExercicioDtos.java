@@ -1,8 +1,8 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.dto.response.budget.BudgetExtensionResponse;
 import br.com.condominioauditoria.api.orcamento.ColunaImpressa.GrupoColuna;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ResumoDepara;
-import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.Prorrogacao;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.ResumoRubricas;
 import java.math.BigDecimal;
@@ -31,7 +31,7 @@ public final class ExercicioDtos {
      * {@code colunaImpressa}: id da coluna que este exercício substituiu e que fica só como conferência (RF-11.5).
      */
     public record Exercicio(String id, TipoExercicio tipo, String rotulo, UUID poId, Integer versao, String inicio,
-            String fim, Prorrogacao prorrogacao, BigDecimal previstoMes, List<MesDoExercicio> meses,
+            String fim, BudgetExtensionResponse prorrogacao, BigDecimal previstoMes, List<MesDoExercicio> meses,
             ResumoDepara depara, ResumoRubricas rubricas, String colunaImpressa, List<String> avisos) {
     }
 

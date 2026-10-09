@@ -3,9 +3,12 @@ package br.com.condominioauditoria.api.orcamento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.condominioauditoria.api.dto.request.budget.BudgetConfirmationRequest;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.GrupoComparado;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.Resultado;
@@ -33,7 +36,7 @@ class ComparacaoExerciciosTest {
 
     @Test
     void semPoAnteriorComparaComAColunaImpressa() {
-        PrevisaoOrcamentaria po = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
+        Budget po = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
 
         Resultado r = cenario.comparacao.comparar(cenario.condominioId, null, null, false);
 
@@ -85,8 +88,8 @@ class ComparacaoExerciciosTest {
 
     @Test
     void linhaSemRubricaConfirmadaFicaSemCorrespondenciaENaoESomada() {
-        PrevisaoOrcamentaria po = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
-        LinhaPo sindicatura = cenario.linha(po, "1.3.20", 0);
+        Budget po = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
+        BudgetLine sindicatura = cenario.linha(po, "1.3.20", 0);
         cenario.linhasRubrica.removeIf(l -> l.getLinhaPoId().equals(sindicatura.getId()));
 
         Resultado r = cenario.comparacao.comparar(cenario.condominioId, null, null, false);
@@ -102,8 +105,8 @@ class ComparacaoExerciciosTest {
 
     @Test
     void mesmosMesesSomaSoSetembroNosDoisExercicios() {
-        PrevisaoOrcamentaria anterior = confirmar(PoDoPiloto.padrao(), "2025-05", "2026-04");
-        PrevisaoOrcamentaria atual = confirmar(PoDoPiloto.padrao(), "2026-05", "2027-04");
+        Budget anterior = confirmar(PoDoPiloto.padrao(), "2025-05", "2026-04");
+        Budget atual = confirmar(PoDoPiloto.padrao(), "2026-05", "2027-04");
         debito(cenario.fluxo("fluxo-2025-09.pdf", LocalDate.of(2025, 9, 1), LocalDate.of(2025, 9, 30), 1), "1000.00",
                 LocalDate.of(2025, 9, 10));
         debito(cenario.fluxo("fluxo-2026-09.pdf", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30), 1), "1500.00",
@@ -138,7 +141,7 @@ class ComparacaoExerciciosTest {
 
     @Test
     void filtroDoFundoDeReservaMostraSoALinhaDele() {
-        PrevisaoOrcamentaria po = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
+        Budget po = confirmar(PoDoPiloto.padrao().comColunaAnterior(), "2026-05", "2027-04");
 
         Resultado r = cenario.comparacao.comparar(cenario.condominioId, null, cenario.reserva.getId(), false);
 
@@ -156,7 +159,7 @@ class ComparacaoExerciciosTest {
 
     @Test
     void pedidoInvalidoERecusado() {
-        PrevisaoOrcamentaria po = confirmar(PoDoPiloto.padrao(), "2026-05", "2027-04");
+        Budget po = confirmar(PoDoPiloto.padrao(), "2026-05", "2027-04");
 
         assertStatus(() -> cenario.comparacao.comparar(cenario.condominioId, null, null, false),
                 HttpStatus.UNPROCESSABLE_CONTENT);
@@ -196,11 +199,11 @@ class ComparacaoExerciciosTest {
                 e -> assertThat(e.getStatusCode()).isEqualTo(status));
     }
 
-    private PrevisaoOrcamentaria confirmar(PoDoPiloto piloto, String inicio, String fim) {
-        PrevisaoOrcamentaria po = cenario.lerPo(piloto);
+    private Budget confirmar(PoDoPiloto piloto, String inicio, String fim) {
+        Budget po = cenario.lerPo(piloto);
         var p = cenario.pedidoDoPiloto(po);
-        cenario.confirmacao.confirmar(cenario.condominioId, po.getId(), new PedidoConfirmacao(inicio, fim,
-                p.ataArquivoId(), false, LocalDate.of(2026, 5, 20), p.codigosEfetivos(), p.fundos(), false, false,
+        cenario.confirmacao.confirm(cenario.condominioId, po.getId(), new BudgetConfirmationRequest(inicio, fim,
+                p.minutesFileId(), false, LocalDate.of(2026, 5, 20), p.effectiveCodes(), p.funds(), false, false,
                 null), "admin");
         return po;
     }

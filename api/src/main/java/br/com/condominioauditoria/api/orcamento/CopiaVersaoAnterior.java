@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -32,29 +33,29 @@ public final class CopiaVersaoAnterior {
      * @param linhasAnteriores linhas da versão anterior, pelo id
      * @param destinosNovos linhas de despesa da nova versão, pelo código efetivo
      */
-    public static Resultado copiar(DeparaConta anterior, Map<UUID, LinhaPo> linhasAnteriores,
-            Map<String, LinhaPo> destinosNovos) {
+    public static Resultado copiar(DeparaConta anterior, Map<UUID, BudgetLine> linhasAnteriores,
+            Map<String, BudgetLine> destinosNovos) {
         if (anterior.getTipoDestino() != TipoDestino.LINHA_PO) {
             Destino d = anterior.destino();
             return new Copiada(d, true, IGUAL + ": " + d.texto());
         }
-        LinhaPo antes = linhasAnteriores.get(anterior.getLinhaPoId());
+        BudgetLine antes = linhasAnteriores.get(anterior.getLinhaPoId());
         if (antes == null) {
             return new NaoCopiada("a linha de destino da versão anterior não foi encontrada");
         }
-        LinhaPo agora = destinosNovos.get(antes.getCodigoEfetivo());
+        BudgetLine agora = destinosNovos.get(antes.getEffectiveCode());
         if (agora == null) {
-            return new NaoCopiada("a linha " + antes.getCodigoEfetivo() + " da versão anterior não existe nesta versão");
+            return new NaoCopiada("a linha " + antes.getEffectiveCode() + " da versão anterior não existe nesta versão");
         }
-        if (Objects.equals(antes.getConta(), agora.getConta())
-                && Objects.equals(antes.getDescricao(), agora.getDescricao())) {
-            return new Copiada(Destino.linha(agora), true, IGUAL + ": " + agora.getCodigoEfetivo() + " "
-                    + agora.getDescricao());
+        if (Objects.equals(antes.getAccount(), agora.getAccount())
+                && Objects.equals(antes.getDescription(), agora.getDescription())) {
+            return new Copiada(Destino.linha(agora), true, IGUAL + ": " + agora.getEffectiveCode() + " "
+                    + agora.getDescription());
         }
         return new Copiada(Destino.linha(agora), false, "linha mudou: antes " + texto(antes) + "; agora " + texto(agora));
     }
 
-    private static String texto(LinhaPo l) {
-        return l.getCodigoEfetivo() + " " + (l.getConta() == null ? "" : l.getConta() + " / ") + l.getDescricao();
+    private static String texto(BudgetLine l) {
+        return l.getEffectiveCode() + " " + (l.getAccount() == null ? "" : l.getAccount() + " / ") + l.getDescription();
     }
 }

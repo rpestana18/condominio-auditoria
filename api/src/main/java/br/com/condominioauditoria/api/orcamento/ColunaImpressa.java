@@ -2,6 +2,9 @@ package br.com.condominioauditoria.api.orcamento;
 
 import static br.com.condominioauditoria.api.orcamento.DinheiroBr.formatar;
 
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -45,35 +48,35 @@ public record ColunaImpressa(UUID poId, String rotulo, BigDecimal totalImpresso,
      * Monta a coluna "Orçado anterior" da PO. Vazio quando a PO não imprimiu a coluna (sem rótulo ou com todos os
      * valores zerados).
      */
-    public static Optional<ColunaImpressa> de(PrevisaoOrcamentaria po, List<LinhaPo> linhas) {
-        if (po.getColunaOrcadoAnterior() == null || po.getColunaOrcadoAnterior().isBlank()
-                || linhas.stream().allMatch(l -> l.getOrcadoAnterior() == null || l.getOrcadoAnterior().signum() == 0)) {
+    public static Optional<ColunaImpressa> de(Budget po, List<BudgetLine> linhas) {
+        if (po.getPreviousBudgetedColumn() == null || po.getPreviousBudgetedColumn().isBlank()
+                || linhas.stream().allMatch(l -> l.getPreviousBudgeted() == null || l.getPreviousBudgeted().signum() == 0)) {
             return Optional.empty();
         }
-        BigDecimal tolerancia = po.getToleranciaArredondamento() == null ? new BigDecimal("0.01")
-                : po.getToleranciaArredondamento();
-        EstruturaPo estrutura = EstruturaPo.de(linhas);
+        BigDecimal tolerancia = po.getRoundingTolerance() == null ? new BigDecimal("0.01")
+                : po.getRoundingTolerance();
+        BudgetStructure estrutura = BudgetStructure.of(linhas);
         List<String> avisos = new ArrayList<>();
         List<GrupoColuna> grupos = new ArrayList<>();
         BigDecimal impressosComFundos = zero();
         BigDecimal impressosSemFundos = zero();
         BigDecimal previsto = zero();
         BigDecimal fundos = zero();
-        for (EstruturaPo.Grupo g : estrutura.grupos()) {
-            List<LinhaColuna> doGrupo = g.linhas().stream().map(ColunaImpressa::linha).toList();
+        for (BudgetStructure.Group g : estrutura.groups()) {
+            List<LinhaColuna> doGrupo = g.lines().stream().map(ColunaImpressa::linha).toList();
             BigDecimal soma = doGrupo.stream().map(LinhaColuna::valor).reduce(zero(), BigDecimal::add);
-            BigDecimal impresso = valor(g.linha());
+            BigDecimal impresso = valor(g.line());
             BigDecimal diferenca = impresso.subtract(soma);
             boolean confere = diferenca.abs().compareTo(tolerancia) <= 0;
-            grupos.add(new GrupoColuna(g.linha().getId(), g.linha().getCodigoEfetivo(), g.linha().getDescricao(),
-                    g.fundos(), impresso, soma, diferenca, confere, doGrupo));
+            grupos.add(new GrupoColuna(g.line().getId(), g.line().getEffectiveCode(), g.line().getDescription(),
+                    g.funds(), impresso, soma, diferenca, confere, doGrupo));
             if (!confere) {
-                avisos.add("Grupo " + g.nome() + ": subtotal impresso " + formatar(impresso) + "; soma das linhas "
+                avisos.add("Grupo " + g.name() + ": subtotal impresso " + formatar(impresso) + "; soma das linhas "
                         + formatar(soma) + " (diferença " + formatar(soma.subtract(impresso)) + "). Vale a soma das"
                         + " linhas.");
             }
             impressosComFundos = impressosComFundos.add(impresso);
-            if (g.fundos()) {
+            if (g.funds()) {
                 fundos = fundos.add(soma);
             } else {
                 impressosSemFundos = impressosSemFundos.add(impresso);
@@ -85,7 +88,7 @@ public record ColunaImpressa(UUID poId, String rotulo, BigDecimal totalImpresso,
         if (total != null) {
             if (total.subtract(impressosComFundos).abs().compareTo(tolerancia) <= 0) {
                 incluiFundos = true;
-            } else if (estrutura.fundos().isPresent()
+            } else if (estrutura.funds().isPresent()
                     && total.subtract(impressosSemFundos).abs().compareTo(tolerancia) <= 0) {
                 incluiFundos = false;
                 avisos.add("Nesta coluna o total impresso (" + formatar(total) + ") não inclui os fundos: confere com a"
@@ -96,7 +99,7 @@ public record ColunaImpressa(UUID poId, String rotulo, BigDecimal totalImpresso,
                         + " sem os fundos). Vale a soma das linhas.");
             }
         }
-        return Optional.of(new ColunaImpressa(po.getId(), po.getColunaOrcadoAnterior().trim() + " (coluna impressa)",
+        return Optional.of(new ColunaImpressa(po.getId(), po.getPreviousBudgetedColumn().trim() + " (coluna impressa)",
                 total, incluiFundos, fundos, previsto, List.copyOf(grupos), List.copyOf(avisos)));
     }
 
@@ -104,10 +107,10 @@ public record ColunaImpressa(UUID poId, String rotulo, BigDecimal totalImpresso,
      * Diferenças acima da tolerância, por grupo, entre a PO anterior enviada (soma das linhas de cada grupo) e esta
      * coluna (RF-11.5). Grupos casados pelo código (1.1 a 1.9); grupo que só existe de um lado não é comparado.
      */
-    public List<DiferencaGrupo> diferencas(List<LinhaPo> linhasDaPoAnterior, BigDecimal tolerancia) {
+    public List<DiferencaGrupo> diferencas(List<BudgetLine> linhasDaPoAnterior, BigDecimal tolerancia) {
         Map<String, BigDecimal> enviada = new LinkedHashMap<>();
-        for (EstruturaPo.Grupo g : EstruturaPo.de(linhasDaPoAnterior).grupos()) {
-            enviada.put(g.linha().getCodigoEfetivo(), g.somaDasLinhas());
+        for (BudgetStructure.Group g : BudgetStructure.of(linhasDaPoAnterior).groups()) {
+            enviada.put(g.line().getEffectiveCode(), g.linesSum());
         }
         List<DiferencaGrupo> lista = new ArrayList<>();
         for (GrupoColuna g : grupos) {
@@ -125,13 +128,13 @@ public record ColunaImpressa(UUID poId, String rotulo, BigDecimal totalImpresso,
                 .findFirst();
     }
 
-    private static LinhaColuna linha(LinhaPo l) {
-        return new LinhaColuna(l.getId(), l.getCodigoEfetivo(), l.getConta(), l.getDescricao(), valor(l),
-                l.getPercentualTexto());
+    private static LinhaColuna linha(BudgetLine l) {
+        return new LinhaColuna(l.getId(), l.getEffectiveCode(), l.getAccount(), l.getDescription(), valor(l),
+                l.getPercentageText());
     }
 
-    private static BigDecimal valor(LinhaPo l) {
-        return l.getOrcadoAnterior() == null ? zero() : l.getOrcadoAnterior();
+    private static BigDecimal valor(BudgetLine l) {
+        return l.getPreviousBudgeted() == null ? zero() : l.getPreviousBudgeted();
     }
 
     private static BigDecimal zero() {

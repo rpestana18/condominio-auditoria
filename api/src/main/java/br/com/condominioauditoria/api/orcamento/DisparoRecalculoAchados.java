@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.event.BudgetChanged;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -29,12 +30,12 @@ class DisparoRecalculoAchados {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    void aoMudar(MudancaOrcamento mudanca) {
+    void aoMudar(BudgetChanged mudanca) {
         try {
             transacao.executeWithoutResult(s -> recalculo.recalcular(mudanca));
         } catch (RuntimeException e) {
-            log.error("Recálculo dos achados do condomínio {} falhou ({}): {}", mudanca.condominioId(),
-                    mudanca.gatilho().text(), e.getMessage(), e);
+            log.error("Recálculo dos achados do condomínio {} falhou ({}): {}", mudanca.condominiumId(),
+                    mudanca.trigger().text(), e.getMessage(), e);
         }
     }
 }

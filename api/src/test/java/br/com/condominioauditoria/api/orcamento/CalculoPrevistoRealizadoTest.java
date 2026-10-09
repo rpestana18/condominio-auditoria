@@ -5,6 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.model.enums.BudgetLineType;
+import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Acumulado;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Entrada;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Fluxo;
@@ -75,8 +79,8 @@ class CalculoPrevistoRealizadoTest {
         assertThat(CalculoPrevistoRealizado.calcular(entrada(null, new Mes(SET), List.of(), ORDINARIO)).resultado()
                 .situacao()).isEqualTo(Situacao.SEM_PO);
 
-        PrevisaoOrcamentaria lida = new PrevisaoOrcamentaria(CONDOMINIO, UUID.randomUUID(), "a".repeat(64));
-        lida.registrarLeitura("po-protest", "PO", null, null, null, EstadoPrevisao.LIDA, null, null, BigDecimal.ONE,
+        Budget lida = new Budget(CONDOMINIO, UUID.randomUUID(), "a".repeat(64));
+        lida.recordReading("po-protest", "PO", null, null, null, BudgetStatus.LIDA, null, null, BigDecimal.ONE,
                 new BigDecimal("0.01"), Instant.EPOCH);
         var naoConfirmada = CalculoPrevistoRealizado.calcular(new Entrada(lida, null, po.linhas, List.of(), Map.of(),
                 Map.of(), ORDINARIO, List.of(), List.of(), List.of(), null, List.of(), new Mes(SET))).resultado();
@@ -185,43 +189,43 @@ class CalculoPrevistoRealizadoTest {
     // ---- montagem
 
     /** PO confirmada 05/2026 a 04/2027 com um grupo de uma linha (1.1.1) e de-para 1001 → 1.1.1 confirmado. */
-    private record Po(PrevisaoOrcamentaria previsao, List<LinhaPo> linhas, List<DeparaConta> deparas,
+    private record Po(Budget previsao, List<BudgetLine> linhas, List<DeparaConta> deparas,
             Map<UUID, UUID> fundoPorLinha) {
     }
 
     private static Po poSimples(String orcado) {
-        PrevisaoOrcamentaria p = confirmada();
-        LinhaPo total = linha(p, 1, TipoLinhaPo.TOTAL, "1", null, "TOTAL", orcado);
-        LinhaPo grupo = linha(p, 2, TipoLinhaPo.GRUPO, "1.1", null, "PESSOAL", orcado);
-        LinhaPo l = linha(p, 3, TipoLinhaPo.LINHA, "1.1.1", "1545 - Salários", "Salários", orcado);
+        Budget p = confirmada();
+        BudgetLine total = linha(p, 1, BudgetLineType.TOTAL, "1", null, "TOTAL", orcado);
+        BudgetLine grupo = linha(p, 2, BudgetLineType.GRUPO, "1.1", null, "PESSOAL", orcado);
+        BudgetLine l = linha(p, 3, BudgetLineType.LINHA, "1.1.1", "1545 - Salários", "Salários", orcado);
         DeparaConta d = new DeparaConta(p, "1001", "SALARIO", Destino.linha(l), EstadoDepara.CONFIRMADO,
                 OrigemDepara.ADMIN, null, false, "admin", Instant.EPOCH);
         return new Po(p, List.of(total, grupo, l), List.of(d), Map.of());
     }
 
     private static Po poComFundo() {
-        PrevisaoOrcamentaria p = confirmada();
-        LinhaPo grupo = linha(p, 1, TipoLinhaPo.GRUPO, "1.1", null, "PESSOAL", "1000.00");
-        LinhaPo l = linha(p, 2, TipoLinhaPo.LINHA, "1.1.1", "1545 - Salários", "Salários", "1000.00");
-        LinhaPo fundos = new LinhaPo(p, 3, 1, TipoLinhaPo.GRUPO, "1.9", null, "Fundos", null, "Fundos do Condomínio",
+        Budget p = confirmada();
+        BudgetLine grupo = linha(p, 1, BudgetLineType.GRUPO, "1.1", null, "PESSOAL", "1000.00");
+        BudgetLine l = linha(p, 2, BudgetLineType.LINHA, "1.1.1", "1545 - Salários", "Salários", "1000.00");
+        BudgetLine fundos = new BudgetLine(p, 3, 1, BudgetLineType.GRUPO, "1.9", null, "Fundos", null, "Fundos do Condomínio",
                 BigDecimal.ZERO.setScale(2), new BigDecimal("50.00"), null, null);
-        LinhaPo reserva = linha(p, 4, TipoLinhaPo.LINHA, "1.9.1", null, "Fundo de Reserva", "30.00");
-        LinhaPo obras = linha(p, 5, TipoLinhaPo.LINHA, "1.9.2", null, "Fundo de Obras", "20.00");
+        BudgetLine reserva = linha(p, 4, BudgetLineType.LINHA, "1.9.1", null, "Fundo de Reserva", "30.00");
+        BudgetLine obras = linha(p, 5, BudgetLineType.LINHA, "1.9.2", null, "Fundo de Obras", "20.00");
         return new Po(p, List.of(grupo, l, fundos, reserva, obras), List.of(), Map.of(reserva.getId(), RESERVA));
     }
 
-    private static PrevisaoOrcamentaria confirmada() {
-        PrevisaoOrcamentaria p = new PrevisaoOrcamentaria(CONDOMINIO, UUID.randomUUID(), "a".repeat(64));
-        p.registrarLeitura("po-protest", "PO", null, null, null, EstadoPrevisao.LIDA, null, null, BigDecimal.ONE,
+    private static Budget confirmada() {
+        Budget p = new Budget(CONDOMINIO, UUID.randomUUID(), "a".repeat(64));
+        p.recordReading("po-protest", "PO", null, null, null, BudgetStatus.LIDA, null, null, BigDecimal.ONE,
                 new BigDecimal("0.01"), Instant.EPOCH);
-        p.confirmar(1, YearMonth.of(2026, 5), YearMonth.of(2027, 4), null, true, null, false, null, "admin",
+        p.confirm(1, YearMonth.of(2026, 5), YearMonth.of(2027, 4), null, true, null, false, null, "admin",
                 Instant.EPOCH);
         return p;
     }
 
-    private static LinhaPo linha(PrevisaoOrcamentaria p, int ordem, TipoLinhaPo tipo, String codigo, String conta,
+    private static BudgetLine linha(Budget p, int ordem, BudgetLineType tipo, String codigo, String conta,
             String descricao, String orcado) {
-        return new LinhaPo(p, ordem, 1, tipo, codigo, conta, null, null, descricao, BigDecimal.ZERO.setScale(2),
+        return new BudgetLine(p, ordem, 1, tipo, codigo, conta, null, null, descricao, BigDecimal.ZERO.setScale(2),
                 new BigDecimal(orcado), null, null);
     }
 

@@ -1,5 +1,8 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.AcaoLoteRubrica;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.EventoRubricaDto;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.FiltroRubrica;
@@ -17,7 +20,10 @@ import br.com.condominioauditoria.api.orcamento.RubricaDtos.RubricaDto;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.RubricasDaPo;
 import br.com.condominioauditoria.api.orcamento.SugestaoRubrica.Confirmada;
 import br.com.condominioauditoria.api.orcamento.SugestaoRubrica.LinhaComGrupo;
+import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -49,13 +55,13 @@ public class ServicoRubricas {
     private static final int TAMANHO_NOME = 300;
 
     private final CondominiumRepository condominios;
-    private final PrevisaoOrcamentariaRepository previsoes;
-    private final LinhaPoRepository linhas;
+    private final BudgetRepository previsoes;
+    private final BudgetLineRepository linhas;
     private final RubricaRepository rubricas;
     private final LinhaRubricaRepository linhasRubrica;
     private final EventoRubricaRepository eventos;
 
-    ServicoRubricas(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes, LinhaPoRepository linhas,
+    ServicoRubricas(CondominiumRepository condominios, BudgetRepository previsoes, BudgetLineRepository linhas,
             RubricaRepository rubricas, LinhaRubricaRepository linhasRubrica, EventoRubricaRepository eventos) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -66,7 +72,7 @@ public class ServicoRubricas {
     }
 
     /** PO, linhas que recebem rubrica e as rubricas já ligadas, carregadas uma vez por pedido. */
-    private record Contexto(PrevisaoOrcamentaria po, List<LinhaComGrupo> linhas, Map<UUID, LinhaComGrupo> porId,
+    private record Contexto(Budget po, List<LinhaComGrupo> linhas, Map<UUID, LinhaComGrupo> porId,
             Map<UUID, LinhaRubrica> ligadas) {
     }
 
@@ -110,7 +116,7 @@ public class ServicoRubricas {
                 contar(todas, EstadoRubrica.SUGERIDO), contar(todas, EstadoRubrica.RECUSADO),
                 (int) todas.stream().filter(l -> l.estado() == null).count());
         FiltroRubrica f = filtro == null ? FiltroRubrica.TODAS : filtro;
-        return new RubricasDaPo(ctx.po().getId(), ctx.po().getVersao(), resumo,
+        return new RubricasDaPo(ctx.po().getId(), ctx.po().getVersion(), resumo,
                 todas.stream().filter(l -> passa(l, f)).toList());
     }
 
@@ -128,36 +134,36 @@ public class ServicoRubricas {
     /**
      * Chamado na confirmação da PO, na mesma transação (o condomínio já está travado). A PO precisa estar confirmada.
      */
-    ResultadoSugestoesRubrica aoConfirmar(PrevisaoOrcamentaria po, String usuario, Instant agora) {
+    public ResultadoSugestoesRubrica aoConfirmar(Budget po, String usuario, Instant agora) {
         return gerar(po, usuario, agora);
     }
 
-    private ResultadoSugestoesRubrica gerar(PrevisaoOrcamentaria po, String usuario, Instant agora) {
+    private ResultadoSugestoesRubrica gerar(Budget po, String usuario, Instant agora) {
         Contexto ctx = contexto(po);
-        if (!rubricas.existsByCondominioId(po.getCondominioId())) {
+        if (!rubricas.existsByCondominioId(po.getCondominiumId())) {
             for (LinhaComGrupo l : ctx.linhas()) {
-                Rubrica r = new Rubrica(po.getCondominioId(), nomeDe(l), l.grupo(), l.linha().getId(), usuario, agora);
+                Rubrica r = new Rubrica(po.getCondominiumId(), nomeDe(l), l.grupo(), l.linha().getId(), usuario, agora);
                 rubricas.save(r);
                 ligar(l.linha(), null, r, EstadoRubrica.CONFIRMADO, OrigemRubrica.PRIMEIRA_PO,
                         "primeira PO confirmada do condomínio: a linha vira rubrica", usuario, agora);
             }
-            log.info("Rubricas: primeira PO {} do condomínio {}, {} rubricas criadas", po.getId(), po.getCondominioId(),
+            log.info("Rubricas: primeira PO {} do condomínio {}, {} rubricas criadas", po.getId(), po.getCondominiumId(),
                     ctx.linhas().size());
             return new ResultadoSugestoesRubrica(true, ctx.linhas().size(), 0, 0, 0, List.of());
         }
 
         List<LinhaComGrupo> novas = ctx.linhas().stream().filter(l -> !ctx.ligadas().containsKey(l.linha().getId()))
                 .toList();
-        Optional<PrevisaoOrcamentaria> anterior = versaoAnterior(po);
+        Optional<Budget> anterior = versaoAnterior(po);
         List<Confirmada> daAnterior = new ArrayList<>();
         List<Confirmada> deOutras = new ArrayList<>();
         Map<UUID, List<LinhaRubrica>> confirmadasPorPo = linhasRubrica
-                .findByCondominioIdAndEstado(po.getCondominioId(), EstadoRubrica.CONFIRMADO).stream()
+                .findByCondominioIdAndEstado(po.getCondominiumId(), EstadoRubrica.CONFIRMADO).stream()
                 .filter(lr -> !lr.getPrevisaoId().equals(po.getId()))
                 .collect(Collectors.groupingBy(LinhaRubrica::getPrevisaoId, LinkedHashMap::new, Collectors.toList()));
         confirmadasPorPo.forEach((previsaoId, ligadas) -> {
-            Map<UUID, LinhaComGrupo> daPo = SugestaoRubrica.linhas(EstruturaPo.de(
-                    linhas.findByPrevisaoIdOrderByOrdem(previsaoId))).stream()
+            Map<UUID, LinhaComGrupo> daPo = SugestaoRubrica.linhas(BudgetStructure.of(
+                    linhas.findByBudgetIdOrderByPosition(previsaoId))).stream()
                     .collect(Collectors.toMap(l -> l.linha().getId(), Function.identity()));
             for (LinhaRubrica lr : ligadas) {
                 LinhaComGrupo l = daPo.get(lr.getLinhaPoId());
@@ -171,7 +177,7 @@ public class ServicoRubricas {
             }
         });
 
-        Map<UUID, Rubrica> catalogo = rubricas.findByCondominioIdOrderByNome(po.getCondominioId()).stream()
+        Map<UUID, Rubrica> catalogo = rubricas.findByCondominioIdOrderByNome(po.getCondominiumId()).stream()
                 .collect(Collectors.toMap(Rubrica::getId, Function.identity()));
         int versaoAnterior = 0;
         int pelaConta = 0;
@@ -188,7 +194,7 @@ public class ServicoRubricas {
                     pelaConta++;
                 }
             } else {
-                semSugestao.add(new LinhaSemSugestao(l.linha().getId(), l.linha().getCodigoEfetivo(), l.rotulo(),
+                semSugestao.add(new LinhaSemSugestao(l.linha().getId(), l.linha().getEffectiveCode(), l.rotulo(),
                         r.motivo()));
             }
         }
@@ -276,7 +282,7 @@ public class ServicoRubricas {
     /**
      * Liga (ou troca) a rubrica de uma linha e grava o evento. Sem mudança de rubrica nem de estado, não grava nada.
      */
-    private LinhaRubrica ligar(LinhaPo linha, LinhaRubrica atual, Rubrica rubrica, EstadoRubrica estado,
+    private LinhaRubrica ligar(BudgetLine linha, LinhaRubrica atual, Rubrica rubrica, EstadoRubrica estado,
             OrigemRubrica origem, String motivo, String usuario, Instant agora) {
         if (atual == null) {
             LinhaRubrica lr = new LinhaRubrica(linha, rubrica, estado, origem, motivo, usuario, agora);
@@ -307,12 +313,12 @@ public class ServicoRubricas {
 
     /** Nome da rubrica criada a partir de uma linha: a conta da PO (ou o texto da conta), senão a descrição. */
     private static String nomeDe(LinhaComGrupo l) {
-        String nome = l.rotulo().isBlank() ? l.linha().getCodigoEfetivo() : l.rotulo();
+        String nome = l.rotulo().isBlank() ? l.linha().getEffectiveCode() : l.rotulo();
         return nome.length() > TAMANHO_NOME ? nome.substring(0, TAMANHO_NOME) : nome;
     }
 
-    private PrevisaoOrcamentaria po(UUID condominioId, UUID poId) {
-        return previsoes.findByIdAndCondominioId(poId, condominioId)
+    private Budget po(UUID condominioId, UUID poId) {
+        return previsoes.findByIdAndCondominiumId(poId, condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada"));
     }
 
@@ -323,16 +329,16 @@ public class ServicoRubricas {
     }
 
     private Contexto contextoParaEscrita(UUID condominioId, UUID poId) {
-        PrevisaoOrcamentaria po = po(condominioId, poId);
-        if (!po.getEstado().travada()) {
+        Budget po = po(condominioId, poId);
+        if (!po.getStatus().isLocked()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Confirme a PO antes das rubricas: as rubricas são das linhas de PO confirmada");
         }
         return contexto(po);
     }
 
-    private Contexto contexto(PrevisaoOrcamentaria po) {
-        List<LinhaComGrupo> daPo = SugestaoRubrica.linhas(EstruturaPo.de(linhas.findByPrevisaoIdOrderByOrdem(po.getId())));
+    private Contexto contexto(Budget po) {
+        List<LinhaComGrupo> daPo = SugestaoRubrica.linhas(BudgetStructure.of(linhas.findByBudgetIdOrderByPosition(po.getId())));
         Map<UUID, LinhaComGrupo> porId = new LinkedHashMap<>();
         daPo.forEach(l -> porId.put(l.linha().getId(), l));
         Map<UUID, LinhaRubrica> ligadas = linhasRubrica.findByPrevisaoId(po.getId()).stream()
@@ -344,27 +350,27 @@ public class ServicoRubricas {
      * Versão confirmada imediatamente anterior do mesmo exercício (a que esta PO substituiu numa reaprovação): maior
      * versão menor que esta, com exercício que se sobrepõe ao desta.
      */
-    private Optional<PrevisaoOrcamentaria> versaoAnterior(PrevisaoOrcamentaria po) {
-        if (po.getVersao() == null || po.getExercicioInicio() == null) {
+    private Optional<Budget> versaoAnterior(Budget po) {
+        if (po.getVersion() == null || po.getFiscalYearStart() == null) {
             return Optional.empty();
         }
-        return previsoes.findByCondominioIdAndEstadoIn(po.getCondominioId(),
-                        EnumSet.of(EstadoPrevisao.CONFIRMADA, EstadoPrevisao.SUBSTITUIDA)).stream()
-                .filter(p -> !p.getId().equals(po.getId()) && p.getVersao() != null && p.getVersao() < po.getVersao())
-                .filter(p -> p.getExercicioInicio() != null && !p.getExercicioInicio().isAfter(po.getExercicioFim())
-                        && !p.getExercicioFim().isBefore(po.getExercicioInicio()))
-                .max(Comparator.comparing(PrevisaoOrcamentaria::getVersao));
+        return previsoes.findByCondominiumIdAndStatusIn(po.getCondominiumId(),
+                        EnumSet.of(BudgetStatus.CONFIRMADA, BudgetStatus.SUBSTITUIDA)).stream()
+                .filter(p -> !p.getId().equals(po.getId()) && p.getVersion() != null && p.getVersion() < po.getVersion())
+                .filter(p -> p.getFiscalYearStart() != null && !p.getFiscalYearStart().isAfter(po.getFiscalYearEnd())
+                        && !p.getFiscalYearEnd().isBefore(po.getFiscalYearStart()))
+                .max(Comparator.comparing(Budget::getVersion));
     }
 
     private static LinhaComRubrica linhaComRubrica(LinhaComGrupo l, LinhaRubrica lr, Map<UUID, Rubrica> catalogo) {
-        LinhaPo linha = l.linha();
+        BudgetLine linha = l.linha();
         if (lr == null) {
-            return new LinhaComRubrica(linha.getId(), linha.getCodigoEfetivo(), l.grupo(), l.rotulo(),
-                    linha.getDescricao(), linha.getOrcado(), null, null, null, null, null, null);
+            return new LinhaComRubrica(linha.getId(), linha.getEffectiveCode(), l.grupo(), l.rotulo(),
+                    linha.getDescription(), linha.getBudgeted(), null, null, null, null, null, null);
         }
         Rubrica r = catalogo.get(lr.getRubricaId());
-        return new LinhaComRubrica(linha.getId(), linha.getCodigoEfetivo(), l.grupo(), l.rotulo(), linha.getDescricao(),
-                linha.getOrcado(), r == null ? null : RubricaDto.de(r), lr.getEstado(), lr.getOrigem(), lr.getMotivo(),
+        return new LinhaComRubrica(linha.getId(), linha.getEffectiveCode(), l.grupo(), l.rotulo(), linha.getDescription(),
+                linha.getBudgeted(), r == null ? null : RubricaDto.de(r), lr.getEstado(), lr.getOrigem(), lr.getMotivo(),
                 lr.getAtualizadoPor(), lr.getAtualizadoEm());
     }
 

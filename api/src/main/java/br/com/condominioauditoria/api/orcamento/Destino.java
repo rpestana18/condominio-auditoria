@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -22,8 +23,8 @@ public record Destino(TipoDestino tipo, UUID linhaPoId, String codigo, String de
         detalhe = detalhe == null || detalhe.isBlank() ? null : detalhe.trim();
     }
 
-    public static Destino linha(LinhaPo linha) {
-        return new Destino(TipoDestino.LINHA_PO, linha.getId(), linha.getCodigoEfetivo(), linha.getDescricao(), null);
+    public static Destino linha(BudgetLine linha) {
+        return new Destino(TipoDestino.LINHA_PO, linha.getId(), linha.getEffectiveCode(), linha.getDescription(), null);
     }
 
     public static Destino especial(TipoDestino tipo, String detalhe) {

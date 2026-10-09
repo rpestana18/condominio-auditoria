@@ -2,6 +2,8 @@ package br.com.condominioauditoria.api.orcamento;
 
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntryFingerprint;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -43,10 +45,10 @@ public class RealocacaoLancamento {
     protected RealocacaoLancamento() {
     }
 
-    public RealocacaoLancamento(PrevisaoOrcamentaria po, LedgerEntry l, String sha256, LinhaPo destino, String usuario,
+    public RealocacaoLancamento(Budget po, LedgerEntry l, String sha256, BudgetLine destino, String usuario,
             Instant em) {
         this.id = UUID.randomUUID();
-        this.condominioId = po.getCondominioId();
+        this.condominioId = po.getCondominiumId();
         this.previsaoId = po.getId();
         this.chaveLancamento = LedgerEntryFingerprint.key(l);
         this.arquivoId = l.getFileId();

@@ -15,12 +15,12 @@ import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Status;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.orcamento.GravacaoPrevisao;
 import br.com.condominioauditoria.api.repository.accounting.FundBalanceRepository;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
 import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.budget.BudgetImportService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -38,7 +38,7 @@ class ProcessingResultServiceCategoryTest {
     private final FundBalanceRepository balances = mock(FundBalanceRepository.class);
     private final TotalsCheckRepository totalsChecks = mock(TotalsCheckRepository.class);
     private final ProcessingResultService service = new ProcessingResultService(files, mock(FundRepository.class),
-            entries, balances, totalsChecks, mock(GravacaoPrevisao.class), event -> { });
+            entries, balances, totalsChecks, mock(BudgetImportService.class), event -> { });
 
     @Test
     void cashFlowInAnotherCategoryDeletesExtractionAndSavesNoEntries() {

@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.api.service.file;
 
+import br.com.condominioauditoria.api.event.BudgetChanged;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetData;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.CashFlow;
@@ -10,18 +11,17 @@ import br.com.condominioauditoria.api.model.accounting.Fund;
 import br.com.condominioauditoria.api.model.accounting.FundBalance;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.model.accounting.TotalsCheck;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.orcamento.EstadoPrevisao;
-import br.com.condominioauditoria.api.orcamento.GravacaoPrevisao;
-import br.com.condominioauditoria.api.orcamento.MudancaOrcamento;
-import br.com.condominioauditoria.api.orcamento.PrevisaoOrcamentaria;
 import br.com.condominioauditoria.api.repository.accounting.FundBalanceRepository;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
 import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.budget.BudgetImportService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -51,11 +51,11 @@ public class ProcessingResultService {
     private final LedgerEntryRepository entries;
     private final FundBalanceRepository balances;
     private final TotalsCheckRepository totalsChecks;
-    private final GravacaoPrevisao budgets;
+    private final BudgetImportService budgets;
     private final ApplicationEventPublisher events;
 
     ProcessingResultService(SourceFileRepository files, FundRepository funds, LedgerEntryRepository entries,
-            FundBalanceRepository balances, TotalsCheckRepository totalsChecks, GravacaoPrevisao budgets,
+            FundBalanceRepository balances, TotalsCheckRepository totalsChecks, BudgetImportService budgets,
             ApplicationEventPublisher publisher) {
         this.files = files;
         this.funds = funds;
@@ -74,25 +74,25 @@ public class ProcessingResultService {
                     result.fileId());
             return;
         }
-        Optional<PrevisaoOrcamentaria> locked = budgets.travada(file);
+        Optional<Budget> locked = budgets.isLocked(file);
         if (locked.isPresent()) {
             // ADR 0004, Decision 3: numbers of a confirmed budget may already have been exported; nothing from this
             // read goes in
             file.complete(FileStatus.CONCLUIDO, "A PO deste arquivo já foi confirmada e não foi alterada. "
                     + "Para mudar a PO, envie o arquivo corrigido e confirme como nova versão.",
-                    locked.get().getInterpretador(), null, null, null);
+                    locked.get().getParser(), null, null, null);
             return;
         }
         entries.deleteByFileId(file.getId());
         balances.deleteByFileId(file.getId());
         totalsChecks.deleteByFileId(file.getId());
         // Cash flow saved (or deleted, if the category changed): the budget findings are recalculated after the commit
-        events.publishEvent(MudancaOrcamento.de(file.getCondominiumId(), "leitura do arquivo "
+        events.publishEvent(BudgetChanged.of(file.getCondominiumId(), "leitura do arquivo "
                 + file.getOriginalName() + " gravada", "sistema", Instant.now()));
 
         BudgetData budgetData = result.budget();
         if (budgetData == null || file.getCategory() != FileCategory.PO) {
-            budgets.removerNaoConfirmada(file);
+            budgets.removeUnconfirmed(file);
         }
         if (budgetData != null) {
             saveBudget(file, result, budgetData);
@@ -136,15 +136,15 @@ public class ProcessingResultService {
         for (int i = 0; i < checks.size(); i++) {
             totalsChecks.save(new TotalsCheck(file.getId(), i + 1, checks.get(i)));
         }
-        PrevisaoOrcamentaria budget = budgets.gravar(file, result.parser(), budgetData, checks);
-        boolean divergent = budget.getEstado() == EstadoPrevisao.LIDA_COM_DIVERGENCIA;
+        Budget budget = budgets.save(file, result.parser(), budgetData, checks);
+        boolean divergent = budget.getStatus() == BudgetStatus.LIDA_COM_DIVERGENCIA;
         file.complete(divergent ? FileStatus.PRECISA_REVISAO : FileStatus.CONCLUIDO,
                 divergent
                         ? "PO lida com divergência: confira as somas antes de confirmar"
                         : "PO lida: aguarda a confirmação do Admin",
                 result.parser(), null, null, null);
         log.info("PO do arquivo {} gravada: {} linhas, estado {}", file.getOriginalName(), budgetData.lines().size(),
-                budget.getEstado());
+                budget.getStatus());
     }
 
     private void saveCashFlow(SourceFile file, CashFlow cashFlow, List<TotalsCheckData> checks) {
@@ -160,7 +160,8 @@ public class ProcessingResultService {
         List<FundBalance> positions = new ArrayList<>();
         for (FundPosition p : cashFlow.financialPosition()) {
             UUID fundId = fundByName.computeIfAbsent(p.fund(), name -> fundId(condominiumId, name));
-            positions.add(new FundBalance(condominiumId, file.getId(), fundId, cashFlow.periodStart(), cashFlow.periodEnd(), p));
+            positions.add(new FundBalance(condominiumId, file.getId(), fundId, cashFlow.periodStart(),
+                    cashFlow.periodEnd(), p));
         }
         balances.saveAll(positions);
 

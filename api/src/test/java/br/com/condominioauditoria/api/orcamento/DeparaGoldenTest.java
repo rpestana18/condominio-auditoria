@@ -61,7 +61,7 @@ class DeparaGoldenTest {
         Map<String, String> esperado = new HashMap<>();
         mapa.get().lines().skip(1).map(l -> l.split(";")).forEach(c -> esperado.put(c[0], c[1]));
         Map<java.util.UUID, String> codigo = new HashMap<>();
-        g.cenario.linhas.forEach(l -> codigo.put(l.getId(), l.getCodigoEfetivo()));
+        g.cenario.linhas.forEach(l -> codigo.put(l.getId(), l.getEffectiveCode()));
         long certas = g.cenario.deparas.stream()
                 .filter(d -> codigo.get(d.getLinhaPoId()).equals(esperado.get(d.getContaCodigo()))).count();
         assertThat(certas).isEqualTo(r.criadas());

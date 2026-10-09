@@ -1,7 +1,10 @@
 package br.com.condominioauditoria.api.orcamento;
 
 import br.com.condominioauditoria.api.model.audit.Finding;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetFundLink;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.model.enums.FindingStatus;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.Entrada;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.Filtro;
@@ -11,6 +14,9 @@ import br.com.condominioauditoria.api.orcamento.ExercicioDtos.TipoExercicio;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Situacao;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
 import br.com.condominioauditoria.api.repository.audit.FindingRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetFundLinkRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import java.time.Month;
 import java.time.YearMonth;
@@ -36,17 +42,17 @@ import org.springframework.web.server.ResponseStatusException;
 public class ServicoComparacao {
 
     private final CondominiumRepository condominios;
-    private final PrevisaoOrcamentariaRepository previsoes;
-    private final LinhaPoRepository linhas;
-    private final PoFundoRepository poFundos;
+    private final BudgetRepository previsoes;
+    private final BudgetLineRepository linhas;
+    private final BudgetFundLinkRepository poFundos;
     private final RubricaRepository rubricas;
     private final LinhaRubricaRepository linhasRubrica;
     private final FindingRepository achados;
     private final ConsultaPrevistoRealizado previstoRealizado;
     private final ServicoExercicios exercicios;
 
-    ServicoComparacao(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
-            LinhaPoRepository linhas, PoFundoRepository poFundos, RubricaRepository rubricas,
+    ServicoComparacao(CondominiumRepository condominios, BudgetRepository previsoes,
+            BudgetLineRepository linhas, BudgetFundLinkRepository poFundos, RubricaRepository rubricas,
             LinhaRubricaRepository linhasRubrica, FindingRepository achados,
             ConsultaPrevistoRealizado previstoRealizado, ServicoExercicios exercicios) {
         this.condominios = condominios;
@@ -61,14 +67,14 @@ public class ServicoComparacao {
     }
 
     /** Um exercício escolhido: a PO e se é a coluna impressa dela. */
-    private record Escolhido(String id, PrevisaoOrcamentaria po, boolean coluna) {
+    private record Escolhido(String id, Budget po, boolean coluna) {
 
         YearMonth inicio() {
-            return coluna ? po.getExercicioInicio().minusMonths(12) : po.getExercicioInicio();
+            return coluna ? po.getFiscalYearStart().minusMonths(12) : po.getFiscalYearStart();
         }
 
         YearMonth fim() {
-            return coluna ? po.getExercicioInicio().minusMonths(1) : po.getExercicioFim();
+            return coluna ? po.getFiscalYearStart().minusMonths(1) : po.getFiscalYearEnd();
         }
     }
 
@@ -134,13 +140,13 @@ public class ServicoComparacao {
             Integer abertos = x.coluna() ? null : (int) todosAchados.stream()
                     .filter(a -> a.getStatus() == FindingStatus.ABERTO && !a.getReferenceMonth().isBefore(x.inicio())
                             && !a.getReferenceMonth().isAfter(x.fim())).count();
-            String rotulo = x.coluna() ? ColunaImpressa.de(x.po(), linhas.findByPrevisaoIdOrderByOrdem(poId))
+            String rotulo = x.coluna() ? ColunaImpressa.de(x.po(), linhas.findByBudgetIdOrderByPosition(poId))
                     .map(ColunaImpressa::rotulo).orElseThrow()
                     : ServicoExercicios.rotulo(x.inicio(), x.fim());
             entradas.add(new Entrada(x.id(), x.coluna() ? TipoExercicio.COLUNA_IMPRESSA : TipoExercicio.PO, rotulo,
-                    poId, x.po().getVersao(), x.inicio(), x.fim(), linhas.findByPrevisaoIdOrderByOrdem(poId),
-                    poFundos.findByPrevisaoId(poId).stream()
-                            .collect(Collectors.toMap(PoFundo::getLinhaPoId, PoFundo::getFundoId)),
+                    poId, x.po().getVersion(), x.inicio(), x.fim(), linhas.findByBudgetIdOrderByPosition(poId),
+                    poFundos.findByBudgetId(poId).stream()
+                            .collect(Collectors.toMap(BudgetFundLink::getBudgetLineId, BudgetFundLink::getFundId)),
                     daLinha, acumulado, List.copyOf(periodo), List.copyOf(meses), abertos));
         }
         return ComparacaoExercicios.comparar(entradas, new Filtro(fundoId, condominio.getOperatingFundId(),
@@ -157,11 +163,11 @@ public class ServicoComparacao {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Exercício deve ser po:<id> ou coluna:<id>: " + id);
         }
-        PrevisaoOrcamentaria po = previsoes.findByIdAndCondominioId(poId, condominioId)
-                .filter(p -> p.getEstado() == EstadoPrevisao.CONFIRMADA && p.getExercicioInicio() != null)
+        Budget po = previsoes.findByIdAndCondominiumId(poId, condominioId)
+                .filter(p -> p.getStatus() == BudgetStatus.CONFIRMADA && p.getFiscalYearStart() != null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Exercício não encontrado (PO confirmada): " + id));
-        if (coluna && ColunaImpressa.de(po, linhas.findByPrevisaoIdOrderByOrdem(po.getId())).isEmpty()) {
+        if (coluna && ColunaImpressa.de(po, linhas.findByBudgetIdOrderByPosition(po.getId())).isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "A PO não tem a coluna \"Orçado anterior\": " + id);
         }
         return new Escolhido((coluna ? "coluna:" : "po:") + po.getId(), po, coluna);

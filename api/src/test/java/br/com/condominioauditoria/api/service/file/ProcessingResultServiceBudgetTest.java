@@ -11,22 +11,22 @@ import static org.mockito.Mockito.when;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Status;
 import br.com.condominioauditoria.api.model.accounting.TotalsCheck;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.orcamento.EstadoPrevisao;
-import br.com.condominioauditoria.api.orcamento.GravacaoPrevisao;
-import br.com.condominioauditoria.api.orcamento.LinhaPo;
-import br.com.condominioauditoria.api.orcamento.LinhaPoRepository;
 import br.com.condominioauditoria.api.orcamento.PoDoPiloto;
-import br.com.condominioauditoria.api.orcamento.PrevisaoOrcamentaria;
-import br.com.condominioauditoria.api.orcamento.PrevisaoOrcamentariaRepository;
 import br.com.condominioauditoria.api.orcamento.PropriedadesOrcamento;
 import br.com.condominioauditoria.api.repository.accounting.FundBalanceRepository;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
 import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.budget.BudgetImportService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -45,19 +45,19 @@ class ProcessingResultServiceBudgetTest {
     private final LedgerEntryRepository entries = mock(LedgerEntryRepository.class);
     private final FundBalanceRepository balances = mock(FundBalanceRepository.class);
     private final TotalsCheckRepository totalsChecks = mock(TotalsCheckRepository.class);
-    private final PrevisaoOrcamentariaRepository budgets = mock(PrevisaoOrcamentariaRepository.class);
-    private final LinhaPoRepository lines = mock(LinhaPoRepository.class);
+    private final BudgetRepository budgets = mock(BudgetRepository.class);
+    private final BudgetLineRepository lines = mock(BudgetLineRepository.class);
     private final ProcessingResultService service = new ProcessingResultService(files, mock(FundRepository.class),
             entries, balances, totalsChecks,
-            new GravacaoPrevisao(budgets, lines, new PropriedadesOrcamento(new BigDecimal("0.01"))), event -> { });
+            new BudgetImportService(budgets, lines, new PropriedadesOrcamento(new BigDecimal("0.01"))), event -> { });
 
-    private final List<PrevisaoOrcamentaria> saved = new ArrayList<>();
+    private final List<Budget> saved = new ArrayList<>();
     private SourceFile file;
 
     @BeforeEach
     void setUp() {
         file = newFile(FileCategory.PO);
-        when(budgets.findByArquivoId(any())).thenReturn(Optional.empty());
+        when(budgets.findByFileId(any())).thenReturn(Optional.empty());
         when(budgets.save(any())).thenAnswer(i -> {
             saved.add(i.getArgument(0));
             return i.getArgument(0);
@@ -69,36 +69,36 @@ class ProcessingResultServiceBudgetTest {
         service.save(result(PoDoPiloto.padrao()));
 
         assertThat(saved).hasSize(1);
-        PrevisaoOrcamentaria budget = saved.getFirst();
-        assertThat(budget.getArquivoId()).isEqualTo(file.getId());
-        assertThat(budget.getCondominioId()).isEqualTo(file.getCondominiumId());
+        Budget budget = saved.getFirst();
+        assertThat(budget.getFileId()).isEqualTo(file.getId());
+        assertThat(budget.getCondominiumId()).isEqualTo(file.getCondominiumId());
         assertThat(budget.getSha256()).isEqualTo(file.getSha256());
-        assertThat(budget.getEstado()).isEqualTo(EstadoPrevisao.LIDA);
-        assertThat(budget.getInterpretador()).isEqualTo("po-protest");
-        assertThat(budget.getTitulo()).isEqualTo("PROPOSTA ORÇAMENTÁRIA 2026 / 2027");
-        assertThat(budget.getColunaOrcadoAnterior()).isEqualTo("2025/2026");
-        assertThat(budget.getColunaOrcado()).isEqualTo("2026/2027");
-        assertThat(budget.getTotalImpresso()).isEqualByComparingTo("474201.13");
-        assertThat(budget.getPrevistoMesImpresso()).isEqualByComparingTo("451620.12");
-        assertThat(budget.getPrevistoMes()).isEqualByComparingTo("451620.13");
-        assertThat(budget.getToleranciaArredondamento()).isEqualByComparingTo("0.01");
+        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.LIDA);
+        assertThat(budget.getParser()).isEqualTo("po-protest");
+        assertThat(budget.getTitle()).isEqualTo("PROPOSTA ORÇAMENTÁRIA 2026 / 2027");
+        assertThat(budget.getPreviousBudgetedColumn()).isEqualTo("2025/2026");
+        assertThat(budget.getBudgetedColumn()).isEqualTo("2026/2027");
+        assertThat(budget.getPrintedTotal()).isEqualByComparingTo("474201.13");
+        assertThat(budget.getPrintedMonthlyPlanned()).isEqualByComparingTo("451620.12");
+        assertThat(budget.getMonthlyPlanned()).isEqualByComparingTo("451620.13");
+        assertThat(budget.getRoundingTolerance()).isEqualByComparingTo("0.01");
 
-        List<LinhaPo> saved = savedLines();
+        List<BudgetLine> saved = savedLines();
         assertThat(saved).hasSize(PoDoPiloto.padrao().previsao().lines().size());
         assertThat(saved).allSatisfy(l -> {
-            assertThat(l.getArquivoId()).isEqualTo(file.getId());
+            assertThat(l.getFileId()).isEqualTo(file.getId());
             assertThat(l.getSha256()).isEqualTo(file.getSha256());
-            assertThat(l.getPagina()).isEqualTo(1);
-            assertThat(l.getPrevisaoId()).isEqualTo(budget.getId());
-            assertThat(l.getCodigoEfetivo()).isEqualTo(l.getCodigoImpresso());
+            assertThat(l.getPage()).isEqualTo(1);
+            assertThat(l.getBudgetId()).isEqualTo(budget.getId());
+            assertThat(l.getEffectiveCode()).isEqualTo(l.getPrintedCode());
         });
-        LinhaPo management = saved.stream().filter(l -> l.getCodigoImpresso().equals("1.3.20")).findFirst()
+        BudgetLine management = saved.stream().filter(l -> l.getPrintedCode().equals("1.3.20")).findFirst()
                 .orElseThrow();
-        assertThat(management.getConta()).isEqualTo("1682 - Sindicatura Profissional");
-        assertThat(management.getDescricao()).isEqualTo("Obm - Sergio Diniz");
-        assertThat(management.getOrcado()).isEqualByComparingTo("8000.00");
-        assertThat(management.getPercentualTexto()).isEqualTo("-53,47%");
-        assertThat(saved).filteredOn(l -> l.getCodigoImpresso().equals("1.3.2")).hasSize(2);
+        assertThat(management.getAccount()).isEqualTo("1682 - Sindicatura Profissional");
+        assertThat(management.getDescription()).isEqualTo("Obm - Sergio Diniz");
+        assertThat(management.getBudgeted()).isEqualByComparingTo("8000.00");
+        assertThat(management.getPercentageText()).isEqualTo("-53,47%");
+        assertThat(saved).filteredOn(l -> l.getPrintedCode().equals("1.3.2")).hasSize(2);
 
         verify(totalsChecks, times(PoDoPiloto.padrao().conferencias().size())).save(any(TotalsCheck.class));
         verify(entries, never()).saveAll(any());
@@ -110,7 +110,7 @@ class ProcessingResultServiceBudgetTest {
     void failedCheckLeavesTheBudgetReadWithDivergence() {
         service.save(result(PoDoPiloto.padrao().comSubtotalPessoal("69193.00")));
 
-        assertThat(saved.getFirst().getEstado()).isEqualTo(EstadoPrevisao.LIDA_COM_DIVERGENCIA);
+        assertThat(saved.getFirst().getStatus()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
         assertThat(file.getStatus()).isEqualTo(FileStatus.PRECISA_REVISAO);
         assertThat(file.getMessage()).contains("divergência");
     }
@@ -130,16 +130,16 @@ class ProcessingResultServiceBudgetTest {
 
     @Test
     void movingTheBudgetToAnotherCategoryRemovesTheUnconfirmedBudget() {
-        PrevisaoOrcamentaria previous = new PrevisaoOrcamentaria(file.getCondominiumId(), file.getId(),
+        Budget previous = new Budget(file.getCondominiumId(), file.getId(),
                 file.getSha256());
-        previous.registrarLeitura("po-protest", "t", "e", "a", "b", EstadoPrevisao.LIDA, BigDecimal.ONE, BigDecimal.ONE,
+        previous.recordReading("po-protest", "t", "e", "a", "b", BudgetStatus.LIDA, BigDecimal.ONE, BigDecimal.ONE,
                 BigDecimal.ONE, new BigDecimal("0.01"), java.time.Instant.now());
         file = newFile(FileCategory.CONTRATO);
-        when(budgets.findByArquivoId(file.getId())).thenReturn(Optional.of(previous));
+        when(budgets.findByFileId(file.getId())).thenReturn(Optional.of(previous));
 
         service.save(result(PoDoPiloto.padrao()));
 
-        verify(lines).apagarDaPrevisao(previous.getId());
+        verify(lines).deleteByBudgetId(previous.getId());
         verify(budgets).delete(previous);
         verify(budgets, never()).save(any());
     }
@@ -147,8 +147,8 @@ class ProcessingResultServiceBudgetTest {
     @Test
     void reprocessingTheSameFileDoesNotDuplicateTheBudget() {
         service.save(result(PoDoPiloto.padrao()));
-        PrevisaoOrcamentaria first = saved.getFirst();
-        when(budgets.findByArquivoId(file.getId())).thenReturn(Optional.of(first));
+        Budget first = saved.getFirst();
+        when(budgets.findByFileId(file.getId())).thenReturn(Optional.of(first));
         file.requestProcessing();
 
         service.save(result(PoDoPiloto.padrao()));
@@ -156,32 +156,32 @@ class ProcessingResultServiceBudgetTest {
         assertThat(saved).hasSize(2);
         assertThat(saved.get(1)).isSameAs(first);
         // The lines of the previous read go out before the new ones come in
-        verify(lines, times(2)).apagarDaPrevisao(first.getId());
+        verify(lines, times(2)).deleteByBudgetId(first.getId());
         verify(totalsChecks, times(2)).deleteByFileId(file.getId());
     }
 
     @Test
     void confirmedBudgetDoesNotChangeOnReprocess() {
-        PrevisaoOrcamentaria confirmed = new PrevisaoOrcamentaria(file.getCondominiumId(), file.getId(),
+        Budget confirmed = new Budget(file.getCondominiumId(), file.getId(),
                 file.getSha256());
-        confirmed.registrarLeitura("po-protest", "t", "e", "a", "b", EstadoPrevisao.LIDA, BigDecimal.ONE,
+        confirmed.recordReading("po-protest", "t", "e", "a", "b", BudgetStatus.LIDA, BigDecimal.ONE,
                 BigDecimal.ONE, BigDecimal.ONE, new BigDecimal("0.01"), java.time.Instant.now());
-        confirmed.confirmar(1, YearMonth.of(2026, 5), YearMonth.of(2027, 4), null, true, LocalDate.of(2026, 5, 20),
+        confirmed.confirm(1, YearMonth.of(2026, 5), YearMonth.of(2027, 4), null, true, LocalDate.of(2026, 5, 20),
                 false, null, "admin", java.time.Instant.now());
-        when(budgets.findByArquivoId(file.getId())).thenReturn(Optional.of(confirmed));
+        when(budgets.findByFileId(file.getId())).thenReturn(Optional.of(confirmed));
 
         service.save(result(PoDoPiloto.padrao().comSubtotalPessoal("69193.00")));
 
         verify(totalsChecks, never()).deleteByFileId(any());
-        verify(lines, never()).apagarDaPrevisao(any());
+        verify(lines, never()).deleteByBudgetId(any());
         verify(budgets, never()).save(any());
-        assertThat(confirmed.getEstado()).isEqualTo(EstadoPrevisao.CONFIRMADA);
+        assertThat(confirmed.getStatus()).isEqualTo(BudgetStatus.CONFIRMADA);
         assertThat(file.getMessage()).contains("já foi confirmada");
     }
 
     @SuppressWarnings("unchecked")
-    private List<LinhaPo> savedLines() {
-        ArgumentCaptor<List<LinhaPo>> captor = ArgumentCaptor.forClass(List.class);
+    private List<BudgetLine> savedLines() {
+        ArgumentCaptor<List<BudgetLine>> captor = ArgumentCaptor.forClass(List.class);
         verify(lines).saveAll(captor.capture());
         return captor.getValue();
     }

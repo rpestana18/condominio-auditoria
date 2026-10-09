@@ -2,6 +2,11 @@ package br.com.condominioauditoria.api.orcamento;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.model.enums.BudgetLineMark;
+import br.com.condominioauditoria.api.model.enums.BudgetLineType;
+import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -10,9 +15,9 @@ import org.junit.jupiter.api.Test;
 class SugestaoPorNomeTest {
 
     private final SugestaoPorNome sugestao = new SugestaoPorNome(PropriedadesDepara.padrao());
-    private final List<LinhaPo> linhas = PoDoPiloto.padrao().linhasGravadas(
-            new PrevisaoOrcamentaria(UUID.randomUUID(), UUID.randomUUID(), "a".repeat(64)));
-    private final List<LinhaPo> candidatas = SugestaoPorNome.candidatas(EstruturaPo.de(linhas));
+    private final List<BudgetLine> linhas = PoDoPiloto.padrao().linhasGravadas(
+            new Budget(UUID.randomUUID(), UUID.randomUUID(), "a".repeat(64)));
+    private final List<BudgetLine> candidatas = SugestaoPorNome.candidatas(BudgetStructure.of(linhas));
 
     @Test
     void conta1621MaterialHidraulicoVaiPara178ENuncaPara1323() {
@@ -20,7 +25,7 @@ class SugestaoPorNomeTest {
 
         assertThat(r).isInstanceOf(SugestaoPorNome.Sugerida.class);
         var s = (SugestaoPorNome.Sugerida) r;
-        assertThat(s.linha().getCodigoEfetivo()).isEqualTo("1.7.8");
+        assertThat(s.linha().getEffectiveCode()).isEqualTo("1.7.8");
         assertThat(s.motivo()).contains("fluxo: MATERIAL HIDRAULICO").contains("PO 1.7.8").doesNotContain("1621");
     }
 
@@ -29,10 +34,10 @@ class SugestaoPorNomeTest {
         // Mesmo com o número 1621 no nome do fluxo, a linha 1.3.23 ("1621 - Interfones") não ganha nada
         assertThat(sugestao.sugerir("1621", candidatas)).isInstanceOf(SugestaoPorNome.SemSugestao.class);
         var r = sugestao.sugerir("1621 MATERIAL HIDRAULICO", candidatas);
-        assertThat(((SugestaoPorNome.Sugerida) r).linha().getCodigoEfetivo()).isEqualTo("1.7.8");
+        assertThat(((SugestaoPorNome.Sugerida) r).linha().getEffectiveCode()).isEqualTo("1.7.8");
         assertThat(sugestao.normalizar("1621 - Interfones")).containsExactly("INTERFONES");
-        for (LinhaPo l : candidatas) {
-            assertThat(String.join(" ", sugestao.normalizar(l.getConta()))).doesNotContainPattern("[0-9]");
+        for (BudgetLine l : candidatas) {
+            assertThat(String.join(" ", sugestao.normalizar(l.getAccount()))).doesNotContainPattern("[0-9]");
         }
     }
 
@@ -63,8 +68,8 @@ class SugestaoPorNomeTest {
 
     @Test
     void rateioAParteEFundosNaoSaoCandidatos() {
-        assertThat(candidatas).noneMatch(l -> l.getMarca() == MarcaPo.RATEIO_A_PARTE);
-        assertThat(candidatas).noneMatch(l -> l.getCodigoEfetivo().startsWith("1.9"));
+        assertThat(candidatas).noneMatch(l -> l.getMark() == BudgetLineMark.RATEIO_A_PARTE);
+        assertThat(candidatas).noneMatch(l -> l.getEffectiveCode().startsWith("1.9"));
         assertThat(sugestao.sugerir("FUNDO DE RESERVA", candidatas)).isInstanceOf(SugestaoPorNome.SemSugestao.class);
     }
 
@@ -75,9 +80,9 @@ class SugestaoPorNomeTest {
         assertThat(a.motivo()).isEqualTo(b.motivo());
     }
 
-    private static LinhaPo linhaExtra(String codigo, String conta, String descricao) {
-        var po = new PrevisaoOrcamentaria(UUID.randomUUID(), UUID.randomUUID(), "b".repeat(64));
-        return new LinhaPo(po, 999, 1, TipoLinhaPo.LINHA, codigo, conta, null, null, descricao,
+    private static BudgetLine linhaExtra(String codigo, String conta, String descricao) {
+        var po = new Budget(UUID.randomUUID(), UUID.randomUUID(), "b".repeat(64));
+        return new BudgetLine(po, 999, 1, BudgetLineType.LINHA, codigo, conta, null, null, descricao,
                 java.math.BigDecimal.ZERO.setScale(2), java.math.BigDecimal.ONE.setScale(2), null, null);
     }
 }

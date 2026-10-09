@@ -17,7 +17,7 @@
   | Parte | Agente |
   |---|---|
   | `api/`, o antigo `backend/` (API, contábil, auditoria, relatórios) | `backend` |
-  | `rag/` leitura e interpretação (`rag.leitura`, `rag.dominio`) e `leitor/` | `ingestao` |
+  | `rag/` leitura e interpretação (`rag.parser`, `rag.model`) e `leitor/` | `ingestao` |
   | `rag/` embeddings, busca e respostas | `rag` |
   | `mcp/`, `infra/`, testes ponta a ponta e todo contrato entre serviços (`contracts/`) | `mcp` |
   | `frontend/` | `frontend` |

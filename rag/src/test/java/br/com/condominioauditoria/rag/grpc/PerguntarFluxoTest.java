@@ -32,7 +32,6 @@ import br.com.condominioauditoria.rag.config.PropriedadesRag;
 import br.com.condominioauditoria.rag.indice.BuscaDocumentos;
 import br.com.condominioauditoria.rag.indice.GeradorEmbeddings;
 import br.com.condominioauditoria.rag.indice.Localizacao;
-import br.com.condominioauditoria.rag.indice.RepositorioIndice;
 import br.com.condominioauditoria.rag.indice.TrechoEncontrado;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
@@ -65,7 +64,7 @@ import org.junit.jupiter.api.Test;
  * do Consulta do backend: caso feliz com uma ferramenta, resposta inválida duas vezes virando NAO_ENCONTRADA, recusa
  * de segurança do modelo e chave recusada pelo provedor (401) virando PERMISSION_DENIED.
  */
-class PerguntarFluxoTest {
+public class PerguntarFluxoTest {
 
     private static final String CONDOMINIO = "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001";
     private static final String TOKEN = "Bearer token-do-usuario";
@@ -84,7 +83,7 @@ class PerguntarFluxoTest {
     private BuscaDocumentos busca;
 
     @BeforeEach
-    void subir() throws Exception {
+    public void subir() throws Exception {
         if (par == null) {
             var gerador = KeyPairGenerator.getInstance("RSA");
             gerador.initialize(3072);
@@ -127,7 +126,7 @@ class PerguntarFluxoTest {
     }
 
     @AfterEach
-    void descer() {
+    public void descer() {
         canal.shutdownNow();
         servidor.shutdownNow();
         canalConsulta.shutdownNow();
@@ -136,7 +135,7 @@ class PerguntarFluxoTest {
     }
 
     @Test
-    void casoFelizComUmaFerramentaMontaOsDoisBlocos() {
+    public void casoFelizComUmaFerramentaMontaOsDoisBlocos() {
         claude.responde(ClaudeFalso.comFerramenta("toolu_1", "resumo_fundos", "{}", 500, 40));
         claude.responde(ClaudeFalso.comTexto("""
                 {"nosDocumentos":[{"texto":"O contrato registra taxa de administração de R$ 1.234,56 por mês \
@@ -189,7 +188,7 @@ class PerguntarFluxoTest {
     }
 
     @Test
-    void respostaInvalidaDuasVezesViraNaoEncontrada() {
+    public void respostaInvalidaDuasVezesViraNaoEncontrada() {
         String invalida = """
                 {"nosDocumentos":[{"texto":"Houve desvio de recursos no fundo.","trechoIds":["%s"]}],
                  "nosDadosGravados":[],"naoEncontrado":false,"sugestao":""}""".formatted(TRECHO);
@@ -211,7 +210,7 @@ class PerguntarFluxoTest {
     }
 
     @Test
-    void recusaDeSegurancaDoModeloViraNaoEncontradaComAvisoESemNovaTentativa() {
+    public void recusaDeSegurancaDoModeloViraNaoEncontradaComAvisoESemNovaTentativa() {
         claude.responde(ClaudeFalso.comRecusa());
 
         RespostaPergunta resposta = ultima(eventos(pedido("pergunta qualquer")));
@@ -223,7 +222,7 @@ class PerguntarFluxoTest {
     }
 
     @Test
-    void chaveRecusadaPeloProvedorViraPermissionDenied() {
+    public void chaveRecusadaPeloProvedorViraPermissionDenied() {
         claude.respondeStatus(401, ClaudeFalso.erro("authentication_error", "invalid x-api-key"));
 
         assertThatThrownBy(() -> eventos(pedido("qual o saldo?")))
@@ -238,7 +237,7 @@ class PerguntarFluxoTest {
     }
 
     @Test
-    void limiteDoProvedorViraResourceExhaustedEErroDeServidorViraUnavailable() {
+    public void limiteDoProvedorViraResourceExhaustedEErroDeServidorViraUnavailable() {
         claude.respondeStatus(429, ClaudeFalso.erro("rate_limit_error", "too many requests"));
 
         assertThatThrownBy(() -> eventos(pedido("qual o saldo?")))
@@ -248,7 +247,7 @@ class PerguntarFluxoTest {
     }
 
     @Test
-    void semTokenNoMetadadoERecusadoAntesDeQualquerChamada() {
+    public void semTokenNoMetadadoERecusadoAntesDeQualquerChamada() {
         var semToken = AssistenteGrpc.newBlockingStub(canal);
 
         assertThatThrownBy(() -> semToken.perguntar(pedido("qual o saldo?")).next())
@@ -259,7 +258,7 @@ class PerguntarFluxoTest {
     }
 
     @Test
-    void perguntaVaziaEAcimaDoLimiteSaoInvalidArgument() {
+    public void perguntaVaziaEAcimaDoLimiteSaoInvalidArgument() {
         assertThatThrownBy(() -> eventos(pedido("   ")))
                 .satisfies(erro -> assertThat(((StatusRuntimeException) erro).getStatus().getCode())
                         .isEqualTo(Status.Code.INVALID_ARGUMENT));
@@ -269,7 +268,7 @@ class PerguntarFluxoTest {
     }
 
     @Test
-    void semChaveCifradaOuModeloForaDoCatalogoEFailedPrecondition() {
+    public void semChaveCifradaOuModeloForaDoCatalogoEFailedPrecondition() {
         var semChave = pedido("qual o saldo?").toBuilder()
                 .setConfiguracao(configuracao().toBuilder().clearChaveCifrada()).build();
         assertThatThrownBy(() -> eventos(semChave))
@@ -290,7 +289,7 @@ class PerguntarFluxoTest {
     }
 
     @Test
-    void chaveQueNaoDecifraEFailedPreconditionSemDetalheTecnico() {
+    public void chaveQueNaoDecifraEFailedPreconditionSemDetalheTecnico() {
         var adulterada = pedido("qual o saldo?").toBuilder()
                 .setConfiguracao(configuracao().toBuilder()
                         .setChaveCifrada(ByteString.copyFrom(new byte[] { 1, 0, 8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
@@ -307,7 +306,7 @@ class PerguntarFluxoTest {
     }
 
     @Test
-    void catalogoDeProvedoresSaiComAChavePublicaPem() {
+    public void catalogoDeProvedoresSaiComAChavePublicaPem() {
         var resposta = cliente.listarProvedores(ListarProvedoresRequest.getDefaultInstance());
 
         assertThat(resposta.getChavePublicaPem()).startsWith("-----BEGIN PUBLIC KEY-----");
@@ -329,7 +328,7 @@ class PerguntarFluxoTest {
     }
 
     @Test
-    void listarProvedoresSemTokenERecusado() {
+    public void listarProvedoresSemTokenERecusado() {
         var semToken = AssistenteGrpc.newBlockingStub(canal);
 
         assertThatThrownBy(() -> semToken.listarProvedores(ListarProvedoresRequest.getDefaultInstance()))
@@ -338,7 +337,7 @@ class PerguntarFluxoTest {
     }
 
     @Test
-    void buscaQueCaiParaPalavraAvisaOUsuario() {
+    public void buscaQueCaiParaPalavraAvisaOUsuario() {
         when(busca.buscar(any(), anyString(), any(), anyInt())).thenReturn(new BuscaDocumentos.Resultado(
                 List.of(), BuscaDocumentos.Modo.PALAVRA));
         claude.responde(ClaudeFalso.comTexto(

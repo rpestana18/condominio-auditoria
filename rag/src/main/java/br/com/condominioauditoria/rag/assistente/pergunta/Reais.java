@@ -1,13 +1,13 @@
 package br.com.condominioauditoria.rag.assistente.pergunta;
 
-import br.com.condominioauditoria.rag.dominio.Dinheiro;
+import br.com.condominioauditoria.rag.util.BrazilianMoney;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
  * Dinheiro do bloco "Nos dados gravados": o contrato de consulta manda texto decimal exato ("1234.56"); aqui vira
  * {@link BigDecimal} e sai no padrão brasileiro ("R$ 1.234,56"), com o mesmo formatador do resto do rag
- * ({@link Dinheiro#formatarBr}). Nunca passa por ponto flutuante, e os centavos saem como vieram (nada de
+ * ({@link br.com.condominioauditoria.rag.util.BrazilianMoney#format}). Nunca passa por ponto flutuante, e os centavos saem como vieram (nada de
  * arredondamento silencioso).
  */
 public final class Reais {
@@ -31,6 +31,6 @@ public final class Reais {
     public static String formatar(BigDecimal valor) {
         BigDecimal duasCasas = valor.setScale(2, RoundingMode.UNNECESSARY);
         boolean negativo = duasCasas.signum() < 0;
-        return (negativo ? "-R$ " : "R$ ") + Dinheiro.formatarBr(duasCasas.abs());
+        return (negativo ? "-R$ " : "R$ ") + BrazilianMoney.format(duasCasas.abs());
     }
 }

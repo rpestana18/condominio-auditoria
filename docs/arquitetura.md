@@ -112,7 +112,7 @@ Pipeline por arquivo:
 
 Idempotente: reenviar o mesmo arquivo não duplica nada.
 
-**PO aprovada (ADR 0004):** o `rag` reconhece a PO da administradora do piloto pelo título e lê as linhas pela posição das palavras do leitor v1, sem IA e sem mudar o leitor (`rag.leitura.po`, `rag.dominio.po`). Confere subtotais, total, previsto do mês e código repetido, e devolve tudo no `ResultadoProcessamento` **v2** (`previsaoOrcamentaria`). No fluxo de caixa, o enriquecimento passa a marcar `recebimentoCota` nos créditos "RECIBOS ACUMULADOS", usados na arrecadação dos fundos de reserva e de obras.
+**PO aprovada (ADR 0004):** o `rag` reconhece a PO da administradora do piloto pelo título e lê as linhas pela posição das palavras do leitor v1, sem IA e sem mudar o leitor (`rag.parser.budget`, `rag.model.budget`). Confere subtotais, total, previsto do mês e código repetido, e devolve tudo no `ResultadoProcessamento` **v2** (`previsaoOrcamentaria`). No fluxo de caixa, o enriquecimento passa a marcar `recebimentoCota` nos créditos "RECIBOS ACUMULADOS", usados na arrecadação dos fundos de reserva e de obras.
 
 ### 3.2 RAG (serviço `rag`, Spring AI)
 - Indexa **texto** dos documentos (contratos, **atas de assembleia**, convenção, RI, POs). Atas também geram registros estruturados de `Deliberacao` (assunto, valor, fundo, prazo) usados para justificar achados em *chunks* com metadados (categoria, competência, página).

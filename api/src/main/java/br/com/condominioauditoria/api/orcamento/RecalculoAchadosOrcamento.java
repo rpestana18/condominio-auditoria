@@ -2,7 +2,7 @@ package br.com.condominioauditoria.api.orcamento;
 
 import br.com.condominioauditoria.api.auditoria.RegistroAchados;
 import br.com.condominioauditoria.api.auditoria.RegistroAchados.Sincronizacao;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import java.time.YearMonth;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -25,12 +25,12 @@ public class RecalculoAchadosOrcamento {
 
     private static final Logger log = LoggerFactory.getLogger(RecalculoAchadosOrcamento.class);
 
-    private final CondominioRepository condominios;
+    private final CondominiumRepository condominios;
     private final PrevisaoOrcamentariaRepository previsoes;
     private final ConsultaPrevistoRealizado consulta;
     private final RegistroAchados registro;
 
-    RecalculoAchadosOrcamento(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes,
+    RecalculoAchadosOrcamento(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             ConsultaPrevistoRealizado consulta, RegistroAchados registro) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -42,7 +42,7 @@ public class RecalculoAchadosOrcamento {
     public Map<YearMonth, Sincronizacao> recalcular(MudancaOrcamento mudanca) {
         UUID condominioId = mudanca.condominioId();
         // Um recálculo por vez por condomínio (select ... for update): dois recálculos simultâneos não duplicam
-        if (condominios.travar(condominioId).isEmpty()) {
+        if (condominios.lockById(condominioId).isEmpty()) {
             return Map.of();
         }
         Set<YearMonth> meses = new TreeSet<>();

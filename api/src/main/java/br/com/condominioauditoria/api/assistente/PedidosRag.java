@@ -1,7 +1,7 @@
 package br.com.condominioauditoria.api.assistente;
 
-import br.com.condominioauditoria.api.arquivo.Categoria;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.FiltrosDocumentos;
+import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.modulo.PedidoInvalidoException;
 import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
 import java.util.List;
@@ -24,7 +24,7 @@ final class PedidosRag {
                     + ")");
         }
         var construtor = FiltrosBusca.newBuilder();
-        lista(f.categorias()).stream().filter(Objects::nonNull).map(Categoria::name).distinct()
+        lista(f.categorias()).stream().filter(Objects::nonNull).map(FileCategory::name).distinct()
                 .forEach(construtor::addCategorias);
         lista(f.arquivoIds()).stream().filter(Objects::nonNull).map(UUID::toString).distinct()
                 .forEach(construtor::addArquivoIds);

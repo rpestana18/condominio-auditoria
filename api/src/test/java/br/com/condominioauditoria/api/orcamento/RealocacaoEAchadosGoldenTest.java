@@ -10,9 +10,9 @@ import br.com.condominioauditoria.api.auditoria.EventoAchado;
 import br.com.condominioauditoria.api.auditoria.RegraContaSemLinhaPo;
 import br.com.condominioauditoria.api.auditoria.RegraExcessoMes;
 import br.com.condominioauditoria.api.auditoria.Severidade;
-import br.com.condominioauditoria.api.contabil.Lancamento;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.Enriquecimento;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.LancamentoLido;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
+import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Aviso;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Evidencia;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.LinhaResultado;
@@ -125,7 +125,7 @@ class RealocacaoEAchadosGoldenTest {
         List<Evidencia> aRealocar = evidencia(g, CalculoPrevistoRealizado.ALVO_A_REALOCAR);
         aRealocar.forEach(ev -> c.realocacao.realocar(c.condominioId, new PedidoRealocacao(ev.lancamentoId(),
                 linha179), "gestor"));
-        Set<UUID> idsAntes = c.lancamentos.stream().map(Lancamento::getId).collect(Collectors.toSet());
+        Set<UUID> idsAntes = c.lancamentos.stream().map(LedgerEntry::getId).collect(Collectors.toSet());
 
         g.reprocessarFluxo();
         PrevistoRealizado r = consultar(g);
@@ -164,7 +164,7 @@ class RealocacaoEAchadosGoldenTest {
         GoldenSetembro g = golden();
         g.confirmarMapa();
         CenarioPo c = g.cenario;
-        Lancamento teste = lancamentoDeTeste(g, "8888", "CONTA DE TESTE", "500.00");
+        LedgerEntry teste = lancamentoDeTeste(g, "8888", "CONTA DE TESTE", "500.00");
 
         c.aposCommit();
         recalcular(c, "primeiro recálculo de teste");
@@ -185,7 +185,7 @@ class RealocacaoEAchadosGoldenTest {
                 .satisfies(e -> {
                     assertThat(e.getArquivoId()).isEqualTo(g.arquivoFluxo);
                     assertThat(e.getSha256()).isEqualTo(g.arquivo.getSha256());
-                    assertThat(e.getPagina()).isEqualTo(teste.getPagina());
+                    assertThat(e.getPagina()).isEqualTo(teste.getPage());
                     assertThat(e.getReferencia()).contains("30/09/2026", "conta 8888", "R$ 500,00");
                 });
         assertThat(eventos(c, achado)).hasSize(1);
@@ -273,11 +273,11 @@ class RealocacaoEAchadosGoldenTest {
         assertThat(eventos(c, achado)).hasSize(1);
     }
 
-    private static Lancamento lancamentoDeTeste(GoldenSetembro g, String conta, String nome, String valor) {
-        var lido = new LancamentoLido(99, 9000 + g.cenario.lancamentos.size(), LocalDate.of(2026, 9, 30), conta, nome,
+    private static LedgerEntry lancamentoDeTeste(GoldenSetembro g, String conta, String nome, String valor) {
+        var lido = new LedgerEntryData(99, 9000 + g.cenario.lancamentos.size(), LocalDate.of(2026, 9, 30), conta, nome,
                 "", "Lançamento de teste", BigDecimal.ZERO.setScale(2), new BigDecimal(valor),
-                BigDecimal.ZERO.setScale(2), new Enriquecimento(null, null, null, false, false));
-        Lancamento l = new Lancamento(g.cenario.condominioId, g.arquivoFluxo, g.cenario.ordinario.getId(), lido);
+                BigDecimal.ZERO.setScale(2), new Enrichment(null, null, null, false, false));
+        LedgerEntry l = new LedgerEntry(g.cenario.condominioId, g.arquivoFluxo, g.cenario.ordinario.getId(), lido);
         g.cenario.lancamentos.add(l);
         return l;
     }

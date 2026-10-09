@@ -3,10 +3,10 @@ package br.com.condominioauditoria.api.orcamento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import br.com.condominioauditoria.api.arquivo.Arquivo;
-import br.com.condominioauditoria.api.contabil.Lancamento;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.Enriquecimento;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.LancamentoLido;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
+import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PedidoProrrogacao;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Aviso;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.MesExercicio;
@@ -123,8 +123,8 @@ class ProrrogacaoPoTest {
         PrevisaoOrcamentaria anterior = anterior();
         cenario.prorrogacao.prorrogar(cenario.condominioId, anterior.getId(),
                 new PedidoProrrogacao("2026-04", "assembleia adiada"), "admin");
-        Arquivo marco = cenario.fluxo("fluxo-2026-03.pdf", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), 1);
-        Arquivo abril = cenario.fluxo("fluxo-2026-04.pdf", LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 30), 1);
+        SourceFile marco = cenario.fluxo("fluxo-2026-03.pdf", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), 1);
+        SourceFile abril = cenario.fluxo("fluxo-2026-04.pdf", LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 30), 1);
         debito(marco, "100.00", LocalDate.of(2026, 3, 10));
         debito(abril, "250.00", LocalDate.of(2026, 4, 10));
 
@@ -170,10 +170,10 @@ class ProrrogacaoPoTest {
         return po;
     }
 
-    private void debito(Arquivo fluxo, String valor, LocalDate data) {
-        var lido = new LancamentoLido(1, cenario.lancamentos.size() + 1, data, "9999", "Teste", "", "Teste",
+    private void debito(SourceFile fluxo, String valor, LocalDate data) {
+        var lido = new LedgerEntryData(1, cenario.lancamentos.size() + 1, data, "9999", "Teste", "", "Teste",
                 BigDecimal.ZERO.setScale(2), new BigDecimal(valor), BigDecimal.ZERO.setScale(2),
-                new Enriquecimento(null, null, null, false, false));
-        cenario.lancamentos.add(new Lancamento(cenario.condominioId, fluxo.getId(), cenario.ordinario.getId(), lido));
+                new Enrichment(null, null, null, false, false));
+        cenario.lancamentos.add(new LedgerEntry(cenario.condominioId, fluxo.getId(), cenario.ordinario.getId(), lido));
     }
 }

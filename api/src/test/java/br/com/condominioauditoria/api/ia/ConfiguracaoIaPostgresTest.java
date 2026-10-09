@@ -42,9 +42,9 @@ class ConfiguracaoIaPostgresTest {
     static void banco(DynamicPropertyRegistry registro) throws Exception {
         registro.add("spring.datasource.url", () -> System.getenv("BANCO_TESTE") + "?currentSchema=backend");
         registro.add("spring.rabbitmq.listener.simple.auto-startup", () -> "false");
-        registro.add("condominio.grpc.porta", () -> "0");
+        registro.add("condominio.grpc.port", () -> "0");
         String pasta = Files.createTempDirectory("dados-teste").toString();
-        registro.add("condominio.armazenamento.pasta", () -> pasta);
+        registro.add("condominio.storage.folder", () -> pasta);
     }
 
     @MockitoBean

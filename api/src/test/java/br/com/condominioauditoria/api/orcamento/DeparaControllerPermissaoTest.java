@@ -11,7 +11,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.AcaoLote;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.PedidoDestino;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.PedidoLote;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -43,8 +43,8 @@ class DeparaControllerPermissaoTest {
     @EnableMethodSecurity
     static class Config {
         @Bean
-        AcessoCondominio acesso() {
-            return new AcessoCondominio();
+        CondominiumAccess acesso() {
+            return new CondominiumAccess();
         }
 
         @Bean
@@ -53,7 +53,7 @@ class DeparaControllerPermissaoTest {
         }
 
         @Bean
-        DeparaController controller(AcessoCondominio acesso, ServicoDepara servico) {
+        DeparaController controller(CondominiumAccess acesso, ServicoDepara servico) {
             return new DeparaController(acesso, servico);
         }
     }

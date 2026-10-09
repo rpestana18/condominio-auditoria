@@ -2,7 +2,7 @@ package br.com.condominioauditoria.api.orcamento;
 
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PedidoProrrogacao;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PrevisaoDetalhe;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,10 +20,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/condominios/{condominioId}/previsoes/{poId}/prorrogacao")
 class ProrrogacaoController {
 
-    private final AcessoCondominio acesso;
+    private final CondominiumAccess acesso;
     private final ServicoProrrogacao servico;
 
-    ProrrogacaoController(AcessoCondominio acesso, ServicoProrrogacao servico) {
+    ProrrogacaoController(CondominiumAccess acesso, ServicoProrrogacao servico) {
         this.acesso = acesso;
         this.servico = servico;
     }
@@ -32,14 +32,14 @@ class ProrrogacaoController {
     @PreAuthorize("hasRole('ADMIN')")
     PrevisaoDetalhe prorrogar(@PathVariable UUID condominioId, @PathVariable UUID poId,
             @RequestBody PedidoProrrogacao pedido) {
-        acesso.exigir(condominioId);
-        return servico.prorrogar(condominioId, poId, pedido, acesso.usuario());
+        acesso.require(condominioId);
+        return servico.prorrogar(condominioId, poId, pedido, acesso.username());
     }
 
     @DeleteMapping
     @PreAuthorize("hasRole('ADMIN')")
     PrevisaoDetalhe desfazer(@PathVariable UUID condominioId, @PathVariable UUID poId) {
-        acesso.exigir(condominioId);
-        return servico.desfazer(condominioId, poId, acesso.usuario());
+        acesso.require(condominioId);
+        return servico.desfazer(condominioId, poId, acesso.username());
     }
 }

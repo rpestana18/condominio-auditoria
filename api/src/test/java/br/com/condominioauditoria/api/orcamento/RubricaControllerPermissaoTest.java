@@ -13,7 +13,7 @@ import br.com.condominioauditoria.api.orcamento.RubricaDtos.PedidoLoteRubrica;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.PedidoNovaRubrica;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.PedidoRenomear;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.PedidoRubricaLinha;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -46,8 +46,8 @@ class RubricaControllerPermissaoTest {
     @EnableMethodSecurity
     static class Config {
         @Bean
-        AcessoCondominio acesso() {
-            return new AcessoCondominio();
+        CondominiumAccess acesso() {
+            return new CondominiumAccess();
         }
 
         @Bean
@@ -56,7 +56,7 @@ class RubricaControllerPermissaoTest {
         }
 
         @Bean
-        RubricaController controller(AcessoCondominio acesso, ServicoRubricas servico) {
+        RubricaController controller(CondominiumAccess acesso, ServicoRubricas servico) {
             return new RubricaController(acesso, servico);
         }
     }

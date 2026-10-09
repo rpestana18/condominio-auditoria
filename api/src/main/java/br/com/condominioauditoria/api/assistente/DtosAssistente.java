@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.api.assistente;
 
-import br.com.condominioauditoria.api.arquivo.Categoria;
+import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.contratos.assistente.v1.Localizacao;
 import br.com.condominioauditoria.contratos.assistente.v1.Trecho;
 import java.time.LocalDate;
@@ -14,7 +14,7 @@ final class DtosAssistente {
     }
 
     /** Filtros opcionais (RF-04.10), aplicados pelo rag antes da busca. */
-    record FiltrosDocumentos(List<Categoria> categorias, LocalDate dataInicio, LocalDate dataFim,
+    record FiltrosDocumentos(List<FileCategory> categorias, LocalDate dataInicio, LocalDate dataFim,
             List<UUID> arquivoIds) {
     }
 
@@ -76,7 +76,7 @@ final class DtosAssistente {
     }
 
     /** Trecho citável (TrechoDocumento). O texto é transcrição literal do documento, não conferida. */
-    record TrechoDocumento(String trechoId, UUID arquivoId, String nomeArquivo, Categoria categoria,
+    record TrechoDocumento(String trechoId, UUID arquivoId, String nomeArquivo, FileCategory categoria,
             LocalizacaoTrecho localizacao, String texto, String sha256) {
 
         static TrechoDocumento de(Trecho t) {
@@ -86,7 +86,7 @@ final class DtosAssistente {
     }
 
     /** CitacaoDocumento: TrechoDocumento + numero (a partir de 1). */
-    record CitacaoDocumento(int numero, String trechoId, UUID arquivoId, String nomeArquivo, Categoria categoria,
+    record CitacaoDocumento(int numero, String trechoId, UUID arquivoId, String nomeArquivo, FileCategory categoria,
             LocalizacaoTrecho localizacao, String texto, String sha256) {
 
         static CitacaoDocumento de(int numero, Trecho t) {
@@ -102,11 +102,11 @@ final class DtosAssistente {
     }
 
     /** Categoria do rag; fora da lista = OUTROS (o contrato só tem as categorias do backend). */
-    static Categoria categoria(String valor) {
+    static FileCategory categoria(String valor) {
         try {
-            return Categoria.valueOf(valor.strip().toUpperCase());
+            return FileCategory.valueOf(valor.strip().toUpperCase());
         } catch (IllegalArgumentException | NullPointerException e) {
-            return Categoria.OUTROS;
+            return FileCategory.OUTROS;
         }
     }
 }

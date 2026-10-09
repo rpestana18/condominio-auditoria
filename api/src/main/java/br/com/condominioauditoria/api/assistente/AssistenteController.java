@@ -4,8 +4,8 @@ import br.com.condominioauditoria.api.assistente.DtosAssistente.PedidoBuscaDocum
 import br.com.condominioauditoria.api.assistente.DtosAssistente.PedidoPergunta;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.RespostaAssistente;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.TrechoDocumento;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -28,11 +28,11 @@ class AssistenteController {
 
     private final PerguntaAssistente pergunta;
     private final BuscaAssistente busca;
-    private final AcessoCondominio acesso;
-    private final CondominioRepository condominios;
+    private final CondominiumAccess acesso;
+    private final CondominiumRepository condominios;
 
-    AssistenteController(PerguntaAssistente pergunta, BuscaAssistente busca, AcessoCondominio acesso,
-            CondominioRepository condominios) {
+    AssistenteController(PerguntaAssistente pergunta, BuscaAssistente busca, CondominiumAccess acesso,
+            CondominiumRepository condominios) {
         this.pergunta = pergunta;
         this.busca = busca;
         this.acesso = acesso;
@@ -54,7 +54,7 @@ class AssistenteController {
     }
 
     private void exigirCondominio(UUID condominioId) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         if (!condominios.existsById(condominioId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado");
         }

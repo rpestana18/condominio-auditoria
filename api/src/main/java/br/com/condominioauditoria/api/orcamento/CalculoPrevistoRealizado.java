@@ -1,8 +1,8 @@
 package br.com.condominioauditoria.api.orcamento;
 
 import br.com.condominioauditoria.api.auditoria.RegraExcessoMes;
-import br.com.condominioauditoria.api.contabil.ImpressaoLancamento;
-import br.com.condominioauditoria.api.contabil.Lancamento;
+import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.accounting.LedgerEntryFingerprint;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Aviso;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Bloco;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.ConferenciaFluxo;
@@ -128,7 +128,7 @@ public final class CalculoPrevistoRealizado {
      */
     public record Entrada(PrevisaoOrcamentaria po, String poArquivoNome, List<LinhaPo> linhas, List<DeparaConta> deparas,
             Map<UUID, UUID> fundoPorLinha, Map<UUID, String> nomesFundos, UUID fundoOrdinarioId, List<Fluxo> fluxos,
-            List<Lancamento> lancamentos, List<Realocacao> realocacoes, BigDecimal limiteExcessoPercentual,
+            List<LedgerEntry> lancamentos, List<Realocacao> realocacoes, BigDecimal limiteExcessoPercentual,
             List<Aviso> avisosDaPo, Periodo periodo) {
 
         public Entrada {
@@ -334,16 +334,16 @@ public final class CalculoPrevistoRealizado {
         /** Soma os lançamentos do fluxo escolhido para cada mês (só os do próprio mês, pela data). */
         Apuracao apurar(Map<YearMonth, Fluxo> escolhidos) {
             Apuracao ap = new Apuracao();
-            List<Lancamento> ordenados = e.lancamentos().stream()
-                    .sorted(Comparator.comparing(Lancamento::getData).thenComparing(Lancamento::getPagina)
-                            .thenComparing(Lancamento::getOrdem).thenComparing(Lancamento::getId))
+            List<LedgerEntry> ordenados = e.lancamentos().stream()
+                    .sorted(Comparator.comparing(LedgerEntry::getDate).thenComparing(LedgerEntry::getPage)
+                            .thenComparing(LedgerEntry::getSequence).thenComparing(LedgerEntry::getId))
                     .toList();
-            for (Lancamento l : ordenados) {
-                Fluxo f = escolhidos.get(YearMonth.from(l.getData()));
-                if (f == null || !f.arquivoId().equals(l.getArquivoId())) {
+            for (LedgerEntry l : ordenados) {
+                Fluxo f = escolhidos.get(YearMonth.from(l.getDate()));
+                if (f == null || !f.arquivoId().equals(l.getFileId())) {
                     continue;
                 }
-                if (l.getFundoId().equals(e.fundoOrdinarioId())) {
+                if (l.getFundId().equals(e.fundoOrdinarioId())) {
                     condominio(ap, l, f);
                 } else {
                     outroFundo(ap, l, f);
@@ -352,17 +352,17 @@ public final class CalculoPrevistoRealizado {
             return ap;
         }
 
-        private void condominio(Apuracao ap, Lancamento l, Fluxo f) {
-            BigDecimal valor = l.getDebito();
+        private void condominio(Apuracao ap, LedgerEntry l, Fluxo f) {
+            BigDecimal valor = l.getDebit();
             if (valor.signum() == 0) {
                 return;
             }
             ap.debitos = ap.debitos.add(valor);
             ap.qtdDebitos++;
-            String conta = l.getContaCodigo();
-            if (l.isTransferenciaEntreFundos()) {
-                ap.transferencias.somar(conta, l.getContaNome(), "transferência entre fundos", valor);
-                ap.evidencia(ALVO_TRANSFERENCIAS, l, f, nome(l.getFundoId()), null);
+            String conta = l.getAccountCode();
+            if (l.isInterFundTransfer()) {
+                ap.transferencias.somar(conta, l.getAccountName(), "transferência entre fundos", valor);
+                ap.evidencia(ALVO_TRANSFERENCIAS, l, f, nome(l.getFundId()), null);
                 return;
             }
             if (conta != null) {
@@ -375,50 +375,50 @@ public final class CalculoPrevistoRealizado {
                         : pendente == null ? "sem de-para"
                         : pendente.getEstado() == EstadoDepara.CONFIRMADO ? "destino inválido"
                         : "de-para " + pendente.getEstado().name().toLowerCase();
-                ap.semLinha.somar(conta, l.getContaNome(), detalhe, valor);
+                ap.semLinha.somar(conta, l.getAccountName(), detalhe, valor);
                 if (conta != null) {
                     ap.contasSemDepara.add(conta);
                 }
-                ap.evidencia(ALVO_SEM_LINHA_PO, l, f, nome(l.getFundoId()), null);
+                ap.evidencia(ALVO_SEM_LINHA_PO, l, f, nome(l.getFundId()), null);
                 return;
             }
             ap.contasConfirmadas.add(conta);
             switch (d.tipo()) {
-                case LINHA_PO -> ap.linha(d.linhaPoId(), valor, l, f, nome(l.getFundoId()), null, null);
+                case LINHA_PO -> ap.linha(d.linhaPoId(), valor, l, f, nome(l.getFundId()), null, null);
                 case AJUSTE -> {
-                    ap.ajustes.somar(conta, l.getContaNome(), d.texto(), valor);
-                    ap.evidencia(ALVO_AJUSTES, l, f, nome(l.getFundoId()), null);
+                    ap.ajustes.somar(conta, l.getAccountName(), d.texto(), valor);
+                    ap.evidencia(ALVO_AJUSTES, l, f, nome(l.getFundId()), null);
                 }
                 case TRANSFERENCIA -> {
-                    ap.transferencias.somar(conta, l.getContaNome(), d.texto(), valor);
-                    ap.evidencia(ALVO_TRANSFERENCIAS, l, f, nome(l.getFundoId()), null);
+                    ap.transferencias.somar(conta, l.getAccountName(), d.texto(), valor);
+                    ap.evidencia(ALVO_TRANSFERENCIAS, l, f, nome(l.getFundId()), null);
                 }
                 case A_REALOCAR -> {
-                    Realocacao r = realocacoes.get(ImpressaoLancamento.chave(l));
+                    Realocacao r = realocacoes.get(LedgerEntryFingerprint.key(l));
                     LinhaPo destino = r == null ? null : destinosValidos.get(r.linhaPoId());
                     if (destino != null) {
                         ap.realocacoesUsadas.add(r.chave());
-                        ap.linha(destino.getId(), valor, l, f, nome(l.getFundoId()), "realocado para "
+                        ap.linha(destino.getId(), valor, l, f, nome(l.getFundId()), "realocado para "
                                 + destino.getCodigoEfetivo() + " " + destino.getDescricao() + " por " + r.usuario()
                                 + " em " + DATA.format(r.em().atZone(FUSO)), r.id());
                     } else {
-                        ap.aRealocar.somar(conta, l.getContaNome(), d.texto(), valor);
-                        ap.evidencia(ALVO_A_REALOCAR, l, f, nome(l.getFundoId()), null);
+                        ap.aRealocar.somar(conta, l.getAccountName(), d.texto(), valor);
+                        ap.evidencia(ALVO_A_REALOCAR, l, f, nome(l.getFundId()), null);
                     }
                 }
             }
         }
 
-        private void outroFundo(Apuracao ap, Lancamento l, Fluxo f) {
-            MovimentoFundo m = ap.fundos.computeIfAbsent(l.getFundoId(), k -> new MovimentoFundo());
-            m.creditos = m.creditos.add(l.getCredito());
-            m.debitos = m.debitos.add(l.getDebito());
-            if (l.getCredito().signum() != 0 && !l.isTransferenciaEntreFundos()) {
-                if (l.getRecebimentoCota() == null) {
+        private void outroFundo(Apuracao ap, LedgerEntry l, Fluxo f) {
+            MovimentoFundo m = ap.fundos.computeIfAbsent(l.getFundId(), k -> new MovimentoFundo());
+            m.creditos = m.creditos.add(l.getCredit());
+            m.debitos = m.debitos.add(l.getDebit());
+            if (l.getCredit().signum() != 0 && !l.isInterFundTransfer()) {
+                if (l.getCondoFeeReceipt() == null) {
                     m.reprocessar = true;
-                } else if (l.getRecebimentoCota()) {
-                    m.arrecadado = m.arrecadado.add(l.getCredito());
-                    ap.evidencia(alvoFundo(l.getFundoId()), l, f, nome(l.getFundoId()), null);
+                } else if (l.getCondoFeeReceipt()) {
+                    m.arrecadado = m.arrecadado.add(l.getCredit());
+                    ap.evidencia(alvoFundo(l.getFundId()), l, f, nome(l.getFundId()), null);
                 }
             }
         }
@@ -544,7 +544,7 @@ public final class CalculoPrevistoRealizado {
          * mudou) ou com lançamento que não está mais em "a realocar". Nada é somado em silêncio.
          */
         private List<Aviso> realocacoesSemEfeito(Apuracao ap, List<String> somados) {
-            Set<String> chavesDoPeriodo = e.lancamentos().stream().map(ImpressaoLancamento::chave)
+            Set<String> chavesDoPeriodo = e.lancamentos().stream().map(LedgerEntryFingerprint::key)
                     .collect(Collectors.toSet());
             List<Aviso> avisos = new ArrayList<>();
             e.realocacoes().stream().filter(r -> somados.contains(YearMonth.from(r.data()).toString()))
@@ -653,22 +653,22 @@ public final class CalculoPrevistoRealizado {
             return porLinha.values().stream().reduce(ZERO, BigDecimal::add).add(aRealocar.total).add(semLinha.total);
         }
 
-        void linha(UUID linha, BigDecimal valor, Lancamento l, Fluxo f, String fundo, String realocacao,
+        void linha(UUID linha, BigDecimal valor, LedgerEntry l, Fluxo f, String fundo, String realocacao,
                 UUID realocacaoId) {
             porLinha.merge(linha, valor, BigDecimal::add);
             qtdPorLinha.merge(linha, 1, Integer::sum);
             evidencia(alvoLinha(linha), l, f, fundo, realocacao, realocacaoId);
         }
 
-        void evidencia(String alvo, Lancamento l, Fluxo f, String fundo, String realocacao) {
+        void evidencia(String alvo, LedgerEntry l, Fluxo f, String fundo, String realocacao) {
             evidencia(alvo, l, f, fundo, realocacao, null);
         }
 
-        void evidencia(String alvo, Lancamento l, Fluxo f, String fundo, String realocacao, UUID realocacaoId) {
-            BigDecimal valor = l.getDebito().signum() != 0 ? l.getDebito() : l.getCredito();
-            evidencias.computeIfAbsent(alvo, k -> new ArrayList<>()).add(new Evidencia(l.getId(), l.getData(),
-                    l.getContaCodigo(), l.getContaNome(), l.getHistorico(), l.getFornecedor(), l.getDocumento(), valor,
-                    fundo, f.arquivoId(), f.nome(), f.sha256(), l.getPagina(), l.getOrdem(), realocacao,
+        void evidencia(String alvo, LedgerEntry l, Fluxo f, String fundo, String realocacao, UUID realocacaoId) {
+            BigDecimal valor = l.getDebit().signum() != 0 ? l.getDebit() : l.getCredit();
+            evidencias.computeIfAbsent(alvo, k -> new ArrayList<>()).add(new Evidencia(l.getId(), l.getDate(),
+                    l.getAccountCode(), l.getAccountName(), l.getMemo(), l.getSupplier(), l.getDocument(), valor,
+                    fundo, f.arquivoId(), f.nome(), f.sha256(), l.getPage(), l.getSequence(), realocacao,
                     realocacaoId));
         }
     }

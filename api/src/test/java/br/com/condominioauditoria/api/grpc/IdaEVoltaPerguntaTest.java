@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import br.com.condominioauditoria.api.condominio.Condominio;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
-import br.com.condominioauditoria.api.config.PropriedadesCondominio;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.config.properties.ApiProperties;
+import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
 import br.com.condominioauditoria.contratos.assistente.v1.DadoGravado;
 import br.com.condominioauditoria.contratos.assistente.v1.LinhaDado;
@@ -75,25 +75,25 @@ class IdaEVoltaPerguntaTest {
 
     @BeforeEach
     void subir() throws Exception {
-        CondominioRepository condominios = mock(CondominioRepository.class);
-        Condominio ca = mock(Condominio.class);
+        CondominiumRepository condominios = mock(CondominiumRepository.class);
+        Condominium ca = mock(Condominium.class);
         when(ca.getId()).thenReturn(A);
-        when(ca.getNome()).thenReturn("Condomínio A");
-        Condominio cb = mock(Condominio.class);
+        when(ca.getName()).thenReturn("Condomínio A");
+        Condominium cb = mock(Condominium.class);
         when(cb.getId()).thenReturn(B);
-        when(cb.getNome()).thenReturn("Condomínio B");
+        when(cb.getName()).thenReturn("Condomínio B");
         when(condominios.findAll()).thenAnswer(i -> {
             threadDaConsulta.set(Thread.currentThread().getName());
             return List.of(ca, cb);
         });
-        var acesso = new AcessoCondominio();
+        var acesso = new CondominiumAccess();
         var consulta = new ConsultaGrpcServico(acesso, condominios, null, null, null, null, null, null);
         var conversor = new JwtAuthenticationConverter();
         conversor.setPrincipalClaimName("preferred_username");
         conversor.setJwtGrantedAuthoritiesConverter(jwt -> jwt.getClaimAsStringList("perfis").stream()
                 .map(p -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + p)).toList());
         backend = new ServidorGrpc(consulta, new AutenticacaoGrpc(decoder, conversor),
-                new PropriedadesCondominio(null, null, new PropriedadesCondominio.Grpc(0), null));
+                new ApiProperties(null, null, new ApiProperties.GrpcProperties(0), null));
         backend.start();
         canalRagParaBackend = Grpc.newChannelBuilder("localhost:" + backend.porta(), InsecureChannelCredentials.create())
                 .build();
@@ -141,8 +141,8 @@ class IdaEVoltaPerguntaTest {
 
     @Test
     void ragChamaAConsultaDeVoltaComOTokenDoUsuarioSemTravarAThreadDaApi() throws Exception {
-        var cliente = new ClienteAssistente(canalRag, new PropriedadesCondominio(null, null, null,
-                new PropriedadesCondominio.Rag("rag:9091", 5, 20, 300)));
+        var cliente = new ClienteAssistente(canalRag, new ApiProperties(null, null, null,
+                new ApiProperties.RagProperties("rag:9091", 5, 20, 300)));
         ExecutorService threadDaApi = Executors.newSingleThreadExecutor(r -> new Thread(r, "http-nio-teste"));
         try {
             RespostaPergunta resposta = threadDaApi.submit(() -> cliente.perguntar(PerguntarRequest.newBuilder()

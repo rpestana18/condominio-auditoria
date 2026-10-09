@@ -2,9 +2,9 @@ package br.com.condominioauditoria.api.orcamento;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import br.com.condominioauditoria.api.contabil.Lancamento;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.Enriquecimento;
-import br.com.condominioauditoria.api.mensagens.ResultadoProcessamento.LancamentoLido;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
+import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
+import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Acumulado;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Entrada;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Fluxo;
@@ -30,7 +30,7 @@ class CalculoPrevistoRealizadoTest {
     private static final UUID RESERVA = UUID.randomUUID();
     private static final YearMonth SET = YearMonth.of(2026, 9);
 
-    private final List<Lancamento> lancamentos = new ArrayList<>();
+    private final List<LedgerEntry> lancamentos = new ArrayList<>();
     private final UUID arquivoSet = UUID.randomUUID();
     private final UUID arquivoOut = UUID.randomUUID();
 
@@ -92,7 +92,7 @@ class CalculoPrevistoRealizadoTest {
     void transferenciaEntreFundosFicaForaEAConferenciaFecha() {
         Po po = poSimples("1000.00");
         debito(po, arquivoSet, "1001", "800.00", LocalDate.of(2026, 9, 5));
-        Lancamento transf = lancamento(arquivoSet, ORDINARIO, "2133", "0.00", "50.00", true, false,
+        LedgerEntry transf = lancamento(arquivoSet, ORDINARIO, "2133", "0.00", "50.00", true, false,
                 LocalDate.of(2026, 9, 6));
         lancamentos.add(transf);
         debito(po, arquivoSet, null, "30.00", LocalDate.of(2026, 9, 7));
@@ -143,8 +143,8 @@ class CalculoPrevistoRealizadoTest {
     @Test
     void fundosSemRecebimentoDeCotaGravadoPedemReprocessoELinhaSemFundoNaoTemNumero() throws Exception {
         Po po = poComFundo();
-        Lancamento cota = lancamento(arquivoSet, RESERVA, null, "300.00", "0.00", false, true, LocalDate.of(2026, 9, 2));
-        Lancamento rendimento = lancamento(arquivoSet, RESERVA, null, "100.00", "0.00", false, false,
+        LedgerEntry cota = lancamento(arquivoSet, RESERVA, null, "300.00", "0.00", false, true, LocalDate.of(2026, 9, 2));
+        LedgerEntry rendimento = lancamento(arquivoSet, RESERVA, null, "100.00", "0.00", false, false,
                 LocalDate.of(2026, 9, 3));
         lancamentos.addAll(List.of(cota, rendimento));
 
@@ -161,7 +161,7 @@ class CalculoPrevistoRealizadoTest {
         assertThat(r.avisos()).extracting(PrevistoRealizado.Aviso::texto).contains("linha 1.9.2 sem fundo ligado");
 
         // Fluxo gravado antes da coluna recebimento_cota (V9): nunca zero, pede reprocesso
-        var campo = Lancamento.class.getDeclaredField("recebimentoCota");
+        var campo = LedgerEntry.class.getDeclaredField("condoFeeReceipt");
         campo.setAccessible(true);
         campo.set(cota, null);
         var antigo = calcular(po, new Mes(SET), List.of(fluxo(arquivoSet, SET)));
@@ -229,12 +229,12 @@ class CalculoPrevistoRealizadoTest {
         lancamentos.add(lancamento(arquivo, ORDINARIO, conta, "0.00", valor, false, false, data));
     }
 
-    private Lancamento lancamento(UUID arquivo, UUID fundo, String conta, String credito, String debito,
+    private LedgerEntry lancamento(UUID arquivo, UUID fundo, String conta, String credito, String debito,
             boolean transferencia, boolean cota, LocalDate data) {
-        var lido = new LancamentoLido(1, lancamentos.size() + 1, data, conta, conta == null ? "" : "CONTA " + conta, "",
+        var lido = new LedgerEntryData(1, lancamentos.size() + 1, data, conta, conta == null ? "" : "CONTA " + conta, "",
                 "Teste", new BigDecimal(credito), new BigDecimal(debito), BigDecimal.ZERO.setScale(2),
-                new Enriquecimento(null, null, null, transferencia, cota));
-        return new Lancamento(CONDOMINIO, arquivo, fundo, lido);
+                new Enrichment(null, null, null, transferencia, cota));
+        return new LedgerEntry(CONDOMINIO, arquivo, fundo, lido);
     }
 
     private static Fluxo fluxo(UUID arquivo, YearMonth mes) {

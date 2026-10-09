@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.api.assistente;
 
-import br.com.condominioauditoria.api.config.PropriedadesCondominio;
+import br.com.condominioauditoria.api.config.properties.ApiProperties;
 import br.com.condominioauditoria.api.grpc.ClienteAssistente;
 import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
@@ -66,8 +66,8 @@ class RagFalso implements AutoCloseable {
         servidor = InProcessServerBuilder.forName(nome).addService(ServerInterceptors.intercept(servico, capturaToken))
                 .build().start();
         canal = InProcessChannelBuilder.forName(nome).build();
-        cliente = new ClienteAssistente(canal, new PropriedadesCondominio(null, null, null,
-                new PropriedadesCondominio.Rag("rag:9091", 5, 7, 300)));
+        cliente = new ClienteAssistente(canal, new ApiProperties(null, null, null,
+                new ApiProperties.RagProperties("rag:9091", 5, 7, 300)));
     }
 
     void desligar() {

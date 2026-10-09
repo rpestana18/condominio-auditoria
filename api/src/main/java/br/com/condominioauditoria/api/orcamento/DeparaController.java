@@ -9,12 +9,12 @@ import br.com.condominioauditoria.api.orcamento.DeparaDtos.PedidoLote;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ResultadoLote;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ResultadoPlanilha;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ResultadoSugestoes;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -42,10 +42,10 @@ class DeparaController {
     /** A planilha do piloto tem 3 KB; 1 MB é folga para milhares de contas. */
     static final long TAMANHO_MAXIMO_PLANILHA = 1024 * 1024;
 
-    private final AcessoCondominio acesso;
+    private final CondominiumAccess acesso;
     private final ServicoDepara servico;
 
-    DeparaController(AcessoCondominio acesso, ServicoDepara servico) {
+    DeparaController(CondominiumAccess acesso, ServicoDepara servico) {
         this.acesso = acesso;
         this.servico = servico;
     }
@@ -54,14 +54,14 @@ class DeparaController {
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     DeparaLista listar(@PathVariable UUID condominioId, @PathVariable UUID poId,
             @RequestParam(required = false) FiltroDepara filtro) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return servico.listar(condominioId, poId, filtro);
     }
 
     @GetMapping("/eventos")
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     List<EventoDeparaDto> eventos(@PathVariable UUID condominioId, @PathVariable UUID poId) {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         return servico.eventos(condominioId, poId);
     }
 
@@ -69,29 +69,29 @@ class DeparaController {
     @PreAuthorize("hasRole('ADMIN')")
     ContaDepara definir(@PathVariable UUID condominioId, @PathVariable UUID poId, @PathVariable String conta,
             @RequestBody PedidoDestino pedido) {
-        acesso.exigir(condominioId);
-        return servico.definir(condominioId, poId, conta, pedido, acesso.usuario());
+        acesso.require(condominioId);
+        return servico.definir(condominioId, poId, conta, pedido, acesso.username());
     }
 
     @PostMapping("/lote")
     @PreAuthorize("hasRole('ADMIN')")
     ResultadoLote lote(@PathVariable UUID condominioId, @PathVariable UUID poId, @RequestBody PedidoLote pedido) {
-        acesso.exigir(condominioId);
-        return servico.lote(condominioId, poId, pedido, acesso.usuario());
+        acesso.require(condominioId);
+        return servico.lote(condominioId, poId, pedido, acesso.username());
     }
 
     @PostMapping("/sugestoes")
     @PreAuthorize("hasRole('ADMIN')")
     ResultadoSugestoes sugerir(@PathVariable UUID condominioId, @PathVariable UUID poId) {
-        acesso.exigir(condominioId);
-        return servico.sugerir(condominioId, poId, acesso.usuario());
+        acesso.require(condominioId);
+        return servico.sugerir(condominioId, poId, acesso.username());
     }
 
     @PostMapping(path = "/planilha", consumes = "multipart/form-data")
     @PreAuthorize("hasRole('ADMIN')")
     ResultadoPlanilha planilha(@PathVariable UUID condominioId, @PathVariable UUID poId,
             @RequestPart("arquivo") MultipartFile arquivo) throws IOException {
-        acesso.exigir(condominioId);
+        acesso.require(condominioId);
         if (arquivo.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "A planilha está vazia");
         }
@@ -99,7 +99,7 @@ class DeparaController {
             throw new ResponseStatusException(HttpStatus.CONTENT_TOO_LARGE, "A planilha passa de 1 MB");
         }
         return servico.carregarPlanilha(condominioId, poId, arquivo.getOriginalFilename(), texto(arquivo.getBytes()),
-                acesso.usuario());
+                acesso.username());
     }
 
     /** UTF-8 (padrão); se não for UTF-8 válido, Windows-1252, como o Excel em português salva o CSV. */

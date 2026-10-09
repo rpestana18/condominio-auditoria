@@ -1,7 +1,7 @@
 package br.com.condominioauditoria.api.assistente;
 
-import br.com.condominioauditoria.api.arquivo.Arquivo;
-import br.com.condominioauditoria.api.arquivo.ArquivoRepository;
+import br.com.condominioauditoria.api.model.file.SourceFile;
+import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.contratos.assistente.v1.Trecho;
 import java.util.Collection;
 import java.util.HashSet;
@@ -18,9 +18,9 @@ import org.springframework.stereotype.Component;
 @Component
 class BarreiraArquivos {
 
-    private final ArquivoRepository arquivos;
+    private final SourceFileRepository arquivos;
 
-    BarreiraArquivos(ArquivoRepository arquivos) {
+    BarreiraArquivos(SourceFileRepository arquivos) {
         this.arquivos = arquivos;
     }
 
@@ -33,8 +33,8 @@ class BarreiraArquivos {
         if (citados.isEmpty()) {
             return Set.of();
         }
-        return arquivos.findByCondominioIdAndIdIn(condominioId, citados).stream()
-                .map(Arquivo::getId).map(UUID::toString).collect(Collectors.toSet());
+        return arquivos.findByCondominiumIdAndIdIn(condominioId, citados).stream()
+                .map(SourceFile::getId).map(UUID::toString).collect(Collectors.toSet());
     }
 
     static boolean permitido(Trecho t, Set<String> visiveis) {

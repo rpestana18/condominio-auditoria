@@ -16,7 +16,7 @@ import br.com.condominioauditoria.api.modulo.ModoIa;
 import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.modulo.PedidoInvalidoException;
 import br.com.condominioauditoria.api.modulo.RegistroUso;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import br.com.condominioauditoria.contratos.assistente.v1.ConfiguracaoPergunta;
 import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
 import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
@@ -71,7 +71,7 @@ class PerguntaAssistente {
     static final String MSG_INDISPONIVEL = "O assistente está indisponível no momento (serviço rag ou provedor de IA"
             + " fora do ar). Tente de novo em instantes.";
 
-    private final AcessoCondominio acesso;
+    private final CondominiumAccess acesso;
     private final Modulos modulos;
     private final ConfiguracaoIaServico configuracao;
     private final ClienteAssistente rag;
@@ -79,7 +79,7 @@ class PerguntaAssistente {
     private final RegistroUso registroUso;
     private final int historicoTrocas;
 
-    PerguntaAssistente(AcessoCondominio acesso, Modulos modulos, ConfiguracaoIaServico configuracao,
+    PerguntaAssistente(CondominiumAccess acesso, Modulos modulos, ConfiguracaoIaServico configuracao,
             ClienteAssistente rag, BarreiraArquivos barreira, RegistroUso registroUso,
             @Value("${condominio.assistente.historico-trocas:6}") int historicoTrocas) {
         this.acesso = acesso;
@@ -105,7 +105,7 @@ class PerguntaAssistente {
             throw new PedidoInvalidoException("A pergunta passa de " + PERGUNTA_MAXIMO + " caracteres");
         }
         PerguntarRequest pedidoRag = montar(condominioId, pergunta, pedido, config);
-        String autorizacao = acesso.tokenBearer().orElseThrow(() -> new IllegalStateException("Token ausente"));
+        String autorizacao = acesso.bearerToken().orElseThrow(() -> new IllegalStateException("Token ausente"));
 
         RespostaPergunta resposta;
         try {
@@ -116,7 +116,7 @@ class PerguntaAssistente {
 
         RespostaAssistente saida = filtrar(condominioId, resposta, config);
         UsoPergunta uso = resposta.getUso();
-        registroUso.pergunta(condominioId, acesso.usuario(),
+        registroUso.pergunta(condominioId, acesso.username(),
                 uso.getProvedor().isBlank() ? config.respostas().provedor() : uso.getProvedor(),
                 uso.getModelo().isBlank() ? config.respostas().modelo() : uso.getModelo(), uso.getTokensEntrada(),
                 uso.getTokensSaida(), uso.getVersaoPrompt());

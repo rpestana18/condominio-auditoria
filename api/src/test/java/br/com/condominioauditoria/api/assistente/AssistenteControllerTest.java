@@ -14,21 +14,21 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import br.com.condominioauditoria.api.arquivo.Arquivo;
-import br.com.condominioauditoria.api.arquivo.ArquivoRepository;
-import br.com.condominioauditoria.api.arquivo.Categoria;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.PedidoBuscaDocumentos;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.PedidoPergunta;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Efetiva;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Embeddings;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Respostas;
+import br.com.condominioauditoria.api.model.enums.FileCategory;
+import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.modulo.ModoIa;
 import br.com.condominioauditoria.api.modulo.ModuloNaoContratadoException;
 import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.modulo.RegistroUso;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
 import br.com.condominioauditoria.contratos.assistente.v1.LocalPlanilha;
 import br.com.condominioauditoria.contratos.assistente.v1.Localizacao;
@@ -58,12 +58,12 @@ class AssistenteControllerTest {
 
     private static final UUID A = UUID.randomUUID();
 
-    private final ArquivoRepository arquivos = mock(ArquivoRepository.class);
+    private final SourceFileRepository arquivos = mock(SourceFileRepository.class);
     private final Modulos modulos = mock(Modulos.class);
     private final ConfiguracaoIaServico configuracao = mock(ConfiguracaoIaServico.class);
     private final RegistroUso registroUso = mock(RegistroUso.class);
-    private final CondominioRepository condominios = mock(CondominioRepository.class);
-    private final Arquivo planilha = new Arquivo(A, Categoria.PO, "po.xlsx", "a/po.xlsx", "d".repeat(64), 1,
+    private final CondominiumRepository condominios = mock(CondominiumRepository.class);
+    private final SourceFile planilha = new SourceFile(A, FileCategory.PO, "po.xlsx", "a/po.xlsx", "d".repeat(64), 1,
             "application/vnd.ms-excel", "gestor");
     private RagFalso rag;
     private AnnotationConfigApplicationContext contexto;
@@ -76,7 +76,7 @@ class AssistenteControllerTest {
 
         @Bean
         AssistenteController assistenteController(PerguntaAssistente pergunta, BuscaAssistente busca,
-                AcessoCondominio acesso, CondominioRepository condominios) {
+                CondominiumAccess acesso, CondominiumRepository condominios) {
             return new AssistenteController(pergunta, busca, acesso, condominios);
         }
     }
@@ -85,24 +85,24 @@ class AssistenteControllerTest {
     void subir() throws Exception {
         rag = new RagFalso();
         when(condominios.existsById(A)).thenReturn(true);
-        when(arquivos.findByCondominioIdAndIdIn(eq(A), anyCollection())).thenReturn(List.of(planilha));
+        when(arquivos.findByCondominiumIdAndIdIn(eq(A), anyCollection())).thenReturn(List.of(planilha));
         when(configuracao.ler(A)).thenReturn(new Efetiva(ModoIa.MCP_EXTERNO,
                 new Respostas(null, ModoIa.MCP_EXTERNO, null, null, null, null),
                 new Embeddings(ModoIa.LOCAL, "ollama-local", "bge-m3"), null, null));
-        var acesso = new AcessoCondominio();
+        var acesso = new CondominiumAccess();
         var barreira = new BarreiraArquivos(arquivos);
         var pergunta = new PerguntaAssistente(acesso, modulos, configuracao, rag.cliente, barreira, registroUso, 6);
         var busca = new BuscaAssistente(acesso, modulos, rag.cliente, barreira, registroUso);
         contexto = new AnnotationConfigApplicationContext();
         contexto.registerBean(PerguntaAssistente.class, () -> pergunta);
         contexto.registerBean(BuscaAssistente.class, () -> busca);
-        contexto.registerBean(AcessoCondominio.class, () -> acesso);
-        contexto.registerBean(CondominioRepository.class, () -> condominios);
+        contexto.registerBean(CondominiumAccess.class, () -> acesso);
+        contexto.registerBean(CondominiumRepository.class, () -> condominios);
         contexto.register(Config.class);
         contexto.refresh();
         controller = contexto.getBean(AssistenteController.class);
 
-        var construtor = Class.forName("br.com.condominioauditoria.api.erro.TratadorDeErros")
+        var construtor = Class.forName("br.com.condominioauditoria.api.exception.GlobalExceptionHandler")
                 .getDeclaredConstructor();
         construtor.setAccessible(true);
         mvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(construtor.newInstance()).build();
@@ -132,7 +132,7 @@ class AssistenteControllerTest {
             PerguntaAssistenteTest.logar(perfil, A);
             var trechos = controller.buscar(A, new PedidoBuscaDocumentos("  portão ", null, null));
             assertThat(trechos).singleElement().satisfies(t -> {
-                assertThat(t.categoria()).isEqualTo(Categoria.PO);
+                assertThat(t.categoria()).isEqualTo(FileCategory.PO);
                 assertThat(t.localizacao().tipo()).isEqualTo("PLANILHA");
                 assertThat(t.localizacao().descricao()).isEqualTo("aba Junho, linhas 10 a 14");
             });

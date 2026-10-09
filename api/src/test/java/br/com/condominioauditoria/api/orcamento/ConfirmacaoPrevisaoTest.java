@@ -3,9 +3,9 @@ package br.com.condominioauditoria.api.orcamento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import br.com.condominioauditoria.api.arquivo.Categoria;
 import br.com.condominioauditoria.api.auditoria.RegraTetoFundoReserva;
 import br.com.condominioauditoria.api.auditoria.Severidade;
+import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.orcamento.PedidoConfirmacao.LigacaoFundo;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.AvisoDto;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.CodigoAviso;
@@ -244,7 +244,7 @@ class ConfirmacaoPrevisaoTest {
     void ataPrecisaSerDaCategoriaAtaEComData() {
         PrevisaoOrcamentaria po = cenario.lerPo(PoDoPiloto.padrao());
         var p = cenario.pedidoDoPiloto(po);
-        var contrato = cenario.arquivo(Categoria.CONTRATO, "contrato.pdf");
+        var contrato = cenario.arquivo(FileCategory.CONTRATO, "contrato.pdf");
         var pedido = new PedidoConfirmacao("2026-05", "2027-04", contrato.getId(), false, null, p.codigosEfetivos(),
                 p.fundos(), false, false, null);
 

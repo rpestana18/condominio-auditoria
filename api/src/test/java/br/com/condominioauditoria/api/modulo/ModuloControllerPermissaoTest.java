@@ -11,14 +11,14 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import br.com.condominioauditoria.api.condominio.Condominio;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
 import br.com.condominioauditoria.api.ia.CatalogoIa;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
+import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.modulo.ModuloController.AlteracaoModulo;
 import br.com.condominioauditoria.api.modulo.Modulos.EstadoModulo;
 import br.com.condominioauditoria.api.modulo.RegistroUso.ResumoUso;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -55,7 +55,7 @@ class ModuloControllerPermissaoTest {
     private static ModuloController controller;
     private static Modulos modulos;
     private static RegistroUso registroUso;
-    private static CondominioRepository condominios;
+    private static CondominiumRepository condominios;
 
     @Configuration
     @EnableMethodSecurity
@@ -72,8 +72,8 @@ class ModuloControllerPermissaoTest {
         }
 
         @Bean
-        CondominioRepository condominios() {
-            return mock(CondominioRepository.class);
+        CondominiumRepository condominios() {
+            return mock(CondominiumRepository.class);
         }
 
         @Bean
@@ -87,13 +87,13 @@ class ModuloControllerPermissaoTest {
         }
 
         @Bean
-        AcessoCondominio acesso() {
-            return new AcessoCondominio();
+        CondominiumAccess acesso() {
+            return new CondominiumAccess();
         }
 
         @Bean
-        ModuloController moduloController(Modulos modulos, RegistroUso registroUso, AcessoCondominio acesso,
-                CondominioRepository condominios, ConfiguracaoIaServico configuracaoIa, CatalogoIa catalogoIa) {
+        ModuloController moduloController(Modulos modulos, RegistroUso registroUso, CondominiumAccess acesso,
+                CondominiumRepository condominios, ConfiguracaoIaServico configuracaoIa, CatalogoIa catalogoIa) {
             return new ModuloController(modulos, registroUso, acesso, condominios, configuracaoIa, catalogoIa);
         }
     }
@@ -104,7 +104,7 @@ class ModuloControllerPermissaoTest {
         controller = contexto.getBean(ModuloController.class);
         modulos = contexto.getBean(Modulos.class);
         registroUso = contexto.getBean(RegistroUso.class);
-        condominios = contexto.getBean(CondominioRepository.class);
+        condominios = contexto.getBean(CondominiumRepository.class);
     }
 
     @AfterAll
@@ -122,9 +122,9 @@ class ModuloControllerPermissaoTest {
         when(modulos.ligados(any())).thenReturn(List.of(Modulos.ASSISTENTE));
         when(modulos.alterar(any(), anyString(), anyBoolean(), any(), any())).thenReturn(estado);
         when(registroUso.resumo(any(), any(), any())).thenReturn(new ResumoUso(PILOTO, INICIO, FIM, List.of(), List.of()));
-        Condominio condominio = mock(Condominio.class);
+        Condominium condominio = mock(Condominium.class);
         when(condominio.getId()).thenReturn(PILOTO);
-        when(condominio.getNome()).thenReturn("Mio Residencial Parque");
+        when(condominio.getName()).thenReturn("Mio Residencial Parque");
         when(condominios.findById(PILOTO)).thenReturn(Optional.of(condominio));
     }
 

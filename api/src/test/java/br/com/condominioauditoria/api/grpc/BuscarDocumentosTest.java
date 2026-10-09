@@ -12,16 +12,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import br.com.condominioauditoria.api.arquivo.Arquivo;
-import br.com.condominioauditoria.api.arquivo.ArquivoRepository;
-import br.com.condominioauditoria.api.arquivo.Categoria;
-import br.com.condominioauditoria.api.config.PropriedadesCondominio;
+import br.com.condominioauditoria.api.config.properties.ApiProperties;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
+import br.com.condominioauditoria.api.model.enums.FileCategory;
+import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.modulo.ModoIa;
 import br.com.condominioauditoria.api.modulo.ModuloNaoContratadoException;
 import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.modulo.RegistroUso;
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
@@ -75,16 +75,16 @@ class BuscarDocumentosTest {
     private static final UUID CONDOMINIO_A = UUID.randomUUID();
     private static final UUID CONDOMINIO_B = UUID.randomUUID();
 
-    private final ArquivoRepository arquivos = mock(ArquivoRepository.class);
+    private final SourceFileRepository arquivos = mock(SourceFileRepository.class);
     /** Mock: exigir não lança = módulo ligado. Os testes de módulo desligado configuram a recusa. */
     private final Modulos modulos = mock(Modulos.class);
     private final RegistroUso registroUso = mock(RegistroUso.class);
     private final ConfiguracaoIaServico configuracaoIa = mock(ConfiguracaoIaServico.class);
-    private final Arquivo ataDoA = new Arquivo(CONDOMINIO_A, Categoria.ATA, "ata.pdf", "a/ATA/2026/x-ata.pdf",
+    private final SourceFile ataDoA = new SourceFile(CONDOMINIO_A, FileCategory.ATA, "ata.pdf", "a/ATA/2026/x-ata.pdf",
             "a".repeat(64), 10, "application/pdf", "gestor");
-    private final Arquivo poDoA = new Arquivo(CONDOMINIO_A, Categoria.PO, "po.xlsx", "a/PO/2026/x-po.xlsx",
+    private final SourceFile poDoA = new SourceFile(CONDOMINIO_A, FileCategory.PO, "po.xlsx", "a/PO/2026/x-po.xlsx",
             "c".repeat(64), 10, "application/vnd.ms-excel", "gestor");
-    private final Arquivo ataDoB = new Arquivo(CONDOMINIO_B, Categoria.ATA, "ata-b.pdf", "b/ATA/2026/x-ata-b.pdf",
+    private final SourceFile ataDoB = new SourceFile(CONDOMINIO_B, FileCategory.ATA, "ata-b.pdf", "b/ATA/2026/x-ata-b.pdf",
             "b".repeat(64), 10, "application/pdf", "gestor");
 
     /** O que o rag falso recebeu e o que ele vai devolver. */
@@ -106,10 +106,10 @@ class BuscarDocumentosTest {
     @BeforeEach
     void subir() throws Exception {
         // Repositório: só devolve arquivos do condomínio pedido, como a consulta real
-        when(arquivos.findByCondominioIdAndIdIn(eq(CONDOMINIO_A), anyCollection())).thenAnswer(chamada -> {
+        when(arquivos.findByCondominiumIdAndIdIn(eq(CONDOMINIO_A), anyCollection())).thenAnswer(chamada -> {
             var ids = chamada.<java.util.Collection<UUID>>getArgument(1);
             return List.of(ataDoA, poDoA, ataDoB).stream()
-                    .filter(a -> a.getCondominioId().equals(CONDOMINIO_A) && ids.contains(a.getId())).toList();
+                    .filter(a -> a.getCondominiumId().equals(CONDOMINIO_A) && ids.contains(a.getId())).toList();
         });
 
         var assistente = new AssistenteGrpc.AssistenteImplBase() {
@@ -134,8 +134,8 @@ class BuscarDocumentosTest {
                 .addService(ServerInterceptors.intercept(assistente, capturaToken)).build().start();
         canalRag = InProcessChannelBuilder.forName(nomeRag).build();
 
-        var propriedades = new PropriedadesCondominio(null, null, null, new PropriedadesCondominio.Rag("rag:9091", 5));
-        var acesso = new AcessoCondominio();
+        var propriedades = new ApiProperties(null, null, null, new ApiProperties.RagProperties("rag:9091", 5));
+        var acesso = new CondominiumAccess();
         embeddings(ModoIa.LOCAL, "bge-m3");
         var busca = new BuscaDocumentos(acesso, arquivos, new ClienteAssistente(canalRag, propriedades), modulos,
                 registroUso, configuracaoIa);
@@ -345,14 +345,14 @@ class BuscarDocumentosTest {
         return BuscarDocumentosRequest.newBuilder().setCondominioId(condominioId.toString()).setTexto(texto);
     }
 
-    private static Trecho trecho(Arquivo arquivo, Localizacao localizacao, double pontuacao) {
+    private static Trecho trecho(SourceFile arquivo, Localizacao localizacao, double pontuacao) {
         return Trecho.newBuilder()
                 .setTrechoId(UUID.randomUUID().toString())
                 .setArquivoId(arquivo.getId().toString())
-                .setNomeArquivo(arquivo.getNomeOriginal())
-                .setCategoria(arquivo.getCategoria().name())
+                .setNomeArquivo(arquivo.getOriginalName())
+                .setCategoria(arquivo.getCategory().name())
                 .setLocalizacao(localizacao)
-                .setTexto("texto de " + arquivo.getNomeOriginal())
+                .setTexto("texto de " + arquivo.getOriginalName())
                 .setPontuacao(pontuacao)
                 .setSha256(arquivo.getSha256())
                 .build();

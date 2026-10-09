@@ -4,15 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Files;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.time.LocalDate;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,9 +39,9 @@ class ModulosPostgresTest {
     static void banco(DynamicPropertyRegistry registro) throws Exception {
         registro.add("spring.datasource.url", () -> System.getenv("BANCO_TESTE") + "?currentSchema=backend");
         registro.add("spring.rabbitmq.listener.simple.auto-startup", () -> "false");
-        registro.add("condominio.grpc.porta", () -> "0");
+        registro.add("condominio.grpc.port", () -> "0");
         String pasta = Files.createTempDirectory("dados-teste").toString();
-        registro.add("condominio.armazenamento.pasta", () -> pasta);
+        registro.add("condominio.storage.folder", () -> pasta);
     }
 
     @Autowired

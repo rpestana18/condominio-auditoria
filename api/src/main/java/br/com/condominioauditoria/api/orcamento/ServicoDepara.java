@@ -1,9 +1,7 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.condominio.Condominio;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
-import br.com.condominioauditoria.api.contabil.Lancamento;
-import br.com.condominioauditoria.api.contabil.LancamentoRepository;
+import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.AcaoLote;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ContaDepara;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ContaIgnorada;
@@ -19,6 +17,8 @@ import br.com.condominioauditoria.api.orcamento.DeparaDtos.ResultadoLote;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ResultadoPlanilha;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ResultadoSugestoes;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ResumoDepara;
+import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -55,17 +55,17 @@ public class ServicoDepara {
     private static final Logger log = LoggerFactory.getLogger(ServicoDepara.class);
     private static final Pattern CONTA = Pattern.compile("^\\d{1,20}$");
 
-    private final CondominioRepository condominios;
+    private final CondominiumRepository condominios;
     private final PrevisaoOrcamentariaRepository previsoes;
     private final LinhaPoRepository linhas;
     private final DeparaContaRepository deparas;
     private final EventoDeparaRepository eventos;
-    private final LancamentoRepository lancamentos;
+    private final LedgerEntryRepository lancamentos;
     private final SugestaoPorNome sugestao;
     private final ApplicationEventPublisher publicador;
 
-    ServicoDepara(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes, LinhaPoRepository linhas,
-            DeparaContaRepository deparas, EventoDeparaRepository eventos, LancamentoRepository lancamentos,
+    ServicoDepara(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes, LinhaPoRepository linhas,
+            DeparaContaRepository deparas, EventoDeparaRepository eventos, LedgerEntryRepository lancamentos,
             PropriedadesDepara propriedades, ApplicationEventPublisher publicador) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -371,21 +371,21 @@ public class ServicoDepara {
         if (po.getExercicioInicio() == null) {
             return Map.of();
         }
-        UUID ordinario = condominios.findById(po.getCondominioId()).map(Condominio::getFundoOrdinarioId).orElse(null);
+        UUID ordinario = condominios.findById(po.getCondominioId()).map(Condominium::getOperatingFundId).orElse(null);
         if (ordinario == null) {
             return Map.of();
         }
         LocalDate inicio = po.getExercicioInicio().atDay(1);
         // Os meses prorrogados usam o de-para desta PO (RF-11.3)
         LocalDate fim = Optional.ofNullable(po.getProrrogadaAte()).orElse(po.getExercicioFim()).atEndOfMonth();
-        return agrupar(lancamentos.debitosComConta(po.getCondominioId(), ordinario, inicio, fim));
+        return agrupar(lancamentos.debitsWithAccount(po.getCondominioId(), ordinario, inicio, fim));
     }
 
     /** Agrupa pelo código; o nome é o do lançamento mais recente (a lista vem em ordem de data). */
-    static Map<String, ContaDoFluxo> agrupar(List<Lancamento> debitos) {
+    static Map<String, ContaDoFluxo> agrupar(List<LedgerEntry> debitos) {
         Map<String, ContaDoFluxo> porCodigo = new TreeMap<>();
-        for (Lancamento l : debitos) {
-            porCodigo.merge(l.getContaCodigo(), new ContaDoFluxo(l.getContaCodigo(), l.getContaNome(), 1, l.getDebito()),
+        for (LedgerEntry l : debitos) {
+            porCodigo.merge(l.getAccountCode(), new ContaDoFluxo(l.getAccountCode(), l.getAccountName(), 1, l.getDebit()),
                     (a, b) -> new ContaDoFluxo(a.codigo(), b.nome() == null || b.nome().isBlank() ? a.nome() : b.nome(),
                             a.lancamentos() + 1, a.debitos().add(b.debitos())));
         }

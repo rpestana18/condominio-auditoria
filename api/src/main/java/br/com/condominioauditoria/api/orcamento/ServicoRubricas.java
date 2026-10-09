@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.AcaoLoteRubrica;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.EventoRubricaDto;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.FiltroRubrica;
@@ -18,6 +17,7 @@ import br.com.condominioauditoria.api.orcamento.RubricaDtos.RubricaDto;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.RubricasDaPo;
 import br.com.condominioauditoria.api.orcamento.SugestaoRubrica.Confirmada;
 import br.com.condominioauditoria.api.orcamento.SugestaoRubrica.LinhaComGrupo;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -48,14 +48,14 @@ public class ServicoRubricas {
     private static final Logger log = LoggerFactory.getLogger(ServicoRubricas.class);
     private static final int TAMANHO_NOME = 300;
 
-    private final CondominioRepository condominios;
+    private final CondominiumRepository condominios;
     private final PrevisaoOrcamentariaRepository previsoes;
     private final LinhaPoRepository linhas;
     private final RubricaRepository rubricas;
     private final LinhaRubricaRepository linhasRubrica;
     private final EventoRubricaRepository eventos;
 
-    ServicoRubricas(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes, LinhaPoRepository linhas,
+    ServicoRubricas(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes, LinhaPoRepository linhas,
             RubricaRepository rubricas, LinhaRubricaRepository linhasRubrica, EventoRubricaRepository eventos) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -120,7 +120,7 @@ public class ServicoRubricas {
      */
     @Transactional
     public ResultadoSugestoesRubrica sugerir(UUID condominioId, UUID poId, String usuario) {
-        condominios.travar(condominioId)
+        condominios.lockById(condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
         return gerar(contextoParaEscrita(condominioId, poId).po(), usuario, Instant.now());
     }

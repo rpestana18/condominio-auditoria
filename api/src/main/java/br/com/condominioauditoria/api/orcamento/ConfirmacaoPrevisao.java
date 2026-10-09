@@ -2,19 +2,19 @@ package br.com.condominioauditoria.api.orcamento;
 
 import static br.com.condominioauditoria.api.orcamento.DinheiroBr.formatar;
 
-import br.com.condominioauditoria.api.arquivo.Arquivo;
-import br.com.condominioauditoria.api.arquivo.ArquivoRepository;
-import br.com.condominioauditoria.api.arquivo.Categoria;
 import br.com.condominioauditoria.api.auditoria.RegistroAchados;
 import br.com.condominioauditoria.api.auditoria.RegistroAchados.Evidencia;
 import br.com.condominioauditoria.api.auditoria.RegraTetoFundoReserva;
-import br.com.condominioauditoria.api.condominio.Condominio;
-import br.com.condominioauditoria.api.condominio.CondominioRepository;
-import br.com.condominioauditoria.api.contabil.Fundo;
-import br.com.condominioauditoria.api.contabil.FundoRepository;
+import br.com.condominioauditoria.api.model.accounting.Fund;
+import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.model.enums.FileCategory;
+import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.orcamento.PedidoConfirmacao.CodigoEfetivo;
 import br.com.condominioauditoria.api.orcamento.PedidoConfirmacao.LigacaoFundo;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PrevisaoDetalhe;
+import br.com.condominioauditoria.api.repository.accounting.FundRepository;
+import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
@@ -50,22 +50,22 @@ public class ConfirmacaoPrevisao {
     private static final Logger log = LoggerFactory.getLogger(ConfirmacaoPrevisao.class);
     private static final Pattern CODIGO = Pattern.compile("^\\d+(\\.\\d+)+$");
 
-    private final CondominioRepository condominios;
+    private final CondominiumRepository condominios;
     private final PrevisaoOrcamentariaRepository previsoes;
     private final LinhaPoRepository linhas;
     private final PoFundoRepository poFundos;
     private final EventoPrevisaoRepository eventos;
-    private final ArquivoRepository arquivos;
-    private final FundoRepository fundos;
+    private final SourceFileRepository arquivos;
+    private final FundRepository fundos;
     private final ConsultaPrevisao consulta;
     private final ReservaDaPo reserva;
     private final RegistroAchados achados;
     private final ServicoRubricas rubricas;
     private final ApplicationEventPublisher publicador;
 
-    ConfirmacaoPrevisao(CondominioRepository condominios, PrevisaoOrcamentariaRepository previsoes,
+    ConfirmacaoPrevisao(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             LinhaPoRepository linhas, PoFundoRepository poFundos, EventoPrevisaoRepository eventos,
-            ArquivoRepository arquivos, FundoRepository fundos, ConsultaPrevisao consulta, ReservaDaPo reserva,
+            SourceFileRepository arquivos, FundRepository fundos, ConsultaPrevisao consulta, ReservaDaPo reserva,
             RegistroAchados achados, ServicoRubricas rubricas, ApplicationEventPublisher publicador) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -83,7 +83,7 @@ public class ConfirmacaoPrevisao {
 
     @Transactional
     public PrevisaoDetalhe confirmar(UUID condominioId, UUID poId, PedidoConfirmacao pedido, String usuario) {
-        Condominio condominio = condominios.travar(condominioId)
+        Condominium condominio = condominios.lockById(condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
         PrevisaoOrcamentaria po = previsoes.findByIdAndCondominioId(poId, condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada"));
@@ -100,10 +100,10 @@ public class ConfirmacaoPrevisao {
         if (inicio != null && fim != null && fim.isBefore(inicio)) {
             motivos.add("O fim do exercício (" + fim + ") é anterior ao início (" + inicio + ").");
         }
-        Arquivo ata = validarAta(condominioId, pedido, motivos);
+        SourceFile ata = validarAta(condominioId, pedido, motivos);
         validarDivergencia(po, pedido, avaliacao, motivos);
         Map<UUID, String> novosCodigos = validarCodigos(lidas, pedido.codigosEfetivos(), motivos);
-        Map<LinhaPo, Fundo> ligacoes = validarFundos(condominio, estrutura, pedido.fundos(), motivos);
+        Map<LinhaPo, Fund> ligacoes = validarFundos(condominio, estrutura, pedido.fundos(), motivos);
         if (!motivos.isEmpty()) {
             throw new ConfirmacaoRecusadaException(HttpStatus.UNPROCESSABLE_CONTENT, motivos);
         }
@@ -162,7 +162,7 @@ public class ConfirmacaoPrevisao {
         }
     }
 
-    private Arquivo validarAta(UUID condominioId, PedidoConfirmacao pedido, List<String> motivos) {
+    private SourceFile validarAta(UUID condominioId, PedidoConfirmacao pedido, List<String> motivos) {
         if (pedido.semAta() && pedido.ataArquivoId() != null) {
             motivos.add("Informe a ata ou marque \"sem ata\", não os dois.");
             return null;
@@ -174,11 +174,11 @@ public class ConfirmacaoPrevisao {
         if (pedido.semAta()) {
             return null;
         }
-        Arquivo ata = arquivos.findByIdAndCondominioId(pedido.ataArquivoId(), condominioId).orElse(null);
+        SourceFile ata = arquivos.findByIdAndCondominiumId(pedido.ataArquivoId(), condominioId).orElse(null);
         if (ata == null) {
             motivos.add("A ata informada não é um arquivo deste condomínio.");
-        } else if (ata.getCategoria() != Categoria.ATA) {
-            motivos.add("O arquivo \"" + ata.getNomeOriginal() + "\" não está na categoria \"" + Categoria.ATA.rotulo()
+        } else if (ata.getCategory() != FileCategory.ATA) {
+            motivos.add("O arquivo \"" + ata.getOriginalName() + "\" não está na categoria \"" + FileCategory.ATA.label()
                     + "\".");
         }
         if (pedido.dataAprovacao() == null) {
@@ -252,26 +252,26 @@ public class ConfirmacaoPrevisao {
     }
 
     /** Cada linha de fundo ligada a um fundo do fluxo, distinto e que não seja o fundo ordinário (Condomínio). */
-    private Map<LinhaPo, Fundo> validarFundos(Condominio condominio, EstruturaPo estrutura, List<LigacaoFundo> pedidos,
+    private Map<LinhaPo, Fund> validarFundos(Condominium condominio, EstruturaPo estrutura, List<LigacaoFundo> pedidos,
             List<String> motivos) {
         List<LinhaPo> deFundo = estrutura.fundos().map(EstruturaPo.Grupo::linhas).orElse(List.of());
         Map<UUID, LinhaPo> porId = deFundo.stream().collect(Collectors.toMap(LinhaPo::getId, Function.identity()));
-        Map<UUID, Fundo> doCondominio = fundos.findByCondominioId(condominio.getId()).stream()
-                .collect(Collectors.toMap(Fundo::getId, Function.identity()));
-        Map<LinhaPo, Fundo> ligacoes = new LinkedHashMap<>();
+        Map<UUID, Fund> doCondominio = fundos.findByCondominiumId(condominio.getId()).stream()
+                .collect(Collectors.toMap(Fund::getId, Function.identity()));
+        Map<LinhaPo, Fund> ligacoes = new LinkedHashMap<>();
         Set<UUID> usados = new HashSet<>();
         for (LigacaoFundo f : pedidos) {
             LinhaPo linha = f.linhaId() == null ? null : porId.get(f.linhaId());
-            Fundo fundo = f.fundoId() == null ? null : doCondominio.get(f.fundoId());
+            Fund fundo = f.fundoId() == null ? null : doCondominio.get(f.fundoId());
             if (linha == null) {
                 motivos.add("Ligação de fundo para uma linha que não é linha de fundo desta PO.");
             } else if (fundo == null) {
                 motivos.add("O fundo informado para a linha " + linha.getCodigoImpresso() + " não é deste condomínio.");
-            } else if (fundo.getId().equals(condominio.getFundoOrdinarioId())) {
-                motivos.add("O fundo \"" + fundo.getNome() + "\" é o fundo ordinário e não pode ser ligado à linha "
+            } else if (fundo.getId().equals(condominio.getOperatingFundId())) {
+                motivos.add("O fundo \"" + fundo.getName() + "\" é o fundo ordinário e não pode ser ligado à linha "
                         + linha.getCodigoImpresso() + ".");
             } else if (!usados.add(fundo.getId())) {
-                motivos.add("O fundo \"" + fundo.getNome() + "\" foi ligado a mais de uma linha de fundo.");
+                motivos.add("O fundo \"" + fundo.getName() + "\" foi ligado a mais de uma linha de fundo.");
             } else if (ligacoes.put(linha, fundo) != null) {
                 motivos.add("Mais de um fundo para a linha " + linha.getCodigoImpresso() + ".");
             }
@@ -369,16 +369,16 @@ public class ConfirmacaoPrevisao {
         return "previsao:" + po.getId() + ":";
     }
 
-    private static String detalheDoEvento(PrevisaoOrcamentaria po, Arquivo ata, List<String> trocas,
-            Map<LinhaPo, Fundo> ligacoes, AvaliacaoLeituraPo.Resultado avaliacao,
+    private static String detalheDoEvento(PrevisaoOrcamentaria po, SourceFile ata, List<String> trocas,
+            Map<LinhaPo, Fund> ligacoes, AvaliacaoLeituraPo.Resultado avaliacao,
             List<PrevisaoOrcamentaria> substituidas) {
         List<String> partes = new ArrayList<>();
         partes.add("Exercício " + po.getExercicioInicio() + " a " + po.getExercicioFim() + "; versão " + po.getVersao());
         partes.add(ata == null ? "Sem ata (pendência de implantação)"
-                : "Ata: " + ata.getNomeOriginal() + " (" + ata.getSha256() + "), aprovada em " + po.getDataAprovacao());
+                : "Ata: " + ata.getOriginalName() + " (" + ata.getSha256() + "), aprovada em " + po.getDataAprovacao());
         partes.add("Códigos efetivos: " + (trocas.isEmpty() ? "nenhuma troca" : String.join("; ", trocas)));
         partes.add("Fundos: " + (ligacoes.isEmpty() ? "nenhuma linha de fundo" : ligacoes.entrySet().stream()
-                .map(e -> e.getKey().getCodigoImpresso() + " " + e.getKey().getDescricao() + " → " + e.getValue().getNome())
+                .map(e -> e.getKey().getCodigoImpresso() + " " + e.getKey().getDescricao() + " → " + e.getValue().getName())
                 .collect(Collectors.joining("; "))));
         if (!avaliacao.divergencias().isEmpty()) {
             partes.add("Conferências que falharam (confirmada ciente da divergência): "

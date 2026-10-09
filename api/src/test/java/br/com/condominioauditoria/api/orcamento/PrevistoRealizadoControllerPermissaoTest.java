@@ -7,7 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -37,8 +37,8 @@ class PrevistoRealizadoControllerPermissaoTest {
     @EnableMethodSecurity
     static class Config {
         @Bean
-        AcessoCondominio acesso() {
-            return new AcessoCondominio();
+        CondominiumAccess acesso() {
+            return new CondominiumAccess();
         }
 
         @Bean
@@ -56,7 +56,7 @@ class PrevistoRealizadoControllerPermissaoTest {
         }
 
         @Bean
-        PrevistoRealizadoController controller(AcessoCondominio acesso, ConsultaPrevistoRealizado consulta,
+        PrevistoRealizadoController controller(CondominiumAccess acesso, ConsultaPrevistoRealizado consulta,
                 ExportacaoPrevistoRealizado exportacao) {
             return new PrevistoRealizadoController(acesso, consulta, exportacao);
         }

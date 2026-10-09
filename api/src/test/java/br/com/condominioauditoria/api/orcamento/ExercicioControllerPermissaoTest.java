@@ -6,7 +6,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
-import br.com.condominioauditoria.api.seguranca.AcessoCondominio;
+import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -41,8 +41,8 @@ class ExercicioControllerPermissaoTest {
     @EnableMethodSecurity
     static class Config {
         @Bean
-        AcessoCondominio acesso() {
-            return new AcessoCondominio();
+        CondominiumAccess acesso() {
+            return new CondominiumAccess();
         }
 
         @Bean
@@ -61,7 +61,7 @@ class ExercicioControllerPermissaoTest {
         }
 
         @Bean
-        ExercicioController controller(AcessoCondominio acesso, ServicoExercicios servico,
+        ExercicioController controller(CondominiumAccess acesso, ServicoExercicios servico,
                 ServicoComparacao comparacao, ServicoIndicadores indicadores) {
             return new ExercicioController(acesso, servico, comparacao, indicadores);
         }

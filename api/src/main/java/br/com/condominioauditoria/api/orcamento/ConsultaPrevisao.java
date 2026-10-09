@@ -1,11 +1,8 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.arquivo.Arquivo;
-import br.com.condominioauditoria.api.arquivo.ArquivoRepository;
 import br.com.condominioauditoria.api.auditoria.AchadoRepository;
-import br.com.condominioauditoria.api.contabil.ConferenciaRepository;
-import br.com.condominioauditoria.api.contabil.Fundo;
-import br.com.condominioauditoria.api.contabil.FundoRepository;
+import br.com.condominioauditoria.api.model.accounting.Fund;
+import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.orcamento.AvaliacaoLeituraPo.ConferenciaPo;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.AchadoDto;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.AvisoDto;
@@ -17,6 +14,9 @@ import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.LinhaPoDto;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.LinhaRepetidaDto;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PrevisaoDetalhe;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PrevisaoResumo;
+import br.com.condominioauditoria.api.repository.accounting.FundRepository;
+import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
+import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -41,16 +41,16 @@ public class ConsultaPrevisao {
 
     private final PrevisaoOrcamentariaRepository previsoes;
     private final LinhaPoRepository linhas;
-    private final ConferenciaRepository conferencias;
-    private final ArquivoRepository arquivos;
+    private final TotalsCheckRepository conferencias;
+    private final SourceFileRepository arquivos;
     private final PoFundoRepository poFundos;
-    private final FundoRepository fundos;
+    private final FundRepository fundos;
     private final AchadoRepository achados;
     private final ReservaDaPo reserva;
 
     ConsultaPrevisao(PrevisaoOrcamentariaRepository previsoes, LinhaPoRepository linhas,
-            ConferenciaRepository conferencias, ArquivoRepository arquivos, PoFundoRepository poFundos,
-            FundoRepository fundos, AchadoRepository achados, ReservaDaPo reserva) {
+            TotalsCheckRepository conferencias, SourceFileRepository arquivos, PoFundoRepository poFundos,
+            FundRepository fundos, AchadoRepository achados, ReservaDaPo reserva) {
         this.previsoes = previsoes;
         this.linhas = linhas;
         this.conferencias = conferencias;
@@ -103,8 +103,8 @@ public class ConsultaPrevisao {
 
     private List<FundoPoDto> fundos(PrevisaoOrcamentaria p, List<LinhaPo> lidas) {
         Map<UUID, LinhaPo> porId = lidas.stream().collect(Collectors.toMap(LinhaPo::getId, Function.identity()));
-        Map<UUID, String> nomes = fundos.findByCondominioId(p.getCondominioId()).stream()
-                .collect(Collectors.toMap(Fundo::getId, Fundo::getNome));
+        Map<UUID, String> nomes = fundos.findByCondominiumId(p.getCondominioId()).stream()
+                .collect(Collectors.toMap(Fund::getId, Fund::getName));
         return poFundos.findByPrevisaoId(p.getId()).stream()
                 .map(f -> {
                     LinhaPo l = porId.get(f.getLinhaPoId());
@@ -124,8 +124,8 @@ public class ConsultaPrevisao {
     }
 
     AvaliacaoLeituraPo.Resultado avaliar(PrevisaoOrcamentaria p, EstruturaPo estrutura) {
-        List<ConferenciaPo> gravadas = conferencias.findByArquivoIdOrderByOrdem(p.getArquivoId()).stream()
-                .map(c -> new ConferenciaPo(c.getCodigo(), c.getDescricao(), c.isOk(), c.getDetalhe())).toList();
+        List<ConferenciaPo> gravadas = conferencias.findByFileIdOrderBySequence(p.getArquivoId()).stream()
+                .map(c -> new ConferenciaPo(c.getCode(), c.getDescription(), c.isOk(), c.getDetail())).toList();
         return AvaliacaoLeituraPo.avaliar(estrutura, gravadas, p.getToleranciaArredondamento());
     }
 
@@ -193,7 +193,7 @@ public class ConsultaPrevisao {
     }
 
     PrevisaoResumo resumo(PrevisaoOrcamentaria p) {
-        String nome = arquivos.findById(p.getArquivoId()).map(Arquivo::getNomeOriginal).orElse(null);
+        String nome = arquivos.findById(p.getArquivoId()).map(SourceFile::getOriginalName).orElse(null);
         return new PrevisaoResumo(p.getId(), p.getArquivoId(), nome, p.getSha256(), p.getEstado(), p.getVersao(),
                 p.getTitulo(), p.getExercicioImpresso(), mes(p.getExercicioInicio()), mes(p.getExercicioFim()),
                 p.getTotalImpresso(), p.getPrevistoMes(), p.getLidaEm(), p.getConfirmadaPor(), p.getConfirmadaEm(),

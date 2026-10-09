@@ -5,7 +5,7 @@ rootProject.name = "condominio-auditoria"
 include(
     "libs:storage",         // storage interface for the originals (local folder or S3)
     "libs:grpc-contract",   // generated code of the gRPC contract (contracts/grpc)
-    "backend",              // API, contábil, auditoria, orçamento, relatórios
+    "api",                  // API REST, contábil, auditoria, orçamento, relatórios (ex-backend, ADR 0006)
     "rag",                  // leitura, extração, enriquecimento e (depois) embeddings e busca
-    "mcp",                  // porta de entrada do Claude externo (MCP), fala com o backend por gRPC
+    "mcp",                  // porta de entrada do Claude externo (MCP), fala com o api por gRPC
 )

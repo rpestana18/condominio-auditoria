@@ -2,10 +2,10 @@ package br.com.condominioauditoria.api.service.usage;
 
 import br.com.condominioauditoria.api.dto.response.feature.UsageExportResponse;
 import br.com.condominioauditoria.api.dto.response.feature.UsageResponse;
-import br.com.condominioauditoria.api.ia.CatalogoIa;
 import br.com.condominioauditoria.api.mapper.UsageMapper;
 import br.com.condominioauditoria.api.model.feature.ActivePeriod;
 import br.com.condominioauditoria.api.report.UsageExcelReport;
+import br.com.condominioauditoria.api.service.ai.AiCatalog;
 import br.com.condominioauditoria.api.service.calculator.UsageCostCalculator.PeriodCost;
 import br.com.condominioauditoria.api.service.condominium.CondominiumService;
 import br.com.condominioauditoria.api.service.feature.FeatureService;
@@ -27,10 +27,10 @@ public class UsageReportService {
     private final UsageService usage;
     private final FeatureService features;
     private final CondominiumService condominiums;
-    private final CatalogoIa aiCatalog;
+    private final AiCatalog aiCatalog;
 
     public UsageReportService(UsageService usage, FeatureService features, CondominiumService condominiums,
-            CatalogoIa aiCatalog) {
+            AiCatalog aiCatalog) {
         this.usage = usage;
         this.features = features;
         this.condominiums = condominiums;
@@ -64,7 +64,7 @@ public class UsageReportService {
 
     /** Estimated cost of the period; null if the rag did not answer the price catalog. */
     private PeriodCost cost(UUID condominiumId, LocalDate start, LocalDate end, Optional<String> bearerToken) {
-        return bearerToken.flatMap(aiCatalog::precos)
+        return bearerToken.flatMap(aiCatalog::prices)
                 .map(prices -> usage.cost(condominiumId, start, end, prices))
                 .orElse(null);
     }

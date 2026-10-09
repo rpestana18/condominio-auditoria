@@ -1,8 +1,5 @@
 package br.com.condominioauditoria.api.exception;
 
-import br.com.condominioauditoria.api.assistente.RecusaAssistenteException;
-import br.com.condominioauditoria.api.ia.ConfiguracaoIaRecusadaException;
-import br.com.condominioauditoria.api.ia.IaIndisponivelException;
 import br.com.condominioauditoria.api.orcamento.ConfirmacaoRecusadaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -64,29 +61,29 @@ class GlobalExceptionHandler {
     }
 
     /** AI configuration rejected (RF-09.6): 422 with all the reasons. No reason carries the key. */
-    @ExceptionHandler(ConfiguracaoIaRecusadaException.class)
-    ProblemDetail aiConfigurationRejected(ConfiguracaoIaRecusadaException e) {
+    @ExceptionHandler(AiConfigurationRejectedException.class)
+    ProblemDetail aiConfigurationRejected(AiConfigurationRejectedException e) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, e.getMessage());
         p.setTitle("Configuração de IA recusada");
-        p.setProperty("motivos", e.motivos());
+        p.setProperty("motivos", e.reasons());
         return p;
     }
 
     /** Rag down or without a public key while reading the catalog or saving the key: 503, nothing saved. */
-    @ExceptionHandler(IaIndisponivelException.class)
-    ProblemDetail aiUnavailable(IaIndisponivelException e) {
+    @ExceptionHandler(AiUnavailableException.class)
+    ProblemDetail aiUnavailable(AiUnavailableException e) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
         p.setTitle("Serviço de IA indisponível");
         return p;
     }
 
     /** Assistant chat and search: 409 by mode (with modoIa), 422, 429, 503 and 504 as in the contract. */
-    @ExceptionHandler(RecusaAssistenteException.class)
-    ProblemDetail assistantRefusal(RecusaAssistenteException e) {
+    @ExceptionHandler(AssistantRejectedException.class)
+    ProblemDetail assistantRefusal(AssistantRejectedException e) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(e.status(), e.getMessage());
-        p.setTitle(e.titulo());
-        if (e.modoIa() != null) {
-            p.setProperty("modoIa", e.modoIa().name());
+        p.setTitle(e.title());
+        if (e.aiMode() != null) {
+            p.setProperty("modoIa", e.aiMode().name());
         }
         return p;
     }

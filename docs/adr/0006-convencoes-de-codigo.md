@@ -95,6 +95,18 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | função de uso | `UsageFunction` | |
 | modo de IA | `AiMode` | |
 | custo estimado | `estimatedCost` | |
+| configuração de IA, trilha da configuração | `AiConfiguration`, `AiConfigurationEvent` | |
+| catálogo de IA (provedores e modelos) | `AiCatalog`, `AiProvider`, `AiModel` | |
+| função de IA (respostas, embeddings) | `AiFunction`, `answers`, `embeddings` | as constantes `RESPOSTAS` e `EMBEDDINGS` ficam até a fase 2 |
+| chave cifrada, final da chave | `encryptedKey`, `keySuffix` | |
+| cifrador da chave de API | `ApiKeyCipher` | |
+| pergunta, histórico (da conversa) | `Question`, `ConversationTurn` | |
+| situação da resposta | `AnswerStatus` | |
+| trecho, citação | `Chunk`, `Citation` | |
+| dados gravados | `storedData` | dados do banco usados na resposta do chat |
+| segunda barreira | `FileAccessBarrier` | |
+| consulta (gRPC) | `QueryService`, `QueryGrpcService` | o serviço gRPC `Consulta` do contrato não muda até a fase 2 |
+| prazo (de uma chamada) | `timeout`, `deadline` | |
 
 ---
 

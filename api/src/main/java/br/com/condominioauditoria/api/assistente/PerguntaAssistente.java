@@ -9,14 +9,14 @@ import br.com.condominioauditoria.api.assistente.DtosAssistente.PedidoPergunta;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.RespostaAssistente;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.SituacaoResposta;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.TrocaConversa;
+import br.com.condominioauditoria.api.exception.InvalidRequestException;
 import br.com.condominioauditoria.api.grpc.ClienteAssistente;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Efetiva;
-import br.com.condominioauditoria.api.modulo.ModoIa;
-import br.com.condominioauditoria.api.modulo.Modulos;
-import br.com.condominioauditoria.api.modulo.PedidoInvalidoException;
-import br.com.condominioauditoria.api.modulo.RegistroUso;
+import br.com.condominioauditoria.api.model.enums.AiMode;
 import br.com.condominioauditoria.api.security.CondominiumAccess;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
+import br.com.condominioauditoria.api.service.usage.UsageService;
 import br.com.condominioauditoria.contratos.assistente.v1.ConfiguracaoPergunta;
 import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
 import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
@@ -72,15 +72,15 @@ class PerguntaAssistente {
             + " fora do ar). Tente de novo em instantes.";
 
     private final CondominiumAccess acesso;
-    private final Modulos modulos;
+    private final FeatureService modulos;
     private final ConfiguracaoIaServico configuracao;
     private final ClienteAssistente rag;
     private final BarreiraArquivos barreira;
-    private final RegistroUso registroUso;
+    private final UsageService registroUso;
     private final int historicoTrocas;
 
-    PerguntaAssistente(CondominiumAccess acesso, Modulos modulos, ConfiguracaoIaServico configuracao,
-            ClienteAssistente rag, BarreiraArquivos barreira, RegistroUso registroUso,
+    PerguntaAssistente(CondominiumAccess acesso, FeatureService modulos, ConfiguracaoIaServico configuracao,
+            ClienteAssistente rag, BarreiraArquivos barreira, UsageService registroUso,
             @Value("${condominio.assistente.historico-trocas:6}") int historicoTrocas) {
         this.acesso = acesso;
         this.modulos = modulos;
@@ -93,16 +93,16 @@ class PerguntaAssistente {
 
     /** Chamado pela API depois de conferir perfil, acesso e que o condomínio existe. */
     RespostaAssistente perguntar(UUID condominioId, PedidoPergunta pedido) {
-        modulos.exigir(condominioId, Modulos.ASSISTENTE);
+        modulos.require(condominioId, FeatureService.ASSISTANT);
         Efetiva config = configuracao.ler(condominioId);
         exigirChatDisponivel(config);
 
         String pergunta = pedido == null || pedido.pergunta() == null ? "" : pedido.pergunta().strip();
         if (pergunta.isEmpty()) {
-            throw new PedidoInvalidoException("Escreva a pergunta");
+            throw new InvalidRequestException("Escreva a pergunta");
         }
         if (pergunta.length() > PERGUNTA_MAXIMO) {
-            throw new PedidoInvalidoException("A pergunta passa de " + PERGUNTA_MAXIMO + " caracteres");
+            throw new InvalidRequestException("A pergunta passa de " + PERGUNTA_MAXIMO + " caracteres");
         }
         PerguntarRequest pedidoRag = montar(condominioId, pergunta, pedido, config);
         String autorizacao = acesso.bearerToken().orElseThrow(() -> new IllegalStateException("Token ausente"));
@@ -116,7 +116,7 @@ class PerguntaAssistente {
 
         RespostaAssistente saida = filtrar(condominioId, resposta, config);
         UsoPergunta uso = resposta.getUso();
-        registroUso.pergunta(condominioId, acesso.username(),
+        registroUso.recordQuestion(condominioId, acesso.username(),
                 uso.getProvedor().isBlank() ? config.respostas().provedor() : uso.getProvedor(),
                 uso.getModelo().isBlank() ? config.respostas().modelo() : uso.getModelo(), uso.getTokensEntrada(),
                 uso.getTokensSaida(), uso.getVersaoPrompt());
@@ -125,7 +125,7 @@ class PerguntaAssistente {
 
     /** Recusa (409, sem chamar o rag) quando o modo de respostas efetivo não é API_KEY com chave (RF-04.16). */
     static void exigirChatDisponivel(Efetiva config) {
-        ModoIa modo = config.respostas().modoEfetivo();
+        AiMode modo = config.respostas().modoEfetivo();
         String mensagem = switch (modo) {
             case MCP_EXTERNO -> MSG_MCP_EXTERNO;
             case DESLIGADO -> MSG_DESLIGADO;
@@ -147,8 +147,8 @@ class PerguntaAssistente {
                         .setProvedor(r.provedor())
                         .setModelo(Objects.requireNonNullElse(r.modelo(), ""))
                         .setChaveCifrada(ByteString.copyFrom(r.chaveCifrada()))
-                        .setModeloEmbeddings(e.modo() == ModoIa.LOCAL ? Objects.requireNonNullElse(e.modelo(), "") : "")
-                        .setModoBusca(e.modo() == ModoIa.DESLIGADO ? ModoBusca.MODO_BUSCA_PALAVRA
+                        .setModeloEmbeddings(e.modo() == AiMode.LOCAL ? Objects.requireNonNullElse(e.modelo(), "") : "")
+                        .setModoBusca(e.modo() == AiMode.DESLIGADO ? ModoBusca.MODO_BUSCA_PALAVRA
                                 : ModoBusca.MODO_BUSCA_HIBRIDA));
         List<TrocaConversa> historico = PedidosRag.lista(pedido.historico()).stream().filter(Objects::nonNull).toList();
         for (TrocaConversa t : historico.subList(Math.max(0, historico.size() - historicoTrocas), historico.size())) {
@@ -240,7 +240,7 @@ class PerguntaAssistente {
             case INVALID_ARGUMENT -> new RecusaAssistenteException(HttpStatus.BAD_REQUEST, "Pergunta inválida",
                     Objects.requireNonNullElse(descricao, "Pergunta inválida"), null);
             case FAILED_PRECONDITION -> new RecusaAssistenteException(HttpStatus.CONFLICT, TITULO_INDISPONIVEL,
-                    descricao == null || descricao.isBlank() ? MSG_CHAVE_ILEGIVEL : descricao, ModoIa.API_KEY);
+                    descricao == null || descricao.isBlank() ? MSG_CHAVE_ILEGIVEL : descricao, AiMode.API_KEY);
             case PERMISSION_DENIED -> new RecusaAssistenteException(HttpStatus.UNPROCESSABLE_CONTENT,
                     "Chave de IA recusada", MSG_CHAVE_RECUSADA, null);
             case RESOURCE_EXHAUSTED -> new RecusaAssistenteException(HttpStatus.TOO_MANY_REQUESTS,

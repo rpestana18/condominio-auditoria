@@ -1,8 +1,8 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.auditoria.ParametroRegra;
-import br.com.condominioauditoria.api.auditoria.ParametroRegraRepository;
-import br.com.condominioauditoria.api.auditoria.RegraTetoFundoReserva;
+import br.com.condominioauditoria.api.model.audit.RuleParameter;
+import br.com.condominioauditoria.api.repository.audit.RuleParameterRepository;
+import br.com.condominioauditoria.api.service.audit.rule.ReserveFundCapRule;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
@@ -18,16 +18,16 @@ public class ReservaDaPo {
     public sealed interface Resultado {
     }
 
-    public record Avaliada(LinhaPo linha, RegraTetoFundoReserva.Avaliacao avaliacao, ParametroRegra parametro)
+    public record Avaliada(LinhaPo linha, ReserveFundCapRule.Assessment avaliacao, RuleParameter parametro)
             implements Resultado {
     }
 
     public record NaoAvaliada(String motivo) implements Resultado {
     }
 
-    private final ParametroRegraRepository parametros;
+    private final RuleParameterRepository parametros;
 
-    public ReservaDaPo(ParametroRegraRepository parametros) {
+    public ReservaDaPo(RuleParameterRepository parametros) {
         this.parametros = parametros;
     }
 
@@ -39,14 +39,14 @@ public class ReservaDaPo {
                     + (reservas.isEmpty() ? "a PO não tem linha de fundo de reserva"
                             : "mais de uma linha de fundo de reserva na PO"));
         }
-        Optional<ParametroRegra> teto = parametros.vigente(po.getCondominioId(), RegraTetoFundoReserva.PARAMETRO,
+        Optional<RuleParameter> teto = parametros.findValidOn(po.getCondominioId(), ReserveFundCapRule.PARAMETER,
                 po.getExercicioInicio().atDay(1));
         if (teto.isEmpty()) {
             return new NaoAvaliada("Regra do teto do fundo de reserva (Conv. 20.1) não avaliada: teto não cadastrado"
                     + " para o condomínio em " + po.getExercicioInicio());
         }
         LinhaPo reserva = reservas.getFirst();
-        return RegraTetoFundoReserva.avaliar(reserva.getOrcado(), po.getPrevistoMes(), teto.get().getValor())
+        return ReserveFundCapRule.assess(reserva.getOrcado(), po.getPrevistoMes(), teto.get().getValue())
                 .<Resultado>map(a -> new Avaliada(reserva, a, teto.get()))
                 .orElseGet(() -> new NaoAvaliada("Regra do teto do fundo de reserva (Conv. 20.1) não avaliada:"
                         + " previsto do mês sem valor"));

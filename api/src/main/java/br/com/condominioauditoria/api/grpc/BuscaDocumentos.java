@@ -1,13 +1,13 @@
 package br.com.condominioauditoria.api.grpc;
 
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
+import br.com.condominioauditoria.api.model.enums.AiMode;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.ModoIa;
-import br.com.condominioauditoria.api.modulo.Modulos;
-import br.com.condominioauditoria.api.modulo.RegistroUso;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.security.CondominiumAccess;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
+import br.com.condominioauditoria.api.service.usage.UsageService;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
 import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
@@ -61,12 +61,12 @@ class BuscaDocumentos {
     private final CondominiumAccess acesso;
     private final SourceFileRepository arquivos;
     private final ClienteAssistente rag;
-    private final Modulos modulos;
-    private final RegistroUso registroUso;
+    private final FeatureService modulos;
+    private final UsageService registroUso;
     private final ConfiguracaoIaServico configuracaoIa;
 
-    BuscaDocumentos(CondominiumAccess acesso, SourceFileRepository arquivos, ClienteAssistente rag, Modulos modulos,
-            RegistroUso registroUso, ConfiguracaoIaServico configuracaoIa) {
+    BuscaDocumentos(CondominiumAccess acesso, SourceFileRepository arquivos, ClienteAssistente rag, FeatureService modulos,
+            UsageService registroUso, ConfiguracaoIaServico configuracaoIa) {
         this.acesso = acesso;
         this.arquivos = arquivos;
         this.rag = rag;
@@ -77,12 +77,12 @@ class BuscaDocumentos {
 
     /** Chamado dentro do rpc, já com o usuário do token no contexto de segurança e o acesso ao condomínio conferido. */
     BuscarDocumentosResponse buscar(UUID condominioId, BuscarDocumentosRequest pedido) {
-        modulos.exigir(condominioId, Modulos.ASSISTENTE);
+        modulos.require(condominioId, FeatureService.ASSISTANT);
         var embeddings = configuracaoIa.ler(condominioId).embeddings();
         BuscarRequest pedidoRag = paraRag(condominioId, pedido).toBuilder()
-                .setModo(embeddings.modo() == ModoIa.DESLIGADO ? ModoBusca.MODO_BUSCA_PALAVRA
+                .setModo(embeddings.modo() == AiMode.DESLIGADO ? ModoBusca.MODO_BUSCA_PALAVRA
                         : ModoBusca.MODO_BUSCA_HIBRIDA)
-                .setModeloEmbeddings(embeddings.modo() == ModoIa.LOCAL && embeddings.modelo() != null
+                .setModeloEmbeddings(embeddings.modo() == AiMode.LOCAL && embeddings.modelo() != null
                         ? embeddings.modelo() : "")
                 .build();
         String autorizacao = acesso.bearerToken()
@@ -93,7 +93,7 @@ class BuscaDocumentos {
         } catch (StatusRuntimeException erro) {
             throw traduzirErroDoRag(erro);
         }
-        registroUso.chamadaMcp(condominioId, acesso.username(), resposta.getModoUsado() == ModoBusca.MODO_BUSCA_HIBRIDA);
+        registroUso.recordMcpCall(condominioId, acesso.username(), resposta.getModoUsado() == ModoBusca.MODO_BUSCA_HIBRIDA);
         return BuscarDocumentosResponse.newBuilder()
                 .addAllTrechos(permitidos(condominioId, resposta.getTrechosList()).stream()
                         .map(BuscaDocumentos::converter).toList())

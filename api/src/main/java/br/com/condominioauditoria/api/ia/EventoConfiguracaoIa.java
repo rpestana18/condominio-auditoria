@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.api.ia;
 
-import br.com.condominioauditoria.api.modulo.ModoIa;
+import br.com.condominioauditoria.api.model.enums.AiMode;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -27,9 +27,9 @@ public class EventoConfiguracaoIa {
     private String usuario;
     private Instant quando;
     @Enumerated(EnumType.STRING)
-    private ModoIa modoAnterior;
+    private AiMode modoAnterior;
     @Enumerated(EnumType.STRING)
-    private ModoIa modoNovo;
+    private AiMode modoNovo;
     private String provedorAnterior;
     private String provedorNovo;
     private String modeloAnterior;
@@ -41,7 +41,7 @@ public class EventoConfiguracaoIa {
     }
 
     EventoConfiguracaoIa(UUID condominioId, String modulo, FuncaoIa funcao, String usuario, Instant quando,
-            ModoIa modoAnterior, ModoIa modoNovo, String provedorAnterior, String provedorNovo, String modeloAnterior,
+            AiMode modoAnterior, AiMode modoNovo, String provedorAnterior, String provedorNovo, String modeloAnterior,
             String modeloNovo, boolean chaveTrocada, String chaveFinal) {
         this.id = UUID.randomUUID();
         this.condominioId = condominioId;
@@ -83,11 +83,11 @@ public class EventoConfiguracaoIa {
         return quando;
     }
 
-    public ModoIa getModoAnterior() {
+    public AiMode getModoAnterior() {
         return modoAnterior;
     }
 
-    public ModoIa getModoNovo() {
+    public AiMode getModoNovo() {
         return modoNovo;
     }
 

@@ -34,7 +34,7 @@ class DisparoRecalculoAchados {
             transacao.executeWithoutResult(s -> recalculo.recalcular(mudanca));
         } catch (RuntimeException e) {
             log.error("Recálculo dos achados do condomínio {} falhou ({}): {}", mudanca.condominioId(),
-                    mudanca.gatilho().texto(), e.getMessage(), e);
+                    mudanca.gatilho().text(), e.getMessage(), e);
         }
     }
 }

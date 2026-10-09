@@ -14,12 +14,12 @@ import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.model.enums.IndexingStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.repository.accounting.FundBalanceRepository;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
 import br.com.condominioauditoria.api.repository.file.CategoryChangeRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.storage.Storage;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,7 +38,7 @@ class SourceFileServiceFeatureTest {
 
     private final SourceFileRepository files = mock(SourceFileRepository.class);
     private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
-    private final Modulos features = mock(Modulos.class);
+    private final FeatureService features = mock(FeatureService.class);
     private final SourceFileService service = new SourceFileService(files, mock(Storage.class), events,
             mock(CategoryChangeRepository.class), features, mock(TotalsCheckRepository.class),
             mock(FundBalanceRepository.class), mock(FundRepository.class));
@@ -51,7 +51,7 @@ class SourceFileServiceFeatureTest {
 
     @Test
     void uploadWithFeatureDisabledOnlyReads() throws Exception {
-        when(features.ligado(CONDOMINIUM, Modulos.ASSISTENTE)).thenReturn(false);
+        when(features.isEnabled(CONDOMINIUM, FeatureService.ASSISTANT)).thenReturn(false);
 
         SourceFileResponse file = service.upload(CONDOMINIUM, FileCategory.ATA, upload(), "gestor");
 
@@ -62,7 +62,7 @@ class SourceFileServiceFeatureTest {
 
     @Test
     void uploadWithFeatureEnabledRequestsIndexing() throws Exception {
-        when(features.ligado(CONDOMINIUM, Modulos.ASSISTENTE)).thenReturn(true);
+        when(features.isEnabled(CONDOMINIUM, FeatureService.ASSISTANT)).thenReturn(true);
 
         SourceFileResponse file = service.upload(CONDOMINIUM, FileCategory.ATA, upload(), "gestor");
 
@@ -72,7 +72,7 @@ class SourceFileServiceFeatureTest {
 
     @Test
     void reprocessWithFeatureDisabledKeepsIndexingStatus() {
-        when(features.ligado(CONDOMINIUM, Modulos.ASSISTENTE)).thenReturn(false);
+        when(features.isEnabled(CONDOMINIUM, FeatureService.ASSISTANT)).thenReturn(false);
         SourceFile file = new SourceFile(CONDOMINIUM, FileCategory.ATA, "ata.pdf", "c/ATA/2026/x-ata.pdf", "a".repeat(64), 10,
                 "application/pdf", "gestor");
         file.requestIndexing();

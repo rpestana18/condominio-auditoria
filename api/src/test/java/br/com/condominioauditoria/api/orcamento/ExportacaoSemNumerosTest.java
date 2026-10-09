@@ -2,7 +2,7 @@ package br.com.condominioauditoria.api.orcamento;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import br.com.condominioauditoria.api.auditoria.TermosConduta;
+import br.com.condominioauditoria.api.service.audit.ConductTerms;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.util.UUID;
@@ -25,6 +25,6 @@ class ExportacaoSemNumerosTest {
         assertThat(pdf).contains("Sem PO aprovada para 04/2026", "Período 04/2026", "Gerado por usuario")
                 .doesNotContain("PROVISÓRIO");
         assertThat(excel).contains("Sem PO aprovada para 04/2026", "Resumo", "Evidência").doesNotContain("PROVISÓRIO");
-        assertThat(TermosConduta.encontrados(pdf)).isEmpty();
+        assertThat(ConductTerms.find(pdf)).isEmpty();
     }
 }

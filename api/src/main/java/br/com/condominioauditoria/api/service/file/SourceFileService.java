@@ -12,12 +12,12 @@ import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.model.file.CategoryChange;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.repository.accounting.FundBalanceRepository;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
 import br.com.condominioauditoria.api.repository.file.CategoryChangeRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.storage.Storage;
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,13 +54,13 @@ public class SourceFileService {
     private final Storage storage;
     private final ApplicationEventPublisher events;
     private final CategoryChangeRepository categoryChanges;
-    private final Modulos features;
+    private final FeatureService features;
     private final TotalsCheckRepository totalsChecks;
     private final FundBalanceRepository balances;
     private final FundRepository funds;
 
     public SourceFileService(SourceFileRepository files, Storage storage, ApplicationEventPublisher events,
-            CategoryChangeRepository categoryChanges, Modulos features, TotalsCheckRepository totalsChecks,
+            CategoryChangeRepository categoryChanges, FeatureService features, TotalsCheckRepository totalsChecks,
             FundBalanceRepository balances, FundRepository funds) {
         this.files = files;
         this.storage = storage;
@@ -190,7 +190,7 @@ public class SourceFileService {
 
     /** A new indexing request only with the Assistant feature enabled for the condominium (RF-10.3). */
     private boolean requestIndexing(SourceFile file) {
-        if (!features.ligado(file.getCondominiumId(), Modulos.ASSISTENTE)) {
+        if (!features.isEnabled(file.getCondominiumId(), FeatureService.ASSISTANT)) {
             return false;
         }
         file.requestIndexing();

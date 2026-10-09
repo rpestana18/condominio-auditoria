@@ -14,12 +14,12 @@ import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.model.file.CategoryChange;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.repository.accounting.FundBalanceRepository;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
 import br.com.condominioauditoria.api.repository.file.CategoryChangeRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.storage.Storage;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,7 +34,7 @@ class SourceFileServiceCategoryTest {
     private final SourceFileRepository files = mock(SourceFileRepository.class);
     private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
     private final CategoryChangeRepository categoryChanges = mock(CategoryChangeRepository.class);
-    private final Modulos features = mock(Modulos.class);
+    private final FeatureService features = mock(FeatureService.class);
     private final SourceFileService service = new SourceFileService(files, mock(Storage.class), events, categoryChanges,
             features, mock(TotalsCheckRepository.class), mock(FundBalanceRepository.class), mock(FundRepository.class));
 

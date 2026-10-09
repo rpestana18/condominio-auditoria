@@ -6,8 +6,8 @@ import br.com.condominioauditoria.api.event.FileIndexRequested;
 import br.com.condominioauditoria.api.event.FilesIndexRequested;
 import br.com.condominioauditoria.api.model.enums.IndexingStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.time.Instant;
@@ -53,7 +53,7 @@ public class IndexingPublisher {
     private final MessageContract contract;
     private final SourceFileRepository files;
     private final TransactionTemplate transaction;
-    private final Modulos features;
+    private final FeatureService features;
     private final Duration resendAfter;
     private final int maxAttempts;
     /** Sends the batches (enabling the feature) outside the request thread, one batch at a time. */
@@ -61,13 +61,13 @@ public class IndexingPublisher {
 
     @Autowired
     IndexingPublisher(RabbitTemplate rabbit, MessageContract contract, SourceFileRepository files,
-            PlatformTransactionManager transactionManager, ApiProperties properties, Modulos features) {
+            PlatformTransactionManager transactionManager, ApiProperties properties, FeatureService features) {
         this(rabbit, contract, files, transactionManager, properties, features,
                 Executors.newSingleThreadExecutor(Thread.ofVirtual().name("indexacao-lote-", 0).factory()));
     }
 
     IndexingPublisher(RabbitTemplate rabbit, MessageContract contract, SourceFileRepository files,
-            PlatformTransactionManager transactionManager, ApiProperties properties, Modulos features,
+            PlatformTransactionManager transactionManager, ApiProperties properties, FeatureService features,
             Executor batches) {
         this.rabbit = rabbit;
         this.contract = contract;
@@ -95,7 +95,7 @@ public class IndexingPublisher {
     void afterCommit(FilesIndexRequested batch) {
         batches.execute(() -> {
             try {
-                if (!features.ligado(batch.condominiumId(), Modulos.ASSISTENTE)) {
+                if (!features.isEnabled(batch.condominiumId(), FeatureService.ASSISTANT)) {
                     return; // disabled again before sending
                 }
                 for (SourceFile file : files.findAllById(batch.fileIds())) {
@@ -122,7 +122,7 @@ public class IndexingPublisher {
             List<SourceFile> list = files.findByIndexingStatusInAndIndexingQueuedAtBeforeOrderByUploadedAt(
                     IN_PROGRESS, cutoff).stream()
                     .filter(a -> enabled.computeIfAbsent(a.getCondominiumId(),
-                            c -> features.ligado(c, Modulos.ASSISTENTE)))
+                            c -> features.isEnabled(c, FeatureService.ASSISTANT)))
                     .toList();
             List<SourceFile> toResend = list.stream().filter(a -> a.getIndexingAttempts() < maxAttempts).toList();
             list.stream().filter(a -> a.getIndexingAttempts() >= maxAttempts).forEach(a -> a.failIndexing(
@@ -139,7 +139,7 @@ public class IndexingPublisher {
 
     /** Single request (upload, reprocess): checks the feature again, since it may have been disabled midway. */
     private void send(SourceFile file) {
-        if (features.ligado(file.getCondominiumId(), Modulos.ASSISTENTE)) {
+        if (features.isEnabled(file.getCondominiumId(), FeatureService.ASSISTANT)) {
             publish(file);
         }
     }

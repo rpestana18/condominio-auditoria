@@ -8,13 +8,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import br.com.condominioauditoria.api.event.FeatureChanged;
 import br.com.condominioauditoria.api.event.FilesIndexRequested;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.IndexingStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.ModuloAlterado;
-import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -40,7 +40,7 @@ class ReindexOnAssistantEnabledListenerTest {
         UUID oldRequest = alreadyIndexed.getIndexingId();
         when(files.findByCondominiumIdOrderByUploadedAtDesc(CONDOMINIUM)).thenReturn(forty);
 
-        listener.onFeatureChanged(new ModuloAlterado(CONDOMINIUM, Modulos.ASSISTENTE, true, "admin"));
+        listener.onFeatureChanged(new FeatureChanged(CONDOMINIUM, FeatureService.ASSISTANT, true, "admin"));
 
         assertThat(forty).allSatisfy(a -> {
             assertThat(a.getIndexingStatus()).isEqualTo(IndexingStatus.NA_FILA);
@@ -55,7 +55,7 @@ class ReindexOnAssistantEnabledListenerTest {
 
     @Test
     void disablingTouchesNeitherIndexNorQueue() {
-        listener.onFeatureChanged(new ModuloAlterado(CONDOMINIUM, Modulos.ASSISTENTE, false, "admin"));
+        listener.onFeatureChanged(new FeatureChanged(CONDOMINIUM, FeatureService.ASSISTANT, false, "admin"));
 
         verifyNoInteractions(files, events);
     }
@@ -64,7 +64,7 @@ class ReindexOnAssistantEnabledListenerTest {
     void condominiumWithoutFilesPublishesNothing() {
         when(files.findByCondominiumIdOrderByUploadedAtDesc(CONDOMINIUM)).thenReturn(List.of());
 
-        listener.onFeatureChanged(new ModuloAlterado(CONDOMINIUM, Modulos.ASSISTENTE, true, "admin"));
+        listener.onFeatureChanged(new FeatureChanged(CONDOMINIUM, FeatureService.ASSISTANT, true, "admin"));
 
         verify(events, never()).publishEvent(any(Object.class));
     }

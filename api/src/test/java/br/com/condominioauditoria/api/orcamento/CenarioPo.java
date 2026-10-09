@@ -5,17 +5,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import br.com.condominioauditoria.api.auditoria.Achado;
-import br.com.condominioauditoria.api.auditoria.AchadoEvidencia;
-import br.com.condominioauditoria.api.auditoria.AchadoEvidenciaRepository;
-import br.com.condominioauditoria.api.auditoria.AchadoRepository;
-import br.com.condominioauditoria.api.auditoria.EventoAchado;
-import br.com.condominioauditoria.api.auditoria.EventoAchadoRepository;
-import br.com.condominioauditoria.api.auditoria.ParametroRegra;
-import br.com.condominioauditoria.api.auditoria.ParametroRegraRepository;
-import br.com.condominioauditoria.api.auditoria.RegistroAchados;
-import br.com.condominioauditoria.api.auditoria.RegraExcessoMes;
-import br.com.condominioauditoria.api.auditoria.RegraTetoFundoReserva;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetData;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
@@ -23,6 +12,10 @@ import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.TotalsCh
 import br.com.condominioauditoria.api.model.accounting.Fund;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.model.accounting.TotalsCheck;
+import br.com.condominioauditoria.api.model.audit.Finding;
+import br.com.condominioauditoria.api.model.audit.FindingEvent;
+import br.com.condominioauditoria.api.model.audit.FindingEvidence;
+import br.com.condominioauditoria.api.model.audit.RuleParameter;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
@@ -30,8 +23,15 @@ import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
 import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
+import br.com.condominioauditoria.api.repository.audit.FindingEventRepository;
+import br.com.condominioauditoria.api.repository.audit.FindingEvidenceRepository;
+import br.com.condominioauditoria.api.repository.audit.FindingRepository;
+import br.com.condominioauditoria.api.repository.audit.RuleParameterRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.audit.FindingSyncService;
+import br.com.condominioauditoria.api.service.audit.rule.MonthlyOverrunRule;
+import br.com.condominioauditoria.api.service.audit.rule.ReserveFundCapRule;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -60,13 +60,13 @@ final class CenarioPo {
     final List<TotalsCheck> conferencias = new ArrayList<>();
     final List<PoFundo> poFundos = new ArrayList<>();
     final List<EventoPrevisao> eventos = new ArrayList<>();
-    final List<Achado> achados = new ArrayList<>();
-    final List<AchadoEvidencia> evidencias = new ArrayList<>();
-    final List<ParametroRegra> parametros = new ArrayList<>();
+    final List<Finding> achados = new ArrayList<>();
+    final List<FindingEvidence> evidencias = new ArrayList<>();
+    final List<RuleParameter> parametros = new ArrayList<>();
     final List<DeparaConta> deparas = new ArrayList<>();
     final List<EventoDepara> eventosDepara = new ArrayList<>();
     final List<LedgerEntry> lancamentos = new ArrayList<>();
-    final List<EventoAchado> eventosAchado = new ArrayList<>();
+    final List<FindingEvent> eventosAchado = new ArrayList<>();
     final List<RealocacaoLancamento> realocacoes = new ArrayList<>();
     final List<EventoRealocacao> eventosRealocacao = new ArrayList<>();
     final List<Fund> fundos = new ArrayList<>();
@@ -91,7 +91,7 @@ final class CenarioPo {
     final ConsultaPrevistoRealizado previstoRealizado;
     final ServicoRealocacao realocacao;
     final RecalculoAchadosOrcamento recalculo;
-    final RegistroAchados registro;
+    final FindingSyncService registro;
     final LigacaoFundosPo ligacaoFundos;
     private final GravacaoPrevisao gravacao;
 
@@ -164,53 +164,53 @@ final class CenarioPo {
             return i.getArgument(0);
         });
 
-        AchadoRepository achadoRepo = mock(AchadoRepository.class);
+        FindingRepository achadoRepo = mock(FindingRepository.class);
         when(achadoRepo.save(any())).thenAnswer(i -> {
-            if (!achados.contains(i.<Achado>getArgument(0))) {
+            if (!achados.contains(i.<Finding>getArgument(0))) {
                 achados.add(i.getArgument(0));
             }
             return i.getArgument(0);
         });
-        when(achadoRepo.findByCondominioIdAndCompetenciaAndRegraIn(any(), any(), any())).thenAnswer(i -> achados
-                .stream().filter(a -> a.getCondominioId().equals(i.getArgument(0))
-                        && a.getCompetencia().atDay(1).equals(i.getArgument(1))
-                        && i.<Collection<String>>getArgument(2).contains(a.getRegra()))
+        when(achadoRepo.findByCondominiumIdAndReferenceMonthAndRuleIn(any(), any(), any())).thenAnswer(i -> achados
+                .stream().filter(a -> a.getCondominiumId().equals(i.getArgument(0))
+                        && a.getReferenceMonth().atDay(1).equals(i.getArgument(1))
+                        && i.<Collection<String>>getArgument(2).contains(a.getRule()))
                 .toList());
-        EventoAchadoRepository eventoAchadoRepo = mock(EventoAchadoRepository.class);
+        FindingEventRepository eventoAchadoRepo = mock(FindingEventRepository.class);
         when(eventoAchadoRepo.save(any())).thenAnswer(i -> {
             eventosAchado.add(i.getArgument(0));
             return i.getArgument(0);
         });
-        when(achadoRepo.findByCondominioIdAndRegraAndCompetenciaAndAlvo(any(), anyString(), any(), anyString()))
-                .thenAnswer(i -> achados.stream().filter(a -> a.getCondominioId().equals(i.getArgument(0))
-                        && a.getRegra().equals(i.getArgument(1))
-                        && a.getCompetencia().atDay(1).equals(i.getArgument(2)) && a.getAlvo().equals(i.getArgument(3)))
+        when(achadoRepo.findByCondominiumIdAndRuleAndReferenceMonthAndTarget(any(), anyString(), any(), anyString()))
+                .thenAnswer(i -> achados.stream().filter(a -> a.getCondominiumId().equals(i.getArgument(0))
+                        && a.getRule().equals(i.getArgument(1))
+                        && a.getReferenceMonth().atDay(1).equals(i.getArgument(2)) && a.getTarget().equals(i.getArgument(3)))
                         .findFirst());
-        when(achadoRepo.findByCondominioIdAndAlvoStartingWithOrderByCriadoEm(any(), anyString())).thenAnswer(i -> achados
-                .stream().filter(a -> a.getCondominioId().equals(i.getArgument(0))
-                        && a.getAlvo().startsWith(i.getArgument(1))).toList());
-        when(achadoRepo.findByCondominioIdOrderByCompetenciaDescCriadoEmAsc(any())).thenAnswer(i -> achados.stream()
-                .filter(a -> a.getCondominioId().equals(i.getArgument(0))).toList());
-        AchadoEvidenciaRepository evidenciaRepo = mock(AchadoEvidenciaRepository.class);
+        when(achadoRepo.findByCondominiumIdAndTargetStartingWithOrderByCreatedAt(any(), anyString())).thenAnswer(i -> achados
+                .stream().filter(a -> a.getCondominiumId().equals(i.getArgument(0))
+                        && a.getTarget().startsWith(i.getArgument(1))).toList());
+        when(achadoRepo.findByCondominiumIdOrderByReferenceMonthDescCreatedAtAsc(any())).thenAnswer(i -> achados.stream()
+                .filter(a -> a.getCondominiumId().equals(i.getArgument(0))).toList());
+        FindingEvidenceRepository evidenciaRepo = mock(FindingEvidenceRepository.class);
         when(evidenciaRepo.save(any())).thenAnswer(i -> {
             evidencias.add(i.getArgument(0));
             return i.getArgument(0);
         });
 
-        ParametroRegraRepository parametroRepo = mock(ParametroRegraRepository.class);
-        when(parametroRepo.vigente(any(), anyString(), any())).thenAnswer(i -> parametros.stream()
-                .filter(p -> p.getCodigo().equals(i.getArgument(1))
-                        && !p.getVigenteDesde().isAfter(i.getArgument(2)))
+        RuleParameterRepository parametroRepo = mock(RuleParameterRepository.class);
+        when(parametroRepo.findValidOn(any(), anyString(), any())).thenAnswer(i -> parametros.stream()
+                .filter(p -> p.getCode().equals(i.getArgument(1))
+                        && !p.getValidFrom().isAfter(i.getArgument(2)))
                 .findFirst());
-        parametros.add(new ParametroRegra(condominioId, RegraTetoFundoReserva.PARAMETRO, new BigDecimal("5.0000"),
+        parametros.add(new RuleParameter(condominioId, ReserveFundCapRule.PARAMETER, new BigDecimal("5.0000"),
                 LocalDate.of(1900, 1, 1), null, "Conv. 20.1"));
-        parametros.add(new ParametroRegra(condominioId, RegraExcessoMes.PARAMETRO, new BigDecimal("20.0000"),
+        parametros.add(new RuleParameter(condominioId, MonthlyOverrunRule.PARAMETER, new BigDecimal("20.0000"),
                 LocalDate.of(1900, 1, 1), null, "Conv. 16.2"));
 
         ReservaDaPo reservaDaPo = new ReservaDaPo(parametroRepo);
         consulta = new ConsultaPrevisao(previsaoRepo, linhaRepo, conferenciaRepo, arquivoRepo, poFundoRepo, fundoRepo,
                 achadoRepo, reservaDaPo);
-        registro = new RegistroAchados(achadoRepo, evidenciaRepo, eventoAchadoRepo);
+        registro = new FindingSyncService(achadoRepo, evidenciaRepo, eventoAchadoRepo);
         RubricaRepository rubricaRepo = mock(RubricaRepository.class);
         when(rubricaRepo.save(any())).thenAnswer(i -> {
             if (!rubricas.contains(i.<Rubrica>getArgument(0))) {

@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.auditoria.RegraExcessoMes;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntryFingerprint;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Aviso;
@@ -21,6 +20,7 @@ import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Situacao;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoFundo;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Totais;
+import br.com.condominioauditoria.api.service.audit.rule.MonthlyOverrunRule;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
  * despesa (Q30), nunca o total impresso;</li>
  * <li>fundos ligados às linhas 1.9: arrecadação = créditos de recebimento de cota (Q25), nunca débitos;</li>
  * <li>mês sem fluxo carregado não vira zero; dois fluxos no mesmo mês não são somados;</li>
- * <li>regra dos 20% pela {@link RegraExcessoMes}; percentuais com 10 casas, exibidos com 1 (meio para cima).</li>
+ * <li>regra dos 20% pela {@link MonthlyOverrunRule}; percentuais com 10 casas, exibidos com 1 (meio para cima).</li>
  * </ul>
  */
 public final class CalculoPrevistoRealizado {
@@ -432,9 +432,9 @@ public final class CalculoPrevistoRealizado {
             BigDecimal despesa = ap.despesa();
             BigDecimal excesso = excesso(ap, 1);
             var regra = e.limiteExcessoPercentual() == null ? null
-                    : RegraExcessoMes.avaliar(excesso, previsto, e.limiteExcessoPercentual()).orElse(null);
+                    : MonthlyOverrunRule.assess(excesso, previsto, e.limiteExcessoPercentual()).orElse(null);
             return new MesExercicio(mes.toString(), SituacaoMes.COM_FLUXO, List.of(f.usado()), previsto, despesa, excesso,
-                    regra == null ? null : umaCasa(regra.percentual()), regra == null ? null : regra.acimaDoLimite(),
+                    regra == null ? null : umaCasa(regra.percentage()), regra == null ? null : regra.aboveLimit(),
                     false);
         }
 
@@ -584,16 +584,16 @@ public final class CalculoPrevistoRealizado {
                 }
             }
             linhas.sort(Comparator.comparing(LinhaExcesso::excesso).reversed().thenComparing(LinhaExcesso::codigo));
-            var avaliacao = RegraExcessoMes.avaliar(excesso, previsto, e.limiteExcessoPercentual()).orElse(null);
+            var avaliacao = MonthlyOverrunRule.assess(excesso, previsto, e.limiteExcessoPercentual()).orElse(null);
             if (avaliacao == null) {
                 avisos.add(new Aviso("REGRA_NAO_AVALIADA", "Regra dos 20% (Conv. 16.2) não avaliada: previsto do mês"
                         + " sem valor"));
                 return null;
             }
             BigDecimal cenario = excesso.add(aRealocar).add(semLinha);
-            return new Regra20(RegraExcessoMes.CODIGO, RegraExcessoMes.VERSAO, e.limiteExcessoPercentual(), previsto,
-                    excesso, umaCasa(avaliacao.percentual()), avaliacao.limite(), linhas.size(), List.copyOf(linhas),
-                    aRealocar, semLinha, cenario, percentual(cenario, previsto), provisorio, avaliacao.acimaDoLimite());
+            return new Regra20(MonthlyOverrunRule.CODE, MonthlyOverrunRule.VERSION, e.limiteExcessoPercentual(), previsto,
+                    excesso, umaCasa(avaliacao.percentage()), avaliacao.limit(), linhas.size(), List.copyOf(linhas),
+                    aRealocar, semLinha, cenario, percentual(cenario, previsto), provisorio, avaliacao.aboveLimit());
         }
 
         private List<FundoResultado> fundos(Apuracao ap, int n, List<Aviso> avisos) {

@@ -13,15 +13,15 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import br.com.condominioauditoria.api.config.properties.ApiProperties;
+import br.com.condominioauditoria.api.exception.FeatureNotEnabledException;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
+import br.com.condominioauditoria.api.model.enums.AiMode;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.ModoIa;
-import br.com.condominioauditoria.api.modulo.ModuloNaoContratadoException;
-import br.com.condominioauditoria.api.modulo.Modulos;
-import br.com.condominioauditoria.api.modulo.RegistroUso;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.security.CondominiumAccess;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
+import br.com.condominioauditoria.api.service.usage.UsageService;
 import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
@@ -77,8 +77,8 @@ class BuscarDocumentosTest {
 
     private final SourceFileRepository arquivos = mock(SourceFileRepository.class);
     /** Mock: exigir não lança = módulo ligado. Os testes de módulo desligado configuram a recusa. */
-    private final Modulos modulos = mock(Modulos.class);
-    private final RegistroUso registroUso = mock(RegistroUso.class);
+    private final FeatureService modulos = mock(FeatureService.class);
+    private final UsageService registroUso = mock(UsageService.class);
     private final ConfiguracaoIaServico configuracaoIa = mock(ConfiguracaoIaServico.class);
     private final SourceFile ataDoA = new SourceFile(CONDOMINIO_A, FileCategory.ATA, "ata.pdf", "a/ATA/2026/x-ata.pdf",
             "a".repeat(64), 10, "application/pdf", "gestor");
@@ -136,7 +136,7 @@ class BuscarDocumentosTest {
 
         var propriedades = new ApiProperties(null, null, null, new ApiProperties.RagProperties("rag:9091", 5));
         var acesso = new CondominiumAccess();
-        embeddings(ModoIa.LOCAL, "bge-m3");
+        embeddings(AiMode.LOCAL, "bge-m3");
         var busca = new BuscaDocumentos(acesso, arquivos, new ClienteAssistente(canalRag, propriedades), modulos,
                 registroUso, configuracaoIa);
         var consulta = new ConsultaGrpcServico(acesso, null, arquivos, null, null, null, null, busca);
@@ -197,8 +197,8 @@ class BuscarDocumentosTest {
 
     @Test
     void moduloDesligadoEhFailedPreconditionSemChamarORagNemRegistrarUso() {
-        doThrow(new ModuloNaoContratadoException(Modulos.ASSISTENTE, "Assistente"))
-                .when(modulos).exigir(CONDOMINIO_A, Modulos.ASSISTENTE);
+        doThrow(new FeatureNotEnabledException(FeatureService.ASSISTANT, "Assistente"))
+                .when(modulos).require(CONDOMINIO_A, FeatureService.ASSISTANT);
 
         assertThatThrownBy(() -> stub("usuario-a").buscarDocumentos(pedido(CONDOMINIO_A, "multa").build()))
                 .isInstanceOfSatisfying(StatusRuntimeException.class, e -> {
@@ -226,7 +226,7 @@ class BuscarDocumentosTest {
         stub("usuario-a").buscarDocumentos(pedido(CONDOMINIO_A, "multa").build());
         stub("usuario-a").buscarDocumentos(pedido(CONDOMINIO_A, "portão").build());
 
-        verify(registroUso, times(2)).chamadaMcp(CONDOMINIO_A, "usuario.a", true);
+        verify(registroUso, times(2)).recordMcpCall(CONDOMINIO_A, "usuario.a", true);
     }
 
     @Test
@@ -294,7 +294,7 @@ class BuscarDocumentosTest {
 
     @Test
     void embeddingsDesligadosBuscamSoPorPalavraSemModelo() {
-        embeddings(ModoIa.DESLIGADO, null);
+        embeddings(AiMode.DESLIGADO, null);
 
         stub("usuario-a").buscarDocumentos(pedido(CONDOMINIO_A, "multa").build());
 
@@ -310,10 +310,10 @@ class BuscarDocumentosTest {
         assertThat(pedidosAoRag.getFirst().getModeloEmbeddings()).isEqualTo("bge-m3");
     }
 
-    private void embeddings(ModoIa modo, String modelo) {
-        var respostas = new ConfiguracaoIaServico.Respostas(null, ModoIa.MCP_EXTERNO, null, null, null, null);
-        when(configuracaoIa.ler(any())).thenReturn(new ConfiguracaoIaServico.Efetiva(ModoIa.MCP_EXTERNO, respostas,
-                new ConfiguracaoIaServico.Embeddings(modo, modo == ModoIa.LOCAL ? "ollama-local" : null, modelo), null,
+    private void embeddings(AiMode modo, String modelo) {
+        var respostas = new ConfiguracaoIaServico.Respostas(null, AiMode.MCP_EXTERNO, null, null, null, null);
+        when(configuracaoIa.ler(any())).thenReturn(new ConfiguracaoIaServico.Efetiva(AiMode.MCP_EXTERNO, respostas,
+                new ConfiguracaoIaServico.Embeddings(modo, modo == AiMode.LOCAL ? "ollama-local" : null, modelo), null,
                 null));
     }
 

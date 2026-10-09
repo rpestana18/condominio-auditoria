@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.api.assistente;
 
-import br.com.condominioauditoria.api.modulo.ModoIa;
+import br.com.condominioauditoria.api.model.enums.AiMode;
 import org.springframework.http.HttpStatus;
 
 /**
@@ -11,9 +11,9 @@ public class RecusaAssistenteException extends RuntimeException {
 
     private final HttpStatus status;
     private final String titulo;
-    private final ModoIa modoIa;
+    private final AiMode modoIa;
 
-    public RecusaAssistenteException(HttpStatus status, String titulo, String mensagem, ModoIa modoIa) {
+    public RecusaAssistenteException(HttpStatus status, String titulo, String mensagem, AiMode modoIa) {
         super(mensagem);
         this.status = status;
         this.titulo = titulo;
@@ -28,7 +28,7 @@ public class RecusaAssistenteException extends RuntimeException {
         return titulo;
     }
 
-    public ModoIa modoIa() {
+    public AiMode modoIa() {
         return modoIa;
     }
 }

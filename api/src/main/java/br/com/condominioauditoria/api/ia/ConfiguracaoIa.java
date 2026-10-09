@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.api.ia;
 
-import br.com.condominioauditoria.api.modulo.ModoIa;
+import br.com.condominioauditoria.api.model.enums.AiMode;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -25,7 +25,7 @@ public class ConfiguracaoIa {
     @Enumerated(EnumType.STRING)
     private FuncaoIa funcao;
     @Enumerated(EnumType.STRING)
-    private ModoIa modo;
+    private AiMode modo;
     private String provedor;
     private String modelo;
     private byte[] chaveCifrada;
@@ -43,7 +43,7 @@ public class ConfiguracaoIa {
         this.funcao = funcao;
     }
 
-    void alterar(ModoIa modo, String provedor, String modelo, String usuario, Instant quando) {
+    void alterar(AiMode modo, String provedor, String modelo, String usuario, Instant quando) {
         this.modo = modo;
         this.provedor = provedor;
         this.modelo = modelo;
@@ -72,7 +72,7 @@ public class ConfiguracaoIa {
         return funcao;
     }
 
-    public ModoIa getModo() {
+    public AiMode getModo() {
         return modo;
     }
 

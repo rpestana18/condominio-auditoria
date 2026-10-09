@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.auditoria.AchadoRepository;
 import br.com.condominioauditoria.api.model.accounting.Fund;
 import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.orcamento.AvaliacaoLeituraPo.ConferenciaPo;
@@ -16,6 +15,7 @@ import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PrevisaoDetalhe;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PrevisaoResumo;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
+import br.com.condominioauditoria.api.repository.audit.FindingRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -45,12 +45,12 @@ public class ConsultaPrevisao {
     private final SourceFileRepository arquivos;
     private final PoFundoRepository poFundos;
     private final FundRepository fundos;
-    private final AchadoRepository achados;
+    private final FindingRepository achados;
     private final ReservaDaPo reserva;
 
     ConsultaPrevisao(PrevisaoOrcamentariaRepository previsoes, LinhaPoRepository linhas,
             TotalsCheckRepository conferencias, SourceFileRepository arquivos, PoFundoRepository poFundos,
-            FundRepository fundos, AchadoRepository achados, ReservaDaPo reserva) {
+            FundRepository fundos, FindingRepository achados, ReservaDaPo reserva) {
         this.previsoes = previsoes;
         this.linhas = linhas;
         this.conferencias = conferencias;
@@ -116,10 +116,10 @@ public class ConsultaPrevisao {
     }
 
     private List<AchadoDto> achados(PrevisaoOrcamentaria p) {
-        return achados.findByCondominioIdAndAlvoStartingWithOrderByCriadoEm(p.getCondominioId(),
+        return achados.findByCondominiumIdAndTargetStartingWithOrderByCreatedAt(p.getCondominioId(),
                         ConfirmacaoPrevisao.prefixoAlvo(p)).stream()
-                .map(a -> new AchadoDto(a.getId(), a.getRegra(), a.getVersaoRegra(), a.getSeveridade().name(),
-                        a.getCompetencia().toString(), a.getDescricao(), a.getEstado().name()))
+                .map(a -> new AchadoDto(a.getId(), a.getRule(), a.getRuleVersion(), a.getSeverity().name(),
+                        a.getReferenceMonth().toString(), a.getDescription(), a.getStatus().name()))
                 .toList();
     }
 

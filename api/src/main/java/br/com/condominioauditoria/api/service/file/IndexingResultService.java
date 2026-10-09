@@ -3,8 +3,8 @@ package br.com.condominioauditoria.api.service.file;
 import br.com.condominioauditoria.api.messaging.IndexingResultMessage;
 import br.com.condominioauditoria.api.model.enums.IndexingStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.RegistroUso;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.usage.UsageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,9 +24,9 @@ public class IndexingResultService {
     private static final Logger log = LoggerFactory.getLogger(IndexingResultService.class);
 
     private final SourceFileRepository files;
-    private final RegistroUso usageRecorder;
+    private final UsageService usageRecorder;
 
-    IndexingResultService(SourceFileRepository files, RegistroUso usageRecorder) {
+    IndexingResultService(SourceFileRepository files, UsageService usageRecorder) {
         this.files = files;
         this.usageRecorder = usageRecorder;
     }
@@ -54,7 +54,7 @@ public class IndexingResultService {
                     result.chunks());
         }
         if (result.status() == IndexingResultMessage.Status.INDEXADO && !alreadyIndexed) {
-            usageRecorder.indexacao(file.getCondominiumId(), result.pages(), result.embeddingModel());
+            usageRecorder.recordIndexing(file.getCondominiumId(), result.pages(), result.embeddingModel());
         }
         if (result.status() != IndexingResultMessage.Status.INDEXANDO) {
             log.info("Indexação de {}: {} ({} trechos)", file.getOriginalName(), result.status(),

@@ -1,13 +1,13 @@
 package br.com.condominioauditoria.api.ia;
 
+import br.com.condominioauditoria.api.exception.InvalidRequestException;
 import br.com.condominioauditoria.api.ia.CatalogoIa.ModeloIa;
 import br.com.condominioauditoria.api.ia.CatalogoIa.ProvedorIa;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Efetiva;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Pedido;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.PedidoEmbeddings;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.PedidoRespostas;
-import br.com.condominioauditoria.api.modulo.ModoIa;
-import br.com.condominioauditoria.api.modulo.PedidoInvalidoException;
+import br.com.condominioauditoria.api.model.enums.AiMode;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.security.CondominiumAccess;
 import java.math.BigDecimal;
@@ -62,7 +62,7 @@ class IaController {
     ConfiguracaoDto gravar(@PathVariable UUID condominioId, @RequestBody(required = false) PedidoDto pedido) {
         exigirCondominio(condominioId);
         if (pedido == null || pedido.assistente() == null) {
-            throw new PedidoInvalidoException("Informe o modo geral e a configuração do Assistente");
+            throw new InvalidRequestException("Informe o modo geral e a configuração do Assistente");
         }
         return ConfiguracaoDto.de(servico.gravar(condominioId, pedido.paraServico(), acesso.username(), token()));
     }
@@ -102,18 +102,18 @@ class IaController {
         }
     }
 
-    record RespostasDto(ModoIa modo, ModoIa modoEfetivo, String provedor, String modelo, boolean chaveCadastrada,
+    record RespostasDto(AiMode modo, AiMode modoEfetivo, String provedor, String modelo, boolean chaveCadastrada,
             String chaveFinal) {
     }
 
-    record EmbeddingsDto(ModoIa modo, String provedor, String modelo) {
+    record EmbeddingsDto(AiMode modo, String provedor, String modelo) {
     }
 
     record AssistenteDto(RespostasDto respostas, EmbeddingsDto embeddings) {
     }
 
     /** Resposta: nunca leva a chave, nem cifrada; só chaveCadastrada e os 4 últimos caracteres. */
-    record ConfiguracaoDto(ModoIa modoGeral, AssistenteDto assistente, String atualizadoPor, Instant atualizadoEm) {
+    record ConfiguracaoDto(AiMode modoGeral, AssistenteDto assistente, String atualizadoPor, Instant atualizadoEm) {
 
         static ConfiguracaoDto de(Efetiva e) {
             var r = e.respostas();
@@ -125,7 +125,7 @@ class IaController {
         }
     }
 
-    record PedidoRespostasDto(ModoIa modo, String provedor, String modelo, String chave, Boolean removerChave) {
+    record PedidoRespostasDto(AiMode modo, String provedor, String modelo, String chave, Boolean removerChave) {
 
         @Override
         public String toString() {
@@ -134,13 +134,13 @@ class IaController {
         }
     }
 
-    record PedidoEmbeddingsDto(ModoIa modo, String provedor, String modelo) {
+    record PedidoEmbeddingsDto(AiMode modo, String provedor, String modelo) {
     }
 
     record PedidoAssistenteDto(PedidoRespostasDto respostas, PedidoEmbeddingsDto embeddings) {
     }
 
-    record PedidoDto(ModoIa modoGeral, PedidoAssistenteDto assistente) {
+    record PedidoDto(AiMode modoGeral, PedidoAssistenteDto assistente) {
 
         Pedido paraServico() {
             var r = assistente.respostas();

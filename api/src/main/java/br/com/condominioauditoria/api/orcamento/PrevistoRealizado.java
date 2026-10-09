@@ -99,7 +99,7 @@ public record PrevistoRealizado(String versaoCalculo, String periodo, Situacao s
     }
 
     /**
-     * Regra dos 20% (só no mês). {@code limite} arredondado para centavos; a comparação é exata (RegraExcessoMes).
+     * Regra dos 20% (só no mês). {@code limite} arredondado para centavos; a comparação é exata (MonthlyOverrunRule).
      * {@code cenarioMaximo} = excesso + a realocar + sem linha da PO (Q26).
      */
     public record Regra20(String regra, String versaoRegra, BigDecimal limitePercentual, BigDecimal previstoMes,

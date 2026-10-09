@@ -1,8 +1,8 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.auditoria.RegistroAchados;
-import br.com.condominioauditoria.api.auditoria.RegistroAchados.Sincronizacao;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.service.audit.FindingSyncService;
+import br.com.condominioauditoria.api.service.audit.FindingSyncService.SyncResult;
 import java.time.YearMonth;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -28,10 +28,10 @@ public class RecalculoAchadosOrcamento {
     private final CondominiumRepository condominios;
     private final PrevisaoOrcamentariaRepository previsoes;
     private final ConsultaPrevistoRealizado consulta;
-    private final RegistroAchados registro;
+    private final FindingSyncService registro;
 
     RecalculoAchadosOrcamento(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
-            ConsultaPrevistoRealizado consulta, RegistroAchados registro) {
+            ConsultaPrevistoRealizado consulta, FindingSyncService registro) {
         this.condominios = condominios;
         this.previsoes = previsoes;
         this.consulta = consulta;
@@ -39,7 +39,7 @@ public class RecalculoAchadosOrcamento {
     }
 
     /** Resultado por mês recalculado (meses sem números ficam fora). */
-    public Map<YearMonth, Sincronizacao> recalcular(MudancaOrcamento mudanca) {
+    public Map<YearMonth, SyncResult> recalcular(MudancaOrcamento mudanca) {
         UUID condominioId = mudanca.condominioId();
         // Um recálculo por vez por condomínio (select ... for update): dois recálculos simultâneos não duplicam
         if (condominios.lockById(condominioId).isEmpty()) {
@@ -51,18 +51,18 @@ public class RecalculoAchadosOrcamento {
                 .flatMap(p -> java.util.stream.Stream.of(VigenciaPo.de(p), VigenciaPo.prorrogacao(p)))
                 .flatMap(java.util.Optional::stream)
                 .forEach(v -> meses.addAll(CalculoPrevistoRealizado.meses(v.inicio(), v.fim())));
-        Map<YearMonth, Sincronizacao> resultado = new LinkedHashMap<>();
+        Map<YearMonth, SyncResult> resultado = new LinkedHashMap<>();
         for (YearMonth mes : meses) {
             AchadosDoMes achados = AchadosDoMes.apurar(mes, consulta.calcular(condominioId, mes.toString(), null));
             if (achados.regras().isEmpty()) {
                 continue;
             }
-            Sincronizacao s = registro.sincronizar(condominioId, mes, achados.regras(), achados.apurados(),
+            SyncResult s = registro.synchronize(condominioId, mes, achados.regras(), achados.apurados(),
                     mudanca.gatilho());
             resultado.put(mes, s);
-            if (s.abertos() + s.reabertos() + s.encerrados() > 0) {
+            if (s.opened() + s.reopened() + s.closed() > 0) {
                 log.info("Achados de {} no condomínio {}: {} abertos, {} reabertos, {} não se aplicam mais ({})", mes,
-                        condominioId, s.abertos(), s.reabertos(), s.encerrados(), mudanca.gatilho().texto());
+                        condominioId, s.opened(), s.reopened(), s.closed(), mudanca.gatilho().text());
             }
         }
         return resultado;

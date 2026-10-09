@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.api.service.budget;
 
-import static br.com.condominioauditoria.api.orcamento.DinheiroBr.formatar;
+import static br.com.condominioauditoria.api.util.MoneyFormatter.format;
 
 import br.com.condominioauditoria.api.dto.request.budget.BudgetConfirmationRequest;
 import br.com.condominioauditoria.api.dto.request.budget.EffectiveCodeRequest;
@@ -378,13 +378,13 @@ public class BudgetConfirmationService {
         BudgetLine l = a.line();
         String description = ("Fundo de reserva previsto na PO (linha %s): %s por mês, %s do previsto do mês (%s). "
                 + "O teto da Conv. 20.1 é %s. Verificar a ata que aprovou a PO.").formatted(l.getEffectiveCode(),
-                formatar(l.getBudgeted()), a.assessment().displayPercentage(), formatar(budget.getMonthlyPlanned()),
+                format(l.getBudgeted()), a.assessment().displayPercentage(), format(budget.getMonthlyPlanned()),
                 a.assessment().displayCap());
         findings.register(budget.getCondominiumId(), ReserveFundCapRule.CODE, ReserveFundCapRule.VERSION,
                 ReserveFundCapRule.SEVERITY, budget.getFiscalYearStart(), target(budget, l), description,
                 List.of(new Evidence(budget.getFileId(), budget.getSha256(), l.getPage(),
                         "PO, linha %s %s (ordem %d): %s".formatted(l.getEffectiveCode(), l.getDescription(),
-                                l.getPosition(), formatar(l.getBudgeted())), l.getId())));
+                                l.getPosition(), format(l.getBudgeted())), l.getId())));
     }
 
     static String target(Budget budget, BudgetLine line) {

@@ -7,7 +7,7 @@ import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.model.enums.BudgetLineMark;
 import br.com.condominioauditoria.api.model.enums.BudgetLineType;
-import br.com.condominioauditoria.api.orcamento.PoDoPiloto;
+import br.com.condominioauditoria.api.service.budget.PilotBudget;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 class NameSuggestionTest {
 
     private final NameSuggestion suggestion = new NameSuggestion(AccountMappingProperties.defaults());
-    private final List<BudgetLine> lines = PoDoPiloto.padrao().linhasGravadas(
+    private final List<BudgetLine> lines = PilotBudget.defaults().savedLines(
             new Budget(UUID.randomUUID(), UUID.randomUUID(), "a".repeat(64)));
     private final List<BudgetLine> candidates = NameSuggestion.candidates(BudgetStructure.of(lines));
 

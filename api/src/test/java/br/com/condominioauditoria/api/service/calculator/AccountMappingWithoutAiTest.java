@@ -20,9 +20,9 @@ class AccountMappingWithoutAiTest {
     private static final List<String> AI_TERMS = List.of("org.springframework.ai", "anthropic", "openai", "ollama",
             "ChatClient", "ChatModel", "AssistenteGrpc", "RestClient", "WebClient", "HttpClient");
 
-    /** Where the budget code lives: the layers of ADR 0006 plus the package still being migrated. */
-    private static final List<String> BUDGET_DIRS = List.of("orcamento", "model/budget", "service/budget",
-            "service/calculator", "controller/budget");
+    /** Where the budget code lives, by layer (ADR 0006). */
+    private static final List<String> BUDGET_DIRS = List.of("model/budget", "service/budget", "service/calculator",
+            "controller/budget", "report");
 
     @Test
     void noAiClientInApi() {

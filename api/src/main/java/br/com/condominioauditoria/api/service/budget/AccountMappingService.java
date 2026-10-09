@@ -11,7 +11,6 @@ import br.com.condominioauditoria.api.dto.response.budget.AccountMappingSuggesti
 import br.com.condominioauditoria.api.dto.response.budget.AccountMappingSummaryResponse;
 import br.com.condominioauditoria.api.dto.response.budget.AccountMappingsResponse;
 import br.com.condominioauditoria.api.dto.response.budget.AccountWithoutSuggestionResponse;
-import br.com.condominioauditoria.api.dto.response.budget.MappingTargetResponse;
 import br.com.condominioauditoria.api.dto.response.budget.RejectedSheetLineResponse;
 import br.com.condominioauditoria.api.dto.response.budget.SkippedAccountResponse;
 import br.com.condominioauditoria.api.event.BudgetChanged;

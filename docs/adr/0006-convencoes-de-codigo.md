@@ -133,6 +133,28 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | sugerido, confirmado, recusado (estado) | `status` (`SUGERIDO`, `CONFIRMADO`, `RECUSADO`) | as constantes ficam até a fase 2 |
 | origem (da sugestão), motivo | `source`, `reason` | |
 | lote (confirmar ou recusar vários) | `batch` | |
+| previsto, realizado, diferença, execução | `planned`, `actual`, `difference`, `execution` | |
+| cálculo do previsto × realizado | `BudgetVsActualCalculator` | |
+| situação do resultado, situação do mês | `BudgetVsActualStatus`, `MonthStatus` | as constantes ficam até a fase 2 |
+| coluna impressa ("Orçado anterior") | `PrintedColumn` | |
+| conferência (do fluxo, da coluna) | `check` | |
+| alvo (da evidência) | `target` | |
+| regra dos 20%, limite | `Rule20`, `limit` | |
+| arrecadado, arrecadação | `collected`, `collection` | |
+| cenário máximo | `maxScenario` | |
+| provisório | `provisional` | |
+| acumulado | `cumulative` | |
+| ajustes, a realocar, sem linha da PO (blocos) | `adjustments`, `toReallocate`, `withoutBudgetLine` | |
+| mês prorrogado | `extended` | |
+| fluxo usado | `UsedCashFlow` | |
+| indicadores (gráficos) | `BudgetIndicators`, `IndicatorService` | |
+| comparação de exercícios, mesmos meses, sem correspondência | `FiscalYearComparison`, `sameMonths`, `unmatched` | |
+| exportação, formato | `export`, `ExportFormat` | |
+| relatório (PDF, Excel), máscaras | `report`, `ReportFormats` | |
+| visão por fundo (filtro) | `FundView` | |
+| achados do mês | `MonthFindings` | |
+| recálculo dos achados | `BudgetFindingRecalculationService`, `BudgetFindingRecalculationListener` | |
+| cenário de teste, PO do piloto, golden de setembro | `BudgetScenario`, `PilotBudget`, `SeptemberGolden` | só nos testes |
 | ignorada (no lote), recusada (na planilha) | `skipped`, `rejected` | |
 
 ---

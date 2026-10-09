@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.model.enums.BudgetStatus;
-import br.com.condominioauditoria.api.orcamento.DinheiroBr;
-import br.com.condominioauditoria.api.orcamento.PoDoPiloto;
+import br.com.condominioauditoria.api.service.budget.PilotBudget;
 import br.com.condominioauditoria.api.service.calculator.BudgetReadingAssessment.AssessedCheck;
 import br.com.condominioauditoria.api.service.calculator.BudgetReadingAssessment.BudgetCheck;
 import br.com.condominioauditoria.api.service.calculator.BudgetReadingAssessment.CheckClassification;
+import br.com.condominioauditoria.api.util.MoneyFormatter;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -24,10 +24,10 @@ class BudgetReadingAssessmentTest {
 
     @Test
     void pilotBudgetWithOneCentDifferencesIsReadWithWarnings() {
-        PoDoPiloto pilot = PoDoPiloto.padrao();
-        BudgetStructure structure = BudgetStructure.of(pilot.linhasGravadas(budget));
+        PilotBudget pilot = PilotBudget.defaults();
+        BudgetStructure structure = BudgetStructure.of(pilot.savedLines(budget));
 
-        var result = BudgetReadingAssessment.assess(structure, pilot.conferenciasParaAvaliacao(), ONE_CENT);
+        var result = BudgetReadingAssessment.assess(structure, pilot.totalsChecksForAssessment(), ONE_CENT);
 
         assertThat(result.status()).isEqualTo(BudgetStatus.LIDA);
         assertThat(result.discrepancies()).isEmpty();
@@ -41,7 +41,7 @@ class BudgetReadingAssessmentTest {
 
     @Test
     void monthlyPlannedUsesLinesSum() {
-        BudgetStructure structure = BudgetStructure.of(PoDoPiloto.padrao().linhasGravadas(budget));
+        BudgetStructure structure = BudgetStructure.of(PilotBudget.defaults().savedLines(budget));
 
         assertThat(structure.total().getBudgeted()).isEqualByComparingTo("474201.13");
         assertThat(structure.printedMonthlyPlanned()).hasValueSatisfying(v -> assertThat(v).isEqualByComparingTo("451620.12"));
@@ -55,10 +55,10 @@ class BudgetReadingAssessmentTest {
 
     @Test
     void withoutToleranceOneCentDifferencesAreDiscrepancy() {
-        PoDoPiloto pilot = PoDoPiloto.padrao();
+        PilotBudget pilot = PilotBudget.defaults();
 
-        var result = BudgetReadingAssessment.assess(BudgetStructure.of(pilot.linhasGravadas(budget)),
-                pilot.conferenciasParaAvaliacao(), new BigDecimal("0.00"));
+        var result = BudgetReadingAssessment.assess(BudgetStructure.of(pilot.savedLines(budget)),
+                pilot.totalsChecksForAssessment(), new BigDecimal("0.00"));
 
         assertThat(result.status()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
         assertThat(result.discrepancies()).hasSize(2);
@@ -67,10 +67,10 @@ class BudgetReadingAssessmentTest {
 
     @Test
     void wrongPrintedSubtotalIsDiscrepancyWithBothSums() {
-        PoDoPiloto pilot = PoDoPiloto.padrao().comSubtotalPessoal("69193.00");
+        PilotBudget pilot = PilotBudget.defaults().withStaffSubtotal("69193.00");
 
-        var result = BudgetReadingAssessment.assess(BudgetStructure.of(pilot.linhasGravadas(budget)),
-                pilot.conferenciasParaAvaliacao(), ONE_CENT);
+        var result = BudgetReadingAssessment.assess(BudgetStructure.of(pilot.savedLines(budget)),
+                pilot.totalsChecksForAssessment(), ONE_CENT);
 
         assertThat(result.status()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
         assertThat(result.discrepancies()).contains("1.1 PESSOAL impresso 69.193,00; soma das linhas 69.193,86",
@@ -80,7 +80,7 @@ class BudgetReadingAssessmentTest {
 
     @Test
     void repeatedCodeAloneIsNotDiscrepancy() {
-        BudgetStructure structure = BudgetStructure.of(PoDoPiloto.padrao().linhasGravadas(budget));
+        BudgetStructure structure = BudgetStructure.of(PilotBudget.defaults().savedLines(budget));
         var checks = List.of(new BudgetCheck("CODIGO_REPETIDO", "x", false, "1.3.2 aparece 2 vezes"));
 
         var result = BudgetReadingAssessment.assess(structure, checks, ONE_CENT);
@@ -92,7 +92,7 @@ class BudgetReadingAssessmentTest {
 
     @Test
     void failureNotConfirmedByRecomputedSumIsDiscrepancy() {
-        BudgetStructure structure = BudgetStructure.of(PoDoPiloto.padrao().linhasGravadas(budget));
+        BudgetStructure structure = BudgetStructure.of(PilotBudget.defaults().savedLines(budget));
         // Group 1.1 matches by the saved lines, but the rag reported a failure: it is not rounding
         var checks = List.of(new BudgetCheck("SUBTOTAL_GRUPO", "1.1", false, "1.1 PESSOAL: não bate"));
 
@@ -103,7 +103,7 @@ class BudgetReadingAssessmentTest {
 
     @Test
     void unknownFailedCheckIsDiscrepancy() {
-        BudgetStructure structure = BudgetStructure.of(PoDoPiloto.padrao().linhasGravadas(budget));
+        BudgetStructure structure = BudgetStructure.of(PilotBudget.defaults().savedLines(budget));
         var checks = List.of(new BudgetCheck("LINHA_SEM_GRUPO", "x", false, "linhas antes do primeiro grupo: 1.0.1"));
 
         assertThat(BudgetReadingAssessment.assess(structure, checks, ONE_CENT).status())
@@ -112,9 +112,9 @@ class BudgetReadingAssessmentTest {
 
     @Test
     void moneyInBrazilianFormat() {
-        assertThat(DinheiroBr.formatar(new BigDecimal("474201.13"))).isEqualTo("474.201,13");
-        assertThat(DinheiroBr.formatar(new BigDecimal("0.01"))).isEqualTo("0,01");
-        assertThat(DinheiroBr.formatar(new BigDecimal("-1585.1"))).isEqualTo("-1.585,10");
-        assertThat(DinheiroBr.formatar(new BigDecimal("999"))).isEqualTo("999,00");
+        assertThat(MoneyFormatter.format(new BigDecimal("474201.13"))).isEqualTo("474.201,13");
+        assertThat(MoneyFormatter.format(new BigDecimal("0.01"))).isEqualTo("0,01");
+        assertThat(MoneyFormatter.format(new BigDecimal("-1585.1"))).isEqualTo("-1.585,10");
+        assertThat(MoneyFormatter.format(new BigDecimal("999"))).isEqualTo("999,00");
     }
 }

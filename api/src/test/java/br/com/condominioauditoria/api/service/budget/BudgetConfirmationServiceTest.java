@@ -15,8 +15,6 @@ import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.model.enums.BudgetWarningCode;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.Severity;
-import br.com.condominioauditoria.api.orcamento.CenarioPo;
-import br.com.condominioauditoria.api.orcamento.PoDoPiloto;
 import br.com.condominioauditoria.api.service.audit.rule.ReserveFundCapRule;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -27,27 +25,27 @@ import org.springframework.http.HttpStatus;
 /** RF-03.1.3, RF-03.1.2 and Q29: budget confirmation by the Admin. */
 class BudgetConfirmationServiceTest {
 
-    private final CenarioPo scenario = new CenarioPo();
+    private final BudgetScenario scenario = new BudgetScenario();
 
     @Test
     void confirmsPilotBudgetWithFiscalYearMinutesEffectiveCodeAndFunds() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao());
+        Budget budget = scenario.readBudget(PilotBudget.defaults());
 
-        var detail = scenario.confirmacao.confirm(scenario.condominioId, budget.getId(),
-                scenario.pedidoDoPiloto(budget), "admin");
+        var detail = scenario.confirmation.confirm(scenario.condominiumId, budget.getId(),
+                scenario.pilotRequest(budget), "admin");
 
         assertThat(budget.getStatus()).isEqualTo(BudgetStatus.CONFIRMADA);
         assertThat(budget.getVersion()).isEqualTo(1);
         assertThat(budget.getFiscalYearStart()).isEqualTo(YearMonth.of(2026, 5));
         assertThat(budget.getFiscalYearEnd()).isEqualTo(YearMonth.of(2027, 4));
-        assertThat(budget.getMinutesFileId()).isEqualTo(scenario.ata.getId());
+        assertThat(budget.getMinutesFileId()).isEqualTo(scenario.minutes.getId());
         assertThat(budget.isWithoutMinutes()).isFalse();
         assertThat(budget.getConfirmedBy()).isEqualTo("admin");
         assertThat(budget.isDiscrepancyAcknowledged()).isFalse();
         // Neither of the two 1.3.2 lines is dropped; the second one gets the effective code
-        assertThat(scenario.linha(budget, "1.3.2", 0).getEffectiveCode()).isEqualTo("1.3.2");
-        assertThat(scenario.linha(budget, "1.3.2", 1).getEffectiveCode()).isEqualTo("1.3.25");
-        assertThat(scenario.linha(budget, "1.3.2", 1).getBudgeted()).isEqualByComparingTo("1518.93");
+        assertThat(scenario.line(budget, "1.3.2", 0).getEffectiveCode()).isEqualTo("1.3.2");
+        assertThat(scenario.line(budget, "1.3.2", 1).getEffectiveCode()).isEqualTo("1.3.25");
+        assertThat(scenario.line(budget, "1.3.2", 1).getBudgeted()).isEqualByComparingTo("1518.93");
         assertThat(detail.repeatedCodes()).singleElement().satisfies(r -> assertThat(r.resolved()).isTrue());
 
         assertThat(detail.funds()).extracting(BudgetFundLineResponse::effectiveCode,
@@ -58,7 +56,7 @@ class BudgetConfirmationServiceTest {
                 .usingElementComparator(java.math.BigDecimal::compareTo)
                 .containsExactly(new java.math.BigDecimal("13548.60"), new java.math.BigDecimal("9032.40"));
 
-        assertThat(scenario.eventos).singleElement().satisfies(e -> {
+        assertThat(scenario.budgetEvents).singleElement().satisfies(e -> {
             assertThat(e.getType()).isEqualTo(BudgetEvent.CONFIRMED);
             assertThat(e.getUsername()).isEqualTo("admin");
             assertThat(e.getOccurredAt()).isNotNull();
@@ -70,50 +68,50 @@ class BudgetConfirmationServiceTest {
 
     @Test
     void budgetApprovedInMayOnlyWarnsWithoutFinding() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao());
+        Budget budget = scenario.readBudget(PilotBudget.defaults());
 
-        var detail = scenario.confirmacao.confirm(scenario.condominioId, budget.getId(),
-                scenario.pedidoDoPiloto(budget), "admin");
+        var detail = scenario.confirmation.confirm(scenario.condominiumId, budget.getId(),
+                scenario.pilotRequest(budget), "admin");
 
         assertThat(detail.warnings()).extracting(BudgetWarningResponse::text)
                 .contains("PO aprovada fora do 1º trimestre (Conv. 10.2)");
         assertThat(detail.findings()).isEmpty();
-        assertThat(scenario.achados).isEmpty();
+        assertThat(scenario.findings).isEmpty();
         // The roundings of 1.3 and 1.9 stay visible as warnings
         assertThat(detail.warnings()).filteredOn(a -> a.code() == BudgetWarningCode.ARREDONDAMENTO).hasSize(2);
     }
 
     @Test
     void budgetApprovedInFirstQuarterHasNoWarning() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao());
-        var p = scenario.pedidoDoPiloto(budget);
+        Budget budget = scenario.readBudget(PilotBudget.defaults());
+        var p = scenario.pilotRequest(budget);
         var request = new BudgetConfirmationRequest("2026-03", "2027-02", p.minutesFileId(), false, LocalDate.of(2026,
                 3, 15),
                 p.effectiveCodes(), p.funds(), false, false, null);
 
-        var detail = scenario.confirmacao.confirm(scenario.condominioId, budget.getId(), request, "admin");
+        var detail = scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), request, "admin");
 
         assertThat(detail.warnings()).extracting(BudgetWarningResponse::code).doesNotContain(BudgetWarningCode.FORA_PRIMEIRO_TRIMESTRE);
     }
 
     @Test
     void pilotFundsOf3And2PercentCreateNoFinding() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao());
+        Budget budget = scenario.readBudget(PilotBudget.defaults());
 
-        scenario.confirmacao.confirm(scenario.condominioId, budget.getId(), scenario.pedidoDoPiloto(budget), "admin");
+        scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), scenario.pilotRequest(budget), "admin");
 
-        assertThat(scenario.achados).isEmpty();
+        assertThat(scenario.findings).isEmpty();
     }
 
     @Test
     void reserveFundAbove5PercentCreatesAttentionFindingWithEvidence() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao().comFundoReserva("25000.00"));
+        Budget budget = scenario.readBudget(PilotBudget.defaults().withReserveFund("25000.00"));
         assertThat(budget.getStatus()).isEqualTo(BudgetStatus.LIDA);
 
-        var detail = scenario.confirmacao.confirm(scenario.condominioId, budget.getId(),
-                scenario.pedidoDoPiloto(budget), "admin");
+        var detail = scenario.confirmation.confirm(scenario.condominiumId, budget.getId(),
+                scenario.pilotRequest(budget), "admin");
 
-        assertThat(scenario.achados).singleElement().satisfies(a -> {
+        assertThat(scenario.findings).singleElement().satisfies(a -> {
             assertThat(a.getRule()).isEqualTo(ReserveFundCapRule.CODE);
             assertThat(a.getRuleVersion()).isEqualTo(ReserveFundCapRule.VERSION);
             assertThat(a.getSeverity()).isEqualTo(Severity.ATENCAO);
@@ -121,37 +119,37 @@ class BudgetConfirmationServiceTest {
             assertThat(a.getDescription()).isEqualTo("Fundo de reserva previsto na PO (linha 1.9.1): 25.000,00 por mês,"
                     + " 5,5% do previsto do mês (451.620,13). O teto da Conv. 20.1 é 5%. Verificar a ata que aprovou a PO.");
         });
-        assertThat(scenario.evidencias).singleElement().satisfies(e -> {
+        assertThat(scenario.evidence).singleElement().satisfies(e -> {
             assertThat(e.getFileId()).isEqualTo(budget.getFileId());
             assertThat(e.getSha256()).isEqualTo(budget.getSha256());
             assertThat(e.getPage()).isEqualTo(1);
-            assertThat(e.getBudgetLineId()).isEqualTo(scenario.linha(budget, "1.9.1", 0).getId());
+            assertThat(e.getBudgetLineId()).isEqualTo(scenario.line(budget, "1.9.1", 0).getId());
         });
         assertThat(detail.findings()).singleElement().satisfies(a -> assertThat(a.severity()).isEqualTo("ATENCAO"));
     }
 
     @Test
     void withoutCapRuleIsNotAssessedAndShowsAsWarning() {
-        scenario.parametros.clear();
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao().comFundoReserva("25000.00"));
+        scenario.ruleParameters.clear();
+        Budget budget = scenario.readBudget(PilotBudget.defaults().withReserveFund("25000.00"));
 
-        var detail = scenario.confirmacao.confirm(scenario.condominioId, budget.getId(),
-                scenario.pedidoDoPiloto(budget), "admin");
+        var detail = scenario.confirmation.confirm(scenario.condominiumId, budget.getId(),
+                scenario.pilotRequest(budget), "admin");
 
-        assertThat(scenario.achados).isEmpty();
+        assertThat(scenario.findings).isEmpty();
         assertThat(detail.warnings()).filteredOn(a -> a.code() == BudgetWarningCode.REGRA_NAO_AVALIADA).singleElement()
                 .satisfies(a -> assertThat(a.text()).contains("teto não cadastrado"));
     }
 
     @Test
     void repeatedCodeWithoutEffectiveCodeRejectsConfirmation() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao());
-        var p = scenario.pedidoDoPiloto(budget);
+        Budget budget = scenario.readBudget(PilotBudget.defaults());
+        var p = scenario.pilotRequest(budget);
         var withoutCode = new BudgetConfirmationRequest(p.fiscalYearStart(), p.fiscalYearEnd(), p.minutesFileId(),
                 false,
                 p.approvalDate(), List.of(), p.funds(), false, false, null);
 
-        assertThatThrownBy(() -> scenario.confirmacao.confirm(scenario.condominioId, budget.getId(), withoutCode,
+        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), withoutCode,
                 "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class, e -> {
                     assertThat(e.status()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
@@ -159,22 +157,23 @@ class BudgetConfirmationServiceTest {
                             .startsWith("Código repetido sem código efetivo distinto: 1.3.2 (ordens 8, 12)");
                 });
         assertThat(budget.getStatus()).isEqualTo(BudgetStatus.LIDA);
-        assertThat(scenario.linha(budget, "1.3.2", 1).getEffectiveCode()).isEqualTo("1.3.2");
-        assertThat(scenario.eventos).isEmpty();
-        assertThat(scenario.poFundos).isEmpty();
+        assertThat(scenario.line(budget, "1.3.2", 1).getEffectiveCode()).isEqualTo("1.3.2");
+        assertThat(scenario.budgetEvents).isEmpty();
+        assertThat(scenario.fundLinks).isEmpty();
     }
 
     @Test
     void effectiveCodeOutsideGroupOrOnNonRepeatedLineIsRejected() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao());
-        var p = scenario.pedidoDoPiloto(budget);
+        Budget budget = scenario.readBudget(PilotBudget.defaults());
+        var p = scenario.pilotRequest(budget);
         var request = new BudgetConfirmationRequest(p.fiscalYearStart(), p.fiscalYearEnd(), p.minutesFileId(), false,
                 p.approvalDate(), List.of(
-                        new EffectiveCodeRequest(scenario.linha(budget, "1.3.2", 1).getId(), "1.7.25"),
-                        new EffectiveCodeRequest(scenario.linha(budget, "1.3.20", 0).getId(), "1.3.26")),
+                        new EffectiveCodeRequest(scenario.line(budget, "1.3.2", 1).getId(), "1.7.25"),
+                        new EffectiveCodeRequest(scenario.line(budget, "1.3.20", 0).getId(), "1.3.26")),
                 p.funds(), false, false, null);
 
-        assertThatThrownBy(() -> scenario.confirmacao.confirm(scenario.condominioId, budget.getId(), request, "admin"))
+        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), request,
+                "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class,
                         e -> assertThat(e.reasons()).anySatisfy(
                         m -> assertThat(m).contains("\"1.7.25\" inválido")).anySatisfy(
@@ -183,37 +182,38 @@ class BudgetConfirmationServiceTest {
 
     @Test
     void effectiveCodeEqualToAnotherCodeIsStillRepeated() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao());
-        var p = scenario.pedidoDoPiloto(budget);
+        Budget budget = scenario.readBudget(PilotBudget.defaults());
+        var p = scenario.pilotRequest(budget);
         var request = new BudgetConfirmationRequest(p.fiscalYearStart(), p.fiscalYearEnd(), p.minutesFileId(), false,
-                p.approvalDate(), List.of(new EffectiveCodeRequest(scenario.linha(budget, "1.3.2", 1).getId(),
+                p.approvalDate(), List.of(new EffectiveCodeRequest(scenario.line(budget, "1.3.2", 1).getId(),
                         "1.3.20")), p.funds(), false, false, null);
 
-        assertThatThrownBy(() -> scenario.confirmacao.confirm(scenario.condominioId, budget.getId(), request, "admin"))
+        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), request,
+                "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class, e -> assertThat(e.reasons())
                         .anySatisfy(m -> assertThat(m).startsWith("Código repetido sem código efetivo distinto: 1.3.20")));
     }
 
     @Test
     void budgetWithDiscrepancyIsConfirmedOnlyAcknowledgedWithJustification() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao().comSubtotalPessoal("69193.00"));
+        Budget budget = scenario.readBudget(PilotBudget.defaults().withStaffSubtotal("69193.00"));
         assertThat(budget.getStatus()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
-        var p = scenario.pedidoDoPiloto(budget);
+        var p = scenario.pilotRequest(budget);
 
-        assertThatThrownBy(() -> scenario.confirmacao.confirm(scenario.condominioId, budget.getId(), p, "admin"))
+        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), p, "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class,
                         e -> assertThat(e.reasons()).singleElement()
                         .asString().contains("1.1 PESSOAL impresso 69.193,00; soma das linhas 69.193,86")
                         .contains("ciente da divergência"));
 
         var withoutJustification = acknowledged(p, "  ");
-        assertThatThrownBy(() -> scenario.confirmacao.confirm(scenario.condominioId, budget.getId(),
+        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(),
                 withoutJustification, "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class, e -> assertThat(e.reasons())
                         .containsExactly("A confirmação ciente da divergência exige justificativa."));
         assertThat(budget.getStatus()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
 
-        var detail = scenario.confirmacao.confirm(scenario.condominioId, budget.getId(),
+        var detail = scenario.confirmation.confirm(scenario.condominiumId, budget.getId(),
                 acknowledged(p, "Subtotal impresso errado no documento aprovado; linhas conferidas no PDF"), "admin");
 
         assertThat(budget.getStatus()).isEqualTo(BudgetStatus.CONFIRMADA);
@@ -224,7 +224,7 @@ class BudgetConfirmationServiceTest {
                 .singleElement().satisfies(a -> assertThat(a.text())
                         .startsWith("PO confirmada com divergência: 1.1 PESSOAL impresso 69.193,00; soma das linhas 69.193,86"));
         assertThat(detail.findings()).isEmpty();
-        assertThat(scenario.eventos).singleElement().satisfies(e -> {
+        assertThat(scenario.budgetEvents).singleElement().satisfies(e -> {
             assertThat(e.getUsername()).isEqualTo("admin");
             assertThat(e.getJustification()).isEqualTo("Subtotal impresso errado no documento aprovado; linhas conferidas no PDF");
             assertThat(e.getDetail()).contains("Conferências que falharam (confirmada ciente da divergência): "
@@ -234,13 +234,13 @@ class BudgetConfirmationServiceTest {
 
     @Test
     void acknowledgedDoesNotWaiveEffectiveCode() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao().comSubtotalPessoal("69193.00"));
-        var p = scenario.pedidoDoPiloto(budget);
+        Budget budget = scenario.readBudget(PilotBudget.defaults().withStaffSubtotal("69193.00"));
+        var p = scenario.pilotRequest(budget);
         var acknowledgedWithoutCode = new BudgetConfirmationRequest(p.fiscalYearStart(), p.fiscalYearEnd(),
                 p.minutesFileId(), false,
                 p.approvalDate(), List.of(), p.funds(), false, true, "Erro de soma no documento");
 
-        assertThatThrownBy(() -> scenario.confirmacao.confirm(scenario.condominioId, budget.getId(),
+        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(),
                 acknowledgedWithoutCode, "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class,
                         e -> assertThat(e.reasons()).singleElement()
@@ -250,13 +250,13 @@ class BudgetConfirmationServiceTest {
 
     @Test
     void withoutMinutesIsMarkedPending() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao());
-        var p = scenario.pedidoDoPiloto(budget);
+        Budget budget = scenario.readBudget(PilotBudget.defaults());
+        var p = scenario.pilotRequest(budget);
         var withoutMinutes = new BudgetConfirmationRequest("2026-05", "2027-04", null, true, null, p.effectiveCodes(),
                 p.funds(),
                 false, false, null);
 
-        var detail = scenario.confirmacao.confirm(scenario.condominioId, budget.getId(), withoutMinutes, "admin");
+        var detail = scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), withoutMinutes, "admin");
 
         assertThat(budget.isWithoutMinutes()).isTrue();
         assertThat(detail.warnings()).extracting(BudgetWarningResponse::code)
@@ -265,14 +265,15 @@ class BudgetConfirmationServiceTest {
 
     @Test
     void minutesMustBeMinutesCategoryWithDate() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao());
-        var p = scenario.pedidoDoPiloto(budget);
-        var contract = scenario.arquivo(FileCategory.CONTRATO, "contrato.pdf");
+        Budget budget = scenario.readBudget(PilotBudget.defaults());
+        var p = scenario.pilotRequest(budget);
+        var contract = scenario.file(FileCategory.CONTRATO, "contrato.pdf");
         var request = new BudgetConfirmationRequest("2026-05", "2027-04", contract.getId(), false, null,
                 p.effectiveCodes(),
                 p.funds(), false, false, null);
 
-        assertThatThrownBy(() -> scenario.confirmacao.confirm(scenario.condominioId, budget.getId(), request, "admin"))
+        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), request,
+                "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class,
                         e -> assertThat(e.reasons()).containsExactly(
                         "O arquivo \"contrato.pdf\" não está na categoria \"Atas de assembleia\".",
@@ -281,13 +282,14 @@ class BudgetConfirmationServiceTest {
 
     @Test
     void fiscalYearAndFundsRequired() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao());
-        var p = scenario.pedidoDoPiloto(budget);
+        Budget budget = scenario.readBudget(PilotBudget.defaults());
+        var p = scenario.pilotRequest(budget);
         var request = new BudgetConfirmationRequest("2026-13", null, p.minutesFileId(), false, p.approvalDate(),
-                p.effectiveCodes(), List.of(new FundLinkRequest(scenario.linha(budget, "1.9.1", 0).getId(),
-                        scenario.ordinario.getId())), false, false, null);
+                p.effectiveCodes(), List.of(new FundLinkRequest(scenario.line(budget, "1.9.1", 0).getId(),
+                        scenario.operatingFund.getId())), false, false, null);
 
-        assertThatThrownBy(() -> scenario.confirmacao.confirm(scenario.condominioId, budget.getId(), request, "admin"))
+        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), request,
+                "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class,
                         e -> assertThat(e.reasons()).containsExactly(
                         "O início do exercício deve estar no formato AAAA-MM: 2026-13",
@@ -298,12 +300,12 @@ class BudgetConfirmationServiceTest {
 
     @Test
     void oneBudgetPerMonthWithoutReapprovalRejects() {
-        Budget first = scenario.lerPo(PoDoPiloto.padrao());
-        scenario.confirmacao.confirm(scenario.condominioId, first.getId(), scenario.pedidoDoPiloto(first), "admin");
-        Budget second = scenario.lerPo(PoDoPiloto.padrao());
+        Budget first = scenario.readBudget(PilotBudget.defaults());
+        scenario.confirmation.confirm(scenario.condominiumId, first.getId(), scenario.pilotRequest(first), "admin");
+        Budget second = scenario.readBudget(PilotBudget.defaults());
 
-        assertThatThrownBy(() -> scenario.confirmacao.confirm(scenario.condominioId, second.getId(),
-                scenario.pedidoDoPiloto(second), "admin"))
+        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, second.getId(),
+                scenario.pilotRequest(second), "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class, e -> {
                     assertThat(e.status()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(e.getMessage()).contains("versão 1 (2026-05 a 2027-04)", "Só uma PO vale para cada mês");
@@ -313,36 +315,37 @@ class BudgetConfirmationServiceTest {
 
     @Test
     void reapprovalSupersedesFromNewVersionStart() {
-        Budget first = scenario.lerPo(PoDoPiloto.padrao());
-        scenario.confirmacao.confirm(scenario.condominioId, first.getId(), scenario.pedidoDoPiloto(first), "admin");
-        Budget second = scenario.lerPo(PoDoPiloto.padrao());
-        var p = scenario.pedidoDoPiloto(second);
+        Budget first = scenario.readBudget(PilotBudget.defaults());
+        scenario.confirmation.confirm(scenario.condominiumId, first.getId(), scenario.pilotRequest(first), "admin");
+        Budget second = scenario.readBudget(PilotBudget.defaults());
+        var p = scenario.pilotRequest(second);
         var reapproval = new BudgetConfirmationRequest("2026-09", "2027-04", p.minutesFileId(), false,
                 LocalDate.of(2026, 8, 30),
                 p.effectiveCodes(), p.funds(), true, false, null);
 
-        scenario.confirmacao.confirm(scenario.condominioId, second.getId(), reapproval, "admin");
+        scenario.confirmation.confirm(scenario.condominiumId, second.getId(), reapproval, "admin");
 
         assertThat(first.getStatus()).isEqualTo(BudgetStatus.SUBSTITUIDA);
         assertThat(first.getSupersededFrom()).isEqualTo(YearMonth.of(2026, 9));
         assertThat(second.getVersion()).isEqualTo(2);
-        assertThat(scenario.consultaVigente(YearMonth.of(2026, 8))).contains(first);
-        assertThat(scenario.consultaVigente(YearMonth.of(2026, 9))).contains(second);
-        assertThat(scenario.eventos).extracting(BudgetEvent::getType).containsExactly(BudgetEvent.CONFIRMED,
+        assertThat(scenario.budgetOfMonth(YearMonth.of(2026, 8))).contains(first);
+        assertThat(scenario.budgetOfMonth(YearMonth.of(2026, 9))).contains(second);
+        assertThat(scenario.budgetEvents).extracting(BudgetEvent::getType).containsExactly(BudgetEvent.CONFIRMED,
                 BudgetEvent.SUPERSEDED, BudgetEvent.CONFIRMED);
     }
 
     @Test
     void reapprovalEndingBeforePreviousIsRejected() {
-        Budget first = scenario.lerPo(PoDoPiloto.padrao());
-        scenario.confirmacao.confirm(scenario.condominioId, first.getId(), scenario.pedidoDoPiloto(first), "admin");
-        Budget second = scenario.lerPo(PoDoPiloto.padrao());
-        var p = scenario.pedidoDoPiloto(second);
+        Budget first = scenario.readBudget(PilotBudget.defaults());
+        scenario.confirmation.confirm(scenario.condominiumId, first.getId(), scenario.pilotRequest(first), "admin");
+        Budget second = scenario.readBudget(PilotBudget.defaults());
+        var p = scenario.pilotRequest(second);
         var shortOne = new BudgetConfirmationRequest("2026-09", "2026-12", p.minutesFileId(), false, LocalDate.of(2026,
                 8, 30),
                 p.effectiveCodes(), p.funds(), true, false, null);
 
-        assertThatThrownBy(() -> scenario.confirmacao.confirm(scenario.condominioId, second.getId(), shortOne, "admin"))
+        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, second.getId(), shortOne,
+                "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class,
                         e -> assertThat(e.getMessage()).contains("precisa cobrir até 2027-04"));
         assertThat(first.getStatus()).isEqualTo(BudgetStatus.CONFIRMADA);
@@ -350,11 +353,11 @@ class BudgetConfirmationServiceTest {
 
     @Test
     void alreadyConfirmedBudgetIsNotConfirmedAgain() {
-        Budget budget = scenario.lerPo(PoDoPiloto.padrao());
-        scenario.confirmacao.confirm(scenario.condominioId, budget.getId(), scenario.pedidoDoPiloto(budget), "admin");
+        Budget budget = scenario.readBudget(PilotBudget.defaults());
+        scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), scenario.pilotRequest(budget), "admin");
 
-        assertThatThrownBy(() -> scenario.confirmacao.confirm(scenario.condominioId, budget.getId(),
-                scenario.pedidoDoPiloto(budget), "admin"))
+        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(),
+                scenario.pilotRequest(budget), "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class,
                         e -> assertThat(e.status()).isEqualTo(HttpStatus.CONFLICT));
     }

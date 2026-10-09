@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.api.service.calculator;
 
-import static br.com.condominioauditoria.api.orcamento.DinheiroBr.formatar;
+import static br.com.condominioauditoria.api.util.MoneyFormatter.format;
 
 import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.service.calculator.BudgetStructure.Group;
@@ -93,16 +93,16 @@ public final class BudgetReadingAssessment {
             case GROUP_SUBTOTAL -> group == null
                     ? discrepancy(c, c.detail())
                     : byDifference(c, group.difference(), tolerance, "%s impresso %s; soma das linhas %s".formatted(
-                            group.name(), formatar(group.line().getBudgeted()), formatar(group.linesSum())));
+                            group.name(), format(group.line().getBudgeted()), format(group.linesSum())));
             case TOTAL -> e.total() == null
                     ? discrepancy(c, c.detail())
                     : byDifference(c, e.total().getBudgeted().subtract(e.printedSubtotalsSum()), tolerance,
-                            "Total impresso %s; soma dos grupos %s".formatted(formatar(e.total().getBudgeted()),
-                                    formatar(e.printedSubtotalsSum())));
+                            "Total impresso %s; soma dos grupos %s".formatted(format(e.total().getBudgeted()),
+                                    format(e.printedSubtotalsSum())));
             case MONTHLY_PLANNED -> e.printedMonthlyPlanned()
                     .map(p -> byDifference(c, p.subtract(e.printedSubtotalsSumWithoutFunds()), tolerance,
                             "Previsto do mês impresso (total menos fundos) %s; soma dos demais grupos %s"
-                                    .formatted(formatar(p), formatar(e.printedSubtotalsSumWithoutFunds()))))
+                                    .formatted(format(p), format(e.printedSubtotalsSumWithoutFunds()))))
                     .orElseGet(() -> discrepancy(c, c.detail()));
             default -> discrepancy(c, c.detail());
         };
@@ -116,7 +116,7 @@ public final class BudgetReadingAssessment {
         }
         if (difference.abs().compareTo(tolerance) <= 0) {
             return new AssessedCheck(c, CheckClassification.ARREDONDAMENTO, sums + "; diferença de "
-                    + formatar(difference.abs()) + " tratada como arredondamento; os cálculos usam a soma das linhas");
+                    + format(difference.abs()) + " tratada como arredondamento; os cálculos usam a soma das linhas");
         }
         return discrepancy(c, sums);
     }

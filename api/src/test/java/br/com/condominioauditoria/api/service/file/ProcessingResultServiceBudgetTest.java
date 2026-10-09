@@ -18,7 +18,6 @@ import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.orcamento.PoDoPiloto;
 import br.com.condominioauditoria.api.repository.accounting.FundBalanceRepository;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
@@ -27,6 +26,7 @@ import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.service.budget.BudgetImportService;
+import br.com.condominioauditoria.api.service.budget.PilotBudget;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -66,7 +66,7 @@ class ProcessingResultServiceBudgetTest {
 
     @Test
     void budgetSavedWithFilePageAndHash() {
-        service.save(result(PoDoPiloto.padrao()));
+        service.save(result(PilotBudget.defaults()));
 
         assertThat(saved).hasSize(1);
         Budget budget = saved.getFirst();
@@ -84,7 +84,7 @@ class ProcessingResultServiceBudgetTest {
         assertThat(budget.getRoundingTolerance()).isEqualByComparingTo("0.01");
 
         List<BudgetLine> saved = savedLines();
-        assertThat(saved).hasSize(PoDoPiloto.padrao().previsao().lines().size());
+        assertThat(saved).hasSize(PilotBudget.defaults().budget().lines().size());
         assertThat(saved).allSatisfy(l -> {
             assertThat(l.getFileId()).isEqualTo(file.getId());
             assertThat(l.getSha256()).isEqualTo(file.getSha256());
@@ -100,7 +100,7 @@ class ProcessingResultServiceBudgetTest {
         assertThat(management.getPercentageText()).isEqualTo("-53,47%");
         assertThat(saved).filteredOn(l -> l.getPrintedCode().equals("1.3.2")).hasSize(2);
 
-        verify(totalsChecks, times(PoDoPiloto.padrao().conferencias().size())).save(any(TotalsCheck.class));
+        verify(totalsChecks, times(PilotBudget.defaults().totalsChecks().size())).save(any(TotalsCheck.class));
         verify(entries, never()).saveAll(any());
         assertThat(file.getStatus()).isEqualTo(FileStatus.CONCLUIDO);
         assertThat(file.getMessage()).isEqualTo("PO lida: aguarda a confirmação do Admin");
@@ -108,7 +108,7 @@ class ProcessingResultServiceBudgetTest {
 
     @Test
     void failedCheckLeavesTheBudgetReadWithDivergence() {
-        service.save(result(PoDoPiloto.padrao().comSubtotalPessoal("69193.00")));
+        service.save(result(PilotBudget.defaults().withStaffSubtotal("69193.00")));
 
         assertThat(saved.getFirst().getStatus()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
         assertThat(file.getStatus()).isEqualTo(FileStatus.PRECISA_REVISAO);
@@ -119,7 +119,7 @@ class ProcessingResultServiceBudgetTest {
     void budgetInAnotherCategoryIsNotSaved() {
         file = newFile(FileCategory.OUTROS);
 
-        service.save(result(PoDoPiloto.padrao()));
+        service.save(result(PilotBudget.defaults()));
 
         verify(budgets, never()).save(any());
         verify(lines, never()).saveAll(any());
@@ -137,7 +137,7 @@ class ProcessingResultServiceBudgetTest {
         file = newFile(FileCategory.CONTRATO);
         when(budgets.findByFileId(file.getId())).thenReturn(Optional.of(previous));
 
-        service.save(result(PoDoPiloto.padrao()));
+        service.save(result(PilotBudget.defaults()));
 
         verify(lines).deleteByBudgetId(previous.getId());
         verify(budgets).delete(previous);
@@ -146,12 +146,12 @@ class ProcessingResultServiceBudgetTest {
 
     @Test
     void reprocessingTheSameFileDoesNotDuplicateTheBudget() {
-        service.save(result(PoDoPiloto.padrao()));
+        service.save(result(PilotBudget.defaults()));
         Budget first = saved.getFirst();
         when(budgets.findByFileId(file.getId())).thenReturn(Optional.of(first));
         file.requestProcessing();
 
-        service.save(result(PoDoPiloto.padrao()));
+        service.save(result(PilotBudget.defaults()));
 
         assertThat(saved).hasSize(2);
         assertThat(saved.get(1)).isSameAs(first);
@@ -170,7 +170,7 @@ class ProcessingResultServiceBudgetTest {
                 false, null, "admin", java.time.Instant.now());
         when(budgets.findByFileId(file.getId())).thenReturn(Optional.of(confirmed));
 
-        service.save(result(PoDoPiloto.padrao().comSubtotalPessoal("69193.00")));
+        service.save(result(PilotBudget.defaults().withStaffSubtotal("69193.00")));
 
         verify(totalsChecks, never()).deleteByFileId(any());
         verify(lines, never()).deleteByBudgetId(any());
@@ -186,9 +186,9 @@ class ProcessingResultServiceBudgetTest {
         return captor.getValue();
     }
 
-    private ProcessingResultMessage result(PoDoPiloto budget) {
+    private ProcessingResultMessage result(PilotBudget budget) {
         return new ProcessingResultMessage(2, file.getProcessingId(), file.getId(), file.getCondominiumId(),
-                Status.CONCLUIDO, null, "po-protest", 1, null, budget.previsao(), budget.conferencias());
+                Status.CONCLUIDO, null, "po-protest", 1, null, budget.budget(), budget.totalsChecks());
     }
 
     private SourceFile newFile(FileCategory category) {

@@ -2,10 +2,10 @@ package br.com.condominioauditoria.api.report;
 
 import br.com.condominioauditoria.api.model.feature.ActivePeriod;
 import br.com.condominioauditoria.api.model.usage.UsageTotal;
-import br.com.condominioauditoria.api.orcamento.DinheiroBr;
 import br.com.condominioauditoria.api.service.calculator.UsageCostCalculator;
 import br.com.condominioauditoria.api.service.usage.UsageService;
 import br.com.condominioauditoria.api.service.usage.UsageService.UsageSummary;
+import br.com.condominioauditoria.api.util.MoneyFormatter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -159,7 +159,7 @@ public final class UsageExcelReport {
         }
         // Text formatted from the BigDecimal (1.234,56), never through floating point
         Cell c = row.createCell(column);
-        c.setCellValue(DinheiroBr.formatar(value));
+        c.setCellValue(MoneyFormatter.format(value));
         c.setCellStyle(styles.right);
     }
 

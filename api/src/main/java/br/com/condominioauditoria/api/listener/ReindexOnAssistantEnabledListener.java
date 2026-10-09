@@ -1,10 +1,10 @@
 package br.com.condominioauditoria.api.listener;
 
+import br.com.condominioauditoria.api.event.FeatureChanged;
 import br.com.condominioauditoria.api.event.FilesIndexRequested;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.ModuloAlterado;
-import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
@@ -30,16 +30,16 @@ class ReindexOnAssistantEnabledListener {
     }
 
     @EventListener
-    void onFeatureChanged(ModuloAlterado change) {
-        if (!change.ligado() || !Modulos.ASSISTENTE.equals(change.modulo())) {
+    void onFeatureChanged(FeatureChanged change) {
+        if (!change.enabled() || !FeatureService.ASSISTANT.equals(change.feature())) {
             return;
         }
-        List<SourceFile> condominiumFiles = files.findByCondominiumIdOrderByUploadedAtDesc(change.condominioId());
+        List<SourceFile> condominiumFiles = files.findByCondominiumIdOrderByUploadedAtDesc(change.condominiumId());
         if (condominiumFiles.isEmpty()) {
             return;
         }
         condominiumFiles.forEach(SourceFile::requestIndexing);
         List<UUID> ids = condominiumFiles.stream().map(SourceFile::getId).toList();
-        events.publishEvent(new FilesIndexRequested(change.condominioId(), ids));
+        events.publishEvent(new FilesIndexRequested(change.condominiumId(), ids));
     }
 }

@@ -8,7 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import br.com.condominioauditoria.api.grpc.ClienteAssistente;
-import br.com.condominioauditoria.api.modulo.CustoUso.PrecoModelo;
+import br.com.condominioauditoria.api.service.calculator.UsageCostCalculator.ModelPrice;
 import io.grpc.Status;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -59,7 +59,7 @@ class CatalogoIaTest {
         assertThat(ollama.dimensao()).isEqualTo(1024);
         assertThat(lido.chavePublicaPem()).isEqualTo("PEM");
         assertThat(lido.precos()).containsEntry("anthropic/claude-haiku-4-5",
-                new PrecoModelo(new BigDecimal("1.00"), new BigDecimal("5.00")));
+                new ModelPrice(new BigDecimal("1.00"), new BigDecimal("5.00")));
     }
 
     @Test

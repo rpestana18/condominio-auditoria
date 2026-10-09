@@ -12,8 +12,8 @@ import br.com.condominioauditoria.api.messaging.IndexingResultMessage.Status;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.IndexingStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.RegistroUso;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.usage.UsageService;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 class IndexingResultServiceTest {
 
     private final SourceFileRepository files = mock(SourceFileRepository.class);
-    private final RegistroUso usageRecorder = mock(RegistroUso.class);
+    private final UsageService usageRecorder = mock(UsageService.class);
     private final IndexingResultService service = new IndexingResultService(files, usageRecorder);
     private SourceFile file;
 
@@ -51,7 +51,7 @@ class IndexingResultServiceTest {
         service.apply(result(file.getIndexingId(), Status.INDEXADO, null, 12, 15));
         service.apply(result(file.getIndexingId(), Status.INDEXADO, null, 12, 15)); // redelivery
 
-        verify(usageRecorder, times(1)).indexacao(file.getCondominiumId(), 12, "bge-m3");
+        verify(usageRecorder, times(1)).recordIndexing(file.getCondominiumId(), 12, "bge-m3");
     }
 
     @Test

@@ -2,9 +2,6 @@ package br.com.condominioauditoria.api.orcamento;
 
 import static br.com.condominioauditoria.api.orcamento.DinheiroBr.formatar;
 
-import br.com.condominioauditoria.api.auditoria.RegistroAchados;
-import br.com.condominioauditoria.api.auditoria.RegistroAchados.Evidencia;
-import br.com.condominioauditoria.api.auditoria.RegraTetoFundoReserva;
 import br.com.condominioauditoria.api.model.accounting.Fund;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
@@ -15,6 +12,9 @@ import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.PrevisaoDetalhe;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.audit.FindingSyncService;
+import br.com.condominioauditoria.api.service.audit.FindingSyncService.Evidence;
+import br.com.condominioauditoria.api.service.audit.rule.ReserveFundCapRule;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
@@ -59,14 +59,14 @@ public class ConfirmacaoPrevisao {
     private final FundRepository fundos;
     private final ConsultaPrevisao consulta;
     private final ReservaDaPo reserva;
-    private final RegistroAchados achados;
+    private final FindingSyncService achados;
     private final ServicoRubricas rubricas;
     private final ApplicationEventPublisher publicador;
 
     ConfirmacaoPrevisao(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             LinhaPoRepository linhas, PoFundoRepository poFundos, EventoPrevisaoRepository eventos,
             SourceFileRepository arquivos, FundRepository fundos, ConsultaPrevisao consulta, ReservaDaPo reserva,
-            RegistroAchados achados, ServicoRubricas rubricas, ApplicationEventPublisher publicador) {
+            FindingSyncService achados, ServicoRubricas rubricas, ApplicationEventPublisher publicador) {
         this.condominios = condominios;
         this.previsoes = previsoes;
         this.linhas = linhas;
@@ -346,17 +346,17 @@ public class ConfirmacaoPrevisao {
     }
 
     private void registrarAchadoDaReserva(PrevisaoOrcamentaria po, EstruturaPo estrutura) {
-        if (!(reserva.avaliar(po, estrutura) instanceof ReservaDaPo.Avaliada a) || !a.avaliacao().acimaDoTeto()) {
+        if (!(reserva.avaliar(po, estrutura) instanceof ReservaDaPo.Avaliada a) || !a.avaliacao().aboveCap()) {
             return;
         }
         LinhaPo l = a.linha();
         String descricao = ("Fundo de reserva previsto na PO (linha %s): %s por mês, %s do previsto do mês (%s). "
                 + "O teto da Conv. 20.1 é %s. Verificar a ata que aprovou a PO.").formatted(l.getCodigoEfetivo(),
-                formatar(l.getOrcado()), a.avaliacao().percentualExibido(), formatar(po.getPrevistoMes()),
-                a.avaliacao().tetoExibido());
-        achados.registrar(po.getCondominioId(), RegraTetoFundoReserva.CODIGO, RegraTetoFundoReserva.VERSAO,
-                RegraTetoFundoReserva.SEVERIDADE, po.getExercicioInicio(), alvo(po, l), descricao,
-                List.of(new Evidencia(po.getArquivoId(), po.getSha256(), l.getPagina(),
+                formatar(l.getOrcado()), a.avaliacao().displayPercentage(), formatar(po.getPrevistoMes()),
+                a.avaliacao().displayCap());
+        achados.register(po.getCondominioId(), ReserveFundCapRule.CODE, ReserveFundCapRule.VERSION,
+                ReserveFundCapRule.SEVERITY, po.getExercicioInicio(), alvo(po, l), descricao,
+                List.of(new Evidence(po.getArquivoId(), po.getSha256(), l.getPagina(),
                         "PO, linha %s %s (ordem %d): %s".formatted(l.getCodigoEfetivo(), l.getDescricao(),
                                 l.getOrdem(), formatar(l.getOrcado())), l.getId())));
     }

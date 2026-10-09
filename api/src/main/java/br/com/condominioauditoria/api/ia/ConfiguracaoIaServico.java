@@ -1,11 +1,11 @@
 package br.com.condominioauditoria.api.ia;
 
+import br.com.condominioauditoria.api.exception.InvalidRequestException;
 import br.com.condominioauditoria.api.ia.CatalogoIa.Catalogo;
 import br.com.condominioauditoria.api.ia.CatalogoIa.ModeloIa;
 import br.com.condominioauditoria.api.ia.CatalogoIa.ProvedorIa;
-import br.com.condominioauditoria.api.modulo.ModoIa;
-import br.com.condominioauditoria.api.modulo.Modulos;
-import br.com.condominioauditoria.api.modulo.PedidoInvalidoException;
+import br.com.condominioauditoria.api.model.enums.AiMode;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
 import java.security.PublicKey;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -37,8 +37,8 @@ public class ConfiguracaoIaServico {
 
     private static final Logger log = LoggerFactory.getLogger(ConfiguracaoIaServico.class);
 
-    public static final ModoIa MODO_GERAL_PADRAO = ModoIa.MCP_EXTERNO;
-    public static final ModoIa MODO_EMBEDDINGS_PADRAO = ModoIa.LOCAL;
+    public static final AiMode MODO_GERAL_PADRAO = AiMode.MCP_EXTERNO;
+    public static final AiMode MODO_EMBEDDINGS_PADRAO = AiMode.LOCAL;
     public static final String PROVEDOR_EMBEDDINGS_PADRAO = "ollama-local";
     public static final String MODELO_EMBEDDINGS_PADRAO = "bge-m3";
     static final int CHAVE_MINIMO = 8;
@@ -50,11 +50,11 @@ public class ConfiguracaoIaServico {
     private final ConfiguracaoIaRepository configuracoes;
     private final EventoConfiguracaoIaRepository eventos;
     private final CatalogoIa catalogo;
-    private final Modulos modulos;
+    private final FeatureService modulos;
     private final TransactionOperations transacao;
 
     ConfiguracaoIaServico(ConfiguracaoIaRepository configuracoes, EventoConfiguracaoIaRepository eventos,
-            CatalogoIa catalogo, Modulos modulos, TransactionOperations transacao) {
+            CatalogoIa catalogo, FeatureService modulos, TransactionOperations transacao) {
         this.configuracoes = configuracoes;
         this.eventos = eventos;
         this.catalogo = catalogo;
@@ -67,12 +67,12 @@ public class ConfiguracaoIaServico {
     // ---------------------------------------------------------------------------------------------------------------
 
     /** Configuração efetiva, com os padrões aplicados. atualizadoPor/Em nulos = nunca gravada. */
-    public record Efetiva(ModoIa modoGeral, Respostas respostas, Embeddings embeddings, String atualizadoPor,
+    public record Efetiva(AiMode modoGeral, Respostas respostas, Embeddings embeddings, String atualizadoPor,
             Instant atualizadoEm) {
     }
 
     /** Respostas do Assistente. modo nulo = herda o geral. A chave só existe cifrada (o backend não a lê). */
-    public record Respostas(ModoIa modo, ModoIa modoEfetivo, String provedor, String modelo, byte[] chaveCifrada,
+    public record Respostas(AiMode modo, AiMode modoEfetivo, String provedor, String modelo, byte[] chaveCifrada,
             String chaveFinal) {
 
         public boolean chaveCadastrada() {
@@ -81,7 +81,7 @@ public class ConfiguracaoIaServico {
 
         /** Chat na tela: modo efetivo API_KEY com chave cadastrada (e provedor escolhido). */
         public boolean chatDisponivel() {
-            return modoEfetivo == ModoIa.API_KEY && chaveCadastrada() && provedor != null;
+            return modoEfetivo == AiMode.API_KEY && chaveCadastrada() && provedor != null;
         }
 
         @Override
@@ -91,11 +91,11 @@ public class ConfiguracaoIaServico {
         }
     }
 
-    public record Embeddings(ModoIa modo, String provedor, String modelo) {
+    public record Embeddings(AiMode modo, String provedor, String modelo) {
     }
 
     /** Modo efetivo do Assistente para a tela (RF-04.16); nulo com o módulo desligado. Nunca traz chave. */
-    public record ContextoAssistente(ModoIa modoRespostas, ModoIa modoEmbeddings, boolean chatDisponivel) {
+    public record ContextoAssistente(AiMode modoRespostas, AiMode modoEmbeddings, boolean chatDisponivel) {
     }
 
     public Efetiva ler(UUID condominioId) {
@@ -103,7 +103,7 @@ public class ConfiguracaoIaServico {
     }
 
     public ContextoAssistente contexto(UUID condominioId) {
-        if (!modulos.ligado(condominioId, Modulos.ASSISTENTE)) {
+        if (!modulos.isEnabled(condominioId, FeatureService.ASSISTANT)) {
             return null;
         }
         Efetiva e = ler(condominioId);
@@ -113,10 +113,10 @@ public class ConfiguracaoIaServico {
 
     static Efetiva efetiva(List<ConfiguracaoIa> linhas) {
         Optional<ConfiguracaoIa> geral = linha(linhas, null, FuncaoIa.RESPOSTAS);
-        Optional<ConfiguracaoIa> respostas = linha(linhas, Modulos.ASSISTENTE, FuncaoIa.RESPOSTAS);
-        Optional<ConfiguracaoIa> embeddings = linha(linhas, Modulos.ASSISTENTE, FuncaoIa.EMBEDDINGS);
-        ModoIa modoGeral = geral.map(ConfiguracaoIa::getModo).orElse(MODO_GERAL_PADRAO);
-        ModoIa modoRespostas = respostas.map(ConfiguracaoIa::getModo).orElse(null);
+        Optional<ConfiguracaoIa> respostas = linha(linhas, FeatureService.ASSISTANT, FuncaoIa.RESPOSTAS);
+        Optional<ConfiguracaoIa> embeddings = linha(linhas, FeatureService.ASSISTANT, FuncaoIa.EMBEDDINGS);
+        AiMode modoGeral = geral.map(ConfiguracaoIa::getModo).orElse(MODO_GERAL_PADRAO);
+        AiMode modoRespostas = respostas.map(ConfiguracaoIa::getModo).orElse(null);
         Respostas r = new Respostas(modoRespostas, modoRespostas == null ? modoGeral : modoRespostas,
                 respostas.map(ConfiguracaoIa::getProvedor).orElse(null),
                 respostas.map(ConfiguracaoIa::getModelo).orElse(null),
@@ -140,10 +140,10 @@ public class ConfiguracaoIaServico {
     // ---------------------------------------------------------------------------------------------------------------
 
     /** PUT /condominios/{id}/ia. A chave é só de escrita: nulo mantém a guardada; removerChave apaga. */
-    public record Pedido(ModoIa modoGeral, PedidoRespostas respostas, PedidoEmbeddings embeddings) {
+    public record Pedido(AiMode modoGeral, PedidoRespostas respostas, PedidoEmbeddings embeddings) {
     }
 
-    public record PedidoRespostas(ModoIa modo, String provedor, String modelo, String chave, boolean removerChave) {
+    public record PedidoRespostas(AiMode modo, String provedor, String modelo, String chave, boolean removerChave) {
 
         /** Nunca mostra a chave (nem em log de erro do Spring). */
         @Override
@@ -153,11 +153,11 @@ public class ConfiguracaoIaServico {
         }
     }
 
-    public record PedidoEmbeddings(ModoIa modo, String provedor, String modelo) {
+    public record PedidoEmbeddings(AiMode modo, String provedor, String modelo) {
     }
 
     /** Valores resolvidos de uma função, para comparar com o que vale e para a trilha. */
-    private record Valores(ModoIa modo, String provedor, String modelo) {
+    private record Valores(AiMode modo, String provedor, String modelo) {
     }
 
     /**
@@ -167,7 +167,7 @@ public class ConfiguracaoIaServico {
     public Efetiva gravar(UUID condominioId, Pedido pedido, String usuario, String autorizacao) {
         if (pedido == null || pedido.modoGeral() == null || pedido.respostas() == null || pedido.embeddings() == null
                 || pedido.embeddings().modo() == null) {
-            throw new PedidoInvalidoException("Informe o modo geral e a configuração do Assistente (respostas e"
+            throw new InvalidRequestException("Informe o modo geral e a configuração do Assistente (respostas e"
                     + " embeddings, com o modo dos embeddings)");
         }
         Efetiva atual = ler(condominioId);
@@ -176,31 +176,31 @@ public class ConfiguracaoIaServico {
         String chave = pr.chave() == null ? null : pr.chave().strip();
         List<String> motivos = new ArrayList<>();
 
-        if (pedido.modoGeral() == ModoIa.LOCAL) {
+        if (pedido.modoGeral() == AiMode.LOCAL) {
             motivos.add("O modo geral LOCAL ainda não está disponível nesta fase: escolha MCP_EXTERNO, API_KEY ou"
                     + " DESLIGADO.");
         }
-        if (pr.modo() == ModoIa.LOCAL) {
+        if (pr.modo() == AiMode.LOCAL) {
             motivos.add("O modo LOCAL para as respostas do Assistente ainda não está disponível nesta fase (previsto,"
                     + " sem provedor).");
         }
-        ModoIa efetivo = pr.modo() == null ? pedido.modoGeral() : pr.modo();
+        AiMode efetivo = pr.modo() == null ? pedido.modoGeral() : pr.modo();
         if (chave != null && pr.removerChave()) {
             motivos.add("Informe uma chave nova ou peça para remover a chave guardada, não os dois.");
         }
         if (chave != null && (chave.length() < CHAVE_MINIMO || chave.length() > CHAVE_MAXIMO)) {
             motivos.add("A chave de API deve ter de " + CHAVE_MINIMO + " a " + CHAVE_MAXIMO + " caracteres.");
         }
-        if (pe.modo() != ModoIa.LOCAL && pe.modo() != ModoIa.DESLIGADO) {
+        if (pe.modo() != AiMode.LOCAL && pe.modo() != AiMode.DESLIGADO) {
             motivos.add("Para embeddings só são aceitos os modos LOCAL ou DESLIGADO nesta fase: só embeddings locais"
                     + " são permitidos, sem enviar texto para fora (Q12).");
         }
 
         String provedorR = textoOuNulo(pr.provedor());
         String modeloR = textoOuNulo(pr.modelo());
-        String provedorE = pe.modo() == ModoIa.LOCAL ? textoOuNulo(pe.provedor()) : null;
-        String modeloE = pe.modo() == ModoIa.LOCAL ? textoOuNulo(pe.modelo()) : null;
-        boolean precisaCatalogo = efetivo == ModoIa.API_KEY || provedorR != null || pe.modo() == ModoIa.LOCAL
+        String provedorE = pe.modo() == AiMode.LOCAL ? textoOuNulo(pe.provedor()) : null;
+        String modeloE = pe.modo() == AiMode.LOCAL ? textoOuNulo(pe.modelo()) : null;
+        boolean precisaCatalogo = efetivo == AiMode.API_KEY || provedorR != null || pe.modo() == AiMode.LOCAL
                 || chave != null;
         Catalogo cat = precisaCatalogo ? catalogo.ler(autorizacao) : null; // rag fora do ar = 503, nada gravado
 
@@ -208,19 +208,19 @@ public class ConfiguracaoIaServico {
         if (provedorR == null && modeloR != null) {
             motivos.add("Informe o provedor do modelo de respostas '" + modeloR + "'.");
         }
-        if (efetivo == ModoIa.API_KEY && provedorR == null) {
+        if (efetivo == AiMode.API_KEY && provedorR == null) {
             motivos.add("No modo API_KEY, escolha o provedor das respostas no catálogo.");
         }
         if (provedorR != null) {
             modeloR = validarProvedor(cat, provedorR, modeloR, FuncaoIa.RESPOSTAS, false, motivos);
         }
         boolean chaveDepois = chave != null || (!pr.removerChave() && atual.respostas().chaveCadastrada());
-        if (efetivo == ModoIa.API_KEY && !chaveDepois) {
+        if (efetivo == AiMode.API_KEY && !chaveDepois) {
             motivos.add("O modo API_KEY exige a chave de API do condomínio: informe a chave.");
         }
 
         // Embeddings: LOCAL exige provedor local do catálogo; DESLIGADO não tem provedor nem modelo
-        if (pe.modo() == ModoIa.LOCAL) {
+        if (pe.modo() == AiMode.LOCAL) {
             if (provedorE == null) {
                 motivos.add("Com embeddings LOCAL, escolha o provedor local do catálogo (ex.: "
                         + PROVEDOR_EMBEDDINGS_PADRAO + ").");
@@ -249,7 +249,7 @@ public class ConfiguracaoIaServico {
     }
 
     /** Dentro da transação, com o condomínio travado: compara com o que vale, grava o que mudou e a trilha. */
-    private void aplicar(UUID condominioId, ModoIa modoGeral, Valores respostas, byte[] chaveCifrada,
+    private void aplicar(UUID condominioId, AiMode modoGeral, Valores respostas, byte[] chaveCifrada,
             String chaveFinal, boolean removerChave, Valores embeddings, String usuario) {
         configuracoes.serializarAlteracao(condominioId.toString());
         List<ConfiguracaoIa> linhas = configuracoes.findByCondominioId(condominioId);
@@ -257,7 +257,7 @@ public class ConfiguracaoIaServico {
 
         // Modo geral
         Optional<ConfiguracaoIa> geral = linha(linhas, null, FuncaoIa.RESPOSTAS);
-        ModoIa geralAntes = geral.map(ConfiguracaoIa::getModo).orElse(MODO_GERAL_PADRAO);
+        AiMode geralAntes = geral.map(ConfiguracaoIa::getModo).orElse(MODO_GERAL_PADRAO);
         if (geralAntes != modoGeral) {
             ConfiguracaoIa l = geral.orElseGet(() -> new ConfiguracaoIa(condominioId, null, FuncaoIa.RESPOSTAS));
             l.alterar(modoGeral, null, null, usuario, agora);
@@ -267,19 +267,19 @@ public class ConfiguracaoIaServico {
         }
 
         // Respostas do Assistente
-        Optional<ConfiguracaoIa> resp = linha(linhas, Modulos.ASSISTENTE, FuncaoIa.RESPOSTAS);
+        Optional<ConfiguracaoIa> resp = linha(linhas, FeatureService.ASSISTANT, FuncaoIa.RESPOSTAS);
         Valores respAntes = resp.map(l -> new Valores(l.getModo(), l.getProvedor(), l.getModelo()))
                 .orElse(new Valores(null, null, null));
         boolean tinhaChave = resp.map(ConfiguracaoIa::temChave).orElse(false);
         boolean chaveTrocada = chaveCifrada != null || (removerChave && tinhaChave);
-        ModoIa efetivo = respostas.modo() == null ? modoGeral : respostas.modo();
-        if (efetivo == ModoIa.API_KEY && chaveCifrada == null && (!tinhaChave || removerChave)) {
+        AiMode efetivo = respostas.modo() == null ? modoGeral : respostas.modo();
+        if (efetivo == AiMode.API_KEY && chaveCifrada == null && (!tinhaChave || removerChave)) {
             // Outro Admin removeu a chave entre a validação e a gravação
             throw new ConfiguracaoIaRecusadaException(
                     List.of("O modo API_KEY exige a chave de API do condomínio: informe a chave."));
         }
         if (!respAntes.equals(respostas) || chaveTrocada) {
-            ConfiguracaoIa l = resp.orElseGet(() -> new ConfiguracaoIa(condominioId, Modulos.ASSISTENTE,
+            ConfiguracaoIa l = resp.orElseGet(() -> new ConfiguracaoIa(condominioId, FeatureService.ASSISTANT,
                     FuncaoIa.RESPOSTAS));
             l.alterar(respostas.modo(), respostas.provedor(), respostas.modelo(), usuario, agora);
             if (chaveCifrada != null) {
@@ -288,21 +288,21 @@ public class ConfiguracaoIaServico {
                 l.trocarChave(null, null);
             }
             configuracoes.save(l);
-            eventos.save(new EventoConfiguracaoIa(condominioId, Modulos.ASSISTENTE, FuncaoIa.RESPOSTAS, usuario, agora,
+            eventos.save(new EventoConfiguracaoIa(condominioId, FeatureService.ASSISTANT, FuncaoIa.RESPOSTAS, usuario, agora,
                     respAntes.modo(), respostas.modo(), respAntes.provedor(), respostas.provedor(), respAntes.modelo(),
                     respostas.modelo(), chaveTrocada, chaveCifrada != null ? chaveFinal : null));
         }
 
         // Embeddings do Assistente
-        Optional<ConfiguracaoIa> emb = linha(linhas, Modulos.ASSISTENTE, FuncaoIa.EMBEDDINGS);
+        Optional<ConfiguracaoIa> emb = linha(linhas, FeatureService.ASSISTANT, FuncaoIa.EMBEDDINGS);
         Valores embAntes = emb.map(l -> new Valores(l.getModo(), l.getProvedor(), l.getModelo()))
                 .orElse(new Valores(MODO_EMBEDDINGS_PADRAO, PROVEDOR_EMBEDDINGS_PADRAO, MODELO_EMBEDDINGS_PADRAO));
         if (!embAntes.equals(embeddings)) {
-            ConfiguracaoIa l = emb.orElseGet(() -> new ConfiguracaoIa(condominioId, Modulos.ASSISTENTE,
+            ConfiguracaoIa l = emb.orElseGet(() -> new ConfiguracaoIa(condominioId, FeatureService.ASSISTANT,
                     FuncaoIa.EMBEDDINGS));
             l.alterar(embeddings.modo(), embeddings.provedor(), embeddings.modelo(), usuario, agora);
             configuracoes.save(l);
-            eventos.save(new EventoConfiguracaoIa(condominioId, Modulos.ASSISTENTE, FuncaoIa.EMBEDDINGS, usuario,
+            eventos.save(new EventoConfiguracaoIa(condominioId, FeatureService.ASSISTANT, FuncaoIa.EMBEDDINGS, usuario,
                     agora, embAntes.modo(), embeddings.modo(), embAntes.provedor(), embeddings.provedor(),
                     embAntes.modelo(), embeddings.modelo(), false, null));
         }

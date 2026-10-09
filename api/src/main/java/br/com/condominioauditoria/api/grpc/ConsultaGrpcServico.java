@@ -1,9 +1,9 @@
 package br.com.condominioauditoria.api.grpc;
 
+import br.com.condominioauditoria.api.exception.FeatureNotEnabledException;
 import br.com.condominioauditoria.api.model.accounting.Fund;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.ModuloNaoContratadoException;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
 import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
@@ -217,7 +217,7 @@ class ConsultaGrpcServico extends ConsultaGrpc.ConsultaImplBase {
         return switch (erro) {
             case StatusRuntimeException s -> s;
             case AccessDeniedException a -> Status.PERMISSION_DENIED.withDescription(a.getMessage()).asRuntimeException();
-            case ModuloNaoContratadoException m ->
+            case FeatureNotEnabledException m ->
                     Status.FAILED_PRECONDITION.withDescription(m.getMessage()).asRuntimeException();
             case IllegalArgumentException i -> Status.INVALID_ARGUMENT.withDescription(i.getMessage()).asRuntimeException();
             default -> {

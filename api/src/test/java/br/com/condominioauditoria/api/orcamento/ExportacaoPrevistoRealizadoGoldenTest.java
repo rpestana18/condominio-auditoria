@@ -3,7 +3,7 @@ package br.com.condominioauditoria.api.orcamento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import br.com.condominioauditoria.api.auditoria.TermosConduta;
+import br.com.condominioauditoria.api.service.audit.ConductTerms;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -195,10 +195,10 @@ class ExportacaoPrevistoRealizadoGoldenTest {
             RelatorioPrevistoRealizado rel = relatorio(calculo);
             byte[] pdf = new RelatorioPdf().gerar(rel);
 
-            assertThat(TermosConduta.encontrados(new RelatorioPdf().html(rel))).as("HTML %s", periodo).isEmpty();
-            assertThat(TermosConduta.encontrados(textoDoPdf(pdf))).as("PDF %s", periodo).isEmpty();
-            assertThat(textosDoExcel(new RelatorioExcel().gerar(rel)).stream().flatMap(t -> TermosConduta
-                    .encontrados(t).stream())).as("Excel %s", periodo).isEmpty();
+            assertThat(ConductTerms.find(new RelatorioPdf().html(rel))).as("HTML %s", periodo).isEmpty();
+            assertThat(ConductTerms.find(textoDoPdf(pdf))).as("PDF %s", periodo).isEmpty();
+            assertThat(textosDoExcel(new RelatorioExcel().gerar(rel)).stream().flatMap(t -> ConductTerms
+                    .find(t).stream())).as("Excel %s", periodo).isEmpty();
             try (PDDocument doc = Loader.loadPDF(pdf)) {
                 for (PDPage p : doc.getPages()) {
                     for (var nome : p.getResources().getXObjectNames()) {

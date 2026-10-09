@@ -16,19 +16,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.condominioauditoria.api.assistente.DtosAssistente.PedidoBuscaDocumentos;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.PedidoPergunta;
+import br.com.condominioauditoria.api.exception.FeatureNotEnabledException;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Efetiva;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Embeddings;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Respostas;
+import br.com.condominioauditoria.api.model.enums.AiMode;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.ModoIa;
-import br.com.condominioauditoria.api.modulo.ModuloNaoContratadoException;
-import br.com.condominioauditoria.api.modulo.Modulos;
-import br.com.condominioauditoria.api.modulo.RegistroUso;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.security.CondominiumAccess;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
+import br.com.condominioauditoria.api.service.usage.UsageService;
 import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
 import br.com.condominioauditoria.contratos.assistente.v1.LocalPlanilha;
 import br.com.condominioauditoria.contratos.assistente.v1.Localizacao;
@@ -59,9 +59,9 @@ class AssistenteControllerTest {
     private static final UUID A = UUID.randomUUID();
 
     private final SourceFileRepository arquivos = mock(SourceFileRepository.class);
-    private final Modulos modulos = mock(Modulos.class);
+    private final FeatureService modulos = mock(FeatureService.class);
     private final ConfiguracaoIaServico configuracao = mock(ConfiguracaoIaServico.class);
-    private final RegistroUso registroUso = mock(RegistroUso.class);
+    private final UsageService registroUso = mock(UsageService.class);
     private final CondominiumRepository condominios = mock(CondominiumRepository.class);
     private final SourceFile planilha = new SourceFile(A, FileCategory.PO, "po.xlsx", "a/po.xlsx", "d".repeat(64), 1,
             "application/vnd.ms-excel", "gestor");
@@ -86,9 +86,9 @@ class AssistenteControllerTest {
         rag = new RagFalso();
         when(condominios.existsById(A)).thenReturn(true);
         when(arquivos.findByCondominiumIdAndIdIn(eq(A), anyCollection())).thenReturn(List.of(planilha));
-        when(configuracao.ler(A)).thenReturn(new Efetiva(ModoIa.MCP_EXTERNO,
-                new Respostas(null, ModoIa.MCP_EXTERNO, null, null, null, null),
-                new Embeddings(ModoIa.LOCAL, "ollama-local", "bge-m3"), null, null));
+        when(configuracao.ler(A)).thenReturn(new Efetiva(AiMode.MCP_EXTERNO,
+                new Respostas(null, AiMode.MCP_EXTERNO, null, null, null, null),
+                new Embeddings(AiMode.LOCAL, "ollama-local", "bge-m3"), null, null));
         var acesso = new CondominiumAccess();
         var barreira = new BarreiraArquivos(arquivos);
         var pergunta = new PerguntaAssistente(acesso, modulos, configuracao, rag.cliente, barreira, registroUso, 6);
@@ -136,7 +136,7 @@ class AssistenteControllerTest {
                 assertThat(t.localizacao().tipo()).isEqualTo("PLANILHA");
                 assertThat(t.localizacao().descricao()).isEqualTo("aba Junho, linhas 10 a 14");
             });
-            verify(registroUso).buscaDocumentos(A, "pessoa." + perfil.toLowerCase());
+            verify(registroUso).recordDocumentSearch(A, "pessoa." + perfil.toLowerCase());
         }
         assertThat(rag.buscas).allSatisfy(b -> {
             assertThat(b.getModo()).isEqualTo(ModoBusca.MODO_BUSCA_PALAVRA);
@@ -177,8 +177,8 @@ class AssistenteControllerTest {
     @Test
     void moduloDesligadoEh403ComOCodigoDoModulo() throws Exception {
         PerguntaAssistenteTest.logar("USUARIO", A);
-        doThrow(new ModuloNaoContratadoException(Modulos.ASSISTENTE, "Assistente")).when(modulos)
-                .exigir(A, Modulos.ASSISTENTE);
+        doThrow(new FeatureNotEnabledException(FeatureService.ASSISTANT, "Assistente")).when(modulos)
+                .require(A, FeatureService.ASSISTANT);
 
         mvc.perform(post("/api/condominios/{id}/assistente/perguntas", A).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"pergunta\":\"o portão foi aprovado?\"}"))
@@ -203,15 +203,15 @@ class AssistenteControllerTest {
                 .andExpect(jsonPath("$.detail").value("O assistente deste condomínio é o seu Claude, conectado ao MCP."))
                 .andExpect(jsonPath("$.modoIa").value("MCP_EXTERNO"));
         assertThat(rag.perguntas).isEmpty();
-        verify(registroUso, org.mockito.Mockito.never()).pergunta(any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyLong(),
+        verify(registroUso, org.mockito.Mockito.never()).recordQuestion(any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyLong(),
                 org.mockito.ArgumentMatchers.anyLong(), any());
     }
 
     @Test
     void buscaFuncionaComAIaDesligada() throws Exception {
-        when(configuracao.ler(A)).thenReturn(new Efetiva(ModoIa.DESLIGADO,
-                new Respostas(null, ModoIa.DESLIGADO, null, null, null, null),
-                new Embeddings(ModoIa.DESLIGADO, null, null), null, null));
+        when(configuracao.ler(A)).thenReturn(new Efetiva(AiMode.DESLIGADO,
+                new Respostas(null, AiMode.DESLIGADO, null, null, null, null),
+                new Embeddings(AiMode.DESLIGADO, null, null), null, null));
         PerguntaAssistenteTest.logar("USUARIO", A);
 
         mvc.perform(post("/api/condominios/{id}/assistente/busca", A).contentType(MediaType.APPLICATION_JSON)

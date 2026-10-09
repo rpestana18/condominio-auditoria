@@ -4,20 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import br.com.condominioauditoria.api.auditoria.Achado;
-import br.com.condominioauditoria.api.auditoria.EstadoAchado;
-import br.com.condominioauditoria.api.auditoria.EventoAchado;
-import br.com.condominioauditoria.api.auditoria.RegraContaSemLinhaPo;
-import br.com.condominioauditoria.api.auditoria.RegraExcessoMes;
-import br.com.condominioauditoria.api.auditoria.Severidade;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.audit.Finding;
+import br.com.condominioauditoria.api.model.audit.FindingEvent;
+import br.com.condominioauditoria.api.model.enums.FindingStatus;
+import br.com.condominioauditoria.api.model.enums.Severity;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Aviso;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Evidencia;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.LinhaResultado;
 import br.com.condominioauditoria.api.orcamento.RealocacaoDtos.PedidoRealocacao;
 import br.com.condominioauditoria.api.orcamento.RealocacaoDtos.RealocacaoDto;
+import br.com.condominioauditoria.api.service.audit.rule.MonthlyOverrunRule;
+import br.com.condominioauditoria.api.service.audit.rule.UnmappedAccountRule;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -170,27 +170,27 @@ class RealocacaoEAchadosGoldenTest {
         recalcular(c, "primeiro recálculo de teste");
         recalcular(c, "segundo recálculo de teste");
 
-        List<Achado> setembro = achadosDe(c, YearMonth.of(2026, 9));
+        List<Finding> setembro = achadosDe(c, YearMonth.of(2026, 9));
         assertThat(setembro).singleElement().satisfies(a -> {
-            assertThat(a.getRegra()).isEqualTo(RegraContaSemLinhaPo.CODIGO);
-            assertThat(a.getVersaoRegra()).isEqualTo(RegraContaSemLinhaPo.VERSAO);
-            assertThat(a.getSeveridade()).isEqualTo(Severidade.ATENCAO);
-            assertThat(a.getAlvo()).isEqualTo("conta:8888");
-            assertThat(a.getEstado()).isEqualTo(EstadoAchado.ABERTO);
-            assertThat(a.getDescricao()).contains("Conta 8888 CONTA DE TESTE", "09/2026", "R$ 500,00",
+            assertThat(a.getRule()).isEqualTo(UnmappedAccountRule.CODE);
+            assertThat(a.getRuleVersion()).isEqualTo(UnmappedAccountRule.VERSION);
+            assertThat(a.getSeverity()).isEqualTo(Severity.ATENCAO);
+            assertThat(a.getTarget()).isEqualTo("conta:8888");
+            assertThat(a.getStatus()).isEqualTo(FindingStatus.ABERTO);
+            assertThat(a.getDescription()).contains("Conta 8888 CONTA DE TESTE", "09/2026", "R$ 500,00",
                     "1 lançamento", "sem linha da PO", "verificar o de-para");
         });
-        Achado achado = setembro.getFirst();
-        assertThat(c.evidencias).filteredOn(e -> e.getAchadoId().equals(achado.getId())).singleElement()
+        Finding achado = setembro.getFirst();
+        assertThat(c.evidencias).filteredOn(e -> e.getFindingId().equals(achado.getId())).singleElement()
                 .satisfies(e -> {
-                    assertThat(e.getArquivoId()).isEqualTo(g.arquivoFluxo);
+                    assertThat(e.getFileId()).isEqualTo(g.arquivoFluxo);
                     assertThat(e.getSha256()).isEqualTo(g.arquivo.getSha256());
-                    assertThat(e.getPagina()).isEqualTo(teste.getPage());
-                    assertThat(e.getReferencia()).contains("30/09/2026", "conta 8888", "R$ 500,00");
+                    assertThat(e.getPage()).isEqualTo(teste.getPage());
+                    assertThat(e.getReference()).contains("30/09/2026", "conta 8888", "R$ 500,00");
                 });
         assertThat(eventos(c, achado)).hasSize(1);
         // Nenhum outro achado em setembro: excesso de 8,6%, abaixo dos 20%
-        assertThat(c.achados).noneMatch(a -> a.getRegra().equals(RegraExcessoMes.CODIGO));
+        assertThat(c.achados).noneMatch(a -> a.getRule().equals(MonthlyOverrunRule.CODE));
     }
 
     @Test
@@ -200,7 +200,7 @@ class RealocacaoEAchadosGoldenTest {
         CenarioPo c = g.cenario;
         lancamentoDeTeste(g, "8888", "CONTA DE TESTE", "500.00");
         c.aposCommit();
-        Achado achado = achadosDe(c, YearMonth.of(2026, 9)).getFirst();
+        Finding achado = achadosDe(c, YearMonth.of(2026, 9)).getFirst();
 
         // Q27: o Admin confirma o de-para da conta; o achado passa a "não se aplica mais", com o motivo
         c.depara.definir(c.condominioId, g.po.getId(), "8888", new DeparaDtos.PedidoDestino(TipoDestino.LINHA_PO,
@@ -208,10 +208,10 @@ class RealocacaoEAchadosGoldenTest {
         c.aposCommit();
 
         String hoje = DATA.format(Instant.now());
-        assertThat(achado.getEstado()).isEqualTo(EstadoAchado.NAO_SE_APLICA_MAIS);
-        assertThat(achado.getEstadoMotivo()).isEqualTo("de-para da conta 8888 confirmado por admin em " + hoje);
-        assertThat(achado.isCondicaoPresente()).isFalse();
-        assertThat(c.evidencias).filteredOn(e -> e.getAchadoId().equals(achado.getId())).hasSize(1);
+        assertThat(achado.getStatus()).isEqualTo(FindingStatus.NAO_SE_APLICA_MAIS);
+        assertThat(achado.getStatusReason()).isEqualTo("de-para da conta 8888 confirmado por admin em " + hoje);
+        assertThat(achado.isConditionPresent()).isFalse();
+        assertThat(c.evidencias).filteredOn(e -> e.getFindingId().equals(achado.getId())).hasSize(1);
 
         // O Admin desfaz o de-para: a condição volta, e o MESMO achado volta a "aberto"
         c.depara.lote(c.condominioId, g.po.getId(), new DeparaDtos.PedidoLote(DeparaDtos.AcaoLote.RECUSAR,
@@ -219,10 +219,10 @@ class RealocacaoEAchadosGoldenTest {
         c.aposCommit();
 
         assertThat(achadosDe(c, YearMonth.of(2026, 9))).singleElement().isSameAs(achado);
-        assertThat(achado.getEstado()).isEqualTo(EstadoAchado.ABERTO);
-        assertThat(eventos(c, achado)).extracting(EventoAchado::getEstadoNovo).containsExactly(EstadoAchado.ABERTO,
-                EstadoAchado.NAO_SE_APLICA_MAIS, EstadoAchado.ABERTO);
-        assertThat(eventos(c, achado).get(2).getMotivo()).isEqualTo("a condição voltou: de-para da conta 8888"
+        assertThat(achado.getStatus()).isEqualTo(FindingStatus.ABERTO);
+        assertThat(eventos(c, achado)).extracting(FindingEvent::getNewStatus).containsExactly(FindingStatus.ABERTO,
+                FindingStatus.NAO_SE_APLICA_MAIS, FindingStatus.ABERTO);
+        assertThat(eventos(c, achado).get(2).getReason()).isEqualTo("a condição voltou: de-para da conta 8888"
                 + " recusado por admin em " + hoje);
     }
 
@@ -235,24 +235,24 @@ class RealocacaoEAchadosGoldenTest {
         lancamentoDeTeste(g, "1442", "VIGIA E PORTARIA", "60000.00");
         c.aposCommit();
 
-        Achado critico = c.achados.stream().filter(a -> a.getRegra().equals(RegraExcessoMes.CODIGO)).findFirst()
+        Finding critico = c.achados.stream().filter(a -> a.getRule().equals(MonthlyOverrunRule.CODE)).findFirst()
                 .orElseThrow();
-        assertThat(critico.getSeveridade()).isEqualTo(Severidade.CRITICO);
-        assertThat(critico.getCompetencia()).isEqualTo(YearMonth.of(2026, 9));
-        assertThat(critico.getDescricao()).startsWith("excesso de 21,9% do previsto do mês; a Conv. 16.2 exige"
+        assertThat(critico.getSeverity()).isEqualTo(Severity.CRITICO);
+        assertThat(critico.getReferenceMonth()).isEqualTo(YearMonth.of(2026, 9));
+        assertThat(critico.getDescription()).startsWith("excesso de 21,9% do previsto do mês; a Conv. 16.2 exige"
                 + " aprovação em AGE para o excedente; verificar ata.").contains("R$ 98.880,19", "R$ 90.324,03");
-        assertThat(c.evidencias).filteredOn(e -> e.getAchadoId().equals(critico.getId()))
-                .anyMatch(e -> e.getLinhaPoId() != null && e.getReferencia().startsWith("PO, linha 1.3.10"))
-                .anyMatch(e -> e.getArquivoId().equals(g.arquivoFluxo));
+        assertThat(c.evidencias).filteredOn(e -> e.getFindingId().equals(critico.getId()))
+                .anyMatch(e -> e.getBudgetLineId() != null && e.getReference().startsWith("PO, linha 1.3.10"))
+                .anyMatch(e -> e.getFileId().equals(g.arquivoFluxo));
 
         // A conta 1442 vira ajuste no de-para: o excesso cai abaixo de 20% e o achado não se aplica mais
         c.depara.definir(c.condominioId, g.po.getId(), "1442", new DeparaDtos.PedidoDestino(TipoDestino.AJUSTE, null,
                 "teste", true), "admin");
         c.aposCommit();
 
-        assertThat(critico.getEstado()).isEqualTo(EstadoAchado.NAO_SE_APLICA_MAIS);
-        assertThat(critico.getEstadoMotivo()).startsWith("de-para da conta 1442 confirmado por admin em ");
-        assertThat(c.achados).filteredOn(a -> a.getRegra().equals(RegraExcessoMes.CODIGO)).hasSize(1);
+        assertThat(critico.getStatus()).isEqualTo(FindingStatus.NAO_SE_APLICA_MAIS);
+        assertThat(critico.getStatusReason()).startsWith("de-para da conta 1442 confirmado por admin em ");
+        assertThat(c.achados).filteredOn(a -> a.getRule().equals(MonthlyOverrunRule.CODE)).hasSize(1);
     }
 
     @Test
@@ -262,14 +262,14 @@ class RealocacaoEAchadosGoldenTest {
         CenarioPo c = g.cenario;
         lancamentoDeTeste(g, "8888", "CONTA DE TESTE", "500.00");
         c.aposCommit();
-        Achado achado = achadosDe(c, YearMonth.of(2026, 9)).getFirst();
+        Finding achado = achadosDe(c, YearMonth.of(2026, 9)).getFirst();
 
         c.fluxo("fluxo-corrigido-2026-09.pdf", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30), 0);
         c.depara.definir(c.condominioId, g.po.getId(), "8888", new DeparaDtos.PedidoDestino(TipoDestino.LINHA_PO,
                 g.linha("1.7.8").getId(), null, true), "admin");
         c.aposCommit();
 
-        assertThat(achado.getEstado()).isEqualTo(EstadoAchado.ABERTO);
+        assertThat(achado.getStatus()).isEqualTo(FindingStatus.ABERTO);
         assertThat(eventos(c, achado)).hasSize(1);
     }
 
@@ -286,12 +286,12 @@ class RealocacaoEAchadosGoldenTest {
         c.recalculo.recalcular(MudancaOrcamento.de(c.condominioId, descricao, "sistema", Instant.now()));
     }
 
-    private static List<Achado> achadosDe(CenarioPo c, YearMonth mes) {
-        return c.achados.stream().filter(a -> a.getCompetencia().equals(mes)).toList();
+    private static List<Finding> achadosDe(CenarioPo c, YearMonth mes) {
+        return c.achados.stream().filter(a -> a.getReferenceMonth().equals(mes)).toList();
     }
 
-    private static List<EventoAchado> eventos(CenarioPo c, Achado a) {
-        return c.eventosAchado.stream().filter(e -> e.getAchadoId().equals(a.getId())).toList();
+    private static List<FindingEvent> eventos(CenarioPo c, Finding a) {
+        return c.eventosAchado.stream().filter(e -> e.getFindingId().equals(a.getId())).toList();
     }
 
     private static PrevistoRealizado consultar(GoldenSetembro g) {

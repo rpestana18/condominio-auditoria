@@ -2,7 +2,7 @@ package br.com.condominioauditoria.api.ia;
 
 import br.com.condominioauditoria.api.config.properties.ApiProperties;
 import br.com.condominioauditoria.api.grpc.ClienteAssistente;
-import br.com.condominioauditoria.api.modulo.CustoUso.PrecoModelo;
+import br.com.condominioauditoria.api.service.calculator.UsageCostCalculator.ModelPrice;
 import br.com.condominioauditoria.contratos.assistente.v1.ListarProvedoresResponse;
 import br.com.condominioauditoria.contratos.assistente.v1.ModeloProvedor;
 import br.com.condominioauditoria.contratos.assistente.v1.Provedor;
@@ -75,13 +75,13 @@ public class CatalogoIa {
         }
 
         /** Preços por "provedor/modelo", para o custo estimado do relatório de uso. */
-        public Map<String, PrecoModelo> precos() {
-            Map<String, PrecoModelo> precos = new LinkedHashMap<>();
+        public Map<String, ModelPrice> precos() {
+            Map<String, ModelPrice> precos = new LinkedHashMap<>();
             for (ProvedorIa p : provedores) {
                 for (ModeloIa m : p.modelos()) {
                     if (m.precoEntradaMilhaoUsd() != null && m.precoSaidaMilhaoUsd() != null) {
-                        precos.put(PrecoModelo.chave(p.codigo(), m.id()),
-                                new PrecoModelo(m.precoEntradaMilhaoUsd(), m.precoSaidaMilhaoUsd()));
+                        precos.put(ModelPrice.key(p.codigo(), m.id()),
+                                new ModelPrice(m.precoEntradaMilhaoUsd(), m.precoSaidaMilhaoUsd()));
                     }
                 }
             }
@@ -113,7 +113,7 @@ public class CatalogoIa {
     }
 
     /** Preços para o custo estimado; vazio se o rag não respondeu (o relatório sai sem custo, não falha). */
-    public Optional<Map<String, PrecoModelo>> precos(String autorizacao) {
+    public Optional<Map<String, ModelPrice>> precos(String autorizacao) {
         try {
             return Optional.of(ler(autorizacao).precos());
         } catch (IaIndisponivelException erro) {

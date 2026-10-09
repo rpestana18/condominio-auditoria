@@ -1,10 +1,8 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.auditoria.ParametroRegra;
-import br.com.condominioauditoria.api.auditoria.ParametroRegraRepository;
-import br.com.condominioauditoria.api.auditoria.RegraExcessoMes;
 import br.com.condominioauditoria.api.model.accounting.Fund;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.audit.RuleParameter;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
@@ -20,8 +18,10 @@ import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Aviso;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Evidencia;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
+import br.com.condominioauditoria.api.repository.audit.RuleParameterRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.audit.rule.MonthlyOverrunRule;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -59,14 +59,14 @@ public class ConsultaPrevistoRealizado {
     private final FundRepository fundos;
     private final SourceFileRepository arquivos;
     private final LedgerEntryRepository lancamentos;
-    private final ParametroRegraRepository parametros;
+    private final RuleParameterRepository parametros;
     private final ConsultaPrevisao consultaPrevisao;
     private final RealocacaoLancamentoRepository realocacoes;
 
     ConsultaPrevistoRealizado(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             LinhaPoRepository linhas, DeparaContaRepository deparas, PoFundoRepository poFundos,
             FundRepository fundos, SourceFileRepository arquivos, LedgerEntryRepository lancamentos,
-            ParametroRegraRepository parametros, ConsultaPrevisao consultaPrevisao,
+            RuleParameterRepository parametros, ConsultaPrevisao consultaPrevisao,
             RealocacaoLancamentoRepository realocacoes) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -154,8 +154,8 @@ public class ConsultaPrevistoRealizado {
                 : lancamentos.findByFileIdInAndDateBetween(fluxos.stream().map(Fluxo::arquivoId).toList(), inicio,
                         fim);
         BigDecimal limite = po.getExercicioInicio() == null ? null
-                : parametros.vigente(condominioId, RegraExcessoMes.PARAMETRO, inicio.equals(LocalDate.MIN)
-                        ? po.getExercicioInicio().atDay(1) : inicio).map(ParametroRegra::getValor).orElse(null);
+                : parametros.findValidOn(condominioId, MonthlyOverrunRule.PARAMETER, inicio.equals(LocalDate.MIN)
+                        ? po.getExercicioInicio().atDay(1) : inicio).map(RuleParameter::getValue).orElse(null);
         List<Aviso> avisosDaPo = consultaPrevisao.detalhe(po).avisos().stream()
                 .filter(a -> AVISOS_DA_PO.contains(a.codigo())).map(a -> new Aviso(a.codigo().name(), a.texto()))
                 .toList();

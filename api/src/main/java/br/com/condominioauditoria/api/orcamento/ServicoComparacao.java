@@ -1,9 +1,8 @@
 package br.com.condominioauditoria.api.orcamento;
 
-import br.com.condominioauditoria.api.auditoria.Achado;
-import br.com.condominioauditoria.api.auditoria.AchadoRepository;
-import br.com.condominioauditoria.api.auditoria.EstadoAchado;
+import br.com.condominioauditoria.api.model.audit.Finding;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.model.enums.FindingStatus;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.Entrada;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.Filtro;
 import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.Resultado;
@@ -11,6 +10,7 @@ import br.com.condominioauditoria.api.orcamento.ComparacaoExercicios.RubricaDaLi
 import br.com.condominioauditoria.api.orcamento.ExercicioDtos.TipoExercicio;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Situacao;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
+import br.com.condominioauditoria.api.repository.audit.FindingRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import java.time.Month;
 import java.time.YearMonth;
@@ -41,13 +41,13 @@ public class ServicoComparacao {
     private final PoFundoRepository poFundos;
     private final RubricaRepository rubricas;
     private final LinhaRubricaRepository linhasRubrica;
-    private final AchadoRepository achados;
+    private final FindingRepository achados;
     private final ConsultaPrevistoRealizado previstoRealizado;
     private final ServicoExercicios exercicios;
 
     ServicoComparacao(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
             LinhaPoRepository linhas, PoFundoRepository poFundos, RubricaRepository rubricas,
-            LinhaRubricaRepository linhasRubrica, AchadoRepository achados,
+            LinhaRubricaRepository linhasRubrica, FindingRepository achados,
             ConsultaPrevistoRealizado previstoRealizado, ServicoExercicios exercicios) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -102,7 +102,7 @@ public class ServicoComparacao {
             }
         }
         Set<Month> comuns = mesmosMeses ? ComparacaoExercicios.mesmosMeses(acumulados.values()) : Set.of();
-        List<Achado> todosAchados = achados.findByCondominioIdOrderByCompetenciaDescCriadoEmAsc(condominioId);
+        List<Finding> todosAchados = achados.findByCondominiumIdOrderByReferenceMonthDescCreatedAtAsc(condominioId);
         Map<UUID, RubricaDaLinha> catalogo = rubricas.findByCondominioIdOrderByNome(condominioId).stream()
                 .collect(Collectors.toMap(Rubrica::getId,
                         r -> new RubricaDaLinha(r.getId(), r.getNome(), r.getGrupoCodigo())));
@@ -132,8 +132,8 @@ public class ServicoComparacao {
                     .filter(l -> l.getEstado() == EstadoRubrica.CONFIRMADO && catalogo.containsKey(l.getRubricaId()))
                     .collect(Collectors.toMap(LinhaRubrica::getLinhaPoId, l -> catalogo.get(l.getRubricaId())));
             Integer abertos = x.coluna() ? null : (int) todosAchados.stream()
-                    .filter(a -> a.getEstado() == EstadoAchado.ABERTO && !a.getCompetencia().isBefore(x.inicio())
-                            && !a.getCompetencia().isAfter(x.fim())).count();
+                    .filter(a -> a.getStatus() == FindingStatus.ABERTO && !a.getReferenceMonth().isBefore(x.inicio())
+                            && !a.getReferenceMonth().isAfter(x.fim())).count();
             String rotulo = x.coluna() ? ColunaImpressa.de(x.po(), linhas.findByPrevisaoIdOrderByOrdem(poId))
                     .map(ColunaImpressa::rotulo).orElseThrow()
                     : ServicoExercicios.rotulo(x.inicio(), x.fim());

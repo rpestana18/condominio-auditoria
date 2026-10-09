@@ -3,13 +3,13 @@ package br.com.condominioauditoria.api.orcamento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import br.com.condominioauditoria.api.auditoria.RegraTetoFundoReserva;
-import br.com.condominioauditoria.api.auditoria.Severidade;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
+import br.com.condominioauditoria.api.model.enums.Severity;
 import br.com.condominioauditoria.api.orcamento.PedidoConfirmacao.LigacaoFundo;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.AvisoDto;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.CodigoAviso;
 import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.FundoPoDto;
+import br.com.condominioauditoria.api.service.audit.rule.ReserveFundCapRule;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
@@ -101,18 +101,18 @@ class ConfirmacaoPrevisaoTest {
         var detalhe = cenario.confirmacao.confirmar(cenario.condominioId, po.getId(), cenario.pedidoDoPiloto(po), "admin");
 
         assertThat(cenario.achados).singleElement().satisfies(a -> {
-            assertThat(a.getRegra()).isEqualTo(RegraTetoFundoReserva.CODIGO);
-            assertThat(a.getVersaoRegra()).isEqualTo(RegraTetoFundoReserva.VERSAO);
-            assertThat(a.getSeveridade()).isEqualTo(Severidade.ATENCAO);
-            assertThat(a.getCompetencia()).isEqualTo(YearMonth.of(2026, 5));
-            assertThat(a.getDescricao()).isEqualTo("Fundo de reserva previsto na PO (linha 1.9.1): 25.000,00 por mês,"
+            assertThat(a.getRule()).isEqualTo(ReserveFundCapRule.CODE);
+            assertThat(a.getRuleVersion()).isEqualTo(ReserveFundCapRule.VERSION);
+            assertThat(a.getSeverity()).isEqualTo(Severity.ATENCAO);
+            assertThat(a.getReferenceMonth()).isEqualTo(YearMonth.of(2026, 5));
+            assertThat(a.getDescription()).isEqualTo("Fundo de reserva previsto na PO (linha 1.9.1): 25.000,00 por mês,"
                     + " 5,5% do previsto do mês (451.620,13). O teto da Conv. 20.1 é 5%. Verificar a ata que aprovou a PO.");
         });
         assertThat(cenario.evidencias).singleElement().satisfies(e -> {
-            assertThat(e.getArquivoId()).isEqualTo(po.getArquivoId());
+            assertThat(e.getFileId()).isEqualTo(po.getArquivoId());
             assertThat(e.getSha256()).isEqualTo(po.getSha256());
-            assertThat(e.getPagina()).isEqualTo(1);
-            assertThat(e.getLinhaPoId()).isEqualTo(cenario.linha(po, "1.9.1", 0).getId());
+            assertThat(e.getPage()).isEqualTo(1);
+            assertThat(e.getBudgetLineId()).isEqualTo(cenario.linha(po, "1.9.1", 0).getId());
         });
         assertThat(detalhe.achados()).singleElement().satisfies(a -> assertThat(a.severidade()).isEqualTo("ATENCAO"));
     }

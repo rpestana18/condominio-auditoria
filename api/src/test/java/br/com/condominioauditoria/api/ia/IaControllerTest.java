@@ -14,10 +14,10 @@ import br.com.condominioauditoria.api.ia.IaController.PedidoAssistenteDto;
 import br.com.condominioauditoria.api.ia.IaController.PedidoDto;
 import br.com.condominioauditoria.api.ia.IaController.PedidoEmbeddingsDto;
 import br.com.condominioauditoria.api.ia.IaController.PedidoRespostasDto;
-import br.com.condominioauditoria.api.modulo.ModoIa;
-import br.com.condominioauditoria.api.modulo.Modulos;
+import br.com.condominioauditoria.api.model.enums.AiMode;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.security.CondominiumAccess;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -81,7 +81,7 @@ class IaControllerTest {
         when(rag.listarProvedores(anyString()))
                 .thenReturn(CatalogoTeste.resposta(ParDeChavesTeste.pemPublica(ParDeChavesTeste.par())));
         var catalogo = new CatalogoIa(rag, Duration.ofMinutes(5), java.time.Clock.systemUTC());
-        var servico = new ConfiguracaoIaServico(configuracoes, eventos, catalogo, mock(Modulos.class),
+        var servico = new ConfiguracaoIaServico(configuracoes, eventos, catalogo, mock(FeatureService.class),
                 TransactionOperations.withoutTransaction());
         contexto = new AnnotationConfigApplicationContext();
         contexto.registerBean(ConfiguracaoIaServico.class, () -> servico);
@@ -141,9 +141,9 @@ class IaControllerTest {
     }
 
     private static PedidoDto pedido(String chave) {
-        return new PedidoDto(ModoIa.MCP_EXTERNO, new PedidoAssistenteDto(
-                new PedidoRespostasDto(ModoIa.API_KEY, "anthropic", null, chave, null),
-                new PedidoEmbeddingsDto(ModoIa.LOCAL, "ollama-local", null)));
+        return new PedidoDto(AiMode.MCP_EXTERNO, new PedidoAssistenteDto(
+                new PedidoRespostasDto(AiMode.API_KEY, "anthropic", null, chave, null),
+                new PedidoEmbeddingsDto(AiMode.LOCAL, "ollama-local", null)));
     }
 
     private static void logar(String perfil) {

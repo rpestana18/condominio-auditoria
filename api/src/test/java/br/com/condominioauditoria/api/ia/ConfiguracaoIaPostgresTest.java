@@ -9,8 +9,8 @@ import br.com.condominioauditoria.api.grpc.ClienteAssistente;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Pedido;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.PedidoEmbeddings;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.PedidoRespostas;
-import br.com.condominioauditoria.api.modulo.ModoIa;
-import br.com.condominioauditoria.api.modulo.Modulos;
+import br.com.condominioauditoria.api.model.enums.AiMode;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
@@ -63,20 +63,20 @@ class ConfiguracaoIaPostgresTest {
     @Test
     void semLinhaValemOsPadroesEGravarCifraEGuardaATrilhaSemAChave() throws Exception {
         UUID novo = novoCondominio();
-        assertThat(servico.ler(novo).modoGeral()).isEqualTo(ModoIa.MCP_EXTERNO);
+        assertThat(servico.ler(novo).modoGeral()).isEqualTo(AiMode.MCP_EXTERNO);
         assertThat(jdbc.queryForObject("select count(*) from configuracao_ia where condominio_id = ?", Long.class,
                 novo)).isZero();
 
-        servico.gravar(novo, new Pedido(ModoIa.DESLIGADO, new PedidoRespostas(ModoIa.API_KEY, "anthropic", null, CHAVE,
-                false), new PedidoEmbeddings(ModoIa.DESLIGADO, null, null)), "admin", "Bearer t");
+        servico.gravar(novo, new Pedido(AiMode.DESLIGADO, new PedidoRespostas(AiMode.API_KEY, "anthropic", null, CHAVE,
+                false), new PedidoEmbeddings(AiMode.DESLIGADO, null, null)), "admin", "Bearer t");
 
         var e = servico.ler(novo);
-        assertThat(e.modoGeral()).isEqualTo(ModoIa.DESLIGADO);
-        assertThat(e.respostas().modoEfetivo()).isEqualTo(ModoIa.API_KEY);
+        assertThat(e.modoGeral()).isEqualTo(AiMode.DESLIGADO);
+        assertThat(e.respostas().modoEfetivo()).isEqualTo(AiMode.API_KEY);
         assertThat(e.respostas().chaveFinal()).isEqualTo("x9Qa");
         assertThat(ParDeChavesTeste.decifrar(e.respostas().chaveCifrada(), ParDeChavesTeste.par().getPrivate()))
                 .isEqualTo(CHAVE);
-        assertThat(e.embeddings().modo()).isEqualTo(ModoIa.DESLIGADO);
+        assertThat(e.embeddings().modo()).isEqualTo(AiMode.DESLIGADO);
 
         List<Map<String, Object>> trilha = jdbc.queryForList(
                 "select * from evento_configuracao_ia where condominio_id = ? order by funcao, modulo nulls first", novo);
@@ -85,15 +85,15 @@ class ConfiguracaoIaPostgresTest {
                 v -> v != null && v.toString().contains("sk-ant")));
         assertThat(trilha).anySatisfy(linha -> {
             assertThat(linha.get("funcao")).isEqualTo("RESPOSTAS");
-            assertThat(linha.get("modulo")).isEqualTo(Modulos.ASSISTENTE);
+            assertThat(linha.get("modulo")).isEqualTo(FeatureService.ASSISTANT);
             assertThat(linha.get("chave_trocada")).isEqualTo(true);
             assertThat(linha.get("chave_final")).isEqualTo("x9Qa");
             assertThat(linha.get("modo_novo")).isEqualTo("API_KEY");
         });
 
         // Mesmo pedido de novo (sem reenviar a chave): nada muda, nenhum evento
-        servico.gravar(novo, new Pedido(ModoIa.DESLIGADO, new PedidoRespostas(ModoIa.API_KEY, "anthropic", null, null,
-                false), new PedidoEmbeddings(ModoIa.DESLIGADO, null, null)), "admin", "Bearer t");
+        servico.gravar(novo, new Pedido(AiMode.DESLIGADO, new PedidoRespostas(AiMode.API_KEY, "anthropic", null, null,
+                false), new PedidoEmbeddings(AiMode.DESLIGADO, null, null)), "admin", "Bearer t");
         assertThat(jdbc.queryForObject("select count(*) from evento_configuracao_ia where condominio_id = ?",
                 Long.class, novo)).isEqualTo(3);
     }
@@ -101,8 +101,8 @@ class ConfiguracaoIaPostgresTest {
     @Test
     void trilhaRecusaUpdateDeleteETruncate() {
         UUID novo = novoCondominio();
-        servico.gravar(novo, new Pedido(ModoIa.DESLIGADO, new PedidoRespostas(null, null, null, null, false),
-                new PedidoEmbeddings(ModoIa.LOCAL, "ollama-local", null)), "admin", "Bearer t");
+        servico.gravar(novo, new Pedido(AiMode.DESLIGADO, new PedidoRespostas(null, null, null, null, false),
+                new PedidoEmbeddings(AiMode.LOCAL, "ollama-local", null)), "admin", "Bearer t");
 
         assertThatThrownBy(() -> jdbc.update("update evento_configuracao_ia set usuario = 'x' where condominio_id = ?",
                 novo)).isInstanceOf(DataAccessException.class).hasMessageContaining("só de inserção");

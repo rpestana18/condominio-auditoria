@@ -15,19 +15,19 @@ import br.com.condominioauditoria.api.assistente.DtosAssistente.FiltrosDocumento
 import br.com.condominioauditoria.api.assistente.DtosAssistente.PedidoPergunta;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.SituacaoResposta;
 import br.com.condominioauditoria.api.assistente.DtosAssistente.TrocaConversa;
+import br.com.condominioauditoria.api.exception.FeatureNotEnabledException;
+import br.com.condominioauditoria.api.exception.InvalidRequestException;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Efetiva;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Embeddings;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaServico.Respostas;
+import br.com.condominioauditoria.api.model.enums.AiMode;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.ModoIa;
-import br.com.condominioauditoria.api.modulo.ModuloNaoContratadoException;
-import br.com.condominioauditoria.api.modulo.Modulos;
-import br.com.condominioauditoria.api.modulo.PedidoInvalidoException;
-import br.com.condominioauditoria.api.modulo.RegistroUso;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.security.CondominiumAccess;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
+import br.com.condominioauditoria.api.service.usage.UsageService;
 import br.com.condominioauditoria.contratos.assistente.v1.Andamento;
 import br.com.condominioauditoria.contratos.assistente.v1.DadoGravado;
 import br.com.condominioauditoria.contratos.assistente.v1.EtapaPergunta;
@@ -68,9 +68,9 @@ class PerguntaAssistenteTest {
     private static final byte[] CHAVE_CIFRADA = {1, 2, 3, 4};
 
     private final SourceFileRepository arquivos = mock(SourceFileRepository.class);
-    private final Modulos modulos = mock(Modulos.class);
+    private final FeatureService modulos = mock(FeatureService.class);
     private final ConfiguracaoIaServico configuracao = mock(ConfiguracaoIaServico.class);
-    private final RegistroUso registroUso = mock(RegistroUso.class);
+    private final UsageService registroUso = mock(UsageService.class);
     private final SourceFile ataA = new SourceFile(A, FileCategory.ATA, "ata.pdf", "a/ata.pdf", "a".repeat(64), 1,
             "application/pdf", "gestor");
     private final SourceFile contratoA = new SourceFile(A, FileCategory.CONTRATO, "contrato.pdf", "a/contrato.pdf",
@@ -88,7 +88,7 @@ class PerguntaAssistenteTest {
             return List.of(ataA, contratoA, ataB).stream()
                     .filter(a -> a.getCondominiumId().equals(A) && ids.contains(a.getId())).toList();
         });
-        configurar(ModoIa.API_KEY, CHAVE_CIFRADA, ModoIa.LOCAL);
+        configurar(AiMode.API_KEY, CHAVE_CIFRADA, AiMode.LOCAL);
         pergunta = new PerguntaAssistente(new CondominiumAccess(), modulos, configuracao, rag.cliente,
                 new BarreiraArquivos(arquivos), registroUso, 6);
         logar("USUARIO");
@@ -102,13 +102,13 @@ class PerguntaAssistenteTest {
 
     @Test
     void mcpExternoEh409ComAMensagemDoRf0416SemChamarORag() {
-        configurar(ModoIa.MCP_EXTERNO, null, ModoIa.LOCAL);
+        configurar(AiMode.MCP_EXTERNO, null, AiMode.LOCAL);
 
         assertThatThrownBy(() -> pergunta.perguntar(A, pedido("qual o índice de reajuste?")))
                 .isInstanceOfSatisfying(RecusaAssistenteException.class, e -> {
                     assertThat(e.status()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(e.getMessage()).isEqualTo("O assistente deste condomínio é o seu Claude, conectado ao MCP.");
-                    assertThat(e.modoIa()).isEqualTo(ModoIa.MCP_EXTERNO);
+                    assertThat(e.modoIa()).isEqualTo(AiMode.MCP_EXTERNO);
                 });
         assertThat(rag.perguntas).isEmpty();
         verifyNoInteractions(registroUso);
@@ -116,30 +116,30 @@ class PerguntaAssistenteTest {
 
     @Test
     void desligadoESemChaveSao409SemChamarORag() {
-        configurar(ModoIa.DESLIGADO, null, ModoIa.DESLIGADO);
+        configurar(AiMode.DESLIGADO, null, AiMode.DESLIGADO);
         assertThatThrownBy(() -> pergunta.perguntar(A, pedido("x")))
                 .isInstanceOfSatisfying(RecusaAssistenteException.class, e -> {
                     assertThat(e.getMessage()).isEqualTo("A IA está desligada neste condomínio.");
-                    assertThat(e.modoIa()).isEqualTo(ModoIa.DESLIGADO);
+                    assertThat(e.modoIa()).isEqualTo(AiMode.DESLIGADO);
                 });
 
-        configurar(ModoIa.API_KEY, null, ModoIa.LOCAL);
+        configurar(AiMode.API_KEY, null, AiMode.LOCAL);
         assertThatThrownBy(() -> pergunta.perguntar(A, pedido("x")))
                 .isInstanceOfSatisfying(RecusaAssistenteException.class, e -> {
                     assertThat(e.status()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(e.getMessage()).contains("não está cadastrada");
-                    assertThat(e.modoIa()).isEqualTo(ModoIa.API_KEY);
+                    assertThat(e.modoIa()).isEqualTo(AiMode.API_KEY);
                 });
         assertThat(rag.perguntas).isEmpty();
     }
 
     @Test
     void moduloDesligadoRecusaAntesDeTudo() {
-        doThrow(new ModuloNaoContratadoException(Modulos.ASSISTENTE, "Assistente")).when(modulos)
-                .exigir(A, Modulos.ASSISTENTE);
+        doThrow(new FeatureNotEnabledException(FeatureService.ASSISTANT, "Assistente")).when(modulos)
+                .require(A, FeatureService.ASSISTANT);
 
         assertThatThrownBy(() -> pergunta.perguntar(A, pedido("x")))
-                .isInstanceOf(ModuloNaoContratadoException.class)
+                .isInstanceOf(FeatureNotEnabledException.class)
                 .hasMessage("Módulo Assistente não contratado para este condomínio.");
         assertThat(rag.perguntas).isEmpty();
         verifyNoInteractions(configuracao, registroUso);
@@ -147,11 +147,11 @@ class PerguntaAssistenteTest {
 
     @Test
     void perguntaVaziaOuLongaDemaisEh400() {
-        assertThatThrownBy(() -> pergunta.perguntar(A, pedido("   "))).isInstanceOf(PedidoInvalidoException.class);
+        assertThatThrownBy(() -> pergunta.perguntar(A, pedido("   "))).isInstanceOf(InvalidRequestException.class);
         assertThatThrownBy(() -> pergunta.perguntar(A, pedido("x".repeat(2001))))
-                .isInstanceOf(PedidoInvalidoException.class);
+                .isInstanceOf(InvalidRequestException.class);
         assertThatThrownBy(() -> pergunta.perguntar(A, new PedidoPergunta("x", null, new FiltrosDocumentos(null,
-                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 1, 1), null)))).isInstanceOf(PedidoInvalidoException.class);
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 1, 1), null)))).isInstanceOf(InvalidRequestException.class);
         assertThat(rag.perguntas).isEmpty();
     }
 
@@ -185,7 +185,7 @@ class PerguntaAssistenteTest {
 
     @Test
     void embeddingsDesligadosPedemBuscaPorPalavra() {
-        configurar(ModoIa.API_KEY, CHAVE_CIFRADA, ModoIa.DESLIGADO);
+        configurar(AiMode.API_KEY, CHAVE_CIFRADA, AiMode.DESLIGADO);
         responder(RespostaPergunta.newBuilder().setSituacao(
                 br.com.condominioauditoria.contratos.assistente.v1.SituacaoResposta.SITUACAO_RESPOSTA_NAO_ENCONTRADA)
                 .build());
@@ -237,7 +237,7 @@ class PerguntaAssistenteTest {
         assertThat(resposta.sugestao()).isNull();
         assertThat(resposta.aviso()).isEqualTo("Busca só por palavra.");
         assertThat(resposta.modelo()).isEqualTo("claude-sonnet-5-5");
-        verify(registroUso).pergunta(A, "pessoa.usuario", "anthropic", "claude-sonnet-5-5", 1200, 340, "2026-10-05.1");
+        verify(registroUso).recordQuestion(A, "pessoa.usuario", "anthropic", "claude-sonnet-5-5", 1200, 340, "2026-10-05.1");
     }
 
     @Test
@@ -257,7 +257,7 @@ class PerguntaAssistenteTest {
         assertThat(resposta.citacoes()).isEmpty();
         assertThat(resposta.nosDadosGravados()).isEmpty();
         assertThat(resposta.sugestao()).isNull();
-        verify(registroUso).pergunta(A, "pessoa.usuario", "anthropic", "claude-sonnet-5-5", 900, 100, "2026-10-05.1");
+        verify(registroUso).recordQuestion(A, "pessoa.usuario", "anthropic", "claude-sonnet-5-5", 900, 100, "2026-10-05.1");
     }
 
     @Test
@@ -270,7 +270,7 @@ class PerguntaAssistenteTest {
 
         assertThat(resposta.situacao()).isEqualTo(SituacaoResposta.NAO_ENCONTRADA);
         assertThat(resposta.sugestao()).isEqualTo("não há contrato de jardinagem enviado");
-        verify(registroUso).pergunta(any(), any(), any(), any(), eq(500L), eq(50L), any());
+        verify(registroUso).recordQuestion(any(), any(), any(), any(), eq(500L), eq(50L), any());
     }
 
     @Test
@@ -310,12 +310,12 @@ class PerguntaAssistenteTest {
 
     // ---- apoio ----
 
-    private void configurar(ModoIa modoRespostas, byte[] chave, ModoIa modoEmbeddings) {
+    private void configurar(AiMode modoRespostas, byte[] chave, AiMode modoEmbeddings) {
         var respostas = new Respostas(modoRespostas, modoRespostas, chave == null ? null : "anthropic",
                 chave == null ? null : "claude-sonnet-5-5", chave, chave == null ? null : "x9Qa");
-        var embeddings = modoEmbeddings == ModoIa.LOCAL ? new Embeddings(ModoIa.LOCAL, "ollama-local", "bge-m3")
+        var embeddings = modoEmbeddings == AiMode.LOCAL ? new Embeddings(AiMode.LOCAL, "ollama-local", "bge-m3")
                 : new Embeddings(modoEmbeddings, null, null);
-        when(configuracao.ler(A)).thenReturn(new Efetiva(ModoIa.MCP_EXTERNO, respostas, embeddings, null, null));
+        when(configuracao.ler(A)).thenReturn(new Efetiva(AiMode.MCP_EXTERNO, respostas, embeddings, null, null));
     }
 
     private void responder(RespostaPergunta resposta) {

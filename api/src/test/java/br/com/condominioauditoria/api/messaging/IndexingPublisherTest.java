@@ -17,8 +17,8 @@ import br.com.condominioauditoria.api.event.FilesIndexRequested;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.IndexingStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
-import br.com.condominioauditoria.api.modulo.Modulos;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.feature.FeatureService;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
@@ -39,7 +39,7 @@ class IndexingPublisherTest {
 
     private final RabbitTemplate rabbit = mock(RabbitTemplate.class);
     private final SourceFileRepository files = mock(SourceFileRepository.class);
-    private final Modulos features = mock(Modulos.class);
+    private final FeatureService features = mock(FeatureService.class);
     private final IndexingPublisher publisher = new IndexingPublisher(rabbit, new MessageContract(), files,
             mock(PlatformTransactionManager.class),
             new ApiProperties(null, new ApiProperties.ProcessingProperties(15, 3), null, null), features,
@@ -47,7 +47,7 @@ class IndexingPublisherTest {
 
     @BeforeEach
     void featureEnabled() {
-        when(features.ligado(any(UUID.class), eq(Modulos.ASSISTENTE))).thenReturn(true);
+        when(features.isEnabled(any(UUID.class), eq(FeatureService.ASSISTANT))).thenReturn(true);
     }
 
     @Test
@@ -96,7 +96,7 @@ class IndexingPublisherTest {
     @Test
     void disabledFeaturePublishesNeitherSingleNorBatch() {
         SourceFile file = file();
-        when(features.ligado(file.getCondominiumId(), Modulos.ASSISTENTE)).thenReturn(false);
+        when(features.isEnabled(file.getCondominiumId(), FeatureService.ASSISTANT)).thenReturn(false);
         when(files.findById(file.getId())).thenReturn(Optional.of(file));
         when(files.findAllById(List.of(file.getId()))).thenReturn(List.of(file));
 
@@ -109,7 +109,7 @@ class IndexingPublisherTest {
     @Test
     void sweepSkipsCondominiumWithDisabledFeatureWithoutSpendingAttempts() {
         SourceFile stalled = file();
-        when(features.ligado(stalled.getCondominiumId(), Modulos.ASSISTENTE)).thenReturn(false);
+        when(features.isEnabled(stalled.getCondominiumId(), FeatureService.ASSISTANT)).thenReturn(false);
         when(files.findByIndexingStatusInAndIndexingQueuedAtBeforeOrderByUploadedAt(anyCollection(), any()))
                 .thenReturn(List.of(stalled));
 

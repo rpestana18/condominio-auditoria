@@ -3,9 +3,6 @@ package br.com.condominioauditoria.api.exception;
 import br.com.condominioauditoria.api.assistente.RecusaAssistenteException;
 import br.com.condominioauditoria.api.ia.ConfiguracaoIaRecusadaException;
 import br.com.condominioauditoria.api.ia.IaIndisponivelException;
-import br.com.condominioauditoria.api.modulo.ModuloDesconhecidoException;
-import br.com.condominioauditoria.api.modulo.ModuloNaoContratadoException;
-import br.com.condominioauditoria.api.modulo.PedidoInvalidoException;
 import br.com.condominioauditoria.api.orcamento.ConfirmacaoRecusadaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -48,21 +45,21 @@ class GlobalExceptionHandler {
      * Entry point of a feature disabled for the condominium (RF-10.3): "Módulo Assistente não contratado para este
      * condomínio."
      */
-    @ExceptionHandler(ModuloNaoContratadoException.class)
-    ProblemDetail featureNotContracted(ModuloNaoContratadoException e) {
+    @ExceptionHandler(FeatureNotEnabledException.class)
+    ProblemDetail featureNotContracted(FeatureNotEnabledException e) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
         p.setTitle("Módulo não contratado");
-        p.setProperty("modulo", e.modulo());
+        p.setProperty("modulo", e.feature());
         return p;
     }
 
-    @ExceptionHandler(ModuloDesconhecidoException.class)
-    ProblemDetail unknownFeature(ModuloDesconhecidoException e) {
+    @ExceptionHandler(UnknownFeatureException.class)
+    ProblemDetail unknownFeature(UnknownFeatureException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
-    @ExceptionHandler(PedidoInvalidoException.class)
-    ProblemDetail invalidRequest(PedidoInvalidoException e) {
+    @ExceptionHandler(InvalidRequestException.class)
+    ProblemDetail invalidRequest(InvalidRequestException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 

@@ -1,8 +1,8 @@
 package br.com.condominioauditoria.api.assistente;
 
 import br.com.condominioauditoria.api.assistente.DtosAssistente.FiltrosDocumentos;
+import br.com.condominioauditoria.api.exception.InvalidRequestException;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
-import br.com.condominioauditoria.api.modulo.PedidoInvalidoException;
 import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
 import java.util.List;
 import java.util.Objects;
@@ -20,7 +20,7 @@ final class PedidosRag {
             return null;
         }
         if (f.dataInicio() != null && f.dataFim() != null && f.dataInicio().isAfter(f.dataFim())) {
-            throw new PedidoInvalidoException("Data inicial (" + f.dataInicio() + ") depois da final (" + f.dataFim()
+            throw new InvalidRequestException("Data inicial (" + f.dataInicio() + ") depois da final (" + f.dataFim()
                     + ")");
         }
         var construtor = FiltrosBusca.newBuilder();

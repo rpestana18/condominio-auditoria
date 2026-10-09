@@ -81,6 +81,20 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | indexação | `Indexing` | |
 | recebimento de cota | `condoFeeReceipt` | |
 | transferência entre fundos | `interFundTransfer` | |
+| competência | `referenceMonth` | mês de referência do achado ou do lançamento |
+| alvo (do achado) | `target` | |
+| achado apurado (ainda não gravado) | `AssessedFinding` | |
+| gatilho do recálculo | `RecalculationTrigger` | |
+| vigência (de um parâmetro) | `validFrom`, `validTo` | |
+| teto, excesso | `cap`, `overrun` | |
+| termos de conduta | `ConductTerms` | |
+| catálogo de módulos | `FeatureCatalog` | |
+| trilha de ativação | `FeatureEvent` | |
+| período ativo | `ActivePeriod` | |
+| uso, registro de uso | `FeatureUsage`, `UsageService` | |
+| função de uso | `UsageFunction` | |
+| modo de IA | `AiMode` | |
+| custo estimado | `estimatedCost` | |
 
 ---
 

@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -21,11 +22,11 @@ public final class RealocacaoDtos {
             UUID linhaId, String linhaCodigo, String linhaDescricao, String realocadaPor, Instant realocadaEm,
             String desfeitaPor, Instant desfeitaEm, boolean ativa) {
 
-        static RealocacaoDto de(RealocacaoLancamento r, LinhaPo linha) {
+        static RealocacaoDto de(RealocacaoLancamento r, BudgetLine linha) {
             return new RealocacaoDto(r.getId(), r.getPrevisaoId(), r.getData(), r.getContaCodigo(), r.getContaNome(),
                     r.getDocumento(), r.getHistorico(), r.getValor(), r.getArquivoId(), r.getSha256(), r.getPagina(),
-                    r.getOrdem(), r.getLinhaPoId(), linha == null ? null : linha.getCodigoEfetivo(),
-                    linha == null ? null : linha.getDescricao(), r.getRealocadaPor(), r.getRealocadaEm(),
+                    r.getOrdem(), r.getLinhaPoId(), linha == null ? null : linha.getEffectiveCode(),
+                    linha == null ? null : linha.getDescription(), r.getRealocadaPor(), r.getRealocadaEm(),
                     r.getDesfeitaPor(), r.getDesfeitaEm(), r.ativa());
         }
     }

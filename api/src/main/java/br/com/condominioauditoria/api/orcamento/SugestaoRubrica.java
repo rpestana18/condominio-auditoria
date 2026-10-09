@@ -1,5 +1,7 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -29,7 +31,7 @@ final class SugestaoRubrica {
     }
 
     /** Linha de despesa ou de fundo com o código do grupo onde está (nulo para linha fora de grupo). */
-    record LinhaComGrupo(LinhaPo linha, String grupo) {
+    record LinhaComGrupo(BudgetLine linha, String grupo) {
 
         /** O que é comparado: a conta da PO, senão o texto da coluna de conta, senão a descrição. */
         String rotulo() {
@@ -37,7 +39,7 @@ final class SugestaoRubrica {
         }
 
         String chave() {
-            return EstruturaPo.normalizar(rotulo()).replaceAll("\\s+", " ");
+            return BudgetStructure.normalize(rotulo()).replaceAll("\\s+", " ");
         }
 
         String chaveComGrupo() {
@@ -60,23 +62,23 @@ final class SugestaoRubrica {
     }
 
     /** Linhas que recebem rubrica: todas as do tipo LINHA, de despesa e de fundo, na ordem da PO. */
-    static List<LinhaComGrupo> linhas(EstruturaPo estrutura) {
+    static List<LinhaComGrupo> linhas(BudgetStructure estrutura) {
         List<LinhaComGrupo> todas = new ArrayList<>();
-        estrutura.semGrupo().forEach(l -> todas.add(new LinhaComGrupo(l, null)));
-        for (EstruturaPo.Grupo g : estrutura.grupos()) {
-            g.linhas().forEach(l -> todas.add(new LinhaComGrupo(l, g.linha().getCodigoEfetivo())));
+        estrutura.ungrouped().forEach(l -> todas.add(new LinhaComGrupo(l, null)));
+        for (BudgetStructure.Group g : estrutura.groups()) {
+            g.lines().forEach(l -> todas.add(new LinhaComGrupo(l, g.line().getEffectiveCode())));
         }
         return todas;
     }
 
-    static String rotuloDe(LinhaPo l) {
-        if (temTexto(l.getConta())) {
-            return l.getConta().trim();
+    static String rotuloDe(BudgetLine l) {
+        if (temTexto(l.getAccount())) {
+            return l.getAccount().trim();
         }
-        if (temTexto(l.getContaTexto())) {
-            return l.getContaTexto().trim();
+        if (temTexto(l.getAccountText())) {
+            return l.getAccountText().trim();
         }
-        return l.getDescricao() == null ? "" : l.getDescricao().trim();
+        return l.getDescription() == null ? "" : l.getDescription().trim();
     }
 
     /**
@@ -93,7 +95,7 @@ final class SugestaoRubrica {
 
         Map<String, UUID> daAnterior = new HashMap<>();
         for (Confirmada c : versaoAnterior) {
-            daAnterior.put(c.linha().linha().getCodigoEfetivo() + "|" + c.linha().chave(), c.rubricaId());
+            daAnterior.put(c.linha().linha().getEffectiveCode() + "|" + c.linha().chave(), c.rubricaId());
         }
         Map<String, Set<UUID>> porContaEGrupo = new HashMap<>();
         for (Confirmada c : outrasPos) {
@@ -118,10 +120,10 @@ final class SugestaoRubrica {
             return new SemSugestao(oQue + " \"" + l.rotulo() + "\" aparece em mais de uma linha do grupo " + grupo
                     + " nesta PO: escolha a rubrica de cada linha");
         }
-        UUID anterior = daAnterior.get(l.linha().getCodigoEfetivo() + "|" + l.chave());
+        UUID anterior = daAnterior.get(l.linha().getEffectiveCode() + "|" + l.chave());
         if (anterior != null) {
             return new Sugerida(anterior, OrigemRubrica.VERSAO_ANTERIOR, "linha igual na versão anterior: "
-                    + l.linha().getCodigoEfetivo() + " " + l.rotulo());
+                    + l.linha().getEffectiveCode() + " " + l.rotulo());
         }
         Set<UUID> rubricas = porContaEGrupo.getOrDefault(l.chaveComGrupo(), Set.of());
         if (rubricas.size() == 1) {
@@ -137,22 +139,22 @@ final class SugestaoRubrica {
     }
 
     /** "a conta da PO", "o texto da conta" ou "a descrição", conforme o campo comparado. */
-    private static String descricaoDoCampo(LinhaPo l) {
-        if (temTexto(l.getConta())) {
+    private static String descricaoDoCampo(BudgetLine l) {
+        if (temTexto(l.getAccount())) {
             return "a conta da PO";
         }
-        if (temTexto(l.getContaTexto())) {
+        if (temTexto(l.getAccountText())) {
             return "o texto da conta";
         }
         return "a descrição";
     }
 
     /** "mesma conta da PO", "mesmo texto da conta" ou "mesma descrição" (início do motivo da sugestão). */
-    private static String mesmoCampo(LinhaPo l) {
-        if (temTexto(l.getConta())) {
+    private static String mesmoCampo(BudgetLine l) {
+        if (temTexto(l.getAccount())) {
             return "mesma conta da PO";
         }
-        if (temTexto(l.getContaTexto())) {
+        if (temTexto(l.getAccountText())) {
             return "mesmo texto da conta";
         }
         return "mesma descrição";

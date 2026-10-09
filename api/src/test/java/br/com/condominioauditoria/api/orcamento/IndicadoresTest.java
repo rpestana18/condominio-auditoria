@@ -3,6 +3,7 @@ package br.com.condominioauditoria.api.orcamento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -17,7 +18,7 @@ class IndicadoresTest {
 
     @Test
     void semFluxoNenhumPontoEmZero() {
-        PrevisaoOrcamentaria po = cenario.poConfirmada();
+        Budget po = cenario.poConfirmada();
 
         Indicadores.Resultado r = cenario.indicadores.indicadores(cenario.condominioId, null, null);
 
@@ -37,8 +38,8 @@ class IndicadoresTest {
 
     @Test
     void mesComFluxoEComparacaoComAColunaImpressa() {
-        PrevisaoOrcamentaria po = cenario.lerPo(PoDoPiloto.padrao().comColunaAnterior());
-        cenario.confirmacao.confirmar(cenario.condominioId, po.getId(), cenario.pedidoDoPiloto(po), "admin");
+        Budget po = cenario.lerPo(PoDoPiloto.padrao().comColunaAnterior());
+        cenario.confirmacao.confirm(cenario.condominioId, po.getId(), cenario.pedidoDoPiloto(po), "admin");
         cenario.fluxo("fluxo-2026-09.pdf", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30), 0);
 
         Indicadores.Resultado r = cenario.indicadores.indicadores(cenario.condominioId, po.getId(), null);

@@ -1,15 +1,22 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.event.BudgetChanged;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntryFingerprint;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.orcamento.RealocacaoDtos.PedidoRealocacao;
 import br.com.condominioauditoria.api.orcamento.RealocacaoDtos.RealocacaoDto;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.budget.BudgetQueryService;
+import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -41,16 +48,16 @@ public class ServicoRealocacao {
     private final CondominiumRepository condominios;
     private final LedgerEntryRepository lancamentos;
     private final SourceFileRepository arquivos;
-    private final ConsultaPrevisao consultaPrevisao;
-    private final PrevisaoOrcamentariaRepository previsoes;
-    private final LinhaPoRepository linhas;
+    private final BudgetQueryService consultaPrevisao;
+    private final BudgetRepository previsoes;
+    private final BudgetLineRepository linhas;
     private final DeparaContaRepository deparas;
     private final RealocacaoLancamentoRepository realocacoes;
     private final EventoRealocacaoRepository eventos;
     private final ApplicationEventPublisher publicador;
 
     ServicoRealocacao(CondominiumRepository condominios, LedgerEntryRepository lancamentos, SourceFileRepository arquivos,
-            ConsultaPrevisao consultaPrevisao, PrevisaoOrcamentariaRepository previsoes, LinhaPoRepository linhas,
+            BudgetQueryService consultaPrevisao, BudgetRepository previsoes, BudgetLineRepository linhas,
             DeparaContaRepository deparas, RealocacaoLancamentoRepository realocacoes,
             EventoRealocacaoRepository eventos, ApplicationEventPublisher publicador) {
         this.condominios = condominios;
@@ -87,7 +94,7 @@ public class ServicoRealocacao {
                     "Só débitos do fundo Condomínio (fundo ordinário) são realocados");
         }
         YearMonth mes = YearMonth.from(l.getDate());
-        PrevisaoOrcamentaria po = consultaPrevisao.vigenteNoMes(condominioId, mes)
+        Budget po = consultaPrevisao.activeInMonth(condominioId, mes)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Sem PO aprovada para "
                         + CalculoPrevistoRealizado.mmaaaa(mes)));
         DeparaConta depara = l.getAccountCode() == null ? null
@@ -97,8 +104,8 @@ public class ServicoRealocacao {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "Só lançamentos \"a realocar\" são"
                     + " realocados: a conta " + l.getAccountCode() + " não tem de-para confirmado para REALOCAR");
         }
-        List<LinhaPo> lidas = linhas.findByPrevisaoIdOrderByOrdem(po.getId());
-        LinhaPo destino = ServicoDepara.destinosDeDebito(EstruturaPo.de(lidas)).stream()
+        List<BudgetLine> lidas = linhas.findByBudgetIdOrderByPosition(po.getId());
+        BudgetLine destino = ServicoDepara.destinosDeDebito(BudgetStructure.of(lidas)).stream()
                 .filter(x -> x.getId().equals(pedido.linhaId())).findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT,
                         "A linha informada não é uma linha de despesa (1.1 a 1.8) da PO que vale em "
@@ -112,12 +119,12 @@ public class ServicoRealocacao {
         RealocacaoLancamento r = realocacoes.save(new RealocacaoLancamento(po, l, arquivo.getSha256(), destino, usuario,
                 agora));
         String descricao = "realocação do lançamento de " + DATA.format(l.getDate()) + " (conta " + l.getAccountCode()
-                + ", R$ " + DinheiroBr.formatar(l.getDebit()) + ") para " + destino.getCodigoEfetivo() + " "
-                + destino.getDescricao();
+                + ", R$ " + DinheiroBr.formatar(l.getDebit()) + ") para " + destino.getEffectiveCode() + " "
+                + destino.getDescription();
         eventos.save(new EventoRealocacao(r, EventoRealocacao.REALOCADA, usuario, agora, descricao + "; arquivo "
                 + arquivo.getOriginalName() + ", página " + l.getPage() + ", ordem " + l.getSequence()));
-        publicador.publishEvent(MudancaOrcamento.de(condominioId, descricao, usuario, agora));
-        log.info("Realocação {}: lançamento {} → linha {} por {}", r.getId(), l.getId(), destino.getCodigoEfetivo(),
+        publicador.publishEvent(BudgetChanged.of(condominioId, descricao, usuario, agora));
+        log.info("Realocação {}: lançamento {} → linha {} por {}", r.getId(), l.getId(), destino.getEffectiveCode(),
                 usuario);
         return RealocacaoDto.de(r, destino);
     }
@@ -133,13 +140,13 @@ public class ServicoRealocacao {
         Instant agora = Instant.now();
         r.desfazer(usuario, agora);
         realocacoes.save(r);
-        LinhaPo linha = linhas.findByPrevisaoIdOrderByOrdem(r.getPrevisaoId()).stream()
+        BudgetLine linha = linhas.findByBudgetIdOrderByPosition(r.getPrevisaoId()).stream()
                 .filter(x -> x.getId().equals(r.getLinhaPoId())).findFirst().orElse(null);
         String descricao = "realocação do lançamento de " + DATA.format(r.getData()) + " (conta " + r.getContaCodigo()
                 + ", R$ " + DinheiroBr.formatar(r.getValor()) + ") desfeita";
         eventos.save(new EventoRealocacao(r, EventoRealocacao.DESFEITA, usuario, agora, descricao
-                + (linha == null ? "" : "; estava em " + linha.getCodigoEfetivo() + " " + linha.getDescricao())));
-        publicador.publishEvent(MudancaOrcamento.de(condominioId, descricao, usuario, agora));
+                + (linha == null ? "" : "; estava em " + linha.getEffectiveCode() + " " + linha.getDescription())));
+        publicador.publishEvent(BudgetChanged.of(condominioId, descricao, usuario, agora));
         log.info("Realocação {} desfeita por {}", r.getId(), usuario);
         return RealocacaoDto.de(r, linha);
     }
@@ -147,10 +154,10 @@ public class ServicoRealocacao {
     /** Realocações da versão da PO, ativas e desfeitas (a trilha mostra as duas). */
     @Transactional(readOnly = true)
     public List<RealocacaoDto> listar(UUID condominioId, UUID poId) {
-        PrevisaoOrcamentaria po = previsoes.findByIdAndCondominioId(poId, condominioId)
+        Budget po = previsoes.findByIdAndCondominiumId(poId, condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada"));
-        Map<UUID, LinhaPo> porId = linhas.findByPrevisaoIdOrderByOrdem(po.getId()).stream()
-                .collect(Collectors.toMap(LinhaPo::getId, Function.identity()));
+        Map<UUID, BudgetLine> porId = linhas.findByBudgetIdOrderByPosition(po.getId()).stream()
+                .collect(Collectors.toMap(BudgetLine::getId, Function.identity()));
         return realocacoes.findByPrevisaoIdOrderByDataAscRealocadaEmAsc(po.getId()).stream()
                 .map(r -> RealocacaoDto.de(r, porId.get(r.getLinhaPoId()))).toList();
     }

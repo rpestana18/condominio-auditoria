@@ -3,6 +3,8 @@ package br.com.condominioauditoria.api.orcamento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.condominioauditoria.api.dto.request.budget.BudgetConfirmationRequest;
+import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.AcaoLote;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.FiltroDepara;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.PedidoDestino;
@@ -17,7 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 class ServicoDeparaTest {
 
     private final CenarioPo cenario = new CenarioPo();
-    private PrevisaoOrcamentaria po;
+    private Budget po;
 
     @BeforeEach
     void preparar() {
@@ -142,7 +144,7 @@ class ServicoDeparaTest {
 
     @Test
     void poNaoConfirmadaNaoTemDepara() {
-        PrevisaoOrcamentaria lida = cenario.lerPo(PoDoPiloto.padrao());
+        Budget lida = cenario.lerPo(PoDoPiloto.padrao());
 
         assertThatThrownBy(() -> cenario.depara.sugerir(cenario.condominioId, lida.getId(), "admin"))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("Confirme a PO");
@@ -154,10 +156,10 @@ class ServicoDeparaTest {
                 "admin");
         cenario.depara.lote(cenario.condominioId, po.getId(), new PedidoLote(AcaoLote.CONFIRMAR, List.of("1621", "1324")),
                 "admin");
-        PrevisaoOrcamentaria v2 = cenario.lerPo(PoDoPiloto.padrao());
+        Budget v2 = cenario.lerPo(PoDoPiloto.padrao());
         var pedido = cenario.pedidoDoPiloto(v2);
-        cenario.confirmacao.confirmar(cenario.condominioId, v2.getId(), new PedidoConfirmacao("2026-10", "2027-04",
-                pedido.ataArquivoId(), false, pedido.dataAprovacao(), pedido.codigosEfetivos(), pedido.fundos(), true,
+        cenario.confirmacao.confirm(cenario.condominioId, v2.getId(), new BudgetConfirmationRequest("2026-10", "2027-04",
+                pedido.minutesFileId(), false, pedido.approvalDate(), pedido.effectiveCodes(), pedido.funds(), true,
                 false, null), "admin");
 
         var r = cenario.depara.sugerir(cenario.condominioId, v2.getId(), "admin");

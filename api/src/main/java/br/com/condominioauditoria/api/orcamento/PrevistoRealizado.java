@@ -1,5 +1,7 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.enums.BudgetLineMark;
+import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -39,7 +41,7 @@ public record PrevistoRealizado(String versaoCalculo, String periodo, Situacao s
         REPROCESSAR_FLUXO
     }
 
-    public record PoResumo(UUID id, Integer versao, EstadoPrevisao estado, UUID arquivoId, String arquivoNome,
+    public record PoResumo(UUID id, Integer versao, BudgetStatus estado, UUID arquivoId, String arquivoNome,
             String sha256, String exercicioInicio, String exercicioFim) {
     }
 
@@ -74,7 +76,7 @@ public record PrevistoRealizado(String versaoCalculo, String periodo, Situacao s
             BigDecimal diferenca, BigDecimal execucao, BigDecimal previstoExercicio) {
     }
 
-    public record LinhaResultado(UUID linhaId, String codigo, String descricao, String conta, MarcaPo marca,
+    public record LinhaResultado(UUID linhaId, String codigo, String descricao, String conta, BudgetLineMark marca,
             String observacoes, int pagina, BigDecimal previsto, BigDecimal realizado, BigDecimal diferenca,
             BigDecimal execucao, List<String> contasFluxo, int lancamentos) {
     }

@@ -1,10 +1,13 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Fluxo;
 import br.com.condominioauditoria.api.orcamento.Indicadores.MesCalculado;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Situacao;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
+import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -24,12 +27,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class ServicoIndicadores {
 
     private final CondominiumRepository condominios;
-    private final PrevisaoOrcamentariaRepository previsoes;
+    private final BudgetRepository previsoes;
     private final ConsultaPrevistoRealizado previstoRealizado;
     private final ServicoExercicios exercicios;
     private final ServicoComparacao comparacao;
 
-    ServicoIndicadores(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
+    ServicoIndicadores(CondominiumRepository condominios, BudgetRepository previsoes,
             ConsultaPrevistoRealizado previstoRealizado, ServicoExercicios exercicios, ServicoComparacao comparacao) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -50,14 +53,14 @@ public class ServicoIndicadores {
         UUID escolhida = poId != null ? poId : ids.stream().filter(id -> id.startsWith("po:")).findFirst()
                 .map(id -> UUID.fromString(id.substring(3)))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Nenhuma PO confirmada"));
-        PrevisaoOrcamentaria po = previsoes.findByIdAndCondominioId(escolhida, condominioId)
-                .filter(p -> p.getEstado() == EstadoPrevisao.CONFIRMADA && p.getExercicioInicio() != null)
+        Budget po = previsoes.findByIdAndCondominiumId(escolhida, condominioId)
+                .filter(p -> p.getStatus() == BudgetStatus.CONFIRMADA && p.getFiscalYearStart() != null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO confirmada não encontrada"));
 
         PrevistoRealizado acumulado = previstoRealizado.calcular(condominioId, "acumulado", po.getId()).resultado();
         List<Fluxo> fluxos = previstoRealizado.fluxos(condominioId);
         List<MesCalculado> meses = new ArrayList<>();
-        for (YearMonth m = po.getExercicioInicio(); !m.isAfter(po.getExercicioFim()); m = m.plusMonths(1)) {
+        for (YearMonth m = po.getFiscalYearStart(); !m.isAfter(po.getFiscalYearEnd()); m = m.plusMonths(1)) {
             SituacaoMes situacao = ServicoExercicios.situacao(m, fluxos);
             PrevistoRealizado doMes = null;
             if (situacao == SituacaoMes.COM_FLUXO) {
@@ -76,8 +79,8 @@ public class ServicoIndicadores {
         } else {
             semComparacao = "Comparação entre exercícios: sem exercício anterior a este";
         }
-        return Indicadores.montar(new Indicadores.Entrada(po, ServicoExercicios.rotulo(po.getExercicioInicio(),
-                po.getExercicioFim()), acumulado, List.copyOf(meses), fundoId, condominio.getOperatingFundId(),
+        return Indicadores.montar(new Indicadores.Entrada(po, ServicoExercicios.rotulo(po.getFiscalYearStart(),
+                po.getFiscalYearEnd()), acumulado, List.copyOf(meses), fundoId, condominio.getOperatingFundId(),
                 comparado, semComparacao));
     }
 }

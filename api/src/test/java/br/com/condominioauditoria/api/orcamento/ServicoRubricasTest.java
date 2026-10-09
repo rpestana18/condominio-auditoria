@@ -3,6 +3,10 @@ package br.com.condominioauditoria.api.orcamento;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.condominioauditoria.api.dto.request.budget.BudgetConfirmationRequest;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.model.enums.BudgetLineType;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.AcaoLoteRubrica;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.FiltroRubrica;
 import br.com.condominioauditoria.api.orcamento.RubricaDtos.PedidoLoteRubrica;
@@ -23,10 +27,10 @@ class ServicoRubricasTest {
 
     @Test
     void primeiraPoConfirmadaViraOCatalogoJaConfirmado() {
-        PrevisaoOrcamentaria a = cenario.poConfirmada();
+        Budget a = cenario.poConfirmada();
 
         long linhasDaPo = cenario.linhas.stream()
-                .filter(l -> l.getPrevisaoId().equals(a.getId()) && l.getTipo() == TipoLinhaPo.LINHA).count();
+                .filter(l -> l.getBudgetId().equals(a.getId()) && l.getType() == BudgetLineType.LINHA).count();
         assertThat(cenario.rubricas).hasSize((int) linhasDaPo);
         assertThat(cenario.linhasRubrica).hasSize((int) linhasDaPo).allSatisfy(lr -> {
             assertThat(lr.getEstado()).isEqualTo(EstadoRubrica.CONFIRMADO);
@@ -45,9 +49,9 @@ class ServicoRubricasTest {
 
     @Test
     void sindicaturaDoOutroExercicioEhSugeridaComOMotivoESoValeDepoisDeConfirmada() {
-        PrevisaoOrcamentaria a = cenario.poConfirmada();
+        Budget a = cenario.poConfirmada();
         int rubricasDeA = cenario.rubricas.size();
-        PrevisaoOrcamentaria b = proximoExercicio(PoDoPiloto.padrao());
+        Budget b = proximoExercicio(PoDoPiloto.padrao());
 
         LinhaRubrica lr = ligacao(b, "1.3.20", 0);
         assertThat(lr.getEstado()).isEqualTo(EstadoRubrica.SUGERIDO);
@@ -63,8 +67,8 @@ class ServicoRubricasTest {
 
     @Test
     void bombasECaixaDaguaSaoSugeridasSeparadas() {
-        PrevisaoOrcamentaria a = cenario.poConfirmada();
-        PrevisaoOrcamentaria b = proximoExercicio(PoDoPiloto.padrao());
+        Budget a = cenario.poConfirmada();
+        Budget b = proximoExercicio(PoDoPiloto.padrao());
 
         LinhaRubrica bombas = ligacao(b, "1.3.2", 0);
         LinhaRubrica caixa = ligacao(b, "1.3.25", 0);
@@ -76,9 +80,9 @@ class ServicoRubricasTest {
 
     @Test
     void conta1606EmDoisGruposVaiParaRubricasDiferentes() {
-        PrevisaoOrcamentaria a = cenario.lerPo(PoDoPiloto.padrao().comAparelhosDeGinastica());
-        cenario.confirmacao.confirmar(cenario.condominioId, a.getId(), cenario.pedidoDoPiloto(a), "admin");
-        PrevisaoOrcamentaria b = proximoExercicio(PoDoPiloto.padrao().comAparelhosDeGinastica());
+        Budget a = cenario.lerPo(PoDoPiloto.padrao().comAparelhosDeGinastica());
+        cenario.confirmacao.confirm(cenario.condominioId, a.getId(), cenario.pedidoDoPiloto(a), "admin");
+        Budget b = proximoExercicio(PoDoPiloto.padrao().comAparelhosDeGinastica());
 
         LinhaRubrica emContratos = ligacao(b, "1.3.5", 0);
         LinhaRubrica emMateriais = ligacao(b, "1.7.2", 0);
@@ -91,7 +95,7 @@ class ServicoRubricasTest {
     @Test
     void loteGravaUmEventoPorLinhaEIgnoraAsQueNaoMudam() {
         cenario.poConfirmada();
-        PrevisaoOrcamentaria b = proximoExercicio(PoDoPiloto.padrao());
+        Budget b = proximoExercicio(PoDoPiloto.padrao());
         List<UUID> sugeridas = cenario.linhasRubrica.stream()
                 .filter(lr -> lr.getPrevisaoId().equals(b.getId()) && lr.getEstado() == EstadoRubrica.SUGERIDO)
                 .map(LinhaRubrica::getLinhaPoId).toList();
@@ -118,8 +122,8 @@ class ServicoRubricasTest {
 
     @Test
     void adminTrocaARubricaOuCriaUmaNovaAPartirDaLinha() {
-        PrevisaoOrcamentaria a = cenario.poConfirmada();
-        PrevisaoOrcamentaria b = proximoExercicio(PoDoPiloto.padrao());
+        Budget a = cenario.poConfirmada();
+        Budget b = proximoExercicio(PoDoPiloto.padrao());
         UUID linhaCaixa = cenario.linha(b, "1.3.2", 1).getId();
         UUID bombas = ligacao(a, "1.3.2", 0).getRubricaId();
 
@@ -149,11 +153,11 @@ class ServicoRubricasTest {
 
     @Test
     void reaprovacaoHerdaARubricaDaLinhaIgualDaVersaoAnterior() {
-        PrevisaoOrcamentaria a = cenario.poConfirmada();
-        PrevisaoOrcamentaria segunda = cenario.lerPo(PoDoPiloto.padrao());
+        Budget a = cenario.poConfirmada();
+        Budget segunda = cenario.lerPo(PoDoPiloto.padrao());
         var p = cenario.pedidoDoPiloto(segunda);
-        cenario.confirmacao.confirmar(cenario.condominioId, segunda.getId(), new PedidoConfirmacao("2026-09", "2027-04",
-                p.ataArquivoId(), false, LocalDate.of(2026, 8, 30), p.codigosEfetivos(), p.fundos(), true, false, null),
+        cenario.confirmacao.confirm(cenario.condominioId, segunda.getId(), new BudgetConfirmationRequest("2026-09", "2027-04",
+                p.minutesFileId(), false, LocalDate.of(2026, 8, 30), p.effectiveCodes(), p.funds(), true, false, null),
                 "admin");
 
         LinhaRubrica lr = ligacao(segunda, "1.3.20", 0);
@@ -166,7 +170,7 @@ class ServicoRubricasTest {
     @Test
     void sugestoesNaoMexemEmLinhaQueJaTemRubrica() {
         cenario.poConfirmada();
-        PrevisaoOrcamentaria b = proximoExercicio(PoDoPiloto.padrao());
+        Budget b = proximoExercicio(PoDoPiloto.padrao());
         int ligadas = cenario.linhasRubrica.size();
         int eventos = cenario.eventosRubrica.size();
 
@@ -180,7 +184,7 @@ class ServicoRubricasTest {
 
     @Test
     void poConfirmadaAntesDasRubricasGeraOCatalogoPelasSugestoes() {
-        PrevisaoOrcamentaria a = cenario.poConfirmada();
+        Budget a = cenario.poConfirmada();
         cenario.rubricas.clear();
         cenario.linhasRubrica.clear();
 
@@ -192,7 +196,7 @@ class ServicoRubricasTest {
 
     @Test
     void poNaoConfirmadaNaoRecebeRubrica() {
-        PrevisaoOrcamentaria lida = cenario.lerPo(PoDoPiloto.padrao());
+        Budget lida = cenario.lerPo(PoDoPiloto.padrao());
 
         assertThatThrownBy(() -> cenario.servicoRubricas.sugerir(cenario.condominioId, lida.getId(), "admin"))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
@@ -217,24 +221,24 @@ class ServicoRubricasTest {
     }
 
     /** Lê e confirma a PO como se fosse do exercício seguinte (05/2027 a 04/2028), com 1.3.25 e os fundos. */
-    private PrevisaoOrcamentaria proximoExercicio(PoDoPiloto po) {
-        PrevisaoOrcamentaria b = cenario.lerPo(po);
+    private Budget proximoExercicio(PoDoPiloto po) {
+        Budget b = cenario.lerPo(po);
         var p = cenario.pedidoDoPiloto(b);
-        cenario.confirmacao.confirmar(cenario.condominioId, b.getId(), new PedidoConfirmacao("2027-05", "2028-04",
-                p.ataArquivoId(), false, LocalDate.of(2027, 5, 20), p.codigosEfetivos(), p.fundos(), false, false, null),
+        cenario.confirmacao.confirm(cenario.condominioId, b.getId(), new BudgetConfirmationRequest("2027-05", "2028-04",
+                p.minutesFileId(), false, LocalDate.of(2027, 5, 20), p.effectiveCodes(), p.funds(), false, false, null),
                 "admin");
         return b;
     }
 
     /** Rubrica da linha pelo código efetivo (o índice separa códigos repetidos). */
-    private LinhaRubrica ligacao(PrevisaoOrcamentaria po, String codigoEfetivo, int indice) {
+    private LinhaRubrica ligacao(Budget po, String codigoEfetivo, int indice) {
         UUID linha = cenario.linhas.stream()
-                .filter(l -> l.getPrevisaoId().equals(po.getId()) && l.getCodigoEfetivo().equals(codigoEfetivo))
-                .sorted(java.util.Comparator.comparingInt(LinhaPo::getOrdem)).toList().get(indice).getId();
+                .filter(l -> l.getBudgetId().equals(po.getId()) && l.getEffectiveCode().equals(codigoEfetivo))
+                .sorted(java.util.Comparator.comparingInt(BudgetLine::getPosition)).toList().get(indice).getId();
         return cenario.linhasRubrica.stream().filter(lr -> lr.getLinhaPoId().equals(linha)).findFirst().orElseThrow();
     }
 
-    private Rubrica rubricaDe(PrevisaoOrcamentaria po, String codigoEfetivo, int indice) {
+    private Rubrica rubricaDe(Budget po, String codigoEfetivo, int indice) {
         UUID id = ligacao(po, codigoEfetivo, indice).getRubricaId();
         return cenario.rubricas.stream().filter(r -> r.getId().equals(id)).findFirst().orElseThrow();
     }

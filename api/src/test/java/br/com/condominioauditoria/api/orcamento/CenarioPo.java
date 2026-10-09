@@ -5,6 +5,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import br.com.condominioauditoria.api.dto.request.budget.BudgetConfirmationRequest;
+import br.com.condominioauditoria.api.dto.request.budget.EffectiveCodeRequest;
+import br.com.condominioauditoria.api.dto.request.budget.FundLinkRequest;
+import br.com.condominioauditoria.api.event.BudgetChanged;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetData;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
@@ -16,7 +20,12 @@ import br.com.condominioauditoria.api.model.audit.Finding;
 import br.com.condominioauditoria.api.model.audit.FindingEvent;
 import br.com.condominioauditoria.api.model.audit.FindingEvidence;
 import br.com.condominioauditoria.api.model.audit.RuleParameter;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetEvent;
+import br.com.condominioauditoria.api.model.budget.BudgetFundLink;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
@@ -27,11 +36,21 @@ import br.com.condominioauditoria.api.repository.audit.FindingEventRepository;
 import br.com.condominioauditoria.api.repository.audit.FindingEvidenceRepository;
 import br.com.condominioauditoria.api.repository.audit.FindingRepository;
 import br.com.condominioauditoria.api.repository.audit.RuleParameterRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetEventRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetFundLinkRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.service.audit.FindingSyncService;
 import br.com.condominioauditoria.api.service.audit.rule.MonthlyOverrunRule;
 import br.com.condominioauditoria.api.service.audit.rule.ReserveFundCapRule;
+import br.com.condominioauditoria.api.service.budget.BudgetConfirmationService;
+import br.com.condominioauditoria.api.service.budget.BudgetExtensionService;
+import br.com.condominioauditoria.api.service.budget.BudgetFundLinkService;
+import br.com.condominioauditoria.api.service.budget.BudgetImportService;
+import br.com.condominioauditoria.api.service.budget.BudgetQueryService;
+import br.com.condominioauditoria.api.service.budget.BudgetReserveFundService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -44,58 +63,58 @@ import java.util.Optional;
 import java.util.UUID;
 
 /** Repositórios em memória para testar a confirmação da PO sem banco. */
-final class CenarioPo {
+public final class CenarioPo {
 
-    final UUID condominioId = UUID.randomUUID();
-    final Condominium condominio = mock(Condominium.class);
-    final Fund ordinario = new Fund(condominioId, "CONDOMÍNIO");
-    final Fund reserva = new Fund(condominioId, "FUNDO DE RESERVA");
-    final Fund obrasInfra = new Fund(condominioId, "OBRAS / REFORMAS / INFRA");
-    final Fund obras = new Fund(condominioId, "OBRAS");
-    final SourceFile ata;
+    public final UUID condominioId = UUID.randomUUID();
+    public final Condominium condominio = mock(Condominium.class);
+    public final Fund ordinario = new Fund(condominioId, "CONDOMÍNIO");
+    public final Fund reserva = new Fund(condominioId, "FUNDO DE RESERVA");
+    public final Fund obrasInfra = new Fund(condominioId, "OBRAS / REFORMAS / INFRA");
+    public final Fund obras = new Fund(condominioId, "OBRAS");
+    public final SourceFile ata;
 
-    final Map<UUID, SourceFile> arquivos = new LinkedHashMap<>();
-    final Map<UUID, PrevisaoOrcamentaria> previsoes = new LinkedHashMap<>();
-    final List<LinhaPo> linhas = new ArrayList<>();
-    final List<TotalsCheck> conferencias = new ArrayList<>();
-    final List<PoFundo> poFundos = new ArrayList<>();
-    final List<EventoPrevisao> eventos = new ArrayList<>();
-    final List<Finding> achados = new ArrayList<>();
-    final List<FindingEvidence> evidencias = new ArrayList<>();
-    final List<RuleParameter> parametros = new ArrayList<>();
-    final List<DeparaConta> deparas = new ArrayList<>();
-    final List<EventoDepara> eventosDepara = new ArrayList<>();
-    final List<LedgerEntry> lancamentos = new ArrayList<>();
-    final List<FindingEvent> eventosAchado = new ArrayList<>();
-    final List<RealocacaoLancamento> realocacoes = new ArrayList<>();
-    final List<EventoRealocacao> eventosRealocacao = new ArrayList<>();
-    final List<Fund> fundos = new ArrayList<>();
-    final List<Rubrica> rubricas = new ArrayList<>();
-    final List<LinhaRubrica> linhasRubrica = new ArrayList<>();
-    final List<EventoRubrica> eventosRubrica = new ArrayList<>();
+    public final Map<UUID, SourceFile> arquivos = new LinkedHashMap<>();
+    public final Map<UUID, Budget> previsoes = new LinkedHashMap<>();
+    public final List<BudgetLine> linhas = new ArrayList<>();
+    public final List<TotalsCheck> conferencias = new ArrayList<>();
+    public final List<BudgetFundLink> poFundos = new ArrayList<>();
+    public final List<BudgetEvent> eventos = new ArrayList<>();
+    public final List<Finding> achados = new ArrayList<>();
+    public final List<FindingEvidence> evidencias = new ArrayList<>();
+    public final List<RuleParameter> parametros = new ArrayList<>();
+    public final List<DeparaConta> deparas = new ArrayList<>();
+    public final List<EventoDepara> eventosDepara = new ArrayList<>();
+    public final List<LedgerEntry> lancamentos = new ArrayList<>();
+    public final List<FindingEvent> eventosAchado = new ArrayList<>();
+    public final List<RealocacaoLancamento> realocacoes = new ArrayList<>();
+    public final List<EventoRealocacao> eventosRealocacao = new ArrayList<>();
+    public final List<Fund> fundos = new ArrayList<>();
+    public final List<Rubrica> rubricas = new ArrayList<>();
+    public final List<LinhaRubrica> linhasRubrica = new ArrayList<>();
+    public final List<EventoRubrica> eventosRubrica = new ArrayList<>();
     /** Mudanças publicadas pelos serviços; {@link #aposCommit()} faz o papel do disparo depois do commit. */
-    final List<Object> publicados = new ArrayList<>();
+    public final List<Object> publicados = new ArrayList<>();
 
-    final ConfirmacaoPrevisao confirmacao;
-    final ConsultaPrevisao consulta;
-    final ServicoDepara depara;
-    final ServicoRubricas servicoRubricas;
-    final ServicoProrrogacao prorrogacao;
-    final ServicoExercicios exercicios;
-    final ServicoComparacao comparacao;
-    final ServicoIndicadores indicadores;
-    final PrevisaoOrcamentariaRepository previsaoRepo;
-    final LinhaPoRepository linhaRepo;
-    final DeparaContaRepository deparaRepo;
-    final EventoDeparaRepository eventoDeparaRepo;
-    final ConsultaPrevistoRealizado previstoRealizado;
-    final ServicoRealocacao realocacao;
-    final RecalculoAchadosOrcamento recalculo;
-    final FindingSyncService registro;
-    final LigacaoFundosPo ligacaoFundos;
-    private final GravacaoPrevisao gravacao;
+    public final BudgetConfirmationService confirmacao;
+    public final BudgetQueryService consulta;
+    public final ServicoDepara depara;
+    public final ServicoRubricas servicoRubricas;
+    public final BudgetExtensionService prorrogacao;
+    public final ServicoExercicios exercicios;
+    public final ServicoComparacao comparacao;
+    public final ServicoIndicadores indicadores;
+    public final BudgetRepository previsaoRepo;
+    public final BudgetLineRepository linhaRepo;
+    public final DeparaContaRepository deparaRepo;
+    public final EventoDeparaRepository eventoDeparaRepo;
+    public final ConsultaPrevistoRealizado previstoRealizado;
+    public final ServicoRealocacao realocacao;
+    public final RecalculoAchadosOrcamento recalculo;
+    public final FindingSyncService registro;
+    public final BudgetFundLinkService ligacaoFundos;
+    private final BudgetImportService gravacao;
 
-    CenarioPo() {
+    public CenarioPo() {
         when(condominio.getId()).thenReturn(condominioId);
         when(condominio.getOperatingFundId()).thenReturn(ordinario.getId());
         CondominiumRepository condominios = mock(CondominiumRepository.class);
@@ -107,32 +126,32 @@ final class CenarioPo {
         when(arquivoRepo.findByIdAndCondominiumId(any(), any())).thenAnswer(i -> Optional
                 .ofNullable(arquivos.get(i.<UUID>getArgument(0))).filter(a -> a.getCondominiumId().equals(i.getArgument(1))));
 
-        previsaoRepo = mock(PrevisaoOrcamentariaRepository.class);
+        previsaoRepo = mock(BudgetRepository.class);
         when(previsaoRepo.save(any())).thenAnswer(i -> {
-            PrevisaoOrcamentaria p = i.getArgument(0);
+            Budget p = i.getArgument(0);
             previsoes.put(p.getId(), p);
             return p;
         });
-        when(previsaoRepo.findByArquivoId(any())).thenAnswer(i -> previsoes.values().stream()
-                .filter(p -> p.getArquivoId().equals(i.getArgument(0))).findFirst());
-        when(previsaoRepo.findByIdAndCondominioId(any(), any())).thenAnswer(i -> Optional
-                .ofNullable(previsoes.get(i.<UUID>getArgument(0))).filter(p -> p.getCondominioId().equals(i.getArgument(1))));
-        when(previsaoRepo.findByCondominioIdAndEstadoIn(any(), any())).thenAnswer(i -> previsoes.values().stream()
-                .filter(p -> p.getCondominioId().equals(i.getArgument(0))
-                        && i.<Collection<EstadoPrevisao>>getArgument(1).contains(p.getEstado()))
+        when(previsaoRepo.findByFileId(any())).thenAnswer(i -> previsoes.values().stream()
+                .filter(p -> p.getFileId().equals(i.getArgument(0))).findFirst());
+        when(previsaoRepo.findByIdAndCondominiumId(any(), any())).thenAnswer(i -> Optional
+                .ofNullable(previsoes.get(i.<UUID>getArgument(0))).filter(p -> p.getCondominiumId().equals(i.getArgument(1))));
+        when(previsaoRepo.findByCondominiumIdAndStatusIn(any(), any())).thenAnswer(i -> previsoes.values().stream()
+                .filter(p -> p.getCondominiumId().equals(i.getArgument(0))
+                        && i.<Collection<BudgetStatus>>getArgument(1).contains(p.getStatus()))
                 .toList());
 
-        linhaRepo = mock(LinhaPoRepository.class);
+        linhaRepo = mock(BudgetLineRepository.class);
         when(linhaRepo.saveAll(any())).thenAnswer(i -> {
-            for (LinhaPo l : i.<Iterable<LinhaPo>>getArgument(0)) {
+            for (BudgetLine l : i.<Iterable<BudgetLine>>getArgument(0)) {
                 if (!linhas.contains(l)) {
                     linhas.add(l);
                 }
             }
             return i.getArgument(0);
         });
-        when(linhaRepo.findByPrevisaoIdOrderByOrdem(any())).thenAnswer(i -> linhas.stream()
-                .filter(l -> l.getPrevisaoId().equals(i.getArgument(0))).sorted(Comparator.comparingInt(LinhaPo::getOrdem))
+        when(linhaRepo.findByBudgetIdOrderByPosition(any())).thenAnswer(i -> linhas.stream()
+                .filter(l -> l.getBudgetId().equals(i.getArgument(0))).sorted(Comparator.comparingInt(BudgetLine::getPosition))
                 .toList());
 
         TotalsCheckRepository conferenciaRepo = mock(TotalsCheckRepository.class);
@@ -148,17 +167,17 @@ final class CenarioPo {
                         && i.<Collection<FileStatus>>getArgument(2).contains(a.getStatus()))
                 .toList());
 
-        PoFundoRepository poFundoRepo = mock(PoFundoRepository.class);
+        BudgetFundLinkRepository poFundoRepo = mock(BudgetFundLinkRepository.class);
         when(poFundoRepo.save(any())).thenAnswer(i -> {
             poFundos.add(i.getArgument(0));
             return i.getArgument(0);
         });
-        when(poFundoRepo.findByPrevisaoId(any())).thenAnswer(i -> poFundos.stream()
-                .filter(f -> f.getPrevisaoId().equals(i.getArgument(0))).toList());
-        org.mockito.Mockito.doAnswer(i -> poFundos.removeIf(f -> f.getPrevisaoId().equals(i.getArgument(0))))
-                .when(poFundoRepo).apagarDaPrevisao(any());
+        when(poFundoRepo.findByBudgetId(any())).thenAnswer(i -> poFundos.stream()
+                .filter(f -> f.getBudgetId().equals(i.getArgument(0))).toList());
+        org.mockito.Mockito.doAnswer(i -> poFundos.removeIf(f -> f.getBudgetId().equals(i.getArgument(0))))
+                .when(poFundoRepo).deleteByBudgetId(any());
 
-        EventoPrevisaoRepository eventoRepo = mock(EventoPrevisaoRepository.class);
+        BudgetEventRepository eventoRepo = mock(BudgetEventRepository.class);
         when(eventoRepo.save(any())).thenAnswer(i -> {
             eventos.add(i.getArgument(0));
             return i.getArgument(0);
@@ -207,9 +226,9 @@ final class CenarioPo {
         parametros.add(new RuleParameter(condominioId, MonthlyOverrunRule.PARAMETER, new BigDecimal("20.0000"),
                 LocalDate.of(1900, 1, 1), null, "Conv. 16.2"));
 
-        ReservaDaPo reservaDaPo = new ReservaDaPo(parametroRepo);
-        consulta = new ConsultaPrevisao(previsaoRepo, linhaRepo, conferenciaRepo, arquivoRepo, poFundoRepo, fundoRepo,
-                achadoRepo, reservaDaPo);
+        BudgetReserveFundService reservaDaPo = new BudgetReserveFundService(parametroRepo);
+        consulta = new BudgetQueryService(previsaoRepo, linhaRepo, conferenciaRepo, arquivoRepo, poFundoRepo, fundoRepo,
+                achadoRepo, reservaDaPo, eventoRepo);
         registro = new FindingSyncService(achadoRepo, evidenciaRepo, eventoAchadoRepo);
         RubricaRepository rubricaRepo = mock(RubricaRepository.class);
         when(rubricaRepo.save(any())).thenAnswer(i -> {
@@ -249,9 +268,9 @@ final class CenarioPo {
                 .filter(e -> i.getArgument(0).equals(e.getPrevisaoId())).toList());
         servicoRubricas = new ServicoRubricas(condominios, previsaoRepo, linhaRepo, rubricaRepo, linhaRubricaRepo,
                 eventoRubricaRepo);
-        confirmacao = new ConfirmacaoPrevisao(condominios, previsaoRepo, linhaRepo, poFundoRepo, eventoRepo,
+        confirmacao = new BudgetConfirmationService(condominios, previsaoRepo, linhaRepo, poFundoRepo, eventoRepo,
                 arquivoRepo, fundoRepo, consulta, reservaDaPo, registro, servicoRubricas, publicados::add);
-        gravacao = new GravacaoPrevisao(previsaoRepo, linhaRepo, new PropriedadesOrcamento(new BigDecimal("0.01")));
+        gravacao = new BudgetImportService(previsaoRepo, linhaRepo, new PropriedadesOrcamento(new BigDecimal("0.01")));
 
         deparaRepo = mock(DeparaContaRepository.class);
         when(deparaRepo.save(any())).thenAnswer(i -> {
@@ -316,12 +335,12 @@ final class CenarioPo {
         realocacao = new ServicoRealocacao(condominios, lancamentoRepo, arquivoRepo, consulta, previsaoRepo,
                 linhaRepo, deparaRepo, realocacaoRepo, eventoRealocacaoRepo, publicados::add);
         recalculo = new RecalculoAchadosOrcamento(condominios, previsaoRepo, previstoRealizado, registro);
-        prorrogacao = new ServicoProrrogacao(condominios, previsaoRepo, eventoRepo, consulta, publicados::add);
+        prorrogacao = new BudgetExtensionService(condominios, previsaoRepo, eventoRepo, consulta, publicados::add);
         exercicios = new ServicoExercicios(previsaoRepo, linhaRepo, previstoRealizado, depara, servicoRubricas);
         comparacao = new ServicoComparacao(condominios, previsaoRepo, linhaRepo, poFundoRepo, rubricaRepo,
                 linhaRubricaRepo, achadoRepo, previstoRealizado, exercicios);
         indicadores = new ServicoIndicadores(condominios, previsaoRepo, previstoRealizado, exercicios, comparacao);
-        ligacaoFundos = new LigacaoFundosPo(condominios, previsaoRepo, linhaRepo, poFundoRepo, fundoRepo, eventoRepo,
+        ligacaoFundos = new BudgetFundLinkService(condominios, previsaoRepo, linhaRepo, poFundoRepo, fundoRepo, eventoRepo,
                 consulta, publicados::add);
 
         ata = arquivo(FileCategory.ATA, "ata-ago-2026-05.pdf");
@@ -331,49 +350,49 @@ final class CenarioPo {
      * Faz o papel do {@link DisparoRecalculoAchados}: para cada mudança publicada desde a última chamada, recalcula
      * os achados (como depois do commit). Devolve quantas mudanças foram tratadas.
      */
-    int aposCommit() {
-        List<MudancaOrcamento> mudancas = publicados.stream().filter(MudancaOrcamento.class::isInstance)
-                .map(MudancaOrcamento.class::cast).toList();
+    public int aposCommit() {
+        List<BudgetChanged> mudancas = publicados.stream().filter(BudgetChanged.class::isInstance)
+                .map(BudgetChanged.class::cast).toList();
         publicados.clear();
         mudancas.forEach(recalculo::recalcular);
         return mudancas.size();
     }
 
     /** Arquivo de fluxo da categoria de balancetes, lido (concluído), cobrindo o período. */
-    SourceFile fluxo(String nome, LocalDate inicio, LocalDate fim, int lancamentos) {
+    public SourceFile fluxo(String nome, LocalDate inicio, LocalDate fim, int lancamentos) {
         SourceFile a = arquivo(FileCategory.BALANCETE, nome);
         a.complete(FileStatus.CONCLUIDO, "Todas as conferências passaram", "fluxo-protest", inicio, fim, lancamentos);
         return a;
     }
 
     /** Lê a PO como a GravacaoResultado faria (linhas e conferências gravadas). */
-    PrevisaoOrcamentaria lerPo(PoDoPiloto po) {
+    public Budget lerPo(PoDoPiloto po) {
         SourceFile arquivo = arquivo(FileCategory.PO, "PO-" + UUID.randomUUID() + ".pdf");
         var lidas = po.conferencias();
         for (int i = 0; i < lidas.size(); i++) {
             conferencias.add(new TotalsCheck(arquivo.getId(), i + 1, lidas.get(i)));
         }
-        return gravacao.gravar(arquivo, "po-protest", po.previsao(), lidas);
+        return gravacao.save(arquivo, "po-protest", po.previsao(), lidas);
     }
 
     /** Lê uma PO qualquer (ex.: a do golden privado) como a GravacaoResultado faria. */
-    PrevisaoOrcamentaria lerPo(BudgetData lida, List<TotalsCheckData> lidas) {
+    public Budget lerPo(BudgetData lida, List<TotalsCheckData> lidas) {
         SourceFile arquivo = arquivo(FileCategory.PO, "PO-" + UUID.randomUUID() + ".pdf");
         for (int i = 0; i < lidas.size(); i++) {
             conferencias.add(new TotalsCheck(arquivo.getId(), i + 1, lidas.get(i)));
         }
-        return gravacao.gravar(arquivo, "po-protest", lida, lidas);
+        return gravacao.save(arquivo, "po-protest", lida, lidas);
     }
 
     /** PO do piloto lida e confirmada (exercício 05/2026 a 04/2027, 1.3.25 e os dois fundos). */
-    PrevisaoOrcamentaria poConfirmada() {
-        PrevisaoOrcamentaria po = lerPo(PoDoPiloto.padrao());
-        confirmacao.confirmar(condominioId, po.getId(), pedidoDoPiloto(po), "admin");
+    public Budget poConfirmada() {
+        Budget po = lerPo(PoDoPiloto.padrao());
+        confirmacao.confirm(condominioId, po.getId(), pedidoDoPiloto(po), "admin");
         return po;
     }
 
     /** Débito no fundo Condomínio (fundo ordinário), num fluxo da categoria de balancetes. */
-    LedgerEntry debito(String conta, String nome, String valor, LocalDate data) {
+    public LedgerEntry debito(String conta, String nome, String valor, LocalDate data) {
         var lido = new LedgerEntryData(1, lancamentos.size() + 1, data, conta, nome, "", "Teste " + nome,
                 BigDecimal.ZERO.setScale(2), new BigDecimal(valor), BigDecimal.ZERO.setScale(2),
                 new Enrichment(null, null, null, false, false));
@@ -382,31 +401,31 @@ final class CenarioPo {
         return l;
     }
 
-    SourceFile arquivo(FileCategory categoria, String nome) {
+    public SourceFile arquivo(FileCategory categoria, String nome) {
         SourceFile a = new SourceFile(condominioId, categoria, nome, "c/" + nome, UUID.randomUUID().toString().replace("-", "")
                 + "0".repeat(32), 100, "application/pdf", "admin");
         arquivos.put(a.getId(), a);
         return a;
     }
 
-    Optional<PrevisaoOrcamentaria> consultaVigente(java.time.YearMonth mes) {
-        return consulta.vigenteNoMes(condominioId, mes);
+    public Optional<Budget> consultaVigente(java.time.YearMonth mes) {
+        return consulta.activeInMonth(condominioId, mes);
     }
 
-    LinhaPo linha(PrevisaoOrcamentaria po, String codigo, int indice) {
-        return linhas.stream().filter(l -> l.getPrevisaoId().equals(po.getId()) && l.getCodigoImpresso().equals(codigo))
-                .sorted(Comparator.comparingInt(LinhaPo::getOrdem)).toList().get(indice);
+    public BudgetLine linha(Budget po, String codigo, int indice) {
+        return linhas.stream().filter(l -> l.getBudgetId().equals(po.getId()) && l.getPrintedCode().equals(codigo))
+                .sorted(Comparator.comparingInt(BudgetLine::getPosition)).toList().get(indice);
     }
 
     /** Pedido completo para a PO do piloto: exercício 05/2026 a 04/2027, ata de maio, 1.3.25 e os dois fundos. */
-    PedidoConfirmacao pedidoDoPiloto(PrevisaoOrcamentaria po) {
-        return new PedidoConfirmacao("2026-05", "2027-04", ata.getId(), false, LocalDate.of(2026, 5, 20),
-                List.of(new PedidoConfirmacao.CodigoEfetivo(linha(po, "1.3.2", 1).getId(), "1.3.25")),
+    public BudgetConfirmationRequest pedidoDoPiloto(Budget po) {
+        return new BudgetConfirmationRequest("2026-05", "2027-04", ata.getId(), false, LocalDate.of(2026, 5, 20),
+                List.of(new EffectiveCodeRequest(linha(po, "1.3.2", 1).getId(), "1.3.25")),
                 ligacoesDoPiloto(po), false, false, null);
     }
 
-    List<PedidoConfirmacao.LigacaoFundo> ligacoesDoPiloto(PrevisaoOrcamentaria po) {
-        return List.of(new PedidoConfirmacao.LigacaoFundo(linha(po, "1.9.1", 0).getId(), reserva.getId()),
-                new PedidoConfirmacao.LigacaoFundo(linha(po, "1.9.2", 0).getId(), obrasInfra.getId()));
+    public List<FundLinkRequest> ligacoesDoPiloto(Budget po) {
+        return List.of(new FundLinkRequest(linha(po, "1.9.1", 0).getId(), reserva.getId()),
+                new FundLinkRequest(linha(po, "1.9.2", 0).getId(), obrasInfra.getId()));
     }
 }

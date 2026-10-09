@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,11 +39,11 @@ public final class PlanilhaDepara {
      * @param destinos linhas da PO que podem ser destino (linhas de despesa, sem os fundos 1.9)
      * @param linhasDeFundo linhas 1.9.x, recusadas como destino com motivo próprio
      */
-    public static Leitura ler(String conteudo, List<LinhaPo> destinos, List<LinhaPo> linhasDeFundo) {
-        Map<String, LinhaPo> porCodigo = new HashMap<>();
-        destinos.forEach(l -> porCodigo.put(l.getCodigoEfetivo(), l));
-        Map<String, LinhaPo> fundos = new HashMap<>();
-        linhasDeFundo.forEach(l -> fundos.put(l.getCodigoEfetivo(), l));
+    public static Leitura ler(String conteudo, List<BudgetLine> destinos, List<BudgetLine> linhasDeFundo) {
+        Map<String, BudgetLine> porCodigo = new HashMap<>();
+        destinos.forEach(l -> porCodigo.put(l.getEffectiveCode(), l));
+        Map<String, BudgetLine> fundos = new HashMap<>();
+        linhasDeFundo.forEach(l -> fundos.put(l.getEffectiveCode(), l));
 
         List<Item> itens = new ArrayList<>();
         List<Recusa> recusas = new ArrayList<>();
@@ -76,7 +77,7 @@ public final class PlanilhaDepara {
             }
             String destinoTexto = colunas[1].trim();
             if (CODIGO_LINHA.matcher(destinoTexto).matches()) {
-                LinhaPo l = porCodigo.get(destinoTexto);
+                BudgetLine l = porCodigo.get(destinoTexto);
                 if (l != null) {
                     itens.add(new Item(numero, conta, Destino.linha(l)));
                 } else if (fundos.containsKey(destinoTexto)) {

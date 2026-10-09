@@ -2,6 +2,8 @@ package br.com.condominioauditoria.api.orcamento;
 
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntryFingerprint;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Aviso;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Bloco;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.ConferenciaFluxo;
@@ -21,6 +23,9 @@ import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoFundo;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Totais;
 import br.com.condominioauditoria.api.service.audit.rule.MonthlyOverrunRule;
+import br.com.condominioauditoria.api.service.budget.BudgetQueryService;
+import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
+import br.com.condominioauditoria.api.service.calculator.BudgetValidity;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -126,7 +131,7 @@ public final class CalculoPrevistoRealizado {
      * @param limiteExcessoPercentual parâmetro da Conv. 16.2 vigente no período (nulo: regra não avaliada)
      * @param avisosDaPo avisos da própria PO (arredondamento, confirmada com divergência), repetidos no resultado
      */
-    public record Entrada(PrevisaoOrcamentaria po, String poArquivoNome, List<LinhaPo> linhas, List<DeparaConta> deparas,
+    public record Entrada(Budget po, String poArquivoNome, List<BudgetLine> linhas, List<DeparaConta> deparas,
             Map<UUID, UUID> fundoPorLinha, Map<UUID, String> nomesFundos, UUID fundoOrdinarioId, List<Fluxo> fluxos,
             List<LedgerEntry> lancamentos, List<Realocacao> realocacoes, BigDecimal limiteExcessoPercentual,
             List<Aviso> avisosDaPo, Periodo periodo) {
@@ -195,24 +200,24 @@ public final class CalculoPrevistoRealizado {
 
     public static Calculo calcular(Entrada e) {
         String periodo = e.periodo() instanceof Mes m ? m.mes().toString() : "acumulado";
-        PrevisaoOrcamentaria po = e.po();
+        Budget po = e.po();
         if (po == null) {
             return vazio(periodo, Situacao.SEM_PO, e.periodo() instanceof Mes m
                     ? "Sem PO aprovada para " + mmaaaa(m.mes()) : "Sem PO aprovada", null, List.of(), e);
         }
-        PoResumo resumoPo = new PoResumo(po.getId(), po.getVersao(), po.getEstado(), po.getArquivoId(),
-                e.poArquivoNome(), po.getSha256(), ConsultaPrevisao.mes(po.getExercicioInicio()),
-                ConsultaPrevisao.mes(po.getExercicioFim()));
-        VigenciaPo vigencia = VigenciaPo.de(po).orElse(null);
+        PoResumo resumoPo = new PoResumo(po.getId(), po.getVersion(), po.getStatus(), po.getFileId(),
+                e.poArquivoNome(), po.getSha256(), BudgetQueryService.month(po.getFiscalYearStart()),
+                BudgetQueryService.month(po.getFiscalYearEnd()));
+        BudgetValidity vigencia = BudgetValidity.of(po).orElse(null);
         if (vigencia == null) {
             return vazio(periodo, Situacao.PO_NAO_CONFIRMADA, "PO não confirmada: o Admin confirma a PO antes do"
                     + " previsto × realizado", resumoPo, List.of(), e);
         }
         // Prorrogação (RF-11.3): o mês depois do exercício usa esta PO, com a marca "PO prorrogada"
-        VigenciaPo prorrogacao = VigenciaPo.prorrogacao(po).orElse(null);
-        boolean mesProrrogado = e.periodo() instanceof Mes m && !vigencia.cobre(m.mes()) && prorrogacao != null
-                && prorrogacao.cobre(m.mes());
-        if (e.periodo() instanceof Mes m && !vigencia.cobre(m.mes()) && !mesProrrogado) {
+        BudgetValidity prorrogacao = BudgetValidity.extension(po).orElse(null);
+        boolean mesProrrogado = e.periodo() instanceof Mes m && !vigencia.covers(m.mes()) && prorrogacao != null
+                && prorrogacao.covers(m.mes());
+        if (e.periodo() instanceof Mes m && !vigencia.covers(m.mes()) && !mesProrrogado) {
             return vazio(periodo, Situacao.SEM_PO, "Sem PO aprovada para " + mmaaaa(m.mes()), resumoPo, List.of(), e);
         }
         if (e.fundoOrdinarioId() == null) {
@@ -241,7 +246,7 @@ public final class CalculoPrevistoRealizado {
         }
 
         // Acumulado do exercício (RF-03.1.10): só os meses com fluxo, nos dois lados
-        List<YearMonth> exercicio = meses(vigencia.inicio(), vigencia.fim());
+        List<YearMonth> exercicio = meses(vigencia.start(), vigencia.end());
         Map<YearMonth, List<Fluxo>> porMes = new LinkedHashMap<>();
         exercicio.forEach(mes -> porMes.put(mes, base.fluxosDoMes(mes)));
         YearMonth ultimo = exercicio.stream().filter(mes -> !porMes.get(mes).isEmpty()).reduce((a, b) -> b).orElse(null);
@@ -268,7 +273,7 @@ public final class CalculoPrevistoRealizado {
         }
         // Meses prorrogados: depois dos 12, com os números de cada mês, fora da soma do acumulado (RF-11.3)
         if (prorrogacao != null) {
-            for (YearMonth mes : meses(prorrogacao.inicio(), prorrogacao.fim())) {
+            for (YearMonth mes : meses(prorrogacao.start(), prorrogacao.end())) {
                 List<Fluxo> f = base.fluxosDoMes(mes);
                 MesExercicio m = f.size() == 1 ? base.resumoDoMes(mes, f.getFirst(), base.apurar(Map.of(mes, f.getFirst())))
                         : mesSemNumeros(mes, f.isEmpty() ? SituacaoMes.SEM_FLUXO : SituacaoMes.DOIS_FLUXOS, f);
@@ -294,24 +299,24 @@ public final class CalculoPrevistoRealizado {
     private static final class Base {
 
         final Entrada e;
-        final EstruturaPo estrutura;
-        final Map<UUID, LinhaPo> destinosValidos = new LinkedHashMap<>();
+        final BudgetStructure estrutura;
+        final Map<UUID, BudgetLine> destinosValidos = new LinkedHashMap<>();
         final Map<String, Destino> confirmados;
         final Map<String, DeparaConta> deparaPorConta = new HashMap<>();
         final Map<String, Realocacao> realocacoes = new HashMap<>();
-        final Map<UUID, LinhaPo> linhaPorFundo = new HashMap<>();
-        final List<LinhaPo> linhasDeFundo;
-        final Map<UUID, LinhaPo> linhasPorId;
+        final Map<UUID, BudgetLine> linhaPorFundo = new HashMap<>();
+        final List<BudgetLine> linhasDeFundo;
+        final Map<UUID, BudgetLine> linhasPorId;
 
         Base(Entrada e) {
             this.e = e;
-            this.estrutura = EstruturaPo.de(e.linhas());
+            this.estrutura = BudgetStructure.of(e.linhas());
             ServicoDepara.destinosDeDebito(estrutura).forEach(l -> destinosValidos.put(l.getId(), l));
             this.confirmados = DeparaEfetivo.confirmados(e.deparas());
             e.deparas().forEach(d -> deparaPorConta.put(d.getContaCodigo(), d));
             e.realocacoes().forEach(r -> realocacoes.put(r.chave(), r));
-            this.linhasPorId = e.linhas().stream().collect(Collectors.toMap(LinhaPo::getId, Function.identity()));
-            this.linhasDeFundo = estrutura.fundos().map(EstruturaPo.Grupo::linhas).orElse(List.of());
+            this.linhasPorId = e.linhas().stream().collect(Collectors.toMap(BudgetLine::getId, Function.identity()));
+            this.linhasDeFundo = estrutura.funds().map(BudgetStructure.Group::lines).orElse(List.of());
             linhasDeFundo.forEach(l -> {
                 UUID fundo = e.fundoPorLinha().get(l.getId());
                 if (fundo != null) {
@@ -328,7 +333,7 @@ public final class CalculoPrevistoRealizado {
         }
 
         BigDecimal previstoMes() {
-            return estrutura.previstoMesPelasLinhas().setScale(2, RoundingMode.UNNECESSARY);
+            return estrutura.monthlyPlannedFromLines().setScale(2, RoundingMode.UNNECESSARY);
         }
 
         /** Soma os lançamentos do fluxo escolhido para cada mês (só os do próprio mês, pela data). */
@@ -395,11 +400,11 @@ public final class CalculoPrevistoRealizado {
                 }
                 case A_REALOCAR -> {
                     Realocacao r = realocacoes.get(LedgerEntryFingerprint.key(l));
-                    LinhaPo destino = r == null ? null : destinosValidos.get(r.linhaPoId());
+                    BudgetLine destino = r == null ? null : destinosValidos.get(r.linhaPoId());
                     if (destino != null) {
                         ap.realocacoesUsadas.add(r.chave());
                         ap.linha(destino.getId(), valor, l, f, nome(l.getFundId()), "realocado para "
-                                + destino.getCodigoEfetivo() + " " + destino.getDescricao() + " por " + r.usuario()
+                                + destino.getEffectiveCode() + " " + destino.getDescription() + " por " + r.usuario()
                                 + " em " + DATA.format(r.em().atZone(FUSO)), r.id());
                     } else {
                         ap.aRealocar.somar(conta, l.getAccountName(), d.texto(), valor);
@@ -440,7 +445,7 @@ public final class CalculoPrevistoRealizado {
 
         BigDecimal excesso(Apuracao ap, int meses) {
             BigDecimal soma = ZERO;
-            for (LinhaPo l : destinosValidos.values()) {
+            for (BudgetLine l : destinosValidos.values()) {
                 BigDecimal dif = ap.realizado(l.getId()).subtract(previsto(l, meses));
                 if (dif.signum() > 0) {
                     soma = soma.add(dif);
@@ -449,8 +454,8 @@ public final class CalculoPrevistoRealizado {
             return soma;
         }
 
-        static BigDecimal previsto(LinhaPo l, int meses) {
-            return l.getOrcado().multiply(BigDecimal.valueOf(meses)).setScale(2, RoundingMode.UNNECESSARY);
+        static BigDecimal previsto(BudgetLine l, int meses) {
+            return l.getBudgeted().multiply(BigDecimal.valueOf(meses)).setScale(2, RoundingMode.UNNECESSARY);
         }
 
         Calculo montar(String periodo, PoResumo po, Apuracao ap, int n, List<MesExercicio> meses, List<String> somados,
@@ -464,28 +469,28 @@ public final class CalculoPrevistoRealizado {
             });
             BigDecimal previstoTotal = ZERO;
             BigDecimal emLinhas = ZERO;
-            for (EstruturaPo.Grupo g : estrutura.gruposSemFundos()) {
+            for (BudgetStructure.Group g : estrutura.groupsWithoutFunds()) {
                 List<LinhaResultado> linhas = new ArrayList<>();
                 BigDecimal gp = ZERO;
                 BigDecimal gr = ZERO;
-                for (LinhaPo l : g.linhas()) {
+                for (BudgetLine l : g.lines()) {
                     BigDecimal p = previsto(l, n);
                     BigDecimal r = ap.realizado(l.getId());
                     gp = gp.add(p);
                     gr = gr.add(r);
-                    linhas.add(new LinhaResultado(l.getId(), l.getCodigoEfetivo(), l.getDescricao(), l.getConta(),
-                            l.getMarca(), l.getObservacoes(), l.getPagina(), p, r, r.subtract(p), percentual(r, p),
+                    linhas.add(new LinhaResultado(l.getId(), l.getEffectiveCode(), l.getDescription(), l.getAccount(),
+                            l.getMark(), l.getNotes(), l.getPage(), p, r, r.subtract(p), percentual(r, p),
                             contasPorLinha.getOrDefault(l.getId(), List.of()).stream().sorted().toList(),
                             ap.qtdPorLinha.getOrDefault(l.getId(), 0)));
                 }
                 previstoTotal = previstoTotal.add(gp);
                 emLinhas = emLinhas.add(gr);
-                grupos.add(new GrupoResultado(g.linha().getId(), g.linha().getCodigoEfetivo(), g.linha().getDescricao(),
+                grupos.add(new GrupoResultado(g.line().getId(), g.line().getEffectiveCode(), g.line().getDescription(),
                         gp, gr, gr.subtract(gp), percentual(gr, gp), List.copyOf(linhas)));
             }
             BigDecimal despesa = ap.despesa();
             BigDecimal previstoMes = previstoMes();
-            int mesesExercicio = meses(e.po().getExercicioInicio(), e.po().getExercicioFim()).size();
+            int mesesExercicio = meses(e.po().getFiscalYearStart(), e.po().getFiscalYearEnd()).size();
             Totais totais = new Totais(previstoMes, previstoTotal, despesa, emLinhas, despesa.subtract(previstoTotal),
                     percentual(despesa, previstoTotal),
                     previstoMes.multiply(BigDecimal.valueOf(mesesExercicio)).setScale(2, RoundingMode.UNNECESSARY));
@@ -576,11 +581,11 @@ public final class CalculoPrevistoRealizado {
             }
             List<LinhaExcesso> linhas = new ArrayList<>();
             BigDecimal excesso = ZERO;
-            for (LinhaPo l : destinosValidos.values()) {
+            for (BudgetLine l : destinosValidos.values()) {
                 BigDecimal dif = ap.realizado(l.getId()).subtract(previsto(l, n));
                 if (dif.signum() > 0) {
                     excesso = excesso.add(dif);
-                    linhas.add(new LinhaExcesso(l.getId(), l.getCodigoEfetivo(), l.getDescricao(), dif));
+                    linhas.add(new LinhaExcesso(l.getId(), l.getEffectiveCode(), l.getDescription(), dif));
                 }
             }
             linhas.sort(Comparator.comparing(LinhaExcesso::excesso).reversed().thenComparing(LinhaExcesso::codigo));
@@ -598,24 +603,24 @@ public final class CalculoPrevistoRealizado {
 
         private List<FundoResultado> fundos(Apuracao ap, int n, List<Aviso> avisos) {
             List<FundoResultado> lista = new ArrayList<>();
-            for (LinhaPo l : linhasDeFundo) {
+            for (BudgetLine l : linhasDeFundo) {
                 UUID fundo = e.fundoPorLinha().get(l.getId());
                 BigDecimal previsto = previsto(l, n);
                 if (fundo == null) {
-                    lista.add(new FundoResultado(null, null, l.getId(), l.getCodigoEfetivo(),
+                    lista.add(new FundoResultado(null, null, l.getId(), l.getEffectiveCode(),
                             SituacaoFundo.LINHA_SEM_FUNDO, null, null, null, null, null, null));
-                    avisos.add(new Aviso("LINHA_SEM_FUNDO", "linha " + l.getCodigoEfetivo() + " sem fundo ligado"));
+                    avisos.add(new Aviso("LINHA_SEM_FUNDO", "linha " + l.getEffectiveCode() + " sem fundo ligado"));
                     continue;
                 }
                 MovimentoFundo m = ap.fundos.getOrDefault(fundo, new MovimentoFundo());
                 if (m.reprocessar) {
-                    lista.add(new FundoResultado(fundo, nome(fundo), l.getId(), l.getCodigoEfetivo(),
+                    lista.add(new FundoResultado(fundo, nome(fundo), l.getId(), l.getEffectiveCode(),
                             SituacaoFundo.REPROCESSAR_FLUXO, previsto, null, null, null, m.creditos, m.debitos));
                     avisos.add(new Aviso("REPROCESSAR_FLUXO", "Fundo " + nome(fundo) + ": reprocesse o fluxo para"
                             + " apurar a arrecadação (recebimento de cota)"));
                     continue;
                 }
-                lista.add(new FundoResultado(fundo, nome(fundo), l.getId(), l.getCodigoEfetivo(), SituacaoFundo.COMPARADO,
+                lista.add(new FundoResultado(fundo, nome(fundo), l.getId(), l.getEffectiveCode(), SituacaoFundo.COMPARADO,
                         previsto, m.arrecadado, m.arrecadado.subtract(previsto), percentual(m.arrecadado, previsto),
                         m.creditos, m.debitos));
             }
@@ -707,19 +712,19 @@ public final class CalculoPrevistoRealizado {
     }
 
     /** Aviso da prorrogação: no mês prorrogado, "PO prorrogada"; no acumulado, os meses que ficam fora da soma. */
-    private static Aviso avisoProrrogacao(PrevisaoOrcamentaria po, VigenciaPo vigencia, VigenciaPo prorrogacao,
+    private static Aviso avisoProrrogacao(Budget po, BudgetValidity vigencia, BudgetValidity prorrogacao,
             Periodo periodo, boolean mesProrrogado) {
         if (prorrogacao == null) {
             return null;
         }
-        String ate = mmaaaa(prorrogacao.fim());
+        String ate = mmaaaa(prorrogacao.end());
         if (mesProrrogado && periodo instanceof Mes m) {
             return new Aviso("PO_PRORROGADA", "PO prorrogada: " + mmaaaa(m.mes()) + " usa a PO do exercício "
-                    + mmaaaa(vigencia.inicio()) + " a " + mmaaaa(vigencia.fim()) + ", prorrogada até " + ate + " por "
-                    + po.getProrrogadaPor() + ". Justificativa: " + po.getProrrogacaoJustificativa());
+                    + mmaaaa(vigencia.start()) + " a " + mmaaaa(vigencia.end()) + ", prorrogada até " + ate + " por "
+                    + po.getExtendedBy() + ". Justificativa: " + po.getExtensionJustification());
         }
         if (periodo instanceof Acumulado) {
-            List<String> prorrogados = meses(prorrogacao.inicio(), prorrogacao.fim()).stream().map(YearMonth::toString)
+            List<String> prorrogados = meses(prorrogacao.start(), prorrogacao.end()).stream().map(YearMonth::toString)
                     .toList();
             return new Aviso("MESES_PRORROGADOS", "PO prorrogada até " + ate + ": " + listaDeMeses(prorrogados)
                     + " aparece" + (prorrogados.size() == 1 ? "" : "m") + " depois do exercício, marcado"
@@ -745,7 +750,7 @@ public final class CalculoPrevistoRealizado {
                 null, null, false);
     }
 
-    static List<YearMonth> meses(YearMonth inicio, YearMonth fim) {
+    public static List<YearMonth> meses(YearMonth inicio, YearMonth fim) {
         List<YearMonth> lista = new ArrayList<>();
         for (YearMonth m = inicio; !m.isAfter(fim); m = m.plusMonths(1)) {
             lista.add(m);
@@ -765,7 +770,7 @@ public final class CalculoPrevistoRealizado {
         return v.setScale(1, RoundingMode.HALF_UP);
     }
 
-    static String mmaaaa(YearMonth m) {
+    public static String mmaaaa(YearMonth m) {
         return "%02d/%d".formatted(m.getMonthValue(), m.getYear());
     }
 

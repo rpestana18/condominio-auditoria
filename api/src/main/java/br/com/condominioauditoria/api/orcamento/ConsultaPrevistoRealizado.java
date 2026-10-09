@@ -3,7 +3,12 @@ package br.com.condominioauditoria.api.orcamento;
 import br.com.condominioauditoria.api.model.accounting.Fund;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.model.audit.RuleParameter;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetFundLink;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.model.enums.BudgetStatus;
+import br.com.condominioauditoria.api.model.enums.BudgetWarningCode;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
@@ -13,15 +18,19 @@ import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Entrada
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Fluxo;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Mes;
 import br.com.condominioauditoria.api.orcamento.CalculoPrevistoRealizado.Periodo;
-import br.com.condominioauditoria.api.orcamento.PrevisaoDtos.CodigoAviso;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Aviso;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.Evidencia;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
 import br.com.condominioauditoria.api.repository.audit.RuleParameterRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetFundLinkRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.service.audit.rule.MonthlyOverrunRule;
+import br.com.condominioauditoria.api.service.budget.BudgetQueryService;
+import br.com.condominioauditoria.api.service.calculator.BudgetValidity;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -48,25 +57,25 @@ public class ConsultaPrevistoRealizado {
 
     /** Arquivos de fluxo lidos (com ou sem conferência falhando), como no painel. */
     static final Set<FileStatus> FLUXO_LIDO = EnumSet.of(FileStatus.CONCLUIDO, FileStatus.PRECISA_REVISAO);
-    private static final Set<CodigoAviso> AVISOS_DA_PO = EnumSet.of(CodigoAviso.ARREDONDAMENTO,
-            CodigoAviso.CONFIRMADA_COM_DIVERGENCIA);
+    private static final Set<BudgetWarningCode> AVISOS_DA_PO = EnumSet.of(BudgetWarningCode.ARREDONDAMENTO,
+            BudgetWarningCode.CONFIRMADA_COM_DIVERGENCIA);
 
     private final CondominiumRepository condominios;
-    private final PrevisaoOrcamentariaRepository previsoes;
-    private final LinhaPoRepository linhas;
+    private final BudgetRepository previsoes;
+    private final BudgetLineRepository linhas;
     private final DeparaContaRepository deparas;
-    private final PoFundoRepository poFundos;
+    private final BudgetFundLinkRepository poFundos;
     private final FundRepository fundos;
     private final SourceFileRepository arquivos;
     private final LedgerEntryRepository lancamentos;
     private final RuleParameterRepository parametros;
-    private final ConsultaPrevisao consultaPrevisao;
+    private final BudgetQueryService consultaPrevisao;
     private final RealocacaoLancamentoRepository realocacoes;
 
-    ConsultaPrevistoRealizado(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes,
-            LinhaPoRepository linhas, DeparaContaRepository deparas, PoFundoRepository poFundos,
+    ConsultaPrevistoRealizado(CondominiumRepository condominios, BudgetRepository previsoes,
+            BudgetLineRepository linhas, DeparaContaRepository deparas, BudgetFundLinkRepository poFundos,
             FundRepository fundos, SourceFileRepository arquivos, LedgerEntryRepository lancamentos,
-            RuleParameterRepository parametros, ConsultaPrevisao consultaPrevisao,
+            RuleParameterRepository parametros, BudgetQueryService consultaPrevisao,
             RealocacaoLancamentoRepository realocacoes) {
         this.condominios = condominios;
         this.previsoes = previsoes;
@@ -124,28 +133,28 @@ public class ConsultaPrevistoRealizado {
         Condominium condominio = condominios.findById(condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
         Periodo periodo = periodo(periodoTexto);
-        PrevisaoOrcamentaria po = escolherPo(condominioId, periodo, poId).orElse(null);
+        Budget po = escolherPo(condominioId, periodo, poId).orElse(null);
         if (po == null) {
             return CalculoPrevistoRealizado.calcular(new Entrada(null, null, null, null, null, null,
                     condominio.getOperatingFundId(), null, null, null, null, null, periodo));
         }
-        List<LinhaPo> lidas = linhas.findByPrevisaoIdOrderByOrdem(po.getId());
-        Map<UUID, UUID> fundoPorLinha = poFundos.findByPrevisaoId(po.getId()).stream()
-                .collect(Collectors.toMap(PoFundo::getLinhaPoId, PoFundo::getFundoId));
+        List<BudgetLine> lidas = linhas.findByBudgetIdOrderByPosition(po.getId());
+        Map<UUID, UUID> fundoPorLinha = poFundos.findByBudgetId(po.getId()).stream()
+                .collect(Collectors.toMap(BudgetFundLink::getBudgetLineId, BudgetFundLink::getFundId));
         Map<UUID, String> nomes = fundos.findByCondominiumId(condominioId).stream()
                 .collect(Collectors.toMap(Fund::getId, Fund::getName));
         List<Fluxo> fluxos = fluxos(condominioId);
 
         LocalDate inicio;
         LocalDate fim;
-        var vigencia = VigenciaPo.de(po);
+        var vigencia = BudgetValidity.of(po);
         if (periodo instanceof Mes m) {
             inicio = m.mes().atDay(1);
             fim = m.mes().atEndOfMonth();
         } else if (vigencia.isPresent()) {
             // Acumulado: o exercício e, depois dele, os meses prorrogados (mostrados fora da soma, RF-11.3)
-            inicio = vigencia.get().inicio().atDay(1);
-            fim = VigenciaPo.prorrogacao(po).map(VigenciaPo::fim).orElse(vigencia.get().fim()).atEndOfMonth();
+            inicio = vigencia.get().start().atDay(1);
+            fim = BudgetValidity.extension(po).map(BudgetValidity::end).orElse(vigencia.get().end()).atEndOfMonth();
         } else {
             inicio = LocalDate.MIN;
             fim = LocalDate.MIN;
@@ -153,13 +162,13 @@ public class ConsultaPrevistoRealizado {
         List<LedgerEntry> doPeriodo = fluxos.isEmpty() || inicio.equals(LocalDate.MIN) ? List.of()
                 : lancamentos.findByFileIdInAndDateBetween(fluxos.stream().map(Fluxo::arquivoId).toList(), inicio,
                         fim);
-        BigDecimal limite = po.getExercicioInicio() == null ? null
+        BigDecimal limite = po.getFiscalYearStart() == null ? null
                 : parametros.findValidOn(condominioId, MonthlyOverrunRule.PARAMETER, inicio.equals(LocalDate.MIN)
-                        ? po.getExercicioInicio().atDay(1) : inicio).map(RuleParameter::getValue).orElse(null);
-        List<Aviso> avisosDaPo = consultaPrevisao.detalhe(po).avisos().stream()
-                .filter(a -> AVISOS_DA_PO.contains(a.codigo())).map(a -> new Aviso(a.codigo().name(), a.texto()))
+                        ? po.getFiscalYearStart().atDay(1) : inicio).map(RuleParameter::getValue).orElse(null);
+        List<Aviso> avisosDaPo = consultaPrevisao.detail(po).warnings().stream()
+                .filter(a -> AVISOS_DA_PO.contains(a.code())).map(a -> new Aviso(a.code().name(), a.text()))
                 .toList();
-        String nomeArquivo = arquivos.findById(po.getArquivoId()).map(SourceFile::getOriginalName).orElse(null);
+        String nomeArquivo = arquivos.findById(po.getFileId()).map(SourceFile::getOriginalName).orElse(null);
         // Realocações ativas desta versão da PO (RF-03.1.7), religadas aos lançamentos pela chave estável
         List<CalculoPrevistoRealizado.Realocacao> ativas = realocacoes.findByPrevisaoIdAndDesfeitaEmIsNull(po.getId())
                 .stream().map(RealocacaoLancamento::paraCalculo).toList();
@@ -177,17 +186,17 @@ public class ConsultaPrevistoRealizado {
                 .sorted(Comparator.comparing(Fluxo::arquivoId)).toList();
     }
 
-    private Optional<PrevisaoOrcamentaria> escolherPo(UUID condominioId, Periodo periodo, UUID poId) {
+    private Optional<Budget> escolherPo(UUID condominioId, Periodo periodo, UUID poId) {
         if (poId != null) {
-            return Optional.of(previsoes.findByIdAndCondominioId(poId, condominioId)
+            return Optional.of(previsoes.findByIdAndCondominiumId(poId, condominioId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada")));
         }
         if (periodo instanceof Mes m) {
-            return consultaPrevisao.vigenteNoMes(condominioId, m.mes());
+            return consultaPrevisao.activeInMonth(condominioId, m.mes());
         }
         // Acumulado sem PO informada: a versão confirmada mais recente
-        return previsoes.findByCondominioIdAndEstadoIn(condominioId, EnumSet.of(EstadoPrevisao.CONFIRMADA)).stream()
-                .filter(p -> p.getVersao() != null).max(Comparator.comparing(PrevisaoOrcamentaria::getVersao));
+        return previsoes.findByCondominiumIdAndStatusIn(condominioId, EnumSet.of(BudgetStatus.CONFIRMADA)).stream()
+                .filter(p -> p.getVersion() != null).max(Comparator.comparing(Budget::getVersion));
     }
 
     static Periodo periodo(String texto) {

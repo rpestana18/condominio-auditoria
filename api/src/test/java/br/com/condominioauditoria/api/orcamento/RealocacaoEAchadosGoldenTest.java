@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import br.com.condominioauditoria.api.event.BudgetChanged;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichment;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
@@ -68,7 +69,7 @@ class RealocacaoEAchadosGoldenTest {
         String hoje = DATA.format(Instant.now());
         assertThat(da179.stream().filter(ev -> "1064".equals(ev.conta())).toList()).hasSize(aRealocar.size())
                 .allSatisfy(ev -> {
-                    assertThat(ev.realocacao()).isEqualTo("realocado para 1.7.9 " + g.linha("1.7.9").getDescricao()
+                    assertThat(ev.realocacao()).isEqualTo("realocado para 1.7.9 " + g.linha("1.7.9").getDescription()
                             + " por gestor em " + hoje);
                     assertThat(ev.realocacaoId()).isIn(feitas.stream().map(RealocacaoDto::id).toList());
                     assertThat(ev.historico()).isNotBlank();
@@ -95,7 +96,7 @@ class RealocacaoEAchadosGoldenTest {
                 });
         assertThat(c.eventosRealocacao).filteredOn(e -> e.getAcao().equals(EventoRealocacao.DESFEITA))
                 .hasSize(feitas.size());
-        assertThat(c.publicados).filteredOn(MudancaOrcamento.class::isInstance).hasSizeGreaterThanOrEqualTo(
+        assertThat(c.publicados).filteredOn(BudgetChanged.class::isInstance).hasSizeGreaterThanOrEqualTo(
                 2 * feitas.size());
     }
 
@@ -283,7 +284,7 @@ class RealocacaoEAchadosGoldenTest {
     }
 
     private static void recalcular(CenarioPo c, String descricao) {
-        c.recalculo.recalcular(MudancaOrcamento.de(c.condominioId, descricao, "sistema", Instant.now()));
+        c.recalculo.recalcular(BudgetChanged.of(c.condominioId, descricao, "sistema", Instant.now()));
     }
 
     private static List<Finding> achadosDe(CenarioPo c, YearMonth mes) {

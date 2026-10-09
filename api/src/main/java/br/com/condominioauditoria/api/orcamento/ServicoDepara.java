@@ -1,7 +1,11 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.event.BudgetChanged;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
+import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.AcaoLote;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ContaDepara;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ContaIgnorada;
@@ -18,7 +22,10 @@ import br.com.condominioauditoria.api.orcamento.DeparaDtos.ResultadoPlanilha;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ResultadoSugestoes;
 import br.com.condominioauditoria.api.orcamento.DeparaDtos.ResumoDepara;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
+import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -56,15 +63,15 @@ public class ServicoDepara {
     private static final Pattern CONTA = Pattern.compile("^\\d{1,20}$");
 
     private final CondominiumRepository condominios;
-    private final PrevisaoOrcamentariaRepository previsoes;
-    private final LinhaPoRepository linhas;
+    private final BudgetRepository previsoes;
+    private final BudgetLineRepository linhas;
     private final DeparaContaRepository deparas;
     private final EventoDeparaRepository eventos;
     private final LedgerEntryRepository lancamentos;
     private final SugestaoPorNome sugestao;
     private final ApplicationEventPublisher publicador;
 
-    ServicoDepara(CondominiumRepository condominios, PrevisaoOrcamentariaRepository previsoes, LinhaPoRepository linhas,
+    ServicoDepara(CondominiumRepository condominios, BudgetRepository previsoes, BudgetLineRepository linhas,
             DeparaContaRepository deparas, EventoDeparaRepository eventos, LedgerEntryRepository lancamentos,
             PropriedadesDepara propriedades, ApplicationEventPublisher publicador) {
         this.condominios = condominios;
@@ -82,15 +89,15 @@ public class ServicoDepara {
     }
 
     /** PO, linhas e destinos possíveis, carregados uma vez por pedido. */
-    private record Contexto(PrevisaoOrcamentaria po, List<LinhaPo> linhas, EstruturaPo estrutura,
-            Map<UUID, LinhaPo> porId, Map<String, LinhaPo> destinosPorCodigo) {
+    private record Contexto(Budget po, List<BudgetLine> linhas, BudgetStructure estrutura,
+            Map<UUID, BudgetLine> porId, Map<String, BudgetLine> destinosPorCodigo) {
     }
 
     @Transactional(readOnly = true)
     public DeparaLista listar(UUID condominioId, UUID poId, FiltroDepara filtro) {
-        PrevisaoOrcamentaria po = po(condominioId, poId);
+        Budget po = po(condominioId, poId);
         Contexto ctx = contexto(po);
-        Map<String, ContaDoFluxo> doFluxo = po.getEstado().travada() ? contasDoFluxo(po) : Map.of();
+        Map<String, ContaDoFluxo> doFluxo = po.getStatus().isLocked() ? contasDoFluxo(po) : Map.of();
         Map<String, DeparaConta> existentes = porConta(deparas.findByPrevisaoIdOrderByContaCodigo(po.getId()));
 
         TreeMap<String, ContaDepara> contas = new TreeMap<>();
@@ -103,7 +110,7 @@ public class ServicoDepara {
                 contar(todas, EstadoDepara.SUGERIDO), contar(todas, EstadoDepara.RECUSADO),
                 (int) todas.stream().filter(c -> c.estado() == null).count());
         FiltroDepara f = filtro == null ? FiltroDepara.TODAS : filtro;
-        return new DeparaLista(po.getId(), po.getVersao(), resumo, todas.stream().filter(c -> passa(c, f)).toList());
+        return new DeparaLista(po.getId(), po.getVersion(), resumo, todas.stream().filter(c -> passa(c, f)).toList());
     }
 
     /** Admin escolhe o destino de uma conta (na lista de linhas da PO ou um destino especial). */
@@ -116,11 +123,11 @@ public class ServicoDepara {
         }
         Destino destino;
         if (pedido.tipo() == TipoDestino.LINHA_PO) {
-            LinhaPo l = pedido.linhaId() == null ? null : ctx.porId().get(pedido.linhaId());
+            BudgetLine l = pedido.linhaId() == null ? null : ctx.porId().get(pedido.linhaId());
             if (l == null || !ctx.destinosPorCodigo().containsValue(l)) {
                 throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, l == null
                         ? "A linha informada não é desta PO"
-                        : "A linha " + l.getCodigoEfetivo() + " não recebe débitos: as linhas 1.9 são comparadas com"
+                        : "A linha " + l.getEffectiveCode() + " não recebe débitos: as linhas 1.9 são comparadas com"
                                 + " a arrecadação do fundo e as linhas de total e grupo não têm lançamento");
             }
             destino = Destino.linha(l);
@@ -138,7 +145,7 @@ public class ServicoDepara {
         DeparaConta d = gravar(ctx, codigo, nome, destino, estado, OrigemDepara.ADMIN, "escolhido pelo Admin", false,
                 usuario, agora, true);
         if (agora.equals(d.getAtualizadoEm())) {
-            publicador.publishEvent(MudancaOrcamento.de(condominioId, "de-para da conta " + codigo + " "
+            publicador.publishEvent(BudgetChanged.of(condominioId, "de-para da conta " + codigo + " "
                     + (estado == EstadoDepara.CONFIRMADO ? "confirmado" : "sugerido"), usuario, agora));
         }
         return conta(Optional.ofNullable(contasDoFluxo(ctx.po()).get(codigo))
@@ -178,7 +185,7 @@ public class ServicoDepara {
             String acao = novo == EstadoDepara.CONFIRMADO ? "confirmado" : "recusado";
             List<String> mudadas = pedido.contas().stream().distinct()
                     .filter(c -> ignoradas.stream().noneMatch(i -> i.conta().equals(c))).toList();
-            publicador.publishEvent(MudancaOrcamento.de(condominioId, mudadas.size() == 1
+            publicador.publishEvent(BudgetChanged.of(condominioId, mudadas.size() == 1
                     ? "de-para da conta " + mudadas.getFirst() + " " + acao
                     : "de-para de " + mudadas.size() + " contas " + acao, usuario, agora));
         }
@@ -195,15 +202,15 @@ public class ServicoDepara {
         Map<String, ContaDoFluxo> doFluxo = contasDoFluxo(ctx.po());
         Map<String, DeparaConta> existentes = porConta(deparas.findByPrevisaoIdOrderByContaCodigo(ctx.po().getId()));
         Instant agora = Instant.now();
-        List<LinhaPo> candidatas = SugestaoPorNome.candidatas(ctx.estrutura());
+        List<BudgetLine> candidatas = SugestaoPorNome.candidatas(ctx.estrutura());
 
         Map<String, String> motivoAnterior = new LinkedHashMap<>();
         int daAnterior = 0;
         int peloNome = 0;
-        Optional<PrevisaoOrcamentaria> anterior = versaoAnterior(ctx.po());
+        Optional<Budget> anterior = versaoAnterior(ctx.po());
         if (anterior.isPresent()) {
-            Map<UUID, LinhaPo> linhasAnteriores = linhas.findByPrevisaoIdOrderByOrdem(anterior.get().getId()).stream()
-                    .collect(Collectors.toMap(LinhaPo::getId, Function.identity()));
+            Map<UUID, BudgetLine> linhasAnteriores = linhas.findByBudgetIdOrderByPosition(anterior.get().getId()).stream()
+                    .collect(Collectors.toMap(BudgetLine::getId, Function.identity()));
             for (DeparaConta a : deparas.findByPrevisaoIdOrderByContaCodigo(anterior.get().getId())) {
                 if (a.getEstado() != EstadoDepara.CONFIRMADO || existentes.containsKey(a.getContaCodigo())) {
                     continue;
@@ -251,7 +258,7 @@ public class ServicoDepara {
     public ResultadoPlanilha carregarPlanilha(UUID condominioId, UUID poId, String nomeArquivo, String conteudo,
             String usuario) {
         Contexto ctx = contextoParaEscrita(condominioId, poId);
-        List<LinhaPo> deFundo = ctx.estrutura().fundos().map(EstruturaPo.Grupo::linhas).orElse(List.of());
+        List<BudgetLine> deFundo = ctx.estrutura().funds().map(BudgetStructure.Group::lines).orElse(List.of());
         var leitura = PlanilhaDepara.ler(conteudo, List.copyOf(ctx.destinosPorCodigo().values()), deFundo);
         Map<String, ContaDoFluxo> doFluxo = contasDoFluxo(ctx.po());
         Map<String, DeparaConta> existentes = porConta(deparas.findByPrevisaoIdOrderByContaCodigo(ctx.po().getId()));
@@ -319,66 +326,66 @@ public class ServicoDepara {
         return d;
     }
 
-    private static Destino comTexto(Destino d, Map<UUID, LinhaPo> porId) {
-        LinhaPo l = d.linhaPoId() == null ? null : porId.get(d.linhaPoId());
+    private static Destino comTexto(Destino d, Map<UUID, BudgetLine> porId) {
+        BudgetLine l = d.linhaPoId() == null ? null : porId.get(d.linhaPoId());
         return l == null ? d : Destino.linha(l);
     }
 
-    private PrevisaoOrcamentaria po(UUID condominioId, UUID poId) {
-        return previsoes.findByIdAndCondominioId(poId, condominioId)
+    private Budget po(UUID condominioId, UUID poId) {
+        return previsoes.findByIdAndCondominiumId(poId, condominioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada"));
     }
 
     private Contexto contextoParaEscrita(UUID condominioId, UUID poId) {
-        PrevisaoOrcamentaria po = po(condominioId, poId);
-        if (!po.getEstado().travada()) {
+        Budget po = po(condominioId, poId);
+        if (!po.getStatus().isLocked()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Confirme a PO antes do de-para: o de-para é por versão confirmada da PO");
         }
         return contexto(po);
     }
 
-    private Contexto contexto(PrevisaoOrcamentaria po) {
-        List<LinhaPo> lidas = linhas.findByPrevisaoIdOrderByOrdem(po.getId());
-        EstruturaPo estrutura = EstruturaPo.de(lidas);
-        Map<UUID, LinhaPo> porId = lidas.stream().collect(Collectors.toMap(LinhaPo::getId, Function.identity()));
-        Map<String, LinhaPo> destinos = new LinkedHashMap<>();
-        destinosDeDebito(estrutura).forEach(l -> destinos.putIfAbsent(l.getCodigoEfetivo(), l));
+    private Contexto contexto(Budget po) {
+        List<BudgetLine> lidas = linhas.findByBudgetIdOrderByPosition(po.getId());
+        BudgetStructure estrutura = BudgetStructure.of(lidas);
+        Map<UUID, BudgetLine> porId = lidas.stream().collect(Collectors.toMap(BudgetLine::getId, Function.identity()));
+        Map<String, BudgetLine> destinos = new LinkedHashMap<>();
+        destinosDeDebito(estrutura).forEach(l -> destinos.putIfAbsent(l.getEffectiveCode(), l));
         return new Contexto(po, lidas, estrutura, porId, destinos);
     }
 
     /** Linhas que podem receber débito: linhas dos grupos de despesa (1.1 a 1.8), nunca total, grupo ou fundo. */
-    static List<LinhaPo> destinosDeDebito(EstruturaPo estrutura) {
-        return estrutura.gruposSemFundos().stream().flatMap(g -> g.linhas().stream()).toList();
+    static List<BudgetLine> destinosDeDebito(BudgetStructure estrutura) {
+        return estrutura.groupsWithoutFunds().stream().flatMap(g -> g.lines().stream()).toList();
     }
 
     /** Versão confirmada imediatamente anterior desta PO no condomínio (maior versão menor que esta). */
-    private Optional<PrevisaoOrcamentaria> versaoAnterior(PrevisaoOrcamentaria po) {
-        if (po.getVersao() == null) {
+    private Optional<Budget> versaoAnterior(Budget po) {
+        if (po.getVersion() == null) {
             return Optional.empty();
         }
-        return previsoes.findByCondominioIdAndEstadoIn(po.getCondominioId(),
-                        EnumSet.of(EstadoPrevisao.CONFIRMADA, EstadoPrevisao.SUBSTITUIDA)).stream()
-                .filter(p -> p.getVersao() != null && p.getVersao() < po.getVersao())
-                .max(Comparator.comparing(PrevisaoOrcamentaria::getVersao));
+        return previsoes.findByCondominiumIdAndStatusIn(po.getCondominiumId(),
+                        EnumSet.of(BudgetStatus.CONFIRMADA, BudgetStatus.SUBSTITUIDA)).stream()
+                .filter(p -> p.getVersion() != null && p.getVersion() < po.getVersion())
+                .max(Comparator.comparing(Budget::getVersion));
     }
 
     /**
      * Contas com débito no fundo Condomínio (fundo ordinário confirmado) no exercício da PO e nos meses prorrogados,
      * pelo código.
      */
-    Map<String, ContaDoFluxo> contasDoFluxo(PrevisaoOrcamentaria po) {
-        if (po.getExercicioInicio() == null) {
+    Map<String, ContaDoFluxo> contasDoFluxo(Budget po) {
+        if (po.getFiscalYearStart() == null) {
             return Map.of();
         }
-        UUID ordinario = condominios.findById(po.getCondominioId()).map(Condominium::getOperatingFundId).orElse(null);
+        UUID ordinario = condominios.findById(po.getCondominiumId()).map(Condominium::getOperatingFundId).orElse(null);
         if (ordinario == null) {
             return Map.of();
         }
-        LocalDate inicio = po.getExercicioInicio().atDay(1);
+        LocalDate inicio = po.getFiscalYearStart().atDay(1);
         // Os meses prorrogados usam o de-para desta PO (RF-11.3)
-        LocalDate fim = Optional.ofNullable(po.getProrrogadaAte()).orElse(po.getExercicioFim()).atEndOfMonth();
-        return agrupar(lancamentos.debitsWithAccount(po.getCondominioId(), ordinario, inicio, fim));
+        LocalDate fim = Optional.ofNullable(po.getExtendedUntil()).orElse(po.getFiscalYearEnd()).atEndOfMonth();
+        return agrupar(lancamentos.debitsWithAccount(po.getCondominiumId(), ordinario, inicio, fim));
     }
 
     /** Agrupa pelo código; o nome é o do lançamento mais recente (a lista vem em ordem de data). */

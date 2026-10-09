@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -51,13 +52,13 @@ public class EventoRubrica {
      * @param anterior rubrica antes da mudança (nula quando a linha ainda não tinha rubrica)
      * @param estadoAnterior estado antes da mudança (nulo quando a linha ainda não tinha rubrica)
      */
-    public static EventoRubrica daLinha(LinhaPo linha, LinhaRubrica atual, Acao acao, Rubrica anterior,
+    public static EventoRubrica daLinha(BudgetLine linha, LinhaRubrica atual, Acao acao, Rubrica anterior,
             EstadoRubrica estadoAnterior, Rubrica nova, String usuario, Instant em) {
-        EventoRubrica e = new EventoRubrica(linha.getCondominioId(), acao, nova, usuario, em);
-        e.previsaoId = linha.getPrevisaoId();
+        EventoRubrica e = new EventoRubrica(linha.getCondominiumId(), acao, nova, usuario, em);
+        e.previsaoId = linha.getBudgetId();
         e.linhaPoId = linha.getId();
-        e.linhaCodigo = linha.getCodigoEfetivo();
-        e.linhaDescricao = linha.getDescricao();
+        e.linhaCodigo = linha.getEffectiveCode();
+        e.linhaDescricao = linha.getDescription();
         if (anterior != null) {
             e.rubricaAnteriorId = anterior.getId();
             e.rubricaAnterior = anterior.getNome();
@@ -70,13 +71,13 @@ public class EventoRubrica {
     }
 
     /** Rubrica criada (sem linha, ou a partir de uma linha da PO). */
-    public static EventoRubrica criada(Rubrica rubrica, LinhaPo origem, String usuario, Instant em) {
+    public static EventoRubrica criada(Rubrica rubrica, BudgetLine origem, String usuario, Instant em) {
         EventoRubrica e = new EventoRubrica(rubrica.getCondominioId(), Acao.CRIADA, rubrica, usuario, em);
         if (origem != null) {
-            e.previsaoId = origem.getPrevisaoId();
+            e.previsaoId = origem.getBudgetId();
             e.linhaPoId = origem.getId();
-            e.linhaCodigo = origem.getCodigoEfetivo();
-            e.linhaDescricao = origem.getDescricao();
+            e.linhaCodigo = origem.getEffectiveCode();
+            e.linhaDescricao = origem.getDescription();
         }
         return e;
     }

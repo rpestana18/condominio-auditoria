@@ -74,7 +74,7 @@ class ExportacaoPrevistoRealizadoGoldenTest {
             }
         }
         // Cabeçalho
-        assertThat(texto).contains(g.cenario.arquivos.get(g.po.getArquivoId()).getOriginalName(), "versão 1", "exercício 05/2026 a 04/2027",
+        assertThat(texto).contains(g.cenario.arquivos.get(g.po.getFileId()).getOriginalName(), "versão 1", "exercício 05/2026 a 04/2027",
                 g.po.getSha256(), "Período 09/2026", "04/10/2026 12:30", "Admin Teste (admin)",
                 "73 de 73 contas confirmadas");
     }

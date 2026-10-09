@@ -107,6 +107,20 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | segunda barreira | `FileAccessBarrier` | |
 | consulta (gRPC) | `QueryService`, `QueryGrpcService` | o serviço gRPC `Consulta` do contrato não muda até a fase 2 |
 | prazo (de uma chamada) | `timeout`, `deadline` | |
+| código impresso, código efetivo | `printedCode`, `effectiveCode` | |
+| orçado, orçado anterior | `budgeted`, `previousBudgeted` | |
+| previsto do mês | `monthlyPlanned` | |
+| início e fim do exercício | `fiscalYearStart`, `fiscalYearEnd` | |
+| ata (que aprovou a PO), sem ata | `minutes`, `withoutMinutes` | |
+| reaprovação, substituída | `reapproval`, `superseded` | |
+| ciente da divergência | `discrepancyAcknowledged` | |
+| tolerância de arredondamento | `roundingTolerance` | |
+| ligação dos fundos da PO | `BudgetFundLink` | |
+| estrutura da PO (total, grupos) | `BudgetStructure` | |
+| avaliação da leitura da PO | `BudgetReadingAssessment` | |
+| vigência da PO, PO do mês | `BudgetValidity`, `BudgetOfMonth` | |
+| marca da linha da PO | `BudgetLineMark` | |
+| mudança no orçamento (evento) | `BudgetChanged` | |
 
 ---
 

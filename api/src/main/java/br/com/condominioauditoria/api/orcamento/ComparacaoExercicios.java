@@ -1,5 +1,7 @@
 package br.com.condominioauditoria.api.orcamento;
 
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.model.enums.BudgetLineType;
 import br.com.condominioauditoria.api.orcamento.ExercicioDtos.TipoExercicio;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.FundoResultado;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.GrupoResultado;
@@ -7,6 +9,7 @@ import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.LinhaResultado
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.MesExercicio;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoFundo;
 import br.com.condominioauditoria.api.orcamento.PrevistoRealizado.SituacaoMes;
+import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Month;
@@ -62,7 +65,7 @@ public final class ComparacaoExercicios {
      * realizado. {@code mesesDoPeriodo}: os meses desses resultados (AAAA-MM).
      */
     public record Entrada(String id, TipoExercicio tipo, String rotulo, UUID poId, Integer versao, YearMonth inicio,
-            YearMonth fim, List<LinhaPo> linhas, Map<UUID, UUID> fundoPorLinha, Map<UUID, RubricaDaLinha> rubricas,
+            YearMonth fim, List<BudgetLine> linhas, Map<UUID, UUID> fundoPorLinha, Map<UUID, RubricaDaLinha> rubricas,
             PrevistoRealizado acumulado, List<PrevistoRealizado> periodo, List<String> mesesDoPeriodo,
             Integer achadosAbertos) {
 
@@ -121,12 +124,12 @@ public final class ComparacaoExercicios {
     }
 
     /** Números de uma linha num exercício (previsto do período e realizado nulos sem realizado). */
-    private record ValorLinha(LinhaPo linha, String grupo, BigDecimal previstoMes, BigDecimal previsto,
+    private record ValorLinha(BudgetLine linha, String grupo, BigDecimal previstoMes, BigDecimal previsto,
             BigDecimal realizado, String alvo) {
     }
 
     /** Um exercício já apurado, linha a linha, no escopo do filtro. */
-    private record Apurado(Entrada entrada, List<EstruturaPo.Grupo> grupos, Map<String, List<ValorLinha>> porGrupo,
+    private record Apurado(Entrada entrada, List<BudgetStructure.Group> grupos, Map<String, List<ValorLinha>> porGrupo,
             boolean comRealizado) {
     }
 
@@ -185,7 +188,7 @@ public final class ComparacaoExercicios {
     }
 
     private static Apurado apurar(Entrada e, Filtro f) {
-        EstruturaPo estrutura = EstruturaPo.de(e.linhas());
+        BudgetStructure estrutura = BudgetStructure.of(e.linhas());
         Map<UUID, List<LinhaResultado>> doPeriodo = new HashMap<>();
         Map<UUID, List<FundoResultado>> fundosDoPeriodo = new HashMap<>();
         for (PrevistoRealizado r : e.periodo()) {
@@ -201,21 +204,21 @@ public final class ComparacaoExercicios {
             }
         }
         boolean comRealizado = !e.coluna() && !e.periodo().isEmpty();
-        List<EstruturaPo.Grupo> grupos = new ArrayList<>();
+        List<BudgetStructure.Group> grupos = new ArrayList<>();
         Map<String, List<ValorLinha>> porGrupo = new LinkedHashMap<>();
-        for (EstruturaPo.Grupo g : estrutura.grupos()) {
+        for (BudgetStructure.Group g : estrutura.groups()) {
             if (!grupoNoFiltro(g, f)) {
                 continue;
             }
             List<ValorLinha> valores = new ArrayList<>();
-            for (LinhaPo l : g.linhas()) {
-                if (g.fundos() && f.fundoId() != null && !f.fundoId().equals(e.fundoPorLinha().get(l.getId()))) {
+            for (BudgetLine l : g.lines()) {
+                if (g.funds() && f.fundoId() != null && !f.fundoId().equals(e.fundoPorLinha().get(l.getId()))) {
                     continue;
                 }
                 BigDecimal previsto = null;
                 BigDecimal realizado = null;
                 String alvo = null;
-                if (comRealizado && g.fundos()) {
+                if (comRealizado && g.funds()) {
                     List<FundoResultado> frs = fundosDoPeriodo.getOrDefault(l.getId(), List.of());
                     if (!frs.isEmpty() && frs.stream().allMatch(fr -> fr.situacao() == SituacaoFundo.COMPARADO)) {
                         previsto = soma(frs.stream().map(FundoResultado::previsto).toList());
@@ -230,23 +233,23 @@ public final class ComparacaoExercicios {
                     }
                     alvo = CalculoPrevistoRealizado.alvoLinha(l.getId());
                 }
-                valores.add(new ValorLinha(l, g.linha().getCodigoEfetivo(), valorDaLinha(e, l), previsto, realizado,
+                valores.add(new ValorLinha(l, g.line().getEffectiveCode(), valorDaLinha(e, l), previsto, realizado,
                         alvo));
             }
-            if (g.fundos() && valores.isEmpty()) {
+            if (g.funds() && valores.isEmpty()) {
                 continue;
             }
             grupos.add(g);
-            porGrupo.put(g.linha().getCodigoEfetivo(), valores);
+            porGrupo.put(g.line().getEffectiveCode(), valores);
         }
         return new Apurado(e, grupos, porGrupo, comRealizado);
     }
 
-    private static boolean grupoNoFiltro(EstruturaPo.Grupo g, Filtro f) {
+    private static boolean grupoNoFiltro(BudgetStructure.Group g, Filtro f) {
         if (f.fundoId() == null) {
             return true;
         }
-        return f.fundoId().equals(f.fundoOrdinarioId()) != g.fundos();
+        return f.fundoId().equals(f.fundoOrdinarioId()) != g.funds();
     }
 
     private static boolean filtroDeOutroFundo(Filtro f) {
@@ -310,28 +313,28 @@ public final class ComparacaoExercicios {
     }
 
     private static boolean grupoDeFundos(Apurado a, String codigo) {
-        return a.grupos().stream().anyMatch(g -> g.fundos() && g.linha().getCodigoEfetivo().equals(codigo));
+        return a.grupos().stream().anyMatch(g -> g.funds() && g.line().getEffectiveCode().equals(codigo));
     }
 
     private static List<GrupoComparado> grupos(List<Apurado> apurados) {
         // Ordem: a dos grupos no exercício mais recente; os que só existem nos outros vêm depois
-        Map<String, EstruturaPo.Grupo> ordem = new LinkedHashMap<>();
-        apurados.forEach(a -> a.grupos().forEach(g -> ordem.putIfAbsent(g.linha().getCodigoEfetivo(), g)));
+        Map<String, BudgetStructure.Group> ordem = new LinkedHashMap<>();
+        apurados.forEach(a -> a.grupos().forEach(g -> ordem.putIfAbsent(g.line().getEffectiveCode(), g)));
         List<GrupoComparado> lista = new ArrayList<>();
-        for (Map.Entry<String, EstruturaPo.Grupo> x : ordem.entrySet()) {
+        for (Map.Entry<String, BudgetStructure.Group> x : ordem.entrySet()) {
             List<ValorComparado> valores = valores(apurados, a -> {
                 List<ValorLinha> linhas = a.porGrupo().get(x.getKey());
                 if (linhas == null) {
                     return null;
                 }
-                EstruturaPo.Grupo g = a.grupos().stream()
-                        .filter(gr -> gr.linha().getCodigoEfetivo().equals(x.getKey())).findFirst().orElseThrow();
-                String alvo = !a.comRealizado() ? null : g.fundos()
+                BudgetStructure.Group g = a.grupos().stream()
+                        .filter(gr -> gr.line().getEffectiveCode().equals(x.getKey())).findFirst().orElseThrow();
+                String alvo = !a.comRealizado() ? null : g.funds()
                         ? (linhas.size() == 1 ? linhas.getFirst().alvo() : null)
-                        : CalculoPrevistoRealizado.alvoGrupo(g.linha().getId());
+                        : CalculoPrevistoRealizado.alvoGrupo(g.line().getId());
                 return new Parcial(linhas, alvo);
             });
-            lista.add(new GrupoComparado(x.getKey(), x.getValue().linha().getDescricao(), x.getValue().fundos(),
+            lista.add(new GrupoComparado(x.getKey(), x.getValue().line().getDescription(), x.getValue().funds(),
                     valores));
         }
         return List.copyOf(lista);
@@ -363,7 +366,7 @@ public final class ComparacaoExercicios {
             a.porGrupo().values().stream().flatMap(List::stream)
                     .filter(v -> !a.entrada().rubricas().containsKey(v.linha().getId()))
                     .forEach(v -> lista.add(new LinhaSemCorrespondencia(a.entrada().id(), v.linha().getId(),
-                            v.linha().getCodigoEfetivo(), v.linha().getConta(), v.linha().getDescricao(), v.grupo(),
+                            v.linha().getEffectiveCode(), v.linha().getAccount(), v.linha().getDescription(), v.grupo(),
                             v.previstoMes(), v.previsto(), v.realizado(), v.alvo())));
         }
         return List.copyOf(lista);
@@ -400,8 +403,8 @@ public final class ComparacaoExercicios {
             }
             lista.add(new ValorComparado(a.entrada().id(), previstoMes, previsto, realizado, vPrevisto, vRealizado,
                     p == null ? null : p.alvo(), p == null ? List.of() : p.linhas().stream()
-                            .map(v -> new LinhaUsada(v.linha().getId(), v.linha().getCodigoEfetivo(),
-                                    v.linha().getDescricao(), v.alvo())).toList()));
+                            .map(v -> new LinhaUsada(v.linha().getId(), v.linha().getEffectiveCode(),
+                                    v.linha().getDescription(), v.alvo())).toList()));
         }
         return List.copyOf(lista);
     }
@@ -409,7 +412,7 @@ public final class ComparacaoExercicios {
     private static List<String> avisos(List<Entrada> entradas) {
         List<String> avisos = new ArrayList<>();
         for (Entrada e : entradas) {
-            long sem = e.linhas().stream().filter(l -> l.getTipo() == TipoLinhaPo.LINHA)
+            long sem = e.linhas().stream().filter(l -> l.getType() == BudgetLineType.LINHA)
                     .filter(l -> !e.rubricas().containsKey(l.getId())).count();
             if (sem > 0) {
                 avisos.add(e.rotulo() + ": " + sem + (sem == 1 ? " linha" : " linhas")
@@ -428,8 +431,8 @@ public final class ComparacaoExercicios {
                 : "acumulado";
     }
 
-    private static BigDecimal valorDaLinha(Entrada e, LinhaPo l) {
-        BigDecimal v = e.coluna() ? l.getOrcadoAnterior() : l.getOrcado();
+    private static BigDecimal valorDaLinha(Entrada e, BudgetLine l) {
+        BigDecimal v = e.coluna() ? l.getPreviousBudgeted() : l.getBudgeted();
         return v == null ? ZERO : v.setScale(2, RoundingMode.HALF_UP);
     }
 

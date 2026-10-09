@@ -2,6 +2,9 @@ package br.com.condominioauditoria.api.orcamento;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import br.com.condominioauditoria.api.model.budget.Budget;
+import br.com.condominioauditoria.api.model.budget.BudgetLine;
+import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -9,11 +12,11 @@ import org.junit.jupiter.api.Test;
 /** RF-03.1.5 (planilha de sugestões): formato do mapa do piloto; linha inválida é listada e não entra. */
 class PlanilhaDeparaTest {
 
-    private final List<LinhaPo> linhas = PoDoPiloto.padrao().linhasGravadas(
-            new PrevisaoOrcamentaria(UUID.randomUUID(), UUID.randomUUID(), "a".repeat(64)));
-    private final EstruturaPo estrutura = EstruturaPo.de(linhas);
-    private final List<LinhaPo> destinos = ServicoDepara.destinosDeDebito(estrutura);
-    private final List<LinhaPo> fundos = estrutura.fundos().orElseThrow().linhas();
+    private final List<BudgetLine> linhas = PoDoPiloto.padrao().linhasGravadas(
+            new Budget(UUID.randomUUID(), UUID.randomUUID(), "a".repeat(64)));
+    private final BudgetStructure estrutura = BudgetStructure.of(linhas);
+    private final List<BudgetLine> destinos = ServicoDepara.destinosDeDebito(estrutura);
+    private final List<BudgetLine> fundos = estrutura.funds().orElseThrow().lines();
 
     @Test
     void leOFormatoDoPiloto() {

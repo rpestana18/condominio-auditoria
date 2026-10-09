@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.api.exception;
 
-import br.com.condominioauditoria.api.orcamento.ConfirmacaoRecusadaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,11 +19,11 @@ class GlobalExceptionHandler {
     }
 
     /** All reasons at once, so the screen shows what is missing. */
-    @ExceptionHandler(ConfirmacaoRecusadaException.class)
-    ProblemDetail confirmationRejected(ConfirmacaoRecusadaException e) {
+    @ExceptionHandler(BudgetConfirmationRejectedException.class)
+    ProblemDetail confirmationRejected(BudgetConfirmationRejectedException e) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(e.status(), e.getMessage());
         p.setTitle("Confirmação recusada");
-        p.setProperty("motivos", e.motivos());
+        p.setProperty("motivos", e.reasons());
         return p;
     }
 

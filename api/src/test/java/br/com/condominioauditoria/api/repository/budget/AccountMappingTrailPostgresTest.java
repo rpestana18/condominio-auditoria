@@ -56,19 +56,20 @@ class AccountMappingTrailPostgresTest {
             s.execute("set search_path to " + schema);
             UUID event = insertEvent(s);
 
-            assertThatThrownBy(() -> s.executeUpdate("update evento_depara set usuario = 'outro' where id = '" + event
-                    + "'")).isInstanceOf(SQLException.class).hasMessageContaining("só de inserção")
+            assertThatThrownBy(() -> s.executeUpdate(
+                    "update account_mapping_event set username = 'outro' where id = '" + event + "'"))
+                    .isInstanceOf(SQLException.class).hasMessageContaining("só de inserção")
                     .hasMessageContaining("UPDATE");
-            assertThatThrownBy(() -> s.executeUpdate("delete from evento_depara where id = '" + event + "'"))
+            assertThatThrownBy(() -> s.executeUpdate("delete from account_mapping_event where id = '" + event + "'"))
                     .isInstanceOf(SQLException.class).hasMessageContaining("só de inserção")
                     .hasMessageContaining("DELETE");
 
-            try (var r = s.executeQuery("select usuario from evento_depara where id = '" + event + "'")) {
+            try (var r = s.executeQuery("select username from account_mapping_event where id = '" + event + "'")) {
                 assertThat(r.next()).isTrue();
                 assertThat(r.getString(1)).isEqualTo("admin");
             }
             // The mapping table (current state) accepts changes; only the trail is immutable
-            assertThat(s.executeUpdate("update depara_conta set estado = 'CONFIRMADO'")).isEqualTo(1);
+            assertThat(s.executeUpdate("update account_mapping set status = 'CONFIRMADO'")).isEqualTo(1);
         }
     }
 
@@ -90,30 +91,33 @@ class AccountMappingTrailPostgresTest {
         UUID file = UUID.randomUUID();
         UUID budget = UUID.randomUUID();
         UUID event = UUID.randomUUID();
-        s.executeUpdate("insert into arquivo (id, condominio_id, categoria, nome_original, caminho, sha256, tamanho_bytes,"
-                + " status, enviado_por, enviado_em, processamento_id) values ('" + file + "', '" + condominium
+        s.executeUpdate("insert into source_file (id, condominium_id, category, original_name, path, sha256, "
+                + "size_bytes,"
+                + " status, uploaded_by, uploaded_at, processing_id) values ('" + file + "', '" + condominium
                 + "', 'PO', 'po.pdf', 'c/po.pdf', '" + "a".repeat(64) + "', 1, 'CONCLUIDO', 'admin', now(), '"
                 + UUID.randomUUID() + "')");
-        s.executeUpdate("insert into previsao_orcamentaria (id, condominio_id, arquivo_id, sha256, estado,"
-                + " tolerancia_arredondamento, lida_em) values ('" + budget + "', '" + condominium + "', '" + file
+        s.executeUpdate("insert into budget (id, condominium_id, file_id, sha256, status,"
+                + " rounding_tolerance, read_at) values ('" + budget + "', '" + condominium + "', '" + file
                 + "', '" + "a".repeat(64) + "', 'CONFIRMADA', 0.01, now())");
         s.executeUpdate(mappingSql(budget.toString(), "1621", "AJUSTE", "null"));
-        s.executeUpdate("insert into evento_depara (id, condominio_id, previsao_id, conta_codigo, acao, usuario, em,"
-                + " tipo_destino_novo, destino_novo, estado_novo, origem) values ('" + event + "', '" + condominium
+        s.executeUpdate("insert into account_mapping_event (id, condominium_id, budget_id, account_code, action, "
+                + "username, occurred_at,"
+                + " new_target_type, new_target, new_status, source) values ('" + event + "', '" + condominium
                 + "', '" + budget + "', '1621', 'SUGERIDO', 'admin', now(), 'AJUSTE', 'AJUSTE', 'SUGERIDO', 'ADMIN')");
         return event;
     }
 
     private static String budgetId(Statement s) throws SQLException {
-        try (var r = s.executeQuery("select id from previsao_orcamentaria")) {
+        try (var r = s.executeQuery("select id from budget")) {
             r.next();
             return r.getString(1);
         }
     }
 
     private static String mappingSql(String budget, String account, String type, String line) {
-        return "insert into depara_conta (id, condominio_id, previsao_id, conta_codigo, tipo_destino, linha_po_id, estado,"
-                + " origem, atualizado_por, atualizado_em) values ('" + UUID.randomUUID()
+        return "insert into account_mapping (id, condominium_id, budget_id, account_code, target_type, "
+                + "budget_line_id, status,"
+                + " source, updated_by, updated_at) values ('" + UUID.randomUUID()
                 + "', '6f1d2c1e-3b4a-4c8e-9a51-2815a0000001', '" + budget + "', '" + account + "', '" + type + "', "
                 + line + ", 'SUGERIDO', 'ADMIN', 'admin', now())";
     }

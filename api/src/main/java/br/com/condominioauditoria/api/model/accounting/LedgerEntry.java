@@ -1,57 +1,36 @@
 package br.com.condominioauditoria.api.model.accounting;
 
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
 /** Ledger entry extracted, normalized and enriched. Points to the source file and page. */
 @Entity
-@Table(name = "lancamento")
 public class LedgerEntry {
 
     @Id
     private UUID id;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "arquivo_id")
     private UUID fileId;
-    @Column(name = "fundo_id")
     private UUID fundId;
-    @Column(name = "data")
     private LocalDate date;
-    @Column(name = "conta_codigo")
     private String accountCode;
-    @Column(name = "conta_nome")
     private String accountName;
-    @Column(name = "documento")
     private String document;
-    @Column(name = "historico")
     private String memo;
-    @Column(name = "credito")
     private BigDecimal credit;
-    @Column(name = "debito")
     private BigDecimal debit;
-    @Column(name = "saldo")
     private BigDecimal balance;
-    @Column(name = "pagina")
     private int page;
-    @Column(name = "ordem")
     private int sequence;
-    @Column(name = "nota_fiscal")
     private String invoiceNumber;
-    @Column(name = "fornecedor")
     private String supplier;
-    @Column(name = "meio_pagamento")
     private String paymentMethod;
-    @Column(name = "transferencia_entre_fundos")
     private boolean interFundTransfer;
     /** Credit from a condo fee receipt (v2). Null: saved before v2, the collection asks for a reprocess. */
-    @Column(name = "recebimento_cota")
     private Boolean condoFeeReceipt;
 
     protected LedgerEntry() {

@@ -2,49 +2,36 @@ package br.com.condominioauditoria.api.model.ai;
 
 import br.com.condominioauditoria.api.model.enums.AiFunction;
 import br.com.condominioauditoria.api.model.enums.AiMode;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A row of the condominium's AI configuration (table configuracao_ia, V13): null feature = general mode; ASSISTENTE +
+ * A row of the condominium's AI configuration (table ai_configuration): null feature = general mode; ASSISTENTE +
  * RESPOSTAS = chat (null mode = inherits the general one); ASSISTENTE + EMBEDDINGS = semantic search.
  *
  * The API key exists only encrypted with the rag's public key (the api cannot read it) and never appears in toString,
  * logs or API responses; keySuffix keeps the last 4 characters for the screen.
  */
 @Entity
-@Table(name = "configuracao_ia")
 public class AiConfiguration {
 
     @Id
     private UUID id;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "modulo")
     private String feature;
-    @Column(name = "funcao")
     @Enumerated(EnumType.STRING)
     private AiFunction function;
-    @Column(name = "modo")
     @Enumerated(EnumType.STRING)
     private AiMode mode;
-    @Column(name = "provedor")
     private String provider;
-    @Column(name = "modelo")
     private String model;
-    @Column(name = "chave_cifrada")
     private byte[] encryptedKey;
-    @Column(name = "chave_final")
     private String keySuffix;
-    @Column(name = "atualizado_por")
     private String updatedBy;
-    @Column(name = "atualizado_em")
     private Instant updatedAt;
 
     protected AiConfiguration() {
@@ -120,7 +107,7 @@ public class AiConfiguration {
 
     @Override
     public String toString() {
-        return "AiConfiguration[" + condominiumId + ", " + feature + ", " + function + ", " + mode + ", " + provider + "/"
-                + model + ", chave " + (hasKey() ? "cadastrada" : "ausente") + "]";
+        return "AiConfiguration[" + condominiumId + ", " + feature + ", " + function + ", " + mode + ", "
+                + provider + "/" + model + ", chave " + (hasKey() ? "cadastrada" : "ausente") + "]";
     }
 }

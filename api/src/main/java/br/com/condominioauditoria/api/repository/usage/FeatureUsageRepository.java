@@ -29,15 +29,15 @@ public interface FeatureUsageRepository extends JpaRepository<FeatureUsage, UUID
     }
 
     @Query(nativeQuery = true, value = """
-            select to_char(quando at time zone 'America/Sao_Paulo', 'YYYY-MM') as "month",
-                   modulo as "feature", funcao as "function",
+            select to_char(occurred_at at time zone 'America/Sao_Paulo', 'YYYY-MM') as "month",
+                   feature as "feature", function as "function",
                    count(*) as "count",
-                   cast(coalesce(sum(tokens_entrada), 0) as bigint) as "inputTokens",
-                   cast(coalesce(sum(tokens_saida), 0) as bigint) as "outputTokens",
-                   cast(coalesce(sum(arquivos), 0) as bigint) as "files",
-                   cast(coalesce(sum(paginas), 0) as bigint) as "pages"
-            from uso_modulo
-            where condominio_id = :condominiumId and quando >= :from and quando < :to
+                   cast(coalesce(sum(input_tokens), 0) as bigint) as "inputTokens",
+                   cast(coalesce(sum(output_tokens), 0) as bigint) as "outputTokens",
+                   cast(coalesce(sum(files), 0) as bigint) as "files",
+                   cast(coalesce(sum(pages), 0) as bigint) as "pages"
+            from feature_usage
+            where condominium_id = :condominiumId and occurred_at >= :from and occurred_at < :to
             group by 1, 2, 3
             order by 1, 2, 3
             """)
@@ -61,13 +61,13 @@ public interface FeatureUsageRepository extends JpaRepository<FeatureUsage, UUID
     }
 
     @Query(nativeQuery = true, value = """
-            select to_char(quando at time zone 'America/Sao_Paulo', 'YYYY-MM') as "month",
-                   modulo as "feature", funcao as "function", provedor as "provider", modelo as "model",
-                   cast(coalesce(sum(tokens_entrada), 0) as bigint) as "inputTokens",
-                   cast(coalesce(sum(tokens_saida), 0) as bigint) as "outputTokens"
-            from uso_modulo
-            where condominio_id = :condominiumId and quando >= :from and quando < :to
-              and (tokens_entrada is not null or tokens_saida is not null)
+            select to_char(occurred_at at time zone 'America/Sao_Paulo', 'YYYY-MM') as "month",
+                   feature as "feature", function as "function", provider as "provider", model as "model",
+                   cast(coalesce(sum(input_tokens), 0) as bigint) as "inputTokens",
+                   cast(coalesce(sum(output_tokens), 0) as bigint) as "outputTokens"
+            from feature_usage
+            where condominium_id = :condominiumId and occurred_at >= :from and occurred_at < :to
+              and (input_tokens is not null or output_tokens is not null)
             group by 1, 2, 3, 4, 5
             order by 1, 2, 3, 4, 5
             """)

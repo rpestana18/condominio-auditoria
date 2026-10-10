@@ -1,15 +1,12 @@
 package br.com.condominioauditoria.api.model.budget;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
 /** Budget audit trail: who, when, what. Insert only (the database rejects update and delete). */
 @Entity
-@Table(name = "evento_previsao")
 public class BudgetEvent {
 
     public static final String CONFIRMED = "CONFIRMADA";
@@ -28,19 +25,12 @@ public class BudgetEvent {
 
     @Id
     private UUID id;
-    @Column(name = "previsao_id")
     private UUID budgetId;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "tipo")
     private String type;
-    @Column(name = "usuario")
     private String username;
-    @Column(name = "em")
     private Instant occurredAt;
-    @Column(name = "justificativa")
     private String justification;
-    @Column(name = "detalhe")
     private String detail;
 
     protected BudgetEvent() {

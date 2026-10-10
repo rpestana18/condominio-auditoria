@@ -12,11 +12,11 @@ public interface AiConfigurationRepository extends JpaRepository<AiConfiguration
 
     /**
      * Serializes the writes of a condominium's AI configuration until the end of the transaction (PostgreSQL advisory
-     * lock), as in modulo_condominio: two Admins saving at the same time do not write duplicate rows or events (the
+     * lock), as in condominium_feature: two Admins saving at the same time do not write duplicate rows or events (the
      * second waits and compares with what the first saved).
      */
     @Query(nativeQuery = true, value = """
-            select 1 from (select pg_advisory_xact_lock(hashtextextended('configuracao_ia:' || :condominiumId, 0))) t
+            select 1 from (select pg_advisory_xact_lock(hashtextextended('ai_configuration:' || :condominiumId, 0))) t
             """)
     Integer lockForUpdate(String condominiumId);
 }

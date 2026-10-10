@@ -1,15 +1,12 @@
 package br.com.condominioauditoria.api.model.budget;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
 /** Reallocation trail (insert-only: the database rejects update and delete). */
 @Entity
-@Table(name = "evento_realocacao")
 public class ReallocationEvent {
 
     public static final String REALOCADA = "REALOCADA";
@@ -17,17 +14,11 @@ public class ReallocationEvent {
 
     @Id
     private UUID id;
-    @Column(name = "realocacao_id")
     private UUID reallocationId;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "acao")
     private String action;
-    @Column(name = "usuario")
     private String username;
-    @Column(name = "em")
     private Instant occurredAt;
-    @Column(name = "detalhe")
     private String detail;
 
     protected ReallocationEvent() {

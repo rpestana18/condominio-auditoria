@@ -3,12 +3,10 @@ package br.com.condominioauditoria.api.model.file;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.model.enums.IndexingStatus;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -20,71 +18,45 @@ import org.hibernate.annotations.DynamicUpdate;
 // the indexing status saved in the meantime (an indexed file showed up as "queued" again).
 @DynamicUpdate
 @Entity
-@Table(name = "arquivo")
 public class SourceFile {
 
     @Id
     private UUID id;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "categoria")
     @Enumerated(EnumType.STRING)
     private FileCategory category;
-    @Column(name = "nome_original")
     private String originalName;
-    @Column(name = "caminho")
     private String path;
     private String sha256;
-    @Column(name = "tamanho_bytes")
     private long sizeBytes;
-    @Column(name = "tipo_conteudo")
     private String contentType;
     @Enumerated(EnumType.STRING)
     private FileStatus status;
-    @Column(name = "mensagem")
     private String message;
-    @Column(name = "interpretador")
     private String parser;
-    @Column(name = "periodo_inicio")
     private LocalDate periodStart;
-    @Column(name = "periodo_fim")
     private LocalDate periodEnd;
-    @Column(name = "total_lancamentos")
     private Integer entryCount;
-    @Column(name = "enviado_por")
     private String uploadedBy;
-    @Column(name = "enviado_em")
     private Instant uploadedAt;
-    @Column(name = "processado_em")
     private Instant processedAt;
     /** Identifies the read in progress. A result that arrives with another id (old or repeated) is discarded. */
-    @Column(name = "processamento_id")
     private UUID processingId;
     /** When it was last queued; the sweep resends what stalled. */
-    @Column(name = "enfileirado_em")
     private Instant queuedAt;
-    @Column(name = "tentativas")
     private int attempts;
 
     // Indexing for the document search (ADR 0003). All null = the file was never sent to the index.
-    @Column(name = "indexacao_situacao")
     @Enumerated(EnumType.STRING)
     private IndexingStatus indexingStatus;
-    @Column(name = "indexacao_motivo")
     private String indexingReason;
-    @Column(name = "indexacao_paginas")
     private Integer indexingPages;
-    @Column(name = "indexacao_trechos")
     private Integer indexingChunks;
     /** Identifies the indexing request in progress. A result with another id (old or repeated) is discarded. */
-    @Column(name = "indexacao_id")
     private UUID indexingId;
     /** When the indexing request was last queued; the sweep resends what stalled. */
-    @Column(name = "indexacao_enfileirada_em")
     private Instant indexingQueuedAt;
-    @Column(name = "indexacao_tentativas")
     private int indexingAttempts;
-    @Column(name = "indexacao_atualizada_em")
     private Instant indexingUpdatedAt;
 
     protected SourceFile() {

@@ -2,12 +2,10 @@ package br.com.condominioauditoria.api.model.audit;
 
 import br.com.condominioauditoria.api.model.enums.FindingStatus;
 import br.com.condominioauditoria.api.model.enums.Severity;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -19,37 +17,24 @@ import java.util.UUID;
  * never a cause.
  */
 @Entity
-@Table(name = "achado")
 public class Finding {
 
     @Id
     private UUID id;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "regra")
     private String rule;
-    @Column(name = "versao_regra")
     private String ruleVersion;
-    @Column(name = "severidade")
     @Enumerated(EnumType.STRING)
     private Severity severity;
-    @Column(name = "competencia")
     private LocalDate referenceMonth;
-    @Column(name = "alvo")
     private String target;
-    @Column(name = "descricao")
     private String description;
-    @Column(name = "estado")
     @Enumerated(EnumType.STRING)
     private FindingStatus status;
-    @Column(name = "criado_em")
     private Instant createdAt;
     /** The rule's condition existed at the last recalculation. */
-    @Column(name = "condicao_presente")
     private boolean conditionPresent;
-    @Column(name = "estado_motivo")
     private String statusReason;
-    @Column(name = "estado_em")
     private Instant statusChangedAt;
 
     protected Finding() {

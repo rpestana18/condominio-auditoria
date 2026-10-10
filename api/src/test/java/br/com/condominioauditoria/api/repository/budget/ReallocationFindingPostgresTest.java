@@ -61,21 +61,22 @@ class ReallocationFindingPostgresTest {
             assertThatThrownBy(() -> insertReallocation(s, b)).isInstanceOf(SQLException.class)
                     .hasMessageContaining("uk_realocacao_ativa");
             // Undone, the same key can be reallocated again
-            s.executeUpdate("update realocacao set desfeita_por = 'admin', desfeita_em = now() where id = '"
+            s.executeUpdate("update reallocation set undone_by = 'admin', undone_at = now() where id = '"
                     + first + "'");
             insertReallocation(s, b);
-            assertThatThrownBy(() -> s.executeUpdate("delete from realocacao where id = '" + first + "'"))
+            assertThatThrownBy(() -> s.executeUpdate("delete from reallocation where id = '" + first + "'"))
                     .isInstanceOf(SQLException.class).hasMessageContaining("Nada é apagado");
-            assertThatThrownBy(() -> s.executeUpdate("update realocacao set desfeita_em = null where id = '"
+            assertThatThrownBy(() -> s.executeUpdate("update reallocation set undone_at = null where id = '"
                     + first + "'")).isInstanceOf(SQLException.class).hasMessageContaining("ck_realocacao_desfeita");
 
             UUID event = UUID.randomUUID();
-            s.executeUpdate("insert into evento_realocacao (id, realocacao_id, condominio_id, acao, usuario, em, detalhe)"
+            s.executeUpdate("insert into reallocation_event (id, reallocation_id, condominium_id, action, username, "
+                    + "occurred_at, detail)"
                     + " values ('" + event + "', '" + first + "', '" + CONDOMINIUM + "', 'REALOCADA', 'gestor', now(),"
                     + " 'teste')");
-            assertThatThrownBy(() -> s.executeUpdate("update evento_realocacao set usuario = 'outro'"))
+            assertThatThrownBy(() -> s.executeUpdate("update reallocation_event set username = 'outro'"))
                     .isInstanceOf(SQLException.class).hasMessageContaining("só de inserção");
-            assertThatThrownBy(() -> s.executeUpdate("delete from evento_realocacao"))
+            assertThatThrownBy(() -> s.executeUpdate("delete from reallocation_event"))
                     .isInstanceOf(SQLException.class).hasMessageContaining("só de inserção");
         }
     }
@@ -85,24 +86,28 @@ class ReallocationFindingPostgresTest {
         try (Statement s = connection.createStatement()) {
             s.execute("set search_path to " + schema);
             UUID finding = UUID.randomUUID();
-            s.executeUpdate("insert into achado (id, condominio_id, regra, versao_regra, severidade, competencia, alvo,"
-                    + " descricao, estado, criado_em) values ('" + finding + "', '" + CONDOMINIUM + "',"
-                    + " 'CONTA_SEM_LINHA_PO', '1', 'ATENCAO', date '2026-09-01', 'conta:8888', 'teste', 'ABERTO', now())");
+            s.executeUpdate("insert into finding (id, condominium_id, rule, rule_version, severity, "
+                    + "reference_month, target,"
+                    + " description, status, created_at) values ('" + finding + "', '" + CONDOMINIUM + "',"
+                    + " 'CONTA_SEM_LINHA_PO', '1', 'ATENCAO', date '2026-09-01', 'conta:8888', 'teste', 'ABERTO', "
+                    + "now())");
 
-            assertThat(s.executeUpdate("update achado set estado = 'NAO_SE_APLICA_MAIS', condicao_presente = false,"
-                    + " estado_motivo = 'de-para da conta 8888 confirmado por admin em 04/10/2026' where id = '" + finding
+            assertThat(s.executeUpdate("update finding set status = 'NAO_SE_APLICA_MAIS', condition_present = false,"
+                    + " status_reason = 'de-para da conta 8888 confirmado por admin em 04/10/2026' where id = "
+                    + "'" + finding
                     + "'")).isEqualTo(1);
-            assertThatThrownBy(() -> s.executeUpdate("update achado set estado = 'APAGADO'"))
+            assertThatThrownBy(() -> s.executeUpdate("update finding set status = 'APAGADO'"))
                     .isInstanceOf(SQLException.class).hasMessageContaining("ck_achado_estado");
-            assertThatThrownBy(() -> s.executeUpdate("delete from achado")).isInstanceOf(SQLException.class)
+            assertThatThrownBy(() -> s.executeUpdate("delete from finding")).isInstanceOf(SQLException.class)
                     .hasMessageContaining("Nada é apagado");
 
-            s.executeUpdate("insert into evento_achado (id, achado_id, condominio_id, estado_anterior, estado_novo,"
-                    + " condicao_presente, motivo, usuario, em) values ('" + UUID.randomUUID() + "', '" + finding + "', '"
+            s.executeUpdate("insert into finding_event (id, finding_id, condominium_id, previous_status, new_status,"
+                    + " condition_present, reason, username, occurred_at) values ('" + UUID.randomUUID() + "', "
+                    + "'" + finding + "', '"
                     + CONDOMINIUM + "', 'ABERTO', 'NAO_SE_APLICA_MAIS', false, 'teste', 'admin', now())");
-            assertThatThrownBy(() -> s.executeUpdate("update evento_achado set motivo = 'outro'"))
+            assertThatThrownBy(() -> s.executeUpdate("update finding_event set reason = 'outro'"))
                     .isInstanceOf(SQLException.class).hasMessageContaining("só de inserção");
-            assertThatThrownBy(() -> s.executeUpdate("delete from evento_achado"))
+            assertThatThrownBy(() -> s.executeUpdate("delete from finding_event"))
                     .isInstanceOf(SQLException.class).hasMessageContaining("só de inserção");
         }
     }
@@ -114,15 +119,16 @@ class ReallocationFindingPostgresTest {
         UUID file = UUID.randomUUID();
         UUID budget = UUID.randomUUID();
         UUID line = UUID.randomUUID();
-        s.executeUpdate("insert into arquivo (id, condominio_id, categoria, nome_original, caminho, sha256, tamanho_bytes,"
-                + " status, enviado_por, enviado_em, processamento_id) values ('" + file + "', '" + CONDOMINIUM
+        s.executeUpdate("insert into source_file (id, condominium_id, category, original_name, path, sha256, "
+                + "size_bytes,"
+                + " status, uploaded_by, uploaded_at, processing_id) values ('" + file + "', '" + CONDOMINIUM
                 + "', 'PO', 'po.pdf', 'c/po.pdf', '" + "a".repeat(64) + "', 1, 'CONCLUIDO', 'admin', now(), '"
                 + UUID.randomUUID() + "')");
-        s.executeUpdate("insert into previsao_orcamentaria (id, condominio_id, arquivo_id, sha256, estado,"
-                + " tolerancia_arredondamento, lida_em) values ('" + budget + "', '" + CONDOMINIUM + "', '" + file
+        s.executeUpdate("insert into budget (id, condominium_id, file_id, sha256, status,"
+                + " rounding_tolerance, read_at) values ('" + budget + "', '" + CONDOMINIUM + "', '" + file
                 + "', '" + "a".repeat(64) + "', 'CONFIRMADA', 0.01, now())");
-        s.executeUpdate("insert into linha_po (id, previsao_id, condominio_id, arquivo_id, sha256, ordem, pagina, tipo,"
-                + " codigo_impresso, codigo_efetivo, descricao, orcado_anterior, orcado) values ('" + line + "', '"
+        s.executeUpdate("insert into budget_line (id, budget_id, condominium_id, file_id, sha256, position, page, type,"
+                + " printed_code, effective_code, description, previous_budgeted, budgeted) values ('" + line + "', '"
                 + budget + "', '" + CONDOMINIUM + "', '" + file + "', '" + "a".repeat(64) + "', 1, 1, 'LINHA',"
                 + " '1.7.9', '1.7.9', 'Material de pintura', 0, 2300.00)");
         return new BaseRows(file, budget, line);
@@ -130,8 +136,8 @@ class ReallocationFindingPostgresTest {
 
     private static UUID insertReallocation(Statement s, BaseRows b) throws SQLException {
         UUID id = UUID.randomUUID();
-        s.executeUpdate("insert into realocacao (id, condominio_id, previsao_id, chave_lancamento, arquivo_id, sha256,"
-                + " pagina, ordem, data, conta_codigo, historico, valor, linha_po_id, realocada_por, realocada_em)"
+        s.executeUpdate("insert into reallocation (id, condominium_id, budget_id, entry_key, file_id, sha256,"
+                + " page, position, date, account_code, memo, amount, budget_line_id, reallocated_by, reallocated_at)"
                 + " values ('" + id + "', '" + CONDOMINIUM + "', '" + b.budget() + "', '" + "c".repeat(64) + "', '"
                 + b.file() + "', '" + "a".repeat(64) + "', 3, 12, date '2026-09-09', '1064', 'Compra no cartão',"
                 + " 250.00, '" + b.line() + "', 'gestor', now())");

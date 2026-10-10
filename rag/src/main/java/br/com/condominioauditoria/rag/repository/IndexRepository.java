@@ -26,7 +26,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * SQL of the index in the rag schema (ADR 0003, Decision 3): documento_indexado, trecho and trecho_vetor. No JPA and
+ * SQL of the index in the rag schema (ADR 0003, Decision 3): indexed_document, chunk and chunk_vector. No JPA and
  * no PgVectorStore; the vector goes as text and the database converts it (cast(... as public.vector)).
  *
  * The document data (sha256, name, category) only changes together with the chunks, in the same transaction. So the
@@ -55,46 +55,46 @@ public class IndexRepository {
 
     public Optional<IndexedDocument> find(UUID fileId) {
         return jdbc.sql("""
-                select arquivo_id, sha256, estado, motivo, paginas, trechos, modelo_embeddings, versao_indexador, retirado
-                  from documento_indexado where arquivo_id = :arquivo""")
-                .param("arquivo", fileId)
-                .query((rs, i) -> new IndexedDocument(rs.getObject("arquivo_id", UUID.class), rs.getString("sha256"),
-                        rs.getString("estado"), rs.getString("motivo"), (Integer) rs.getObject("paginas"),
-                        (Integer) rs.getObject("trechos"), rs.getString("modelo_embeddings"),
-                        rs.getString("versao_indexador"), rs.getBoolean("retirado")))
+                select file_id, sha256, status, reason, pages, chunks, embedding_model, indexer_version, withdrawn
+                  from indexed_document where file_id = :fileId""")
+                .param("fileId", fileId)
+                .query((rs, i) -> new IndexedDocument(rs.getObject("file_id", UUID.class), rs.getString("sha256"),
+                        rs.getString("status"), rs.getString("reason"), (Integer) rs.getObject("pages"),
+                        (Integer) rs.getObject("chunks"), rs.getString("embedding_model"),
+                        rs.getString("indexer_version"), rs.getBoolean("withdrawn")))
                 .optional();
     }
 
     /** Start of the work. A new row is born with the request data; an existing row only changes state (see class). */
     public void markIndexing(IndexFileMessage p) {
         jdbc.sql("""
-                insert into documento_indexado (arquivo_id, condominio_id, categoria, nome_original, caminho, sha256,
-                    competencia_inicio, competencia_fim, versao_arquivo, estado, indexacao_id)
-                values (:arquivo, :condominio, :categoria, :nome, :caminho, :sha256, :inicio, :fim, :versaoArquivo,
-                    'indexando', :indexacao)
-                on conflict (arquivo_id) do update
-                   set estado = 'indexando', motivo = null, indexacao_id = excluded.indexacao_id, atualizado_em = now()""")
+                insert into indexed_document (file_id, condominium_id, category, original_name, path, sha256,
+                    period_start, period_end, file_version, status, indexing_id)
+                values (:fileId, :condominiumId, :category, :name, :path, :sha256, :start, :end, :fileVersion,
+                    'indexando', :indexingId)
+                on conflict (file_id) do update
+                   set status = 'indexando', reason = null, indexing_id = excluded.indexing_id, updated_at = now()""")
                 .params(requestParams(p))
                 .update();
     }
 
     public void markError(UUID fileId, UUID indexingId, String reason) {
         jdbc.sql("""
-                update documento_indexado set estado = 'erro', motivo = :motivo, indexacao_id = :indexacao,
-                       atualizado_em = now()
-                 where arquivo_id = :arquivo""")
-                .param("arquivo", fileId).param("indexacao", indexingId).param("motivo", reason)
+                update indexed_document set status = 'erro', reason = :reason, indexing_id = :indexingId,
+                       updated_at = now()
+                 where file_id = :fileId""")
+                .param("fileId", fileId).param("indexingId", indexingId).param("reason", reason)
                 .update();
     }
 
     /** Repeated request for content already indexed: updates only the document data and shows it in search again. */
     public void confirmUnchanged(IndexFileMessage p) {
         jdbc.sql("""
-                update documento_indexado
-                   set condominio_id = :condominio, categoria = :categoria, nome_original = :nome, caminho = :caminho,
-                       competencia_inicio = :inicio, competencia_fim = :fim, versao_arquivo = :versaoArquivo,
-                       retirado = false, indexacao_id = :indexacao, atualizado_em = now()
-                 where arquivo_id = :arquivo""")
+                update indexed_document
+                   set condominium_id = :condominiumId, category = :category, original_name = :name, path = :path,
+                       period_start = :start, period_end = :end, file_version = :fileVersion,
+                       withdrawn = false, indexing_id = :indexingId, updated_at = now()
+                 where file_id = :fileId""")
                 .params(requestParams(p))
                 .update();
     }
@@ -102,9 +102,9 @@ public class IndexRepository {
     /** Logical deletion: disappears from search, nothing is deleted. Returns false if the file was never indexed. */
     public boolean withdraw(UUID fileId, UUID indexingId) {
         return jdbc.sql("""
-                update documento_indexado set retirado = true, indexacao_id = :indexacao, atualizado_em = now()
-                 where arquivo_id = :arquivo""")
-                .param("arquivo", fileId).param("indexacao", indexingId)
+                update indexed_document set withdrawn = true, indexing_id = :indexingId, updated_at = now()
+                 where file_id = :fileId""")
+                .param("fileId", fileId).param("indexingId", indexingId)
                 .update() > 0;
     }
 
@@ -116,7 +116,7 @@ public class IndexRepository {
         replace(p, chunked, vectors, model, null);
     }
 
-    /** {@code warning}: stored in motivo when indexed (e.g. no vectors because Ollama was down). */
+    /** {@code warning}: stored in reason when indexed (e.g. no vectors because Ollama was down). */
     public void replace(IndexFileMessage p, ChunkedDocument chunked, List<float[]> vectors, String model,
             String warning) {
         if (vectors != null && vectors.size() != chunked.chunks().size()) {
@@ -125,29 +125,29 @@ public class IndexRepository {
         }
         transaction.executeWithoutResult(status -> {
             Map<String, Object> data = requestParams(p);
-            data.put("estado", chunked.noText() ? "sem_texto" : "indexado");
-            data.put("motivo", chunked.noText() ? chunked.noTextReason() : warning);
-            data.put("paginas", chunked.pages());
-            data.put("trechos", chunked.chunks().size());
-            data.put("modelo", vectors == null || chunked.noText() ? null : model);
-            data.put("versaoIndexador", TextChunker.VERSION);
+            data.put("status", chunked.noText() ? "sem_texto" : "indexado");
+            data.put("reason", chunked.noText() ? chunked.noTextReason() : warning);
+            data.put("pages", chunked.pages());
+            data.put("chunks", chunked.chunks().size());
+            data.put("model", vectors == null || chunked.noText() ? null : model);
+            data.put("indexerVersion", TextChunker.VERSION);
             jdbc.sql("""
-                    update documento_indexado
-                       set condominio_id = :condominio, categoria = :categoria, nome_original = :nome,
-                           caminho = :caminho, sha256 = :sha256, competencia_inicio = :inicio, competencia_fim = :fim,
-                           versao_arquivo = :versaoArquivo, estado = :estado, motivo = :motivo, paginas = :paginas,
-                           trechos = :trechos, modelo_embeddings = :modelo, versao_indexador = :versaoIndexador,
-                           retirado = false, indexacao_id = :indexacao, atualizado_em = now()
-                     where arquivo_id = :arquivo""")
+                    update indexed_document
+                       set condominium_id = :condominiumId, category = :category, original_name = :name,
+                           path = :path, sha256 = :sha256, period_start = :start, period_end = :end,
+                           file_version = :fileVersion, status = :status, reason = :reason, pages = :pages,
+                           chunks = :chunks, embedding_model = :model, indexer_version = :indexerVersion,
+                           withdrawn = false, indexing_id = :indexingId, updated_at = now()
+                     where file_id = :fileId""")
                     .params(data)
                     .update();
-            jdbc.sql("delete from trecho where arquivo_id = :arquivo").param("arquivo", p.fileId()).update();
+            jdbc.sql("delete from chunk where file_id = :fileId").param("fileId", p.fileId()).update();
 
             List<Chunk> chunks = chunked.chunks();
             List<UUID> ids = chunks.stream().map(t -> chunkId(p.fileId(), p.sha256(), t.sequence())).toList();
             jdbcTemplate.batchUpdate("""
-                    insert into trecho (id, arquivo_id, condominio_id, ordem, pagina, aba, linha_inicio, linha_fim,
-                        secao, paragrafo_inicio, paragrafo_fim, texto)
+                    insert into chunk (id, file_id, condominium_id, sequence, page, tab, start_row, end_row,
+                        section, paragraph_start, paragraph_end, text)
                     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", chunks, 200, (ps, t) -> {
                 ps.setObject(1, ids.get(t.sequence() - 1));
                 ps.setObject(2, p.fileId());
@@ -183,7 +183,8 @@ public class IndexRepository {
                     indexes.add(i);
                 }
                 jdbcTemplate.batchUpdate("""
-                        insert into trecho_vetor (trecho_id, modelo, vetor) values (?, ?, cast(? as public.vector))""",
+                        insert into chunk_vector (chunk_id, model, embedding)
+                        values (?, ?, cast(? as public.vector))""",
                         indexes, 100, (ps, i) -> {
                             ps.setObject(1, ids.get(i));
                             ps.setString(2, model);
@@ -204,16 +205,16 @@ public class IndexRepository {
 
     private static Map<String, Object> requestParams(IndexFileMessage p) {
         Map<String, Object> data = new HashMap<>();
-        data.put("arquivo", p.fileId());
-        data.put("condominio", p.condominiumId());
-        data.put("categoria", p.category());
-        data.put("nome", p.originalName());
-        data.put("caminho", p.path());
+        data.put("fileId", p.fileId());
+        data.put("condominiumId", p.condominiumId());
+        data.put("category", p.category());
+        data.put("name", p.originalName());
+        data.put("path", p.path());
         data.put("sha256", p.sha256());
-        data.put("inicio", p.periodStart());
-        data.put("fim", p.periodEnd());
-        data.put("versaoArquivo", p.fileVersion());
-        data.put("indexacao", p.indexingId());
+        data.put("start", p.periodStart());
+        data.put("end", p.periodEnd());
+        data.put("fileVersion", p.fileVersion());
+        data.put("indexingId", p.indexingId());
         return data;
     }
 
@@ -230,18 +231,18 @@ public class IndexRepository {
      */
     public List<Hit> findByKeyword(SearchFilters filters, String text, int limit) {
         var where = new Filter(filters);
-        where.params.put("texto", text);
-        where.params.put("limite", limit);
+        where.params.put("text", text);
+        where.params.put("limit", limit);
         return jdbc.sql("""
-                select t.id, ts_rank(t.busca, q) as relevancia
-                  from trecho t
-                  join documento_indexado d on d.arquivo_id = t.arquivo_id,
-                       websearch_to_tsquery('rag.portuguese_unaccent', translate(:texto, '/', ' ')) q
-                 where t.busca @@ q and %s
-                 order by relevancia desc, t.arquivo_id, t.ordem
-                 limit :limite""".formatted(where.sql))
+                select t.id, ts_rank(t.search_vector, q) as relevance
+                  from chunk t
+                  join indexed_document d on d.file_id = t.file_id,
+                       websearch_to_tsquery('rag.portuguese_unaccent', translate(:text, '/', ' ')) q
+                 where t.search_vector @@ q and %s
+                 order by relevance desc, t.file_id, t.sequence
+                 limit :limit""".formatted(where.sql))
                 .params(where.params)
-                .query((rs, i) -> new Hit(rs.getObject("id", UUID.class), rs.getDouble("relevancia")))
+                .query((rs, i) -> new Hit(rs.getObject("id", UUID.class), rs.getDouble("relevance")))
                 .list();
     }
 
@@ -264,24 +265,24 @@ public class IndexRepository {
             throw new IllegalArgumentException("Nome de modelo inválido: " + model);
         }
         var where = new Filter(filters);
-        where.params.put("vetor", EmbeddingGenerator.asText(vector));
-        where.params.put("limite", limit);
+        where.params.put("embedding", EmbeddingGenerator.asText(vector));
+        where.params.put("limit", limit);
         String restrictionCondition = "";
         if (restrictions != null && !restrictions.isBlank()) {
             // A restriction with stop words only (e.g. -de) becomes an empty tsquery: restricts nothing
-            String query = "websearch_to_tsquery('rag.portuguese_unaccent', translate(:restricoes, '/', ' '))";
-            restrictionCondition = " and (numnode(" + query + ") = 0 or t.busca @@ " + query + ")";
-            where.params.put("restricoes", restrictions);
+            String query = "websearch_to_tsquery('rag.portuguese_unaccent', translate(:restrictions, '/', ' '))";
+            restrictionCondition = " and (numnode(" + query + ") = 0 or t.search_vector @@ " + query + ")";
+            where.params.put("restrictions", restrictions);
         }
         // Literal model (validated above) so the planner can use that model's partial HNSW index
         String sql = """
                 select t.id
-                  from trecho t
-                  join documento_indexado d on d.arquivo_id = t.arquivo_id
-                  join trecho_vetor v on v.trecho_id = t.id and v.modelo = '%s'
+                  from chunk t
+                  join indexed_document d on d.file_id = t.file_id
+                  join chunk_vector v on v.chunk_id = t.id and v.model = '%s'
                  where %s%s
-                 order by v.vetor <=> cast(:vetor as public.vector)
-                 limit :limite""".formatted(model, where.sql, restrictionCondition);
+                 order by v.embedding <=> cast(:embedding as public.vector)
+                 limit :limit""".formatted(model, where.sql, restrictionCondition);
         return transaction.execute(status -> {
             jdbc.sql("select set_config('hnsw.iterative_scan', 'strict_order', true)").query().singleValue();
             jdbc.sql("select set_config('hnsw.ef_search', '100', true)").query().singleValue();
@@ -296,9 +297,9 @@ public class IndexRepository {
         }
         Map<UUID, FoundChunk> byId = new HashMap<>();
         jdbc.sql("""
-                select t.id, t.arquivo_id, d.nome_original, d.categoria, d.sha256, t.pagina, t.aba, t.linha_inicio,
-                       t.linha_fim, t.secao, t.paragrafo_inicio, t.paragrafo_fim, t.texto
-                  from trecho t join documento_indexado d on d.arquivo_id = t.arquivo_id
+                select t.id, t.file_id, d.original_name, d.category, d.sha256, t.page, t.tab, t.start_row,
+                       t.end_row, t.section, t.paragraph_start, t.paragraph_end, t.text
+                  from chunk t join indexed_document d on d.file_id = t.file_id
                  where t.id in (:ids)""")
                 .param("ids", ids)
                 .query((rs, i) -> foundChunk(rs))
@@ -315,17 +316,17 @@ public class IndexRepository {
 
     private static FoundChunk foundChunk(ResultSet rs) throws SQLException {
         Location local;
-        if (rs.getObject("pagina") != null) {
-            local = new Location.Page(rs.getInt("pagina"));
-        } else if (rs.getString("aba") != null) {
-            local = new Location.Sheet(rs.getString("aba"), rs.getInt("linha_inicio"), rs.getInt("linha_fim"));
+        if (rs.getObject("page") != null) {
+            local = new Location.Page(rs.getInt("page"));
+        } else if (rs.getString("tab") != null) {
+            local = new Location.Sheet(rs.getString("tab"), rs.getInt("start_row"), rs.getInt("end_row"));
         } else {
-            String section = rs.getString("secao");
-            local = new Location.Paragraphs(rs.getInt("paragrafo_inicio"), rs.getInt("paragrafo_fim"),
+            String section = rs.getString("section");
+            local = new Location.Paragraphs(rs.getInt("paragraph_start"), rs.getInt("paragraph_end"),
                     section == null ? "" : section);
         }
-        return new FoundChunk(rs.getObject("id", UUID.class), rs.getObject("arquivo_id", UUID.class),
-                rs.getString("nome_original"), rs.getString("categoria"), local, rs.getString("texto"), 0,
+        return new FoundChunk(rs.getObject("id", UUID.class), rs.getObject("file_id", UUID.class),
+                rs.getString("original_name"), rs.getString("category"), local, rs.getString("text"), 0,
                 rs.getString("sha256"));
     }
 
@@ -339,29 +340,29 @@ public class IndexRepository {
 
         public Filter(SearchFilters f) {
             List<String> conditions = new ArrayList<>();
-            conditions.add("d.condominio_id = :condominio");
-            conditions.add("d.retirado = false");
-            conditions.add("d.vigente = true");
-            params.put("condominio", f.condominiumId());
+            conditions.add("d.condominium_id = :condominiumId");
+            conditions.add("d.withdrawn = false");
+            conditions.add("d.is_current = true");
+            params.put("condominiumId", f.condominiumId());
             if (!f.categories().isEmpty()) {
-                conditions.add("d.categoria in (:categorias)");
-                params.put("categorias", f.categories());
+                conditions.add("d.category in (:categories)");
+                params.put("categories", f.categories());
             }
             if (!f.fileIds().isEmpty()) {
-                conditions.add("d.arquivo_id in (:arquivos)");
-                params.put("arquivos", f.fileIds());
+                conditions.add("d.file_id in (:fileIds)");
+                params.put("fileIds", f.fileIds());
             }
             // Period: the document's reference period overlaps the interval; a document without one is left out
             if (f.dateFrom() != null || f.dateTo() != null) {
-                conditions.add("coalesce(d.competencia_inicio, d.competencia_fim) is not null");
+                conditions.add("coalesce(d.period_start, d.period_end) is not null");
             }
             if (f.dateTo() != null) {
-                conditions.add("coalesce(d.competencia_inicio, d.competencia_fim) <= :dataFim");
-                params.put("dataFim", Date.valueOf(f.dateTo()));
+                conditions.add("coalesce(d.period_start, d.period_end) <= :dateTo");
+                params.put("dateTo", Date.valueOf(f.dateTo()));
             }
             if (f.dateFrom() != null) {
-                conditions.add("coalesce(d.competencia_fim, d.competencia_inicio) >= :dataInicio");
-                params.put("dataInicio", Date.valueOf(f.dateFrom()));
+                conditions.add("coalesce(d.period_end, d.period_start) >= :dateFrom");
+                params.put("dateFrom", Date.valueOf(f.dateFrom()));
             }
             this.sql = String.join(" and ", conditions);
         }

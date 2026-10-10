@@ -57,19 +57,19 @@ class BudgetItemTrailPostgresTest {
             s.execute("set search_path to " + schema);
             Ids ids = insert(s);
 
-            assertThatThrownBy(() -> s.executeUpdate("update evento_rubrica set usuario = 'outro' where id = '"
+            assertThatThrownBy(() -> s.executeUpdate("update budget_item_event set username = 'outro' where id = '"
                     + ids.event() + "'")).isInstanceOf(SQLException.class).hasMessageContaining("só de inserção")
                     .hasMessageContaining("UPDATE");
-            assertThatThrownBy(() -> s.executeUpdate("delete from evento_rubrica where id = '" + ids.event() + "'"))
+            assertThatThrownBy(() -> s.executeUpdate("delete from budget_item_event where id = '" + ids.event() + "'"))
                     .isInstanceOf(SQLException.class).hasMessageContaining("só de inserção")
                     .hasMessageContaining("DELETE");
-            try (var r = s.executeQuery("select usuario from evento_rubrica where id = '" + ids.event() + "'")) {
+            try (var r = s.executeQuery("select username from budget_item_event where id = '" + ids.event() + "'")) {
                 assertThat(r.next()).isTrue();
                 assertThat(r.getString(1)).isEqualTo("admin");
             }
             // The current state accepts changes; only the trail is immutable
-            assertThat(s.executeUpdate("update linha_rubrica set estado = 'CONFIRMADO'")).isEqualTo(1);
-            assertThat(s.executeUpdate("update rubrica set nome = 'Sindicatura'")).isEqualTo(1);
+            assertThat(s.executeUpdate("update budget_line_item set status = 'CONFIRMADO'")).isEqualTo(1);
+            assertThat(s.executeUpdate("update budget_item set name = 'Sindicatura'")).isEqualTo(1);
         }
     }
 
@@ -80,7 +80,7 @@ class BudgetItemTrailPostgresTest {
             Ids ids = insert(s);
             assertThatThrownBy(() -> s.executeUpdate(lineItemSql(ids, "SUGERIDO")))
                     .isInstanceOf(SQLException.class).hasMessageContaining("uk_linha_rubrica");
-            s.executeUpdate("delete from linha_rubrica");
+            s.executeUpdate("delete from budget_line_item");
             assertThatThrownBy(() -> s.executeUpdate(lineItemSql(ids, "TALVEZ")))
                     .isInstanceOf(SQLException.class).hasMessageContaining("ck_linha_rubrica_estado");
         }
@@ -95,32 +95,36 @@ class BudgetItemTrailPostgresTest {
         UUID line = UUID.randomUUID();
         UUID item = UUID.randomUUID();
         UUID event = UUID.randomUUID();
-        s.executeUpdate("insert into arquivo (id, condominio_id, categoria, nome_original, caminho, sha256, tamanho_bytes,"
-                + " status, enviado_por, enviado_em, processamento_id) values ('" + file + "', '" + CONDOMINIUM
+        s.executeUpdate("insert into source_file (id, condominium_id, category, original_name, path, sha256, "
+                + "size_bytes,"
+                + " status, uploaded_by, uploaded_at, processing_id) values ('" + file + "', '" + CONDOMINIUM
                 + "', 'PO', 'po.pdf', 'c/po.pdf', '" + "a".repeat(64) + "', 1, 'CONCLUIDO', 'admin', now(), '"
                 + UUID.randomUUID() + "')");
-        s.executeUpdate("insert into previsao_orcamentaria (id, condominio_id, arquivo_id, sha256, estado,"
-                + " tolerancia_arredondamento, lida_em) values ('" + budget + "', '" + CONDOMINIUM + "', '" + file
+        s.executeUpdate("insert into budget (id, condominium_id, file_id, sha256, status,"
+                + " rounding_tolerance, read_at) values ('" + budget + "', '" + CONDOMINIUM + "', '" + file
                 + "', '" + "a".repeat(64) + "', 'CONFIRMADA', 0.01, now())");
-        s.executeUpdate("insert into linha_po (id, previsao_id, condominio_id, arquivo_id, sha256, ordem, pagina, tipo,"
-                + " codigo_impresso, codigo_efetivo, conta, descricao, orcado_anterior, orcado) values ('" + line
+        s.executeUpdate("insert into budget_line (id, budget_id, condominium_id, file_id, sha256, position, page, type,"
+                + " printed_code, effective_code, account, description, previous_budgeted, budgeted) values ('" + line
                 + "', '" + budget + "', '" + CONDOMINIUM + "', '" + file + "', '" + "a".repeat(64)
                 + "', 1, 1, 'LINHA', '1.3.20', '1.3.20', '1682 - Sindicatura Profissional', 'Obm', 17195.00, 8000.00)");
-        s.executeUpdate("insert into rubrica (id, condominio_id, nome, grupo_codigo, linha_origem_id, criada_por,"
-                + " criada_em) values ('" + item + "', '" + CONDOMINIUM + "', '1682 - Sindicatura Profissional', '1.3', '"
+        s.executeUpdate("insert into budget_item (id, condominium_id, name, group_code, source_line_id, created_by,"
+                + " created_at) values ('" + item + "', '" + CONDOMINIUM + "', '1682 - Sindicatura Profissional', "
+                + "'1.3', '"
                 + line + "', 'admin', now())");
         Ids ids = new Ids(budget, line, item, event);
         s.executeUpdate(lineItemSql(ids, "SUGERIDO"));
-        s.executeUpdate("insert into evento_rubrica (id, condominio_id, previsao_id, linha_po_id, linha_codigo, acao,"
-                + " usuario, em, rubrica_nova_id, rubrica_nova, estado_novo, origem) values ('" + event + "', '"
+        s.executeUpdate("insert into budget_item_event (id, condominium_id, budget_id, budget_line_id, line_code, "
+                + "action,"
+                + " username, occurred_at, new_item_id, new_item, new_status, source) values ('" + event + "', '"
                 + CONDOMINIUM + "', '" + budget + "', '" + line + "', '1.3.20', 'SUGERIDO', 'admin', now(), '" + item
                 + "', '1682 - Sindicatura Profissional', 'SUGERIDO', 'CONTA_PO')");
         return ids;
     }
 
     private static String lineItemSql(Ids ids, String status) {
-        return "insert into linha_rubrica (id, condominio_id, previsao_id, linha_po_id, rubrica_id, estado, origem,"
-                + " atualizado_por, atualizado_em) values ('" + UUID.randomUUID() + "', '" + CONDOMINIUM + "', '"
+        return "insert into budget_line_item (id, condominium_id, budget_id, budget_line_id, budget_item_id, "
+                + "status, source,"
+                + " updated_by, updated_at) values ('" + UUID.randomUUID() + "', '" + CONDOMINIUM + "', '"
                 + ids.budget() + "', '" + ids.line() + "', '" + ids.item() + "', '" + status
                 + "', 'CONTA_PO', 'admin', now())";
     }

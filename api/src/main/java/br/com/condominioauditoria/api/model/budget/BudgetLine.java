@@ -2,12 +2,10 @@ package br.com.condominioauditoria.api.model.budget;
 
 import br.com.condominioauditoria.api.model.enums.BudgetLineMark;
 import br.com.condominioauditoria.api.model.enums.BudgetLineType;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -17,45 +15,28 @@ import java.util.UUID;
  * the code repeats.
  */
 @Entity
-@Table(name = "linha_po")
 public class BudgetLine {
 
     @Id
     private UUID id;
-    @Column(name = "previsao_id")
     private UUID budgetId;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "arquivo_id")
     private UUID fileId;
     private String sha256;
-    @Column(name = "ordem")
     private int position;
-    @Column(name = "pagina")
     private int page;
-    @Column(name = "tipo")
     @Enumerated(EnumType.STRING)
     private BudgetLineType type;
-    @Column(name = "codigo_impresso")
     private String printedCode;
-    @Column(name = "codigo_efetivo")
     private String effectiveCode;
-    @Column(name = "conta")
     private String account;
-    @Column(name = "conta_texto")
     private String accountText;
-    @Column(name = "marca")
     @Enumerated(EnumType.STRING)
     private BudgetLineMark mark;
-    @Column(name = "descricao")
     private String description;
-    @Column(name = "orcado_anterior")
     private BigDecimal previousBudgeted;
-    @Column(name = "orcado")
     private BigDecimal budgeted;
-    @Column(name = "percentual_texto")
     private String percentageText;
-    @Column(name = "observacoes")
     private String notes;
 
     protected BudgetLine() {

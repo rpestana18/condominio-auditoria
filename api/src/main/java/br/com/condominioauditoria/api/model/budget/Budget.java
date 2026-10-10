@@ -1,12 +1,10 @@
 package br.com.condominioauditoria.api.model.budget;
 
 import br.com.condominioauditoria.api.model.enums.BudgetStatus;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,68 +16,39 @@ import java.util.UUID;
  * while the budget is not confirmed. Source file and hash are kept here and on each line.
  */
 @Entity
-@Table(name = "previsao_orcamentaria")
 public class Budget {
 
     @Id
     private UUID id;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "arquivo_id")
     private UUID fileId;
     private String sha256;
-    @Column(name = "interpretador")
     private String parser;
-    @Column(name = "titulo")
     private String title;
-    @Column(name = "exercicio_impresso")
     private String printedFiscalYear;
-    @Column(name = "coluna_orcado_anterior")
     private String previousBudgetedColumn;
-    @Column(name = "coluna_orcado")
     private String budgetedColumn;
-    @Column(name = "estado")
     @Enumerated(EnumType.STRING)
     private BudgetStatus status;
-    @Column(name = "total_impresso")
     private BigDecimal printedTotal;
-    @Column(name = "previsto_mes_impresso")
     private BigDecimal printedMonthlyPlanned;
-    @Column(name = "previsto_mes")
     private BigDecimal monthlyPlanned;
-    @Column(name = "tolerancia_arredondamento")
     private BigDecimal roundingTolerance;
-    @Column(name = "lida_em")
     private Instant readAt;
-    @Column(name = "versao")
     private Integer version;
-    @Column(name = "exercicio_inicio")
     private LocalDate fiscalYearStart;
-    @Column(name = "exercicio_fim")
     private LocalDate fiscalYearEnd;
-    @Column(name = "substituida_desde")
     private LocalDate supersededFrom;
-    @Column(name = "ata_arquivo_id")
     private UUID minutesFileId;
-    @Column(name = "sem_ata")
     private boolean withoutMinutes;
-    @Column(name = "data_aprovacao")
     private LocalDate approvalDate;
-    @Column(name = "ciente_divergencia")
     private boolean discrepancyAcknowledged;
-    @Column(name = "justificativa_divergencia")
     private String discrepancyJustification;
-    @Column(name = "confirmada_por")
     private String confirmedBy;
-    @Column(name = "confirmada_em")
     private Instant confirmedAt;
-    @Column(name = "prorrogada_ate")
     private LocalDate extendedUntil;
-    @Column(name = "prorrogacao_justificativa")
     private String extensionJustification;
-    @Column(name = "prorrogada_por")
     private String extendedBy;
-    @Column(name = "prorrogada_em")
     private Instant extendedAt;
 
     protected Budget() {

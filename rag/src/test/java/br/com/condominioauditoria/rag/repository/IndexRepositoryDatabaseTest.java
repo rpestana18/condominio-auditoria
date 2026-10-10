@@ -124,7 +124,7 @@ public class IndexRepositoryDatabaseTest {
         assertThat(doc.state()).isEqualTo("sem_texto");
         assertThat(doc.reason()).isEqualTo("PDF sem texto extraível");
         assertThat(doc.embeddingModel()).isNull();
-        assertThat(jdbc.sql("select count(*) from trecho where arquivo_id = :a").param("a", minutes.fileId())
+        assertThat(jdbc.sql("select count(*) from chunk where file_id = :a").param("a", minutes.fileId())
                 .query(Integer.class).single()).isZero();
     }
 

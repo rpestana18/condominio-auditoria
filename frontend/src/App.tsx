@@ -1,57 +1,57 @@
 import { BrowserRouter, Route, Routes } from "react-router";
-import { useUsuario } from "./api/consultas";
-import { Layout } from "./componentes/Layout";
-import { ProvedorSessao } from "./contexto";
-import { sair } from "./autenticacao/keycloak";
-import { ProvedorConversa } from "./componentes/assistente/conversa";
-import { AdministracaoIa } from "./paginas/AdministracaoIa";
-import { AdministracaoModulos } from "./paginas/AdministracaoModulos";
-import { Arquivos } from "./paginas/Arquivos";
-import { CompararExercicios } from "./paginas/CompararExercicios";
-import { Assistente } from "./paginas/Assistente";
-import { Depara } from "./paginas/Depara";
-import { Indicadores } from "./paginas/Indicadores";
-import { Inicio } from "./paginas/Inicio";
-import { PrevisaoPo } from "./paginas/PrevisaoPo";
-import { Previsoes } from "./paginas/Previsoes";
-import { PrevistoRealizado } from "./paginas/PrevistoRealizado";
+import { useCurrentUser } from "./api/queries";
+import { Layout } from "./components/Layout";
+import { SessionProvider } from "./context";
+import { logout } from "./auth/keycloak";
+import { ConversationProvider } from "./components/assistant/conversation";
+import { AiAdministration } from "./pages/AiAdministration";
+import { FeatureAdministration } from "./pages/FeatureAdministration";
+import { Files } from "./pages/Files";
+import { CompareFiscalYears } from "./pages/CompareFiscalYears";
+import { Assistant } from "./pages/Assistant";
+import { AccountMapping } from "./pages/AccountMapping";
+import { Indicators } from "./pages/Indicators";
+import { Home } from "./pages/Home";
+import { Budget } from "./pages/Budget";
+import { Budgets } from "./pages/Budgets";
+import { BudgetVsActual } from "./pages/BudgetVsActual";
 
 export function App() {
-  const { data: usuario, error } = useUsuario();
-  if (error) return <p className="aviso erro">Não foi possível falar com o servidor: {error.message}</p>;
-  if (!usuario) return <p className="aviso">Carregando…</p>;
-  if (usuario.condominiums.length === 0) {
+  const { data: user, error } = useCurrentUser();
+  if (error) return <p className="notice error">Não foi possível falar com o servidor: {error.message}</p>;
+  if (!user) return <p className="notice">Carregando…</p>;
+  if (user.condominiums.length === 0) {
     return (
-      <p className="aviso">
+      <p className="notice">
         Seu usuário ainda não está vinculado a nenhum condomínio. Peça ao administrador.{" "}
-        <button className="botao-link" onClick={sair}>
+        <button className="link-button" onClick={logout}>
           Sair
         </button>
       </p>
     );
   }
   return (
-    <ProvedorSessao usuario={usuario}>
-      {/* A conversa do Assistente fica aqui, acima das rotas, só na memória (RF-04.11) */}
-      <ProvedorConversa>
+    <SessionProvider user={user}>
+      {/* The Assistant conversation lives here, above the routes, in memory only (RF-04.11) */}
+      <ConversationProvider>
         <BrowserRouter>
           <Routes>
             <Route element={<Layout />}>
-              <Route index element={<Inicio />} />
-              <Route path="arquivos" element={<Arquivos />} />
-              <Route path="previsto-realizado" element={<PrevistoRealizado />} />
-              <Route path="comparar-exercicios" element={<CompararExercicios />} />
-              <Route path="indicadores" element={<Indicadores />} />
-              <Route path="depara" element={<Depara />} />
-              <Route path="previsoes" element={<Previsoes />} />
-              <Route path="previsoes/:poId" element={<PrevisaoPo />} />
-              <Route path="assistente" element={<Assistente />} />
-              <Route path="administracao/modulos" element={<AdministracaoModulos />} />
-              <Route path="administracao/ia" element={<AdministracaoIa />} />
+              <Route index element={<Home />} />
+              <Route path="arquivos" element={<Files />} />
+              <Route path="previsto-realizado" element={<BudgetVsActual />} />
+              <Route path="comparar-exercicios" element={<CompareFiscalYears />} />
+              <Route path="indicadores" element={<Indicators />} />
+              <Route path="depara" element={<AccountMapping />} />
+              <Route path="previsoes" element={<Budgets />} />
+              <Route path="previsoes/:budgetId" element={<Budget />} />
+              <Route path="assistente" element={<Assistant />} />
+              <Route path="administracao/modulos" element={<FeatureAdministration />} />
+              <Route path="administracao/ia" element={<AiAdministration />} />
             </Route>
           </Routes>
         </BrowserRouter>
-      </ProvedorConversa>
-    </ProvedorSessao>
+      </ConversationProvider>
+    </SessionProvider>
   );
 }

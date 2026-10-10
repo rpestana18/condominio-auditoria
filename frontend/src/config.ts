@@ -1,9 +1,9 @@
-// Endereços do sistema. Em produção mudam por variável de ambiente no build (VITE_*), sem mexer no código.
+// System addresses. In production they change through build-time environment variables (VITE_*), without touching the code.
 export const config = {
   keycloakUrl: import.meta.env.VITE_KEYCLOAK_URL ?? "http://localhost:8180",
   keycloakRealm: import.meta.env.VITE_KEYCLOAK_REALM ?? "condominio",
-  keycloakCliente: import.meta.env.VITE_KEYCLOAK_CLIENTE ?? "frontend",
+  keycloakClient: import.meta.env.VITE_KEYCLOAK_CLIENTE ?? "frontend",
   api: "/api",
-  /** Endereço do servidor MCP, mostrado nas instruções de conexão do Claude (modo EXTERNAL_MCP). */
+  /** MCP server address, shown in the Claude connection instructions (EXTERNAL_MCP mode). */
   mcpUrl: import.meta.env.VITE_MCP_URL ?? "http://localhost:8083/mcp",
 };

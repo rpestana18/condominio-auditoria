@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// Em desenvolvimento (pnpm dev) as chamadas /api vão para o backend na porta 8081.
+// In development (pnpm dev) the /api calls go to the backend on port 8081.
 export default defineConfig({
   plugins: [react()],
   server: {

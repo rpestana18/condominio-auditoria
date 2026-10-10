@@ -87,7 +87,7 @@ class SourceFileController {
     }
 
     @PostMapping(path = "/condominiums/{condominiumId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     @ResponseStatus(HttpStatus.ACCEPTED)
     SourceFileResponse upload(@PathVariable UUID condominiumId, @RequestParam("category") FileCategory category,
             @RequestPart("file") MultipartFile file) throws IOException {
@@ -99,7 +99,7 @@ class SourceFileController {
     }
 
     @PostMapping("/condominiums/{condominiumId}/files/{id}/reprocess")
-    @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     @ResponseStatus(HttpStatus.ACCEPTED)
     SourceFileResponse reprocess(@PathVariable UUID condominiumId, @PathVariable UUID id) {
         access.require(condominiumId);
@@ -108,7 +108,7 @@ class SourceFileController {
 
     /** Changes the category of a file already uploaded and reprocesses it with the new one (RF-01.7). */
     @PutMapping("/condominiums/{condominiumId}/files/{id}/category")
-    @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     SourceFileResponse changeCategory(@PathVariable UUID condominiumId, @PathVariable UUID id,
             @RequestBody ChangeCategoryRequest request) {
         if (request == null || request.category() == null) {

@@ -81,7 +81,7 @@ class BudgetVsActualControllerPermissionTest {
 
     @Test
     void allCondominiumRolesRead() {
-        for (String role : List.of("USUARIO", "GESTOR", "ADMIN")) {
+        for (String role : List.of("USER", "MANAGER", "ADMIN")) {
             logIn(CONDOMINIUM, "pessoa-" + role, role);
             controller.get(CONDOMINIUM, "2026-09", null, null);
             controller.evidence(CONDOMINIUM, "2026-09", null, "ADJUSTMENTS");
@@ -92,7 +92,7 @@ class BudgetVsActualControllerPermissionTest {
     @Test
     void allCondominiumRolesExport() {
         BudgetVsActualExportService export = context.getBean(BudgetVsActualExportService.class);
-        for (String role : List.of("USUARIO", "GESTOR", "ADMIN")) {
+        for (String role : List.of("USER", "MANAGER", "ADMIN")) {
             logIn(CONDOMINIUM, "pessoa-" + role, role);
             var response = controller.export(CONDOMINIUM, "pdf", "2026-09", null, null);
             assertThat(response.getHeaders().getContentType().toString()).isEqualTo("application/pdf");
@@ -104,7 +104,7 @@ class BudgetVsActualControllerPermissionTest {
 
     @Test
     void otherCondominiumDoesNotExport() {
-        logIn(UUID.randomUUID(), "gestor-de-outro", "GESTOR");
+        logIn(UUID.randomUUID(), "gestor-de-outro", "MANAGER");
 
         assertThatThrownBy(() -> controller.export(CONDOMINIUM, "xlsx", "2026-09", null, null))
                 .isInstanceOf(AccessDeniedException.class);
@@ -112,7 +112,7 @@ class BudgetVsActualControllerPermissionTest {
 
     @Test
     void otherCondominiumDoesNotRead() {
-        logIn(UUID.randomUUID(), "gestor-de-outro", "GESTOR");
+        logIn(UUID.randomUUID(), "gestor-de-outro", "MANAGER");
 
         assertThatThrownBy(() -> controller.get(CONDOMINIUM, "2026-09", null, null))
                 .isInstanceOf(AccessDeniedException.class);
@@ -129,7 +129,7 @@ class BudgetVsActualControllerPermissionTest {
 
     private static void logIn(UUID condominium, String username, String role) {
         Jwt jwt = Jwt.withTokenValue("t").header("alg", "none").subject(username).claim("preferred_username", username)
-                .claim("condominios", List.of(condominium.toString())).build();
+                .claim("condominiums", List.of(condominium.toString())).build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role)), username));
     }

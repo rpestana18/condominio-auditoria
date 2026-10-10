@@ -45,7 +45,7 @@ public class BudgetItemController {
     }
 
     @GetMapping("/budget-items")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public List<BudgetItemResponse> catalog(@PathVariable UUID condominiumId) {
         access.require(condominiumId);
         return service.catalog(condominiumId);
@@ -68,7 +68,7 @@ public class BudgetItemController {
     }
 
     @GetMapping("/budgets/{budgetId}/budget-items")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public BudgetItemsResponse list(@PathVariable UUID condominiumId, @PathVariable UUID budgetId,
             @RequestParam(name = "filter", required = false) BudgetItemFilter filter) {
         access.require(condominiumId);
@@ -76,7 +76,7 @@ public class BudgetItemController {
     }
 
     @GetMapping("/budgets/{budgetId}/budget-items/events")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public List<BudgetItemEventResponse> events(@PathVariable UUID condominiumId, @PathVariable UUID budgetId) {
         access.require(condominiumId);
         return service.events(condominiumId, budgetId);

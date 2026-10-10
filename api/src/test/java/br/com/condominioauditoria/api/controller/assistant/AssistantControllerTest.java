@@ -57,7 +57,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Assistant API: roles with the real method security (USUARIO, GESTOR and ADMIN ask and search in their own
+ * Assistant API: roles with the real method security (USER, MANAGER and ADMIN ask and search in their own
  * condominium) and HTTP responses through the real error handler (403 feature, 409 with modoIa without calling the rag,
  * 200).
  */
@@ -136,7 +136,7 @@ class AssistantControllerTest {
                     .build());
             r.onCompleted();
         };
-        for (String role : List.of("USUARIO", "GESTOR", "ADMIN")) {
+        for (String role : List.of("USER", "MANAGER", "ADMIN")) {
             AssistantQuestionServiceTest.logIn(role, A);
             var chunks = controller.search(A, new DocumentSearchRequest("  portão ", null, null));
             assertThat(chunks).singleElement().satisfies(t -> {
@@ -155,7 +155,7 @@ class AssistantControllerTest {
 
     @Test
     void withoutCondominiumAccessNeitherAsksNorSearches() {
-        AssistantQuestionServiceTest.logIn("GESTOR", A);
+        AssistantQuestionServiceTest.logIn("MANAGER", A);
         UUID other = UUID.randomUUID();
         assertThatThrownBy(() -> controller.ask(other, new QuestionRequest("x", null, null)))
                 .isInstanceOf(AccessDeniedException.class);
@@ -175,7 +175,7 @@ class AssistantControllerTest {
 
     @Test
     void limitOutsideOneToFiftyIs400() throws Exception {
-        AssistantQuestionServiceTest.logIn("USUARIO", A);
+        AssistantQuestionServiceTest.logIn("USER", A);
         mvc.perform(post("/api/condominiums/{id}/assistant/search", A).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"portão\",\"limit\":51}"))
                 .andExpect(status().isBadRequest());
@@ -184,7 +184,7 @@ class AssistantControllerTest {
 
     @Test
     void featureOffIs403WithFeatureCode() throws Exception {
-        AssistantQuestionServiceTest.logIn("USUARIO", A);
+        AssistantQuestionServiceTest.logIn("USER", A);
         doThrow(new FeatureNotEnabledException(FeatureService.ASSISTANT, "Assistente")).when(features)
                 .require(A, FeatureService.ASSISTANT);
 
@@ -203,7 +203,7 @@ class AssistantControllerTest {
 
     @Test
     void externalMcpIs409WithAiModeWithoutCallingRag() throws Exception {
-        AssistantQuestionServiceTest.logIn("USUARIO", A);
+        AssistantQuestionServiceTest.logIn("USER", A);
 
         mvc.perform(post("/api/condominiums/{id}/assistant/questions", A).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"question\":\"o portão foi aprovado?\"}"))
@@ -221,7 +221,7 @@ class AssistantControllerTest {
         when(aiConfiguration.read(A)).thenReturn(new Effective(AiMode.OFF,
                 new Answers(null, AiMode.OFF, null, null, null, null),
                 new Embeddings(AiMode.OFF, null, null), null, null));
-        AssistantQuestionServiceTest.logIn("USUARIO", A);
+        AssistantQuestionServiceTest.logIn("USER", A);
 
         mvc.perform(post("/api/condominiums/{id}/assistant/search", A).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"portão\",\"filters\":{\"categories\":[\"PO\"]}}"))

@@ -53,7 +53,7 @@ public class AccountMappingController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public AccountMappingsResponse list(@PathVariable UUID condominiumId, @PathVariable UUID budgetId,
             @RequestParam(name = "filter", required = false) AccountMappingFilter filter) {
         access.require(condominiumId);
@@ -61,7 +61,7 @@ public class AccountMappingController {
     }
 
     @GetMapping("/events")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public List<AccountMappingEventResponse> events(@PathVariable UUID condominiumId, @PathVariable UUID budgetId) {
         access.require(condominiumId);
         return service.events(condominiumId, budgetId);

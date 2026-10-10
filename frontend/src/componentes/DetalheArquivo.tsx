@@ -55,7 +55,7 @@ export function DetalheArquivo({ id, aoFechar }: { id: string; aoFechar: () => v
         <button className="botao secundario" onClick={() => abrirArquivo(`/condominiums/${condominioId}/files/${id}/content`)}>
           Abrir original
         </button>
-        {pode("GESTOR", "ADMIN") && (
+        {pode("MANAGER", "ADMIN") && (
           <button className="botao secundario" disabled={ocupado || reprocessar.isPending} onClick={() => reprocessar.mutate(id)}>
             Reprocessar
           </button>

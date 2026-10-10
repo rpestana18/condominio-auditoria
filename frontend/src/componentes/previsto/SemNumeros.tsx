@@ -27,7 +27,7 @@ export function SemNumeros({ resultado }: { resultado: PrevistoRealizado }) {
           Ver as POs enviadas
         </Link>
       )}
-      {situacao === "NO_OPERATING_FUND" && pode("GESTOR", "ADMIN") && (
+      {situacao === "NO_OPERATING_FUND" && pode("MANAGER", "ADMIN") && (
         <Link className="botao-link" to="/">
           Confirmar o fundo ordinário na tela inicial
         </Link>

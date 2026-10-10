@@ -50,7 +50,7 @@ export interface paths {
         /** Arquivos do mais recente para o mais antigo */
         get: operations["listFiles"];
         put?: never;
-        /** Envia um arquivo (GESTOR ou ADMIN). O processamento segue em segundo plano. */
+        /** Envia um arquivo (MANAGER ou ADMIN). O processamento segue em segundo plano. */
         post: operations["uploadFile"];
         delete?: never;
         options?: never;
@@ -129,7 +129,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Coloca o arquivo de novo na fila de leitura e, com o módulo Assistente ligado, de indexação (GESTOR ou ADMIN). Não duplica dados. */
+        /** Coloca o arquivo de novo na fila de leitura e, com o módulo Assistente ligado, de indexação (MANAGER ou ADMIN). Não duplica dados. */
         post: operations["reprocessFile"];
         delete?: never;
         options?: never;
@@ -148,7 +148,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Troca a categoria e reprocessa o arquivo (GESTOR ou ADMIN, RF-01.7). Mesma categoria não faz nada. */
+        /** Troca a categoria e reprocessa o arquivo (MANAGER ou ADMIN, RF-01.7). Mesma categoria não faz nada. */
         put: operations["changeFileCategory"];
         post?: never;
         delete?: never;
@@ -186,7 +186,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Confirma qual fundo é o ordinário do condomínio (GESTOR ou ADMIN) */
+        /** Confirma qual fundo é o ordinário do condomínio (MANAGER ou ADMIN) */
         put: operations["setOperatingFund"];
         post?: never;
         delete?: never;
@@ -836,7 +836,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Pergunta ao assistente, com citações dos documentos e números das ferramentas (USUARIO, GESTOR ou ADMIN; RF-04.8 a RF-04.16)
+         * Pergunta ao assistente, com citações dos documentos e números das ferramentas (USER, MANAGER ou ADMIN; RF-04.8 a RF-04.16)
          * @description Só com o módulo Assistente ligado e o modo de respostas efetivo API_KEY. O backend chama o rag (gRPC Perguntar,
          *     prazo de 120 s), junta o fluxo e devolve a resposta inteira, já validada. O histórico só existe na tela
          *     (RF-04.11): o frontend manda as trocas anteriores e o backend usa as últimas 6. Citações de arquivos que o
@@ -1490,7 +1490,7 @@ export interface components {
         CurrentUserResponse: {
             username: string;
             name: string;
-            roles: ("USUARIO" | "GESTOR" | "ADMIN")[];
+            roles: ("USER" | "MANAGER" | "ADMIN")[];
             condominiums: {
                 /** Format: uuid */
                 id: string;

@@ -31,7 +31,7 @@ export function CartaoSaldoAcumulado({ painel }: { painel: Painel }) {
     );
   }
 
-  if (!pode("GESTOR", "ADMIN")) return null;
+  if (!pode("MANAGER", "ADMIN")) return null;
   return <ConfirmarFundo condominioId={condominioId} painel={painel} sugerido={ordinario.fundId} />;
 }
 

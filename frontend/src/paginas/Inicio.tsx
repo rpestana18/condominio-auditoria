@@ -19,7 +19,7 @@ export function Inicio() {
       <section className="vazio">
         <h1>Ainda não há números para mostrar</h1>
         <p>Os números aparecem aqui assim que o primeiro fluxo de caixa mensal for processado.</p>
-        {pode("GESTOR", "ADMIN") && (
+        {pode("MANAGER", "ADMIN") && (
           <Link className="botao" to="/arquivos">
             Enviar arquivo
           </Link>

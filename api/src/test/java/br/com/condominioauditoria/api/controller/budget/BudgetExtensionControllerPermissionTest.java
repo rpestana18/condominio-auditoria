@@ -69,7 +69,7 @@ class BudgetExtensionControllerPermissionTest {
 
     @Test
     void managerAndUserDoNotExtend() {
-        for (String role : List.of("GESTOR", "USUARIO")) {
+        for (String role : List.of("MANAGER", "USER")) {
             logIn(CONDOMINIUM, "pessoa-" + role, role);
             assertThatThrownBy(() -> controller.extend(CONDOMINIUM, BUDGET, new BudgetExtensionRequest("2026-04",
                     "atraso")))
@@ -90,7 +90,7 @@ class BudgetExtensionControllerPermissionTest {
 
     private static void logIn(UUID condominium, String username, String role) {
         Jwt jwt = Jwt.withTokenValue("t").header("alg", "none").subject(username).claim("preferred_username", username)
-                .claim("condominios", List.of(condominium.toString())).build();
+                .claim("condominiums", List.of(condominium.toString())).build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role)), username));
     }

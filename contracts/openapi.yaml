@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: |
     Contrato entre backend, frontend e MCP. Toda chamada exige token Bearer do Keycloak.
-    Perfis: USUARIO (consulta), GESTOR (+ envia arquivos), ADMIN (tudo).
+    Perfis: USER (consulta), MANAGER (+ envia arquivos), ADMIN (tudo).
     Valores monetários são números com 2 casas decimais; datas em ISO 8601.
 servers:
   - url: /api
@@ -37,7 +37,7 @@ paths:
           description: OK
           content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SourceFileResponse" } } } }
     post:
-      summary: Envia um arquivo (GESTOR ou ADMIN). O processamento segue em segundo plano.
+      summary: Envia um arquivo (MANAGER ou ADMIN). O processamento segue em segundo plano.
       operationId: uploadFile
       parameters:
         - { name: category, in: query, required: true, schema: { $ref: "#/components/schemas/FileCategory" } }
@@ -79,7 +79,7 @@ paths:
   /condominiums/{condominiumId}/files/{id}/reprocess:
     parameters: [{ $ref: "#/components/parameters/CondominiumId" }, { $ref: "#/components/parameters/FileId" }]
     post:
-      summary: Coloca o arquivo de novo na fila de leitura e, com o módulo Assistente ligado, de indexação (GESTOR ou ADMIN). Não duplica dados.
+      summary: Coloca o arquivo de novo na fila de leitura e, com o módulo Assistente ligado, de indexação (MANAGER ou ADMIN). Não duplica dados.
       operationId: reprocessFile
       responses:
         "202": { description: Na fila, content: { application/json: { schema: { $ref: "#/components/schemas/SourceFileResponse" } } } }
@@ -87,7 +87,7 @@ paths:
   /condominiums/{condominiumId}/files/{id}/category:
     parameters: [{ $ref: "#/components/parameters/CondominiumId" }, { $ref: "#/components/parameters/FileId" }]
     put:
-      summary: Troca a categoria e reprocessa o arquivo (GESTOR ou ADMIN, RF-01.7). Mesma categoria não faz nada.
+      summary: Troca a categoria e reprocessa o arquivo (MANAGER ou ADMIN, RF-01.7). Mesma categoria não faz nada.
       operationId: changeFileCategory
       requestBody:
         required: true
@@ -109,7 +109,7 @@ paths:
   /condominiums/{condominiumId}/operating-fund:
     parameters: [{ $ref: "#/components/parameters/CondominiumId" }]
     put:
-      summary: Confirma qual fundo é o ordinário do condomínio (GESTOR ou ADMIN)
+      summary: Confirma qual fundo é o ordinário do condomínio (MANAGER ou ADMIN)
       operationId: setOperatingFund
       requestBody:
         required: true
@@ -557,7 +557,7 @@ paths:
   /condominiums/{condominiumId}/assistant/questions:
     parameters: [{ $ref: "#/components/parameters/CondominiumId" }]
     post:
-      summary: Pergunta ao assistente, com citações dos documentos e números das ferramentas (USUARIO, GESTOR ou ADMIN; RF-04.8 a RF-04.16)
+      summary: Pergunta ao assistente, com citações dos documentos e números das ferramentas (USER, MANAGER ou ADMIN; RF-04.8 a RF-04.16)
       description: |
         Só com o módulo Assistente ligado e o modo de respostas efetivo API_KEY. O backend chama o rag (gRPC Perguntar,
         prazo de 120 s), junta o fluxo e devolve a resposta inteira, já validada. O histórico só existe na tela
@@ -1182,7 +1182,7 @@ components:
       properties:
         username: { type: string }
         name: { type: string }
-        roles: { type: array, items: { type: string, enum: [USUARIO, GESTOR, ADMIN] } }
+        roles: { type: array, items: { type: string, enum: [USER, MANAGER, ADMIN] } }
         condominiums:
           type: array
           items:

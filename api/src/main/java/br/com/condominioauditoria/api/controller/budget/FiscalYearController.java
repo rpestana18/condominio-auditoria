@@ -40,14 +40,14 @@ public class FiscalYearController {
     }
 
     @GetMapping("/fiscal-years")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public List<FiscalYearResponse> list(@PathVariable UUID condominiumId) {
         access.require(condominiumId);
         return service.list(condominiumId);
     }
 
     @GetMapping("/budgets/{budgetId}/printed-column")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public PrintedColumnCheckResponse printedColumn(@PathVariable UUID condominiumId, @PathVariable UUID budgetId) {
         access.require(condominiumId);
         return service.printedColumn(condominiumId, budgetId);
@@ -55,7 +55,7 @@ public class FiscalYearController {
 
     /** Compare fiscal years (RF-11.6): comma-separated {@code fiscalYears}; empty = the two most recent. */
     @GetMapping("/fiscal-year-comparison")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public FiscalYearComparisonResponse compare(@PathVariable UUID condominiumId,
             @RequestParam(name = "fiscalYears", required = false) List<String> fiscalYears,
                     @RequestParam(name = "fund", required = false) UUID fundId,
@@ -66,7 +66,7 @@ public class FiscalYearController {
 
     /** Indicators of a fiscal year (RF-11.10 to RF-11.12); empty {@code budget} = the most recent. */
     @GetMapping("/indicators")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public IndicatorsResponse indicators(@PathVariable UUID condominiumId, @RequestParam(name = "budget",
             required = false) UUID budgetId,
             @RequestParam(name = "fund", required = false) UUID fundId) {

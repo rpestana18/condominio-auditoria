@@ -75,7 +75,7 @@ class AccountMappingControllerPermissionTest {
 
     @Test
     void managerAndUserDoNotWrite() {
-        for (String role : List.of("GESTOR", "USUARIO")) {
+        for (String role : List.of("MANAGER", "USER")) {
             logIn(CONDOMINIUM, "pessoa-" + role, role);
             for (Executable write : writes()) {
                 assertThatThrownBy(write::execute).isInstanceOf(AccessDeniedException.class);
@@ -98,7 +98,7 @@ class AccountMappingControllerPermissionTest {
 
     @Test
     void allRolesRead() {
-        for (String role : List.of("USUARIO", "GESTOR", "ADMIN")) {
+        for (String role : List.of("USER", "MANAGER", "ADMIN")) {
             logIn(CONDOMINIUM, "pessoa-" + role, role);
             controller.list(CONDOMINIUM, BUDGET, null);
             controller.events(CONDOMINIUM, BUDGET);
@@ -107,7 +107,7 @@ class AccountMappingControllerPermissionTest {
 
     @Test
     void otherCondominiumDoesNotRead() {
-        logIn(UUID.randomUUID(), "gestor-de-outro", "GESTOR");
+        logIn(UUID.randomUUID(), "gestor-de-outro", "MANAGER");
 
         assertThatThrownBy(() -> controller.list(CONDOMINIUM, BUDGET, null)).isInstanceOf(AccessDeniedException.class);
         verify(service, never()).list(any(), any(), any());
@@ -127,7 +127,7 @@ class AccountMappingControllerPermissionTest {
 
     private static void logIn(UUID condominium, String username, String role) {
         Jwt jwt = Jwt.withTokenValue("t").header("alg", "none").subject(username).claim("preferred_username", username)
-                .claim("condominios", List.of(condominium.toString())).build();
+                .claim("condominiums", List.of(condominium.toString())).build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role)), username));
     }

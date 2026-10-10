@@ -7,7 +7,7 @@ interface Sessao {
   condominioId: string;
   condominioNome: string;
   trocarCondominio: (id: string) => void;
-  /** Ex.: pode("GESTOR", "ADMIN") para mostrar o botão de envio. O backend é quem barra de verdade. */
+  /** Ex.: pode("MANAGER", "ADMIN") para mostrar o botão de envio. O backend é quem barra de verdade. */
   pode: (...perfis: Perfil[]) => boolean;
   /** Códigos dos módulos ligados no condomínio (GET /contexto). Vazio enquanto carrega. */
   modulosLigados: string[];

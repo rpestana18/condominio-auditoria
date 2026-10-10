@@ -94,7 +94,7 @@ public class AssistantQuestionServiceTest {
         configure(AiMode.API_KEY, ENCRYPTED_KEY, AiMode.LOCAL);
         questions = new AssistantQuestionService(new CondominiumAccess(), features, aiConfiguration, rag.client,
                 new FileAccessBarrier(files), usage, 6);
-        logIn("USUARIO");
+        logIn("USER");
     }
 
     @AfterEach
@@ -353,7 +353,7 @@ public class AssistantQuestionServiceTest {
 
     public static void logIn(String role, UUID condominium) {
         Jwt jwt = new Jwt("token-" + role.toLowerCase(), Instant.now(), Instant.now().plusSeconds(300),
-                Map.of("alg", "none"), Map.of("preferred_username", "pessoa." + role.toLowerCase(), "condominios",
+                Map.of("alg", "none"), Map.of("preferred_username", "pessoa." + role.toLowerCase(), "condominiums",
                         List.of(condominium.toString())));
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role)), "pessoa." + role.toLowerCase()));

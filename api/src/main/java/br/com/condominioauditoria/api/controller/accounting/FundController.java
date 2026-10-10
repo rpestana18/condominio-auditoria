@@ -25,7 +25,7 @@ class FundController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     List<FundResponse> list(@PathVariable UUID condominiumId) {
         access.require(condominiumId);
         return funds.list(condominiumId);

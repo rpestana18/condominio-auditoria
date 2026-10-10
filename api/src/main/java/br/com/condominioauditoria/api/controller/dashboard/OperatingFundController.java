@@ -27,7 +27,7 @@ class OperatingFundController {
     }
 
     @PutMapping
-    @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     ResponseEntity<Void> confirm(@PathVariable UUID condominiumId,
             @Valid @RequestBody ConfirmOperatingFundRequest request) {
         access.require(condominiumId);

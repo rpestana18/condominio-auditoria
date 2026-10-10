@@ -33,7 +33,7 @@ export function BlocosAParte({ resultado, aoAbrirEvidencia }: Props) {
         aoAbrir={abrirARealocar}
       >
         {/* Gestor e Admin escolhem a linha de cada compra na evidência; o backend barra os demais */}
-        {pode("GESTOR", "ADMIN") && (resultado.toReallocate?.total ?? 0) !== 0 && (
+        {pode("MANAGER", "ADMIN") && (resultado.toReallocate?.total ?? 0) !== 0 && (
           <button className="botao secundario" onClick={abrirARealocar}>
             Realocar compras
           </button>

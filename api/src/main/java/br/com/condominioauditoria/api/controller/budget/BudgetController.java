@@ -51,21 +51,21 @@ public class BudgetController {
 
     /** The budget's audit trail (every role): confirmation, supersession and fund link changes. */
     @GetMapping("/{budgetId}/events")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public List<BudgetEventResponse> events(@PathVariable UUID condominiumId, @PathVariable UUID budgetId) {
         access.require(condominiumId);
         return query.events(condominiumId, budgetId).orElseThrow(BudgetController::notFound);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public List<BudgetSummaryResponse> list(@PathVariable UUID condominiumId) {
         access.require(condominiumId);
         return query.list(condominiumId);
     }
 
     @GetMapping("/{budgetId}")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public BudgetDetailResponse detail(@PathVariable UUID condominiumId, @PathVariable UUID budgetId) {
         access.require(condominiumId);
         return query.detail(condominiumId, budgetId).orElseThrow(BudgetController::notFound);

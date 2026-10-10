@@ -70,7 +70,7 @@ class QuestionRoundTripTest {
 
     private final JwtDecoder decoder = token -> switch (token) {
         case "usuario-a" -> new Jwt(token, Instant.now(), Instant.now().plusSeconds(300), Map.of("alg", "none"),
-                Map.of("preferred_username", "usuario.a", "perfis", List.of("USUARIO"), "condominios",
+                Map.of("preferred_username", "usuario.a", "roles", List.of("USER"), "condominiums",
                         List.of(A.toString())));
         default -> throw new BadJwtException("assinatura inválida");
     };
@@ -92,7 +92,7 @@ class QuestionRoundTripTest {
         var query = new QueryGrpcService(new QueryService(access, condominiums, null, null, null, null, null, null));
         var converter = new JwtAuthenticationConverter();
         converter.setPrincipalClaimName("preferred_username");
-        converter.setJwtGrantedAuthoritiesConverter(jwt -> jwt.getClaimAsStringList("perfis").stream()
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> jwt.getClaimAsStringList("roles").stream()
                 .map(p -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + p)).toList());
         api = new GrpcServer(query, new GrpcAuthInterceptor(decoder, converter),
                 new ApiProperties(null, null, new ApiProperties.GrpcProperties(0), null));

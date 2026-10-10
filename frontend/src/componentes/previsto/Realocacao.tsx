@@ -88,7 +88,7 @@ export function ListaRealocacoes({ poId }: { poId: string }) {
                 {r.reallocatedBy} em {formatarDataHora(r.reallocatedAt)}
                 {!r.active && r.undoneAt && ` · desfeita por ${r.undoneBy} em ${formatarDataHora(r.undoneAt)}`}
               </td>
-              <td>{r.active && pode("GESTOR", "ADMIN") && <DesfazerRealocacao realocacaoId={r.id} />}</td>
+              <td>{r.active && pode("MANAGER", "ADMIN") && <DesfazerRealocacao realocacaoId={r.id} />}</td>
             </tr>
           ))}
         </tbody>

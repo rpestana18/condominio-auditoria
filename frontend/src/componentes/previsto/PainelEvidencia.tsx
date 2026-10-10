@@ -19,7 +19,7 @@ interface Props {
  */
 export function PainelEvidencia({ periodo, po, alvo, aoFechar }: Props) {
   const { condominioId, pode } = useSessao();
-  const podeRealocar = pode("GESTOR", "ADMIN");
+  const podeRealocar = pode("MANAGER", "ADMIN");
   const { data: lancamentos = [], isLoading, error } = useEvidencia(condominioId, periodo, po.id, alvo.alvo);
   const abrirNaPagina = (arquivoId: string, pagina: number) =>
     void abrirArquivo(`/condominiums/${condominioId}/files/${arquivoId}/content`, pagina);

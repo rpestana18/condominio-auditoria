@@ -37,9 +37,9 @@ class GrpcAuthInterceptorTest {
     private Server server;
     private ManagedChannel channel;
 
-    /** Token "valido-gestor" has the GESTOR role; "valido-sem-perfil" has no role; any other is invalid. */
+    /** Token "valido-gestor" has the MANAGER role; "valido-sem-perfil" has no role; any other is invalid. */
     private final JwtDecoder decoder = token -> switch (token) {
-        case "valido-gestor" -> jwt("gestor", List.of("GESTOR"));
+        case "valido-gestor" -> jwt("gestor", List.of("MANAGER"));
         case "valido-sem-perfil" -> jwt("visitante", List.of("offline_access"));
         default -> throw new BadJwtException("assinatura inválida");
     };
@@ -48,7 +48,7 @@ class GrpcAuthInterceptorTest {
     void setUp() throws Exception {
         var converter = new JwtAuthenticationConverter();
         converter.setPrincipalClaimName("preferred_username");
-        converter.setJwtGrantedAuthoritiesConverter(jwt -> jwt.getClaimAsStringList("perfis").stream()
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> jwt.getClaimAsStringList("roles").stream()
                 .map(p -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + p))
                 .toList());
         // Test service: returns the name of the user Spring Security sees inside the call
@@ -116,6 +116,6 @@ class GrpcAuthInterceptorTest {
 
     private static Jwt jwt(String username, List<String> roles) {
         return new Jwt("token", Instant.now(), Instant.now().plusSeconds(300), Map.of("alg", "none"),
-                Map.of("preferred_username", username, "perfis", roles));
+                Map.of("preferred_username", username, "roles", roles));
     }
 }

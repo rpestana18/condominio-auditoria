@@ -26,7 +26,7 @@ export function Arquivos() {
   const [parametros] = useSearchParams();
   const [selecionado, setSelecionado] = useState<string | null>(() => parametros.get("arquivo"));
   const [editando, setEditando] = useState<ArquivoResumo | null>(null);
-  const podeEditar = pode("GESTOR", "ADMIN");
+  const podeEditar = pode("MANAGER", "ADMIN");
   const [filtroIndexacao, setFiltroIndexacao] = useState<FiltroIndexacao>("TODOS");
   const { data: todos = [], isLoading } = useArquivos(condominioId, categoria);
   // A coluna "Busca" só existe com o módulo Assistente ligado (sem ele a API não manda o estado)

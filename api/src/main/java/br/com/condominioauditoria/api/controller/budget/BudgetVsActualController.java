@@ -39,7 +39,7 @@ public class BudgetVsActualController {
 
     /** PDF or Excel of the same view (RF-03.1.14): every role of the condominium exports it. */
     @GetMapping("/export")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public ResponseEntity<byte[]> export(@PathVariable UUID condominiumId, @RequestParam("format") String format,
             @RequestParam("period") String period, @RequestParam(name = "budget", required = false) UUID budgetId,
             @RequestParam(name = "fund", required = false) UUID fundId) {
@@ -60,7 +60,7 @@ public class BudgetVsActualController {
      * everything.
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public BudgetVsActualResponse get(@PathVariable UUID condominiumId, @RequestParam("period") String period,
             @RequestParam(name = "budget", required = false) UUID budgetId,
             @RequestParam(name = "fund", required = false) UUID fundId) {
@@ -70,7 +70,7 @@ public class BudgetVsActualController {
     }
 
     @GetMapping("/evidence")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public List<EvidenceResponse> evidence(@PathVariable UUID condominiumId, @RequestParam("period") String period,
             @RequestParam(name = "budget", required = false) UUID budgetId, @RequestParam("target") String target) {
         access.require(condominiumId);

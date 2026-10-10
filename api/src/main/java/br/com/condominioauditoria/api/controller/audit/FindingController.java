@@ -26,7 +26,7 @@ class FindingController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     List<FindingResponse> list(@PathVariable UUID condominiumId,
             @RequestParam(name = "referenceMonth", required = false) String referenceMonth) {
         access.require(condominiumId);

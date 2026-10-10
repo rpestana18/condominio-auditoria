@@ -104,7 +104,7 @@ class DocumentSearchGrpcTest {
     private ManagedChannel apiChannel;
 
     private final JwtDecoder decoder = token -> switch (token) {
-        case "usuario-a" -> jwt(token, "usuario.a", List.of("USUARIO"), List.of(CONDOMINIUM_A.toString()));
+        case "usuario-a" -> jwt(token, "usuario.a", List.of("USER"), List.of(CONDOMINIUM_A.toString()));
         case "admin" -> jwt(token, "admin", List.of("ADMIN"), List.of());
         default -> throw new BadJwtException("assinatura inválida");
     };
@@ -149,7 +149,7 @@ class DocumentSearchGrpcTest {
 
         var converter = new JwtAuthenticationConverter();
         converter.setPrincipalClaimName("preferred_username");
-        converter.setJwtGrantedAuthoritiesConverter(jwt -> jwt.getClaimAsStringList("perfis").stream()
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> jwt.getClaimAsStringList("roles").stream()
                 .map(p -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + p)).toList());
         String apiName = InProcessServerBuilder.generateName();
         api = InProcessServerBuilder.forName(apiName)
@@ -369,6 +369,6 @@ class DocumentSearchGrpcTest {
 
     private static Jwt jwt(String token, String username, List<String> roles, List<String> condominiums) {
         return new Jwt(token, Instant.now(), Instant.now().plusSeconds(300), Map.of("alg", "none"),
-                Map.of("preferred_username", username, "perfis", roles, "condominios", condominiums));
+                Map.of("preferred_username", username, "roles", roles, "condominiums", condominiums));
     }
 }

@@ -30,7 +30,7 @@ class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
-                        .anyRequest().hasAnyRole("USUARIO", "GESTOR", "ADMIN"))
+                        .anyRequest().hasAnyRole("USER", "MANAGER", "ADMIN"))
                 .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(roleConverter())));
         return http.build();
     }
@@ -52,7 +52,7 @@ class SecurityConfig {
             Object roles = realm == null ? List.of() : realm.getOrDefault("roles", List.of());
             return ((Collection<?>) roles).stream()
                     .map(Object::toString)
-                    .filter(p -> p.equals("USUARIO") || p.equals("GESTOR") || p.equals("ADMIN"))
+                    .filter(p -> p.equals("USER") || p.equals("MANAGER") || p.equals("ADMIN"))
                     .<GrantedAuthority>map(p -> new SimpleGrantedAuthority("ROLE_" + p))
                     .toList();
         });

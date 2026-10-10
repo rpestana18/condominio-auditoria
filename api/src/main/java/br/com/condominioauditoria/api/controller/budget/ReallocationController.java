@@ -33,21 +33,21 @@ public class ReallocationController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public List<ReallocationResponse> list(@PathVariable UUID condominiumId, @RequestParam(name = "budget") UUID budgetId) {
         access.require(condominiumId);
         return service.list(condominiumId, budgetId);
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ReallocationResponse reallocate(@PathVariable UUID condominiumId, @RequestBody ReallocationRequest request) {
         access.require(condominiumId);
         return service.reallocate(condominiumId, request, access.username());
     }
 
     @DeleteMapping("/{reallocationId}")
-    @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ReallocationResponse undo(@PathVariable UUID condominiumId, @PathVariable UUID reallocationId) {
         access.require(condominiumId);
         return service.undo(condominiumId, reallocationId, access.username());

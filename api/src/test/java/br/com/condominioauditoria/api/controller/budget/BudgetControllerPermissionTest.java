@@ -97,7 +97,7 @@ class BudgetControllerPermissionTest {
 
     @Test
     void managerDoesNotConfirm() {
-        logIn("gestor", "GESTOR");
+        logIn("gestor", "MANAGER");
 
         assertThatThrownBy(() -> controller.confirm(CONDOMINIUM, BUDGET, request()))
                 .isInstanceOf(AccessDeniedException.class);
@@ -106,7 +106,7 @@ class BudgetControllerPermissionTest {
 
     @Test
     void userDoesNotConfirm() {
-        logIn("morador", "USUARIO");
+        logIn("morador", "USER");
 
         assertThatThrownBy(() -> controller.confirm(CONDOMINIUM, BUDGET, request()))
                 .isInstanceOf(AccessDeniedException.class);
@@ -126,7 +126,7 @@ class BudgetControllerPermissionTest {
     void onlyAdminChangesFundLinks() {
         BudgetFundLinkService fundLinks = context.getBean(BudgetFundLinkService.class);
         var request = new BudgetFundsRequest(List.of());
-        for (String role : List.of("USUARIO", "GESTOR")) {
+        for (String role : List.of("USER", "MANAGER")) {
             logIn("pessoa-" + role, role);
             assertThatThrownBy(() -> controller.changeFunds(CONDOMINIUM, BUDGET, request))
                     .isInstanceOf(AccessDeniedException.class);
@@ -140,17 +140,17 @@ class BudgetControllerPermissionTest {
 
     @Test
     void allRolesReadBudgetTrail() {
-        for (String role : List.of("USUARIO", "GESTOR", "ADMIN")) {
+        for (String role : List.of("USER", "MANAGER", "ADMIN")) {
             logIn("pessoa-" + role, role);
             assertThat(controller.events(CONDOMINIUM, BUDGET)).isEmpty();
         }
-        logInTo(UUID.randomUUID(), "gestor-de-outro", "GESTOR");
+        logInTo(UUID.randomUUID(), "gestor-de-outro", "MANAGER");
         assertThatThrownBy(() -> controller.events(CONDOMINIUM, BUDGET)).isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
     void allCondominiumRolesRead() {
-        for (String role : List.of("USUARIO", "GESTOR", "ADMIN")) {
+        for (String role : List.of("USER", "MANAGER", "ADMIN")) {
             logIn("pessoa-" + role, role);
 
             assertThat(controller.list(CONDOMINIUM)).isEmpty();
@@ -160,7 +160,7 @@ class BudgetControllerPermissionTest {
 
     @Test
     void outsiderDoesNotRead() {
-        logInTo(UUID.randomUUID(), "gestor-de-outro", "GESTOR");
+        logInTo(UUID.randomUUID(), "gestor-de-outro", "MANAGER");
 
         assertThatThrownBy(() -> controller.list(CONDOMINIUM)).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> controller.detail(CONDOMINIUM, BUDGET)).isInstanceOf(AccessDeniedException.class);
@@ -177,7 +177,7 @@ class BudgetControllerPermissionTest {
 
     private static void logInTo(UUID condominium, String username, String role) {
         Jwt jwt = Jwt.withTokenValue("t").header("alg", "none").subject(username).claim("preferred_username", username)
-                .claim("condominios", List.of(condominium.toString())).build();
+                .claim("condominiums", List.of(condominium.toString())).build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role)), username));
     }

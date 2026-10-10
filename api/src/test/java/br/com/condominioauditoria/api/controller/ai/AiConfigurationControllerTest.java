@@ -49,7 +49,7 @@ import org.springframework.transaction.support.TransactionOperations;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * AI configuration in the API (RF-09.6): only ADMIN reads and saves, including the catalog; GESTOR and USUARIO neither
+ * AI configuration in the API (RF-09.6): only ADMIN reads and saves, including the catalog; MANAGER and USER neither
  * change nor see it. The key never appears in the response JSON (neither plain nor encrypted) and the catalog goes out
  * without the public key.
  */
@@ -111,7 +111,7 @@ class AiConfigurationControllerTest {
 
     @Test
     void managerAndUserNeitherSeeNorChangeAi() {
-        for (String role : List.of("USUARIO", "GESTOR")) {
+        for (String role : List.of("USER", "MANAGER")) {
             logIn(role);
             assertThatThrownBy(() -> controller.read(A)).isInstanceOf(AccessDeniedException.class);
             assertThatThrownBy(() -> controller.save(A, request(KEY))).isInstanceOf(AccessDeniedException.class);
@@ -158,7 +158,7 @@ class AiConfigurationControllerTest {
 
     private static void logIn(String role) {
         Jwt jwt = new Jwt("t", Instant.now(), Instant.now().plusSeconds(300), Map.of("alg", "none"),
-                Map.of("preferred_username", "pessoa." + role.toLowerCase(), "condominios", List.of(A.toString())));
+                Map.of("preferred_username", "pessoa." + role.toLowerCase(), "condominiums", List.of(A.toString())));
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role)), "pessoa." + role.toLowerCase()));
     }

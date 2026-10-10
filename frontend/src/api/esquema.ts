@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/eu": {
+    "/me": {
         parameters: {
             query?: never;
             header?: never;
@@ -12,7 +12,7 @@ export interface paths {
             cookie?: never;
         };
         /** Usuário logado, perfis e condomínios visíveis */
-        get: operations["eu"];
+        get: operations["currentUser"];
         put?: never;
         post?: never;
         delete?: never;
@@ -21,7 +21,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/categorias": {
+    "/categories": {
         parameters: {
             query?: never;
             header?: never;
@@ -29,7 +29,7 @@ export interface paths {
             cookie?: never;
         };
         /** Categorias de arquivo, na ordem da tela */
-        get: operations["categorias"];
+        get: operations["listCategories"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38,37 +38,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/arquivos": {
+    "/condominiums/{condominiumId}/files": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         /** Arquivos do mais recente para o mais antigo */
-        get: operations["listarArquivos"];
+        get: operations["listFiles"];
         put?: never;
         /** Envia um arquivo (GESTOR ou ADMIN). O processamento segue em segundo plano. */
-        post: operations["enviarArquivo"];
+        post: operations["uploadFile"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/arquivos/ultimo": {
+    "/condominiums/{condominiumId}/files/latest": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         /** Último arquivo enviado (indicador no canto da tela) */
-        get: operations["ultimoArquivo"];
+        get: operations["latestFile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -77,18 +77,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/arquivos/{id}": {
+    "/condominiums/{condominiumId}/files/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                id: components["parameters"]["ArquivoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                id: components["parameters"]["FileId"];
             };
             cookie?: never;
         };
         /** Detalhe com conferências e saldos por fundo */
-        get: operations["detalheArquivo"];
+        get: operations["fileDetail"];
         put?: never;
         post?: never;
         delete?: never;
@@ -97,18 +97,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/arquivos/{id}/conteudo": {
+    "/condominiums/{condominiumId}/files/{id}/content": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                id: components["parameters"]["ArquivoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                id: components["parameters"]["FileId"];
             };
             cookie?: never;
         };
         /** Arquivo original, exatamente como foi enviado */
-        get: operations["conteudoArquivo"];
+        get: operations["fileContent"];
         put?: never;
         post?: never;
         delete?: never;
@@ -117,39 +117,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/arquivos/{id}/reprocessar": {
+    "/condominiums/{condominiumId}/files/{id}/reprocess": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                id: components["parameters"]["ArquivoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                id: components["parameters"]["FileId"];
             };
             cookie?: never;
         };
         get?: never;
         put?: never;
         /** Coloca o arquivo de novo na fila de leitura e, com o módulo Assistente ligado, de indexação (GESTOR ou ADMIN). Não duplica dados. */
-        post: operations["reprocessarArquivo"];
+        post: operations["reprocessFile"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/arquivos/{id}/categoria": {
+    "/condominiums/{condominiumId}/files/{id}/category": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                id: components["parameters"]["ArquivoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                id: components["parameters"]["FileId"];
             };
             cookie?: never;
         };
         get?: never;
         /** Troca a categoria e reprocessa o arquivo (GESTOR ou ADMIN, RF-01.7). Mesma categoria não faz nada. */
-        put: operations["alterarCategoriaArquivo"];
+        put: operations["changeFileCategory"];
         post?: never;
         delete?: never;
         options?: never;
@@ -157,17 +157,17 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/painel": {
+    "/condominiums/{condominiumId}/dashboard": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         /** Números da tela inicial, do fluxo de caixa mais recente */
-        get: operations["painel"];
+        get: operations["dashboard"];
         put?: never;
         post?: never;
         delete?: never;
@@ -176,18 +176,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/fundo-ordinario": {
+    "/condominiums/{condominiumId}/operating-fund": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         get?: never;
         /** Confirma qual fundo é o ordinário do condomínio (GESTOR ou ADMIN) */
-        put: operations["confirmarFundoOrdinario"];
+        put: operations["setOperatingFund"];
         post?: never;
         delete?: never;
         options?: never;
@@ -195,22 +195,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/contexto": {
+    "/condominiums/{condominiumId}/context": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         /**
          * Contexto do condomínio para montar a tela (módulos ligados). Qualquer perfil com acesso ao condomínio.
-         * @description O menu "Assistente" depende de ASSISTENTE estar em modulosLigados (RF-10.2, RF-10.3). Ligar ou desligar vale
+         * @description O menu "Assistente" depende de ASSISTANT estar em modulosLigados (RF-10.2, RF-10.3). Ligar ou desligar vale
          *     no próximo carregamento, sem reinício. Com o módulo ligado, "assistente" traz o modo de IA efetivo (RF-04.16),
          *     para a tela escolher entre chat + busca, aviso do MCP + busca ou só busca; nunca traz a chave.
          */
-        get: operations["contextoCondominio"];
+        get: operations["condominiumContext"];
         put?: never;
         post?: never;
         delete?: never;
@@ -219,17 +219,17 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/modulos": {
+    "/condominiums/{condominiumId}/features": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         /** Catálogo de módulos com o estado no condomínio (RF-10.1). Qualquer perfil com acesso; só leitura. */
-        get: operations["listarModulos"];
+        get: operations["listFeatures"];
         put?: never;
         post?: never;
         delete?: never;
@@ -238,14 +238,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/modulos/{codigo}": {
+    "/condominiums/{condominiumId}/features/{code}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
-                codigo: components["parameters"]["CodigoModulo"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                /** @description Código do módulo no catálogo (ex.: ASSISTANT) */
+                code: components["parameters"]["FeatureCode"];
             };
             cookie?: never;
         };
@@ -253,10 +253,10 @@ export interface paths {
         /**
          * Liga ou desliga um módulo no condomínio (só ADMIN, o administrador da plataforma no MVP; RF-10.2)
          * @description Grava o estado e um evento na trilha de ativação (só de inclusão), com motivo opcional. Pedir o estado que
-         *     já vale não faz nada (nenhum evento). Ligar o ASSISTENTE coloca todos os arquivos do condomínio na fila de
+         *     já vale não faz nada (nenhum evento). Ligar o ASSISTANT coloca todos os arquivos do condomínio na fila de
          *     indexação depois da resposta (RF-10.4); desligar não apaga índice nem originais (RF-10.5).
          */
-        put: operations["alterarModulo"];
+        put: operations["changeFeature"];
         post?: never;
         delete?: never;
         options?: never;
@@ -264,19 +264,19 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/modulos/{codigo}/eventos": {
+    "/condominiums/{condominiumId}/features/{code}/events": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
-                codigo: components["parameters"]["CodigoModulo"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                /** @description Código do módulo no catálogo (ex.: ASSISTANT) */
+                code: components["parameters"]["FeatureCode"];
             };
             cookie?: never;
         };
         /** Trilha de ativação do módulo no condomínio, da mais antiga para a mais recente (só ADMIN; RF-10.6) */
-        get: operations["eventosModulo"];
+        get: operations["featureEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -285,19 +285,19 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/modulos/{codigo}/periodos": {
+    "/condominiums/{condominiumId}/features/{code}/periods": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
-                codigo: components["parameters"]["CodigoModulo"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                /** @description Código do módulo no catálogo (ex.: ASSISTANT) */
+                code: components["parameters"]["FeatureCode"];
             };
             cookie?: never;
         };
         /** Períodos ativos do módulo no condomínio, calculados da trilha (só ADMIN; RF-10.6) */
-        get: operations["periodosModulo"];
+        get: operations["featurePeriods"];
         put?: never;
         post?: never;
         delete?: never;
@@ -306,12 +306,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/uso": {
+    "/condominiums/{condominiumId}/usage": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -322,7 +322,7 @@ export interface paths {
          *     arredondado a 2 casas (meio para cima) só em cada total. Não é valor de cobrança. Rag fora do ar: o uso sai
          *     normalmente, com custoDisponivel = false e sem valores de custo.
          */
-        get: operations["usoModulos"];
+        get: operations["featureUsage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -331,12 +331,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/uso/exportacao": {
+    "/condominiums/{condominiumId}/usage/export": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -347,7 +347,7 @@ export interface paths {
          *     totais), uma linha "Total do período" e, com o rag fora do ar, um aviso de custo indisponível. Custo estimado
          *     não é valor de cobrança; nenhum valor de cobrança é calculado nesta fase.
          */
-        get: operations["exportarUsoModulos"];
+        get: operations["exportFeatureUsage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -356,17 +356,17 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes": {
+    "/condominiums/{condominiumId}/budgets": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         /** POs lidas do condomínio, da mais recente para a mais antiga (todos os perfis, RF-03.1.1) */
-        get: operations["listarPrevisoes"];
+        get: operations["listBudgets"];
         put?: never;
         post?: never;
         delete?: never;
@@ -375,18 +375,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         /** PO com linhas, conferências, avisos e pendências (todos os perfis, RF-03.1.1 e RF-03.1.2) */
-        get: operations["detalhePrevisao"];
+        get: operations["budgetDetail"];
         put?: never;
         post?: never;
         delete?: never;
@@ -395,13 +395,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/confirmacao": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/confirmation": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -412,32 +412,32 @@ export interface paths {
          * @description Registra exercício, ata (ou "sem ata"), código efetivo das linhas com código impresso repetido e a ligação de
          *     cada linha de fundo (1.9.x) a um fundo do fluxo. Os valores lidos nunca são editados. PO lida com divergência
          *     de soma só é confirmada com cienteDivergencia e justificativa. Só uma PO vale para cada mês: sobreposição com
-         *     PO confirmada exige reaprovacao (a anterior passa a SUBSTITUIDA a partir do início da nova).
-         *     Fundo de reserva acima do teto (Conv. 20.1) gera achado ATENCAO; aprovação fora do 1º trimestre gera só aviso.
+         *     PO confirmada exige reaprovacao (a anterior passa a SUPERSEDED a partir do início da nova).
+         *     Fundo de reserva acima do teto (Conv. 20.1) gera achado WARNING; aprovação fora do 1º trimestre gera só aviso.
          */
-        post: operations["confirmarPrevisao"];
+        post: operations["confirmBudget"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/depara": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/account-mappings": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         /**
          * De-para das contas do fluxo nesta versão da PO (todos os perfis, RF-03.1.4 e RF-03.1.13)
          * @description Contas do fluxo com débito no fundo Condomínio no exercício da PO, mais as contas que já têm de-para.
-         *     Conta sem de-para tem estado nulo. Só CONFIRMADO entra no previsto × realizado.
+         *     Conta sem de-para tem estado nulo. Só CONFIRMED entra no previsto × realizado.
          */
-        get: operations["listarDepara"];
+        get: operations["listAccountMappings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -446,26 +446,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/depara/{conta}": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/account-mappings/{account}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
                 /** @description Código da conta do fluxo como impresso (ex. 0028) */
-                conta: string;
+                account: string;
             };
             cookie?: never;
         };
         get?: never;
         /**
          * Admin escolhe o destino de uma conta (só ADMIN, RF-03.1.4 e RF-03.1.5)
-         * @description Destino LINHA_PO aponta para uma linha de despesa da PO (grupos 1.1 a 1.8) pelo id, nunca pela conta da PO.
-         *     Com confirmar nulo ou true, o de-para fica CONFIRMADO; com false, SUGERIDO. A trilha registra o destino e o
+         * @description Destino BUDGET_LINE aponta para uma linha de despesa da PO (grupos 1.1 a 1.8) pelo id, nunca pela conta da PO.
+         *     Com confirmar nulo ou true, o de-para fica CONFIRMED; com false, SUGGESTED. A trilha registra o destino e o
          *     estado anteriores e novos.
          */
-        put: operations["definirDepara"];
+        put: operations["setAccountMapping"];
         post?: never;
         delete?: never;
         options?: never;
@@ -473,33 +473,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/depara/lote": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/account-mappings/batch": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         get?: never;
         put?: never;
         /** Confirma ou recusa várias contas de uma vez (só ADMIN, RF-03.1.13), um evento por conta */
-        post: operations["loteDepara"];
+        post: operations["accountMappingBatch"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/depara/sugestoes": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/account-mappings/suggestions": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -509,22 +509,22 @@ export interface paths {
          * Gera sugestões para as contas sem de-para (só ADMIN, RF-03.1.5), sem IA
          * @description Primeiro a versão anterior da PO (só o que estava confirmado; linha igual = mesmo código efetivo, conta e
          *     descrição), depois a comparação de nomes (sem dígitos, sem acento; nota mínima configurável; empate não
-         *     sugere). Tudo entra SUGERIDO, com o motivo. Nenhuma conta é confirmada e nenhum número muda.
+         *     sugere). Tudo entra SUGGESTED, com o motivo. Nenhuma conta é confirmada e nenhum número muda.
          */
-        post: operations["sugerirDepara"];
+        post: operations["suggestAccountMappings"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/depara/planilha": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/account-mappings/sheet": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -534,27 +534,27 @@ export interface paths {
          * Carrega a planilha de sugestões (CSV "conta do fluxo;linha da PO"), só ADMIN (RF-03.1.5)
          * @description Formato do mapa do piloto, separado por ponto e vírgula, com ou sem cabeçalho, UTF-8 ou Windows-1252. Destino:
          *     código efetivo de uma linha de despesa, "AJUSTE (...)", "REALOCAR (...)" ou "TRANSFERENCIA (...)". Tudo entra
-         *     SUGERIDO; conta já confirmada não muda; linha inválida é listada e não entra.
+         *     SUGGESTED; conta já confirmada não muda; linha inválida é listada e não entra.
          */
-        post: operations["planilhaDepara"];
+        post: operations["uploadAccountMappingSheet"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/depara/eventos": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/account-mappings/events": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         /** Trilha do de-para (todos os perfis), só de inserção */
-        get: operations["eventosDepara"];
+        get: operations["accountMappingEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -563,12 +563,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/rubricas": {
+    "/condominiums/{condominiumId}/budget-items": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -577,29 +577,29 @@ export interface paths {
          * @description Linhas de exercícios diferentes ligadas à mesma rubrica correspondem na comparação entre exercícios
          *     (ADR 0005, Decisão 1). A primeira PO confirmada do condomínio gera uma rubrica por linha. Rubrica nunca é apagada.
          */
-        get: operations["listarRubricas"];
+        get: operations["listBudgetItems"];
         put?: never;
         /** Cria uma rubrica no catálogo (só ADMIN, RF-11.7), com evento na trilha */
-        post: operations["criarRubrica"];
+        post: operations["createBudgetItem"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/rubricas/{rubricaId}": {
+    "/condominiums/{condominiumId}/budget-items/{itemId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                rubricaId: string;
+                condominiumId: components["parameters"]["CondominiumId"];
+                itemId: string;
             };
             cookie?: never;
         };
         get?: never;
         /** Troca o nome da rubrica (só ADMIN, RF-11.7), com evento na trilha */
-        put: operations["renomearRubrica"];
+        put: operations["renameBudgetItem"];
         post?: never;
         delete?: never;
         options?: never;
@@ -607,22 +607,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/rubricas": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/budget-items": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         /**
          * Rubrica de cada linha da PO (todos os perfis, RF-11.7)
          * @description Todas as linhas de despesa e de fundo da PO, na ordem do documento. Linha sem rubrica tem estado nulo. Só
-         *     CONFIRMADO entra na comparação por linha entre exercícios; o resto fica "sem correspondência".
+         *     CONFIRMED entra na comparação por linha entre exercícios; o resto fica "sem correspondência".
          */
-        get: operations["listarRubricasDaPo"];
+        get: operations["listBudgetLineItems"];
         put?: never;
         post?: never;
         delete?: never;
@@ -631,15 +631,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/rubricas/{linhaId}": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/budget-items/{lineId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
                 /** @description Id da linha da PO */
-                linhaId: string;
+                lineId: string;
             };
             cookie?: never;
         };
@@ -647,10 +647,10 @@ export interface paths {
         /**
          * Admin escolhe a rubrica de uma linha (só ADMIN, RF-11.7)
          * @description Uma rubrica do catálogo (rubricaId) ou uma nova criada a partir da linha (novaRubrica, com o nome), nunca os
-         *     dois. Com confirmar nulo ou true, fica CONFIRMADO; com false, SUGERIDO. A trilha registra a rubrica e o estado
+         *     dois. Com confirmar nulo ou true, fica CONFIRMED; com false, SUGGESTED. A trilha registra a rubrica e o estado
          *     anteriores e novos.
          */
-        put: operations["definirRubricaDaLinha"];
+        put: operations["setLineBudgetItem"];
         post?: never;
         delete?: never;
         options?: never;
@@ -658,33 +658,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/rubricas/lote": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/budget-items/batch": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         get?: never;
         put?: never;
         /** Confirma ou recusa a rubrica de várias linhas (só ADMIN, RF-11.7), um evento por linha */
-        post: operations["loteRubricas"];
+        post: operations["budgetItemBatch"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/rubricas/sugestoes": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/budget-items/suggestions": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -693,30 +693,30 @@ export interface paths {
         /**
          * Gera as rubricas da PO (só ADMIN, RF-11.7), sem IA
          * @description Também roda sozinho na confirmação da PO. Se o condomínio ainda não tem rubricas, cada linha desta PO vira uma
-         *     rubrica, já CONFIRMADA (primeiraPo). Senão, para cada linha ainda sem rubrica: primeiro a linha igual da versão
+         *     rubrica, já CONFIRMED (primeiraPo). Senão, para cada linha ainda sem rubrica: primeiro a linha igual da versão
          *     anterior do mesmo exercício (mesmo código efetivo e mesma conta); depois a rubrica das linhas confirmadas de
          *     outras POs com a mesma conta da PO e o mesmo grupo. Conta repetida no mesmo grupo desta PO, conta em mais de
-         *     uma rubrica ou nenhuma: sem sugestão. Nunca usa o código do item. Tudo entra SUGERIDO, com o motivo.
+         *     uma rubrica ou nenhuma: sem sugestão. Nunca usa o código do item. Tudo entra SUGGESTED, com o motivo.
          */
-        post: operations["sugerirRubricas"];
+        post: operations["suggestBudgetItems"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/rubricas/eventos": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/budget-items/events": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         /** Trilha das rubricas das linhas desta PO (todos os perfis), só de inserção */
-        get: operations["eventosRubricas"];
+        get: operations["budgetItemEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -725,24 +725,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsto-realizado": {
+    "/condominiums/{condominiumId}/budget-vs-actual": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         /**
          * Previsto × realizado do mês ou acumulado do exercício (todos os perfis, RF-03.1.6 a RF-03.1.11)
          * @description Calculado na consulta pela função pura CalculoPrevistoRealizado (versaoCalculo no resultado); nada é gravado.
-         *     Realizado = débitos do fundo Condomínio (fundo ordinário) pelo de-para CONFIRMADO; ajustes, a realocar e sem
+         *     Realizado = débitos do fundo Condomínio (fundo ordinário) pelo de-para CONFIRMED; ajustes, a realocar e sem
          *     linha da PO à parte; transferências entre fundos fora. Previsto do mês = soma das linhas 1.1 a 1.8 (Q30).
          *     Fundos ligados às linhas 1.9: arrecadação (recebimento de cota) × previsto. Mês sem fluxo, com dois fluxos,
          *     sem PO, com PO não confirmada ou sem fundo ordinário: situacao diz o porquê e os números ficam nulos.
          */
-        get: operations["previstoRealizado"];
+        get: operations["budgetVsActual"];
         put?: never;
         post?: never;
         delete?: never;
@@ -751,17 +751,17 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsto-realizado/evidencia": {
+    "/condominiums/{condominiumId}/budget-vs-actual/evidence": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         /** Lançamentos que compõem um número do previsto × realizado (todos os perfis, RF-03.1.12) */
-        get: operations["evidenciaPrevistoRealizado"];
+        get: operations["budgetVsActualEvidence"];
         put?: never;
         post?: never;
         delete?: never;
@@ -770,7 +770,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/ia/provedores": {
+    "/ai/providers": {
         parameters: {
             query?: never;
             header?: never;
@@ -782,7 +782,7 @@ export interface paths {
          * @description Para os campos de provedor e modelo da tela "IA do condomínio". O catálogo é mantido na configuração do rag;
          *     a chave pública do rag não sai por aqui. Preços em dólar por milhão de tokens, só para o custo estimado.
          */
-        get: operations["listarProvedoresIa"];
+        get: operations["listAiProviders"];
         put?: never;
         post?: never;
         delete?: never;
@@ -791,21 +791,21 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/ia": {
+    "/condominiums/{condominiumId}/ai": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         /**
          * Configuração de IA do condomínio, geral e do Assistente (só ADMIN; RF-09.1, RF-09.2, RF-09.6)
-         * @description Sem configuração gravada: modo geral MCP_EXTERNO (padrão do piloto), respostas do Assistente herdando o modo
+         * @description Sem configuração gravada: modo geral EXTERNAL_MCP (padrão do piloto), respostas do Assistente herdando o modo
          *     geral e embeddings LOCAL com ollama-local/bge-m3. A chave nunca volta: só chaveCadastrada e chaveFinal.
          */
-        get: operations["obterConfiguracaoIa"];
+        get: operations["getAiConfiguration"];
         /**
          * Grava a configuração de IA do condomínio (só ADMIN; RF-09.1, RF-09.2, RF-09.6)
          * @description Substitui a configuração inteira (modo geral e Assistente). A chave é só de escrita: ausente ou nula mantém a
@@ -814,9 +814,9 @@ export interface paths {
          *     quem, quando, valores anteriores e novos; da chave, só "chave trocada" e os 4 últimos caracteres.
          *     Recusas (422, lista em motivos): modo de respostas LOCAL (previsto, ainda sem provedor); API_KEY sem chave
          *     guardada nem nova; provedor ou modelo fora do catálogo ou de uso errado; embeddings diferente de LOCAL ou
-         *     DESLIGADO, ou com provedor que não é local (Q12).
+         *     OFF, ou com provedor que não é local (Q12).
          */
-        put: operations["gravarConfiguracaoIa"];
+        put: operations["saveAiConfiguration"];
         post?: never;
         delete?: never;
         options?: never;
@@ -824,12 +824,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/assistente/perguntas": {
+    "/condominiums/{condominiumId}/assistant/questions": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -842,19 +842,19 @@ export interface paths {
          *     (RF-04.11): o frontend manda as trocas anteriores e o backend usa as últimas 6. Citações de arquivos que o
          *     usuário não pode ver ou que foram excluídos são descartadas na volta. Gera o registro de uso "pergunta".
          */
-        post: operations["perguntarAssistente"];
+        post: operations["askAssistant"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/assistente/busca": {
+    "/condominiums/{condominiumId}/assistant/search": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -862,23 +862,23 @@ export interface paths {
         put?: never;
         /**
          * Busca por palavra nos documentos, sem IA (todos os perfis; RF-04.18)
-         * @description Só com o módulo Assistente ligado, em qualquer modo de IA (inclusive DESLIGADO, Q7). Devolve trechos citáveis
+         * @description Só com o módulo Assistente ligado, em qualquer modo de IA (inclusive OFF, Q7). Devolve trechos citáveis
          *     do mais relevante para o menos relevante, sem resposta redigida. Aceita "frase entre aspas" e exclusão com -.
          *     Gera o registro de uso "busca_documentos".
          */
-        post: operations["buscarDocumentos"];
+        post: operations["searchDocuments"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsto-realizado/exportacao": {
+    "/condominiums/{condominiumId}/budget-vs-actual/export": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -890,7 +890,7 @@ export interface paths {
          *     Sem gráfico. Excel com as abas "Resumo" e "Evidência" (um lançamento por linha, com arquivo, página e hash).
          *     Mês sem números (sem fluxo, dois fluxos etc.) exporta a mensagem no lugar dos números.
          */
-        get: operations["exportarPrevistoRealizado"];
+        get: operations["exportBudgetVsActual"];
         put?: never;
         post?: never;
         delete?: never;
@@ -899,12 +899,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/fundos": {
+    "/condominiums/{condominiumId}/funds": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -912,7 +912,7 @@ export interface paths {
          * Fundos do fluxo do condomínio, pelo nome impresso (todos os perfis; RF-03.1.9 e RF-03.1.13)
          * @description Lista para ligar as linhas 1.9 e para o filtro de fundo, em ordem de nome. "OBRAS" e "OBRAS / REFORMAS / INFRA" são itens separados.
          */
-        get: operations["fundos"];
+        get: operations["listFunds"];
         put?: never;
         post?: never;
         delete?: never;
@@ -921,13 +921,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/fundos": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/funds": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -936,10 +936,10 @@ export interface paths {
          * Altera a ligação das linhas 1.9 aos fundos depois da confirmação (só Admin; RF-03.1.9)
          * @description A lista é a ligação completa: linha 1.9.x ausente ou com fundoId nulo fica sem fundo. Cada linha com no máximo
          *     um fundo, cada fundo em no máximo uma linha, nunca o fundo ordinário. A trilha da PO (GET .../eventos) recebe um
-         *     evento FUNDOS_ALTERADOS com o fundo anterior e o novo de cada linha, quem e quando. Sem mudança, nada é gravado.
+         *     evento FUNDS_CHANGED com o fundo anterior e o novo de cada linha, quem e quando. Sem mudança, nada é gravado.
          *     Os achados são recalculados depois do commit.
          */
-        put: operations["alterarFundosPo"];
+        put: operations["changeBudgetFunds"];
         post?: never;
         delete?: never;
         options?: never;
@@ -947,13 +947,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/prorrogacao": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/extension": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -965,34 +965,34 @@ export interface paths {
          *     confirmada ou prorrogação de outra PO, ou com PO substituída. Uma PO confirmada depois sobre meses prorrogados
          *     encurta a prorrogação, com evento automático. Nunca é automática.
          */
-        put: operations["prorrogarPo"];
+        put: operations["extendBudget"];
         post?: never;
         /** Desfaz a prorrogação (só ADMIN, RF-11.3), com evento */
-        delete: operations["desfazerProrrogacaoPo"];
+        delete: operations["undoBudgetExtension"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/exercicios": {
+    "/condominiums/{condominiumId}/fiscal-years": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         /**
          * Exercícios do condomínio, do mais recente para o mais antigo (todos os perfis, RF-11.4 e RF-11.5)
-         * @description Um item por PO confirmada (id "po:<uuid>"), com os meses do exercício e os prorrogados, a situação do fluxo de
+         * @description Um item por PO confirmada (id "budget:<uuid>"), com os meses do exercício e os prorrogados, a situação do fluxo de
          *     cada mês e o estado do de-para e das rubricas. Quando a PO mais antiga não tem PO anterior confirmada (a que
          *     cobre o mês anterior ao início dela), a coluna "Orçado anterior" dela entra logo depois como exercício
-         *     "AAAA/AAAA (coluna impressa)" (id "coluna:<uuid da PO>"), só com previsto. Quando a PO anterior é confirmada,
+         *     "AAAA/AAAA (coluna impressa)" (id "column:<uuid da PO>"), só com previsto. Quando a PO anterior é confirmada,
          *     ela substitui a coluna sem ação extra: o item dela traz "colunaImpressa" e os avisos de diferença por grupo.
          *     Nada é gravado.
          */
-        get: operations["listarExercicios"];
+        get: operations["listFiscalYears"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1001,12 +1001,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/comparacao-exercicios": {
+    "/condominiums/{condominiumId}/fiscal-year-comparison": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -1018,7 +1018,7 @@ export interface paths {
          *     % só com base diferente de zero; base zero com valor = "novaNoExercicio". O realizado vem do mesmo cálculo do
          *     previsto × realizado; "alvo" abre a evidência nele (com o poId e o "periodo" do exercício). Nada é gravado.
          */
-        get: operations["compararExercicios"];
+        get: operations["compareFiscalYears"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1027,12 +1027,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/indicadores": {
+    "/condominiums/{condominiumId}/indicators": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -1040,11 +1040,11 @@ export interface paths {
          * Séries dos 7 gráficos da tela "Indicadores" (todos os perfis, RF-11.10 a RF-11.12)
          * @description Números prontos, os mesmos da tela de previsto × realizado (o frontend só desenha). Mês sem fluxo carregado ou
          *     com dois fluxos vem com os números nulos e a situação, nunca com zero. Cada ponto traz o mês e o "alvo" da
-         *     evidência no previsto × realizado (período = o mês do ponto; no gráfico 5, "acumulado"). Gráficos 1 a 5 são do
+         *     evidência no previsto × realizado (período = o mês do ponto; no gráfico 5, "cumulative"). Gráficos 1 a 5 são do
          *     fundo Condomínio; o 6, dos fundos ligados às linhas 1.9; o 7, deste exercício contra o anterior da lista de
          *     exercícios. Filtro de fundo: o fundo Condomínio tira o 6; outro fundo tira 1 a 5 e deixa no 6 só ele.
          */
-        get: operations["indicadores"];
+        get: operations["indicators"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1053,13 +1053,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/coluna-impressa": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/printed-column": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -1069,7 +1069,7 @@ export interface paths {
          *     sem os fundos), na tolerância da PO. Grupos, fundos e previsto do mês seguem a soma das linhas. Com PO anterior
          *     confirmada, traz as diferenças por grupo entre ela e a coluna (aviso, não achado).
          */
-        get: operations["colunaImpressa"];
+        get: operations["printedColumn"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1078,21 +1078,21 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/previsoes/{poId}/eventos": {
+    "/condominiums/{condominiumId}/budgets/{budgetId}/events": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         /**
          * Trilha da PO (todos os perfis), só de inserção
-         * @description Confirmação (CONFIRMADA), substituição (SUBSTITUIDA) e alterações da ligação dos fundos (FUNDOS_ALTERADOS).
+         * @description Confirmação (CONFIRMED), substituição (SUPERSEDED) e alterações da ligação dos fundos (FUNDS_CHANGED).
          */
-        get: operations["eventosPrevisao"];
+        get: operations["budgetEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1101,39 +1101,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/realocacoes": {
+    "/condominiums/{condominiumId}/reallocations": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         /** Realocações de uma versão da PO, ativas e desfeitas (todos os perfis, RF-03.1.7) */
-        get: operations["realocacoes"];
+        get: operations["listReallocations"];
         put?: never;
         /**
          * Realoca um lançamento "a realocar" para uma linha de despesa da PO (Gestor e Admin, RF-03.1.7)
-         * @description Só débitos do fundo Condomínio cuja conta tem de-para CONFIRMADO para REALOCAR, e só para linhas 1.1 a 1.8 da
+         * @description Só débitos do fundo Condomínio cuja conta tem de-para CONFIRMED para TO_REALLOCATE, e só para linhas 1.1 a 1.8 da
          *     PO que vale no mês do lançamento. O lançamento original não muda. A realocação guarda a impressão do lançamento
          *     (arquivo, página, ordem, data, conta, documento e valor) e sobrevive ao reprocesso do mesmo fluxo. Os achados
          *     são recalculados depois do commit.
          */
-        post: operations["realocar"];
+        post: operations["reallocate"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/realocacoes/{realocacaoId}": {
+    "/condominiums/{condominiumId}/reallocations/{reallocationId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                realocacaoId: string;
+                condominiumId: components["parameters"]["CondominiumId"];
+                reallocationId: string;
             };
             cookie?: never;
         };
@@ -1141,18 +1141,18 @@ export interface paths {
         put?: never;
         post?: never;
         /** Desfaz a realocação (Gestor e Admin); o valor volta a "a realocar" e nada é apagado */
-        delete: operations["desfazerRealocacao"];
+        delete: operations["undoReallocation"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/condominios/{condominioId}/achados": {
+    "/condominiums/{condominiumId}/findings": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -1160,10 +1160,10 @@ export interface paths {
          * Achados com a evidência original e o histórico (todos os perfis, só leitura; RF-03.1.12)
          * @description Os achados do orçamento são recalculados depois de cada mudança (fluxo gravado, PO confirmada, de-para,
          *     fundos, realocação). Um achado por regra, mês e alvo; nunca apagado. Quando a condição deixa de existir, o
-         *     achado aberto passa a NAO_SE_APLICA_MAIS, com o motivo (Q27); se a condição volta, o mesmo achado volta a
-         *     ABERTO. Estados marcados por pessoa (RF-02.8) não mudam pelo recálculo.
+         *     achado aberto passa a NO_LONGER_APPLIES, com o motivo (Q27); se a condição volta, o mesmo achado volta a
+         *     OPEN. Estados marcados por pessoa (RF-02.8) não mudam pelo recálculo.
          */
-        get: operations["achados"];
+        get: operations["listFindings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1176,1478 +1176,1478 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        ContextoCondominio: {
+        CondominiumContextResponse: {
             /** Format: uuid */
-            condominioId: string;
-            nome: string;
-            /** @description Códigos dos módulos ligados (ex.: [ASSISTENTE]) */
-            modulosLigados: string[];
+            condominiumId: string;
+            name: string;
+            /** @description Códigos dos módulos ligados (ex.: [ASSISTANT]) */
+            enabledFeatures: string[];
             /** @description Modo de IA efetivo do Assistente (RF-04.16). Nulo ou ausente com o módulo Assistente desligado. */
-            assistente?: components["schemas"]["ContextoAssistente"] | null;
+            assistant?: components["schemas"]["AssistantContextResponse"] | null;
         };
-        ContextoAssistente: {
-            modoRespostas: components["schemas"]["ModoIa"];
-            modoEmbeddings: components["schemas"]["ModoIa"];
+        AssistantContextResponse: {
+            answersMode: components["schemas"]["AiMode"];
+            embeddingsMode: components["schemas"]["AiMode"];
             /** @description Modo de respostas API_KEY com chave cadastrada: a tela mostra o chat */
-            chatDisponivel: boolean;
+            chatAvailable: boolean;
         };
         /**
-         * @description Quem executa a IA (RF-09.1, RF-09.6). MCP_EXTERNO = o Claude do usuário conectado ao MCP (padrão do piloto);
-         *     API_KEY = o sistema chama o provedor com a chave do condomínio; DESLIGADO = nenhuma IA; LOCAL = modelo na
+         * @description Quem executa a IA (RF-09.1, RF-09.6). EXTERNAL_MCP = o Claude do usuário conectado ao MCP (padrão do piloto);
+         *     API_KEY = o sistema chama o provedor com a chave do condomínio; OFF = nenhuma IA; LOCAL = modelo na
          *     infraestrutura do cliente (nesta fase só para embeddings).
          * @enum {string}
          */
-        ModoIa: "MCP_EXTERNO" | "API_KEY" | "DESLIGADO" | "LOCAL";
+        AiMode: "EXTERNAL_MCP" | "API_KEY" | "OFF" | "LOCAL";
         /**
-         * @description RESPOSTAS = chat; EMBEDDINGS = busca por significado e indexação
+         * @description ANSWERS = chat; EMBEDDINGS = busca por significado e indexação
          * @enum {string}
          */
-        UsoProvedorIa: "RESPOSTAS" | "EMBEDDINGS";
-        ProvedorIa: {
+        AiFunction: "ANSWERS" | "EMBEDDINGS";
+        AiProviderResponse: {
             /** @description Código usado na configuração (ex.: anthropic, ollama-local) */
-            codigo: string;
-            nome: string;
+            code: string;
+            name: string;
             /** @description Implementação no rag (ex.: anthropic, ollama) */
-            tipo: string;
-            uso: components["schemas"]["UsoProvedorIa"];
+            type: string;
+            function: components["schemas"]["AiFunction"];
             /** @description Roda na infraestrutura do sistema, sem enviar texto para fora (único aceito para embeddings, Q12) */
             local: boolean;
-            precisaChave: boolean;
+            requiresKey: boolean;
             /** @description Só embeddings */
-            dimensao?: number | null;
-            modelos: components["schemas"]["ModeloIa"][];
+            dimension?: number | null;
+            models: components["schemas"]["AiModelResponse"][];
         };
-        ModeloIa: {
+        AiModelResponse: {
             /** @description Ex.: claude-sonnet-5-5 */
             id: string;
-            nome: string;
-            padrao: boolean;
+            name: string;
+            isDefault: boolean;
             /** @description US$ por milhão de tokens de entrada, texto decimal exato (ex. "2.00") */
-            precoEntradaMilhaoUsd: string;
+            inputPricePerMillionUsd: string;
             /** @description US$ por milhão de tokens de saída, texto decimal exato (ex. "10.00") */
-            precoSaidaMilhaoUsd: string;
+            outputPricePerMillionUsd: string;
         };
-        ConfiguracaoIa: {
-            modoGeral: components["schemas"]["ModoIa"];
-            assistente: {
-                respostas: components["schemas"]["ConfiguracaoRespostasIa"];
-                embeddings: components["schemas"]["ConfiguracaoEmbeddingsIa"];
+        AiConfigurationResponse: {
+            generalMode: components["schemas"]["AiMode"];
+            assistant: {
+                answers: components["schemas"]["AiAnswersResponse"];
+                embeddings: components["schemas"]["AiEmbeddingsResponse"];
             };
             /** @description Nulo = nunca gravada (valem os padrões) */
-            atualizadoPor?: string | null;
+            updatedBy?: string | null;
             /** Format: date-time */
-            atualizadoEm?: string | null;
+            updatedAt?: string | null;
         };
-        ConfiguracaoRespostasIa: {
+        AiAnswersResponse: {
             /** @description Nulo = herda o modo geral */
-            modo?: null | components["schemas"]["ModoIa"];
-            modoEfetivo: components["schemas"]["ModoIa"];
+            mode?: null | components["schemas"]["AiMode"];
+            effectiveMode: components["schemas"]["AiMode"];
             /** @description Código do provedor no catálogo */
-            provedor?: string | null;
+            provider?: string | null;
             /** @description Id do modelo no catálogo */
-            modelo?: string | null;
-            chaveCadastrada: boolean;
+            model?: string | null;
+            keyRegistered: boolean;
             /** @description Os 4 últimos caracteres da chave (ex.: "x9Qa"); nulo sem chave */
-            chaveFinal?: string | null;
+            keySuffix?: string | null;
         };
-        ConfiguracaoEmbeddingsIa: {
-            modo: components["schemas"]["ModoIa"];
-            /** @description Nulo com DESLIGADO */
-            provedor: string | null;
-            modelo: string | null;
+        AiEmbeddingsResponse: {
+            mode: components["schemas"]["AiMode"];
+            /** @description Nulo com OFF */
+            provider: string | null;
+            model: string | null;
         };
-        PedidoConfiguracaoIa: {
-            modoGeral: components["schemas"]["ModoIa"];
-            assistente: {
-                respostas: {
+        AiConfigurationRequest: {
+            generalMode: components["schemas"]["AiMode"];
+            assistant: {
+                answers: {
                     /** @description Nulo = herda o modo geral */
-                    modo?: null | components["schemas"]["ModoIa"];
+                    mode?: null | components["schemas"]["AiMode"];
                     /** @description Obrigatório quando o modo efetivo é API_KEY */
-                    provedor?: string | null;
+                    provider?: string | null;
                     /** @description Nulo = modelo padrão do provedor */
-                    modelo?: string | null;
+                    model?: string | null;
                     /** @description Só de escrita. Ausente ou nula mantém a chave guardada; nunca volta em resposta nem vai para log */
-                    chave?: string | null;
+                    key?: string | null;
                     /**
                      * @description Apaga a chave guardada (não pode vir junto com chave)
                      * @default false
                      */
-                    removerChave: boolean;
+                    removeKey: boolean;
                 };
                 embeddings: {
-                    modo: components["schemas"]["ModoIa"];
+                    mode: components["schemas"]["AiMode"];
                     /** @description Obrigatório com LOCAL; só provedor local do catálogo (ex.: ollama-local) */
-                    provedor?: string | null;
+                    provider?: string | null;
                     /** @description Nulo = modelo padrão do provedor */
-                    modelo?: string | null;
+                    model?: string | null;
                 };
             };
         };
         /** @description Filtros opcionais da busca e do chat (RF-04.10), aplicados antes da busca. Vazio = todos os documentos do condomínio. */
-        FiltrosDocumentos: {
-            categorias?: components["schemas"]["Categoria"][];
+        DocumentFiltersRequest: {
+            categories?: components["schemas"]["FileCategory"][];
             /**
              * Format: date
              * @description Documentos cuja competência cruza o período
              */
-            dataInicio?: string | null;
+            startDate?: string | null;
             /** Format: date */
-            dataFim?: string | null;
-            arquivoIds?: string[];
+            endDate?: string | null;
+            fileIds?: string[];
         };
-        PedidoPergunta: {
-            pergunta: string;
+        QuestionRequest: {
+            question: string;
             /** @description Trocas anteriores desta conversa, da mais antiga para a mais recente (o backend usa as últimas 6) */
-            historico?: {
-                pergunta: string;
-                resposta: string;
+            history?: {
+                question: string;
+                answer: string;
             }[];
-            filtros?: components["schemas"]["FiltrosDocumentos"];
+            filters?: components["schemas"]["DocumentFiltersRequest"];
         };
         /**
-         * @description NAO_ENCONTRADA = "Não encontrei nos documentos." (RF-04.12), sem blocos nem citações
+         * @description NOT_FOUND = "Não encontrei nos documentos." (RF-04.12), sem blocos nem citações
          * @enum {string}
          */
-        SituacaoResposta: "RESPONDIDA" | "NAO_ENCONTRADA";
-        RespostaAssistente: {
-            situacao: components["schemas"]["SituacaoResposta"];
+        AnswerStatus: "ANSWERED" | "NOT_FOUND";
+        AssistantAnswerResponse: {
+            status: components["schemas"]["AnswerStatus"];
             /** @description Bloco "Nos documentos". Números transcritos vêm marcados "(conforme o documento, não conferido)" */
-            nosDocumentos: {
-                texto: string;
+            fromDocuments: {
+                text: string;
                 /** @description Números das citações (campo numero de citacoes) */
-                citacoes: number[];
+                citations: number[];
             }[];
             /** @description Bloco "Nos dados gravados", montado das ferramentas de consulta (nunca escrito pelo modelo) */
-            nosDadosGravados: components["schemas"]["DadoGravado"][];
+            fromStoredData: components["schemas"]["StoredDataResponse"][];
             /** @description Numeradas a partir de 1, na ordem da primeira citação */
-            citacoes: components["schemas"]["CitacaoDocumento"][];
+            citations: components["schemas"]["DocumentCitationResponse"][];
             /** @description Categoria de documento que faltaria (RF-04.12) */
-            sugestao?: string | null;
-            aviso?: string | null;
+            suggestion?: string | null;
+            warning?: string | null;
             /** @description Modelo de IA que respondeu */
-            modelo: string;
+            model: string;
         };
-        DadoGravado: {
+        StoredDataResponse: {
             /** @description resumo_fundos, buscar_lancamentos, listar_arquivos ou conferencias_do_arquivo (a tela do link sai daqui) */
-            consulta: string;
+            query: string;
             /** @description Filtros usados na consulta */
-            parametros: {
-                nome: string;
-                valor: string;
+            parameters: {
+                name: string;
+                value: string;
             }[];
-            linhas: {
-                rotulo: string;
+            rows: {
+                label: string;
                 /** @description Já formatado (dinheiro como "R$ 1.234,56") */
-                valor: string;
+                value: string;
             }[];
-            comentario?: string | null;
+            comment?: string | null;
         };
         /** @description Onde o trecho está no original. PDF abre na página (#page=N) */
-        LocalizacaoTrecho: {
+        ChunkLocationResponse: {
             /** @enum {string} */
-            tipo: "PAGINA" | "PLANILHA" | "PARAGRAFOS";
-            pagina?: number | null;
-            aba?: string | null;
-            linhaInicio?: number | null;
-            linhaFim?: number | null;
-            paragrafoInicio?: number | null;
-            paragrafoFim?: number | null;
-            secao?: string | null;
+            type: "PAGE" | "SHEET" | "PARAGRAPHS";
+            page?: number | null;
+            sheet?: string | null;
+            startRow?: number | null;
+            endRow?: number | null;
+            startParagraph?: number | null;
+            endParagraph?: number | null;
+            section?: string | null;
             /** @description Texto pronto para a tela (ex. "página 3", "aba Junho, linhas 10 a 14") */
-            descricao: string;
+            description: string;
         };
-        TrechoDocumento: {
-            trechoId: string;
+        DocumentChunkResponse: {
+            chunkId: string;
             /** Format: uuid */
-            arquivoId: string;
-            nomeArquivo: string;
-            categoria: components["schemas"]["Categoria"];
-            localizacao: components["schemas"]["LocalizacaoTrecho"];
+            fileId: string;
+            fileName: string;
+            category: components["schemas"]["FileCategory"];
+            location: components["schemas"]["ChunkLocationResponse"];
             /** @description Texto literal do documento */
-            texto: string;
+            text: string;
             sha256: string;
         };
-        CitacaoDocumento: components["schemas"]["TrechoDocumento"] & {
-            numero: number;
+        DocumentCitationResponse: components["schemas"]["DocumentChunkResponse"] & {
+            number: number;
         };
-        PedidoBuscaDocumentos: {
-            texto: string;
-            filtros?: components["schemas"]["FiltrosDocumentos"];
+        DocumentSearchRequest: {
+            text: string;
+            filters?: components["schemas"]["DocumentFiltersRequest"];
             /** @default 10 */
-            limite: number;
+            limit: number;
         };
-        ModuloDoCondominio: {
-            codigo: string;
-            nome: string;
-            descricao: string;
+        FeatureResponse: {
+            code: string;
+            name: string;
+            description: string;
             /** @description O que o módulo inclui (telas */
-            inclui: string[];
-            dependeDe: string[];
+            includes: string[];
+            dependsOn: string[];
             /** @description Estado de um condomínio novo */
-            ligadoPorPadrao: boolean;
-            ligado: boolean;
+            enabledByDefault: boolean;
+            enabled: boolean;
             /**
              * Format: date-time
              * @description Desde quando está no estado atual. Nulo = nunca alterado (vale o padrão)
              */
-            desde?: string | null;
-            versaoCatalogo: number;
+            since?: string | null;
+            catalogVersion: number;
         };
-        AlteracaoModulo: {
-            ligado: boolean;
+        ChangeFeatureRequest: {
+            enabled: boolean;
             /** @description Opcional (RF-10.6); em branco = não informado. Vai para a trilha de ativação */
-            motivo?: string | null;
+            reason?: string | null;
         };
-        EventoModulo: {
+        FeatureEventResponse: {
             /** Format: uuid */
             id: string;
-            modulo: string;
-            ligadoAntes: boolean;
-            ligadoDepois: boolean;
-            usuario: string;
+            feature: string;
+            enabledBefore: boolean;
+            enabledAfter: boolean;
+            username: string;
             /** Format: date-time */
-            quando: string;
+            occurredAt: string;
             /** @description Nulo quando não informado */
-            motivo?: string | null;
+            reason?: string | null;
         };
-        PeriodoAtivo: {
-            modulo: string;
+        ActivePeriodResponse: {
+            feature: string;
             /**
              * Format: date-time
              * @description Nulo só se o módulo nasceu ligado por padrão, antes da trilha
              */
-            inicio?: string | null;
+            start?: string | null;
             /**
              * Format: date-time
              * @description Nulo = ainda ligado
              */
-            fim?: string | null;
-            ligadoPor?: string | null;
-            motivoLigar?: string | null;
-            desligadoPor?: string | null;
-            motivoDesligar?: string | null;
+            end?: string | null;
+            enabledBy?: string | null;
+            enableReason?: string | null;
+            disabledBy?: string | null;
+            disableReason?: string | null;
         };
         /**
          * @description busca_documentos = busca pela tela; chamada_mcp = buscar_documentos pelo MCP; indexacao = arquivo indexado; embeddings e pergunta = chat (entrega 3)
          * @enum {string}
          */
-        FuncaoUso: "busca_documentos" | "chamada_mcp" | "indexacao" | "embeddings" | "pergunta";
-        TotalUso: {
+        UsageFunction: "document_search" | "mcp_call" | "indexing" | "embeddings" | "question";
+        UsageTotalResponse: {
             /** @description AAAA-MM (só em porMes) */
-            mes?: string;
-            modulo: string;
-            funcao: components["schemas"]["FuncaoUso"];
+            month?: string;
+            feature: string;
+            function: components["schemas"]["UsageFunction"];
             /**
              * Format: int64
              * @description Número de registros (chamadas
              */
-            quantidade: number;
+            count: number;
             /** Format: int64 */
-            tokensEntrada: number;
+            inputTokens: number;
             /** Format: int64 */
-            tokensSaida: number;
+            outputTokens: number;
             /** Format: int64 */
-            arquivos: number;
+            files: number;
             /** Format: int64 */
-            paginas: number;
+            pages: number;
             /**
              * @description Custo estimado em US$, texto decimal exato com 2 casas (ex. "3.50"). Ausente quando não há tokens nessa
              *     linha ou quando o custo está indisponível (custoDisponivel = false); nulo quando há tokens de modelo sem
              *     preço no catálogo (ver modelosSemPreco).
              */
-            custoEstimadoUsd?: string | null;
+            estimatedCostUsd?: string | null;
         };
-        UsoDoPeriodo: {
+        UsageResponse: {
             /** Format: uuid */
-            condominioId: string;
+            condominiumId: string;
             /** Format: date */
-            inicio: string;
+            start: string;
             /** Format: date */
-            fim: string;
-            porFuncao: components["schemas"]["TotalUso"][];
-            porMes: components["schemas"]["TotalUso"][];
+            end: string;
+            byFunction: components["schemas"]["UsageTotalResponse"][];
+            byMonth: components["schemas"]["UsageTotalResponse"][];
             /** @description false quando o rag não respondeu o catálogo de preços; aí não há nenhum valor de custo */
-            custoDisponivel?: boolean;
+            costAvailable?: boolean;
             /**
              * @description Total do período em US$ (arredondamento da soma exata, não a soma dos totais arredondados). Nulo com
              *     modelo sem preço no catálogo; ausente com custoDisponivel = false.
              */
-            custoEstimadoTotalUsd?: string | null;
+            estimatedTotalCostUsd?: string | null;
             /** @description Modelos com tokens no período e sem preço no catálogo, como "provedor/modelo" */
-            modelosSemPreco?: string[];
+            modelsWithoutPrice?: string[];
         };
         /** @enum {string} */
-        Categoria: "BALANCETE" | "EXTRATO" | "PO" | "CONTRATO" | "FOLHA" | "COMPROVANTE" | "ATA" | "CONVENCAO_RI" | "OUTROS";
-        NovaCategoria: {
-            categoria: components["schemas"]["Categoria"];
+        FileCategory: "TRIAL_BALANCE" | "BANK_STATEMENT" | "PO" | "CONTRACT" | "PAYROLL" | "RECEIPT" | "MINUTES" | "BYLAWS" | "OTHER";
+        ChangeCategoryRequest: {
+            category: components["schemas"]["FileCategory"];
         };
         /** @enum {string} */
-        StatusArquivo: "PENDENTE" | "PROCESSANDO" | "CONCLUIDO" | "PRECISA_REVISAO" | "FALHOU";
-        CategoriaDto: {
-            codigo: components["schemas"]["Categoria"];
-            rotulo: string;
+        FileStatus: "PENDING" | "PROCESSING" | "COMPLETED" | "NEEDS_REVIEW" | "FAILED";
+        FileCategoryResponse: {
+            code: components["schemas"]["FileCategory"];
+            label: string;
         };
-        UsuarioLogado: {
-            usuario: string;
-            nome: string;
-            perfis: ("USUARIO" | "GESTOR" | "ADMIN")[];
-            condominios: {
+        CurrentUserResponse: {
+            username: string;
+            name: string;
+            roles: ("USUARIO" | "GESTOR" | "ADMIN")[];
+            condominiums: {
                 /** Format: uuid */
                 id: string;
-                nome: string;
+                name: string;
             }[];
         };
-        ArquivoResumo: {
+        SourceFileResponse: {
             /** Format: uuid */
             id: string;
-            categoria: components["schemas"]["Categoria"];
-            categoriaRotulo: string;
-            nome: string;
+            category: components["schemas"]["FileCategory"];
+            categoryLabel: string;
+            name: string;
             /** Format: int64 */
-            tamanhoBytes: number;
-            status: components["schemas"]["StatusArquivo"];
-            mensagem?: string | null;
+            sizeBytes: number;
+            status: components["schemas"]["FileStatus"];
+            message?: string | null;
             /** Format: date */
-            periodoInicio?: string | null;
+            periodStart?: string | null;
             /** Format: date */
-            periodoFim?: string | null;
-            totalLancamentos?: number | null;
-            enviadoPor: string;
+            periodEnd?: string | null;
+            entryCount?: number | null;
+            uploadedBy: string;
             /** Format: date-time */
-            enviadoEm: string;
+            uploadedAt: string;
             /** Format: date-time */
-            processadoEm?: string | null;
+            processedAt?: string | null;
             /** @description Estado da indexação para a busca nos documentos (ADR 0003). Nulo ou ausente = arquivo ainda não indexado (enviado antes da busca ou com o módulo Assistente desligado; reprocessar ou ligar o módulo indexa). */
-            indexacao?: components["schemas"]["IndexacaoArquivo"] | null;
+            indexing?: components["schemas"]["IndexingResponse"] | null;
         };
         /**
-         * @description NA_FILA e INDEXANDO = em andamento; INDEXADO = aparece na busca; SEM_TEXTO = sem texto extraível (ex. PDF digitalizado); RETIRADO = fora da busca (exclusão lógica ou versão substituída); ERRO = falhou (ver motivo).
+         * @description QUEUED e INDEXING = em andamento; INDEXED = aparece na busca; NO_TEXT = sem texto extraível (ex. PDF digitalizado); WITHDRAWN = fora da busca (exclusão lógica ou versão substituída); ERROR = falhou (ver motivo).
          * @enum {string}
          */
-        SituacaoIndexacao: "NA_FILA" | "INDEXANDO" | "INDEXADO" | "SEM_TEXTO" | "RETIRADO" | "ERRO";
-        IndexacaoArquivo: {
-            situacao: components["schemas"]["SituacaoIndexacao"];
-            /** @description Preenchido em SEM_TEXTO e ERRO */
-            motivo?: string | null;
+        IndexingStatus: "QUEUED" | "INDEXING" | "INDEXED" | "NO_TEXT" | "WITHDRAWN" | "ERROR";
+        IndexingResponse: {
+            status: components["schemas"]["IndexingStatus"];
+            /** @description Preenchido em NO_TEXT e ERROR */
+            reason?: string | null;
             /** @description Páginas (PDF), abas (Excel) ou 1 (Word) lidas */
-            paginas?: number | null;
+            pages?: number | null;
             /** @description Trechos gravados no índice */
-            trechos?: number | null;
+            chunks?: number | null;
         };
-        ArquivoDetalhe: {
-            arquivo: components["schemas"]["ArquivoResumo"];
+        SourceFileDetailResponse: {
+            file: components["schemas"]["SourceFileResponse"];
             sha256: string;
-            conferencias: {
-                codigo: string;
-                descricao: string;
+            totalsChecks: {
+                code: string;
+                description: string;
                 ok: boolean;
-                detalhe?: string | null;
+                detail?: string | null;
             }[];
-            fundos: {
-                fundo: string;
-                saldoAnterior: number;
-                creditos: number;
-                debitos: number;
-                saldoAtual: number;
+            funds: {
+                fund: string;
+                openingBalance: number;
+                credits: number;
+                debits: number;
+                closingBalance: number;
             }[];
         };
-        Painel: {
+        DashboardResponse: {
             /** Format: uuid */
-            arquivoId: string;
-            arquivoNome: string;
+            fileId: string;
+            fileName: string;
             /** Format: date */
-            periodoInicio: string;
+            periodStart: string;
             /** Format: date */
-            periodoFim: string;
-            saldoAnterior: number;
-            entradas: number;
-            saidas: number;
-            saldoAtual: number;
-            conferenciasComFalha: number;
+            periodEnd: string;
+            openingBalance: number;
+            inflows: number;
+            outflows: number;
+            closingBalance: number;
+            failedChecks: number;
             /**
              * @description Saldo acumulado do fundo ordinário (cartão "Saldo acumulado"). Com confirmado=false é só a sugestão
              *     (fundo com mais entradas no mês), que a tela mostra para o Gestor confirmar. Nulo quando não há sugestão.
              */
-            fundoOrdinario: null | {
+            operatingFund: null | {
                 /** Format: uuid */
-                fundoId: string;
-                fundo: string;
-                confirmado: boolean;
+                fundId: string;
+                fund: string;
+                confirmed: boolean;
                 /** @description Nulo quando o fundo confirmado não está no relatório */
-                saldoAtual: number | null;
+                closingBalance: number | null;
             };
-            fundos: {
+            funds: {
                 /** Format: uuid */
-                fundoId: string;
-                fundo: string;
-                saldoAnterior: number;
-                entradas: number;
-                saidas: number;
-                resultado: number;
-                saldoAtual: number;
+                fundId: string;
+                fund: string;
+                openingBalance: number;
+                inflows: number;
+                outflows: number;
+                result: number;
+                closingBalance: number;
             }[];
-            maioresDespesas: {
+            largestExpenses: {
                 /** Format: date */
-                data: string;
-                fundo: string;
-                conta: string;
-                historico: string;
-                valor: number;
-                pagina: number;
+                date: string;
+                fund: string;
+                account: string;
+                memo: string;
+                amount: number;
+                page: number;
             }[];
         };
         /**
-         * @description LIDA (aguarda confirmação), LIDA_COM_DIVERGENCIA (soma que não bate além da tolerância de arredondamento),
-         *     CONFIRMADA (vale para os meses do exercício) e SUBSTITUIDA (trocada por reaprovação a partir de um mês).
+         * @description READ (aguarda confirmação), READ_WITH_DISCREPANCY (soma que não bate além da tolerância de arredondamento),
+         *     CONFIRMED (vale para os meses do exercício) e SUPERSEDED (trocada por reaprovação a partir de um mês).
          * @enum {string}
          */
-        EstadoPrevisao: "LIDA" | "LIDA_COM_DIVERGENCIA" | "CONFIRMADA" | "SUBSTITUIDA";
-        PrevisaoResumo: {
+        BudgetStatus: "READ" | "READ_WITH_DISCREPANCY" | "CONFIRMED" | "SUPERSEDED";
+        BudgetSummaryResponse: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
-            arquivoId: string;
-            arquivoNome?: string | null;
+            fileId: string;
+            fileName?: string | null;
             sha256: string;
-            estado: components["schemas"]["EstadoPrevisao"];
+            status: components["schemas"]["BudgetStatus"];
             /** @description Preenchida na confirmação (1 */
-            versao?: number | null;
-            titulo?: string | null;
+            version?: number | null;
+            title?: string | null;
             /** @description Como impresso (ex. "2026 / 2027") */
-            exercicioImpresso?: string | null;
+            printedFiscalYear?: string | null;
             /** @description AAAA-MM */
-            exercicioInicio?: string | null;
-            exercicioFim?: string | null;
-            totalImpresso?: number | null;
+            fiscalYearStart?: string | null;
+            fiscalYearEnd?: string | null;
+            printedTotal?: number | null;
             /** @description Soma das linhas dos grupos que não são fundos (usada nos cálculos) */
-            previstoMes: number;
+            monthlyPlanned: number;
             /** Format: date-time */
-            lidaEm: string;
-            confirmadaPor?: string | null;
+            readAt: string;
+            confirmedBy?: string | null;
             /** Format: date-time */
-            confirmadaEm?: string | null;
+            confirmedAt?: string | null;
             /** @description Nulo sem prorrogação (RF-11.3) */
-            prorrogacao?: null | components["schemas"]["ProrrogacaoPo"];
+            extension?: null | components["schemas"]["BudgetExtensionResponse"];
         };
         /** @description A PO vale também de "de" até "ate", depois do exercício, quando nenhuma PO confirmada cobre o mês */
-        ProrrogacaoPo: {
+        BudgetExtensionResponse: {
             /** @description Mês seguinte ao fim do exercício */
-            de: string;
-            ate: string;
-            justificativa: string;
-            por: string;
+            from: string;
+            until: string;
+            justification: string;
+            by: string;
             /** Format: date-time */
-            em: string;
+            at: string;
         };
         /**
          * @description Um exercício da "Análise da PO". Na coluna impressa, "inicio" e "fim" são os 12 meses antes da PO que a
          *     imprimiu, "meses" vem vazio (sem realizado) e prorrogação, de-para e rubricas vêm nulos.
          */
-        Exercicio: {
-            /** @description "po:<uuid>" ou "coluna:<uuid da PO que imprimiu a coluna>" */
+        FiscalYearResponse: {
+            /** @description "budget:<uuid>" ou "column:<uuid da PO que imprimiu a coluna>" */
             id: string;
             /** @enum {string} */
-            tipo: "PO" | "COLUNA_IMPRESSA";
+            type: "PO" | "PRINTED_COLUMN";
             /** @description Ex.: "2026/2027" ou "2025/2026 (coluna impressa)" */
-            rotulo: string;
+            label: string;
             /** Format: uuid */
-            poId: string;
-            versao?: number | null;
-            inicio: string;
-            fim: string;
-            prorrogacao?: null | components["schemas"]["ProrrogacaoPo"];
+            budgetId: string;
+            version?: number | null;
+            start: string;
+            end: string;
+            extension?: null | components["schemas"]["BudgetExtensionResponse"];
             /** @description Soma das linhas sem os fundos */
-            previstoMes: number;
-            meses: {
-                mes: string;
+            monthlyPlanned: number;
+            months: {
+                month: string;
                 /** @enum {string} */
-                situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
-                prorrogado: boolean;
+                status: "WITH_CASH_FLOW" | "NO_CASH_FLOW" | "TWO_CASH_FLOWS";
+                extended: boolean;
             }[];
-            depara?: null | components["schemas"]["ResumoDepara"];
-            rubricas?: null | components["schemas"]["ResumoRubricas"];
+            mapping?: null | components["schemas"]["AccountMappingSummaryResponse"];
+            budgetItems?: null | components["schemas"]["BudgetItemSummaryResponse"];
             /** @description Id da coluna impressa que este exercício substituiu (fica só como conferência) */
-            colunaImpressa?: string | null;
-            avisos: string[];
+            printedColumn?: string | null;
+            warnings: string[];
         };
-        ConferenciaColuna: {
+        PrintedColumnCheckResponse: {
             id: string;
-            rotulo: string;
+            label: string;
             /** Format: uuid */
-            poId: string;
+            budgetId: string;
             /** @description Há PO anterior confirmada */
-            substituida: boolean;
+            superseded: boolean;
             /** Format: uuid */
-            poAnteriorId?: string | null;
-            poAnteriorRotulo?: string | null;
-            totalImpresso?: number | null;
+            previousBudgetId?: string | null;
+            previousBudgetLabel?: string | null;
+            printedTotal?: number | null;
             /** @description O total impresso confere com os subtotais incluindo os fundos */
-            totalIncluiFundos: boolean;
-            fundos: number;
-            previstoMes: number;
-            grupos: {
+            totalIncludesFunds: boolean;
+            funds: number;
+            monthlyPlanned: number;
+            groups: {
                 /** Format: uuid */
-                linhaId?: string;
-                codigo: string;
-                descricao: string;
-                fundos: boolean;
-                impresso: number;
+                lineId?: string;
+                code: string;
+                description: string;
+                funds: boolean;
+                printed: number;
                 /** @description Soma das linhas (é o valor usado) */
-                valor: number;
+                amount: number;
                 /** @description Impresso menos a soma das linhas */
-                diferenca: number;
-                confere: boolean;
-                linhas: {
+                difference: number;
+                matches: boolean;
+                lines: {
                     /** Format: uuid */
-                    linhaId?: string;
-                    codigo: string;
-                    conta?: string | null;
-                    descricao: string;
-                    valor: number;
+                    lineId?: string;
+                    code: string;
+                    account?: string | null;
+                    description: string;
+                    amount: number;
                     /** @description O "%" impresso */
-                    percentualTexto?: string | null;
+                    percentageText?: string | null;
                 }[];
             }[];
-            diferencas: {
-                codigo: string;
-                descricao: string;
-                poEnviada: number;
-                colunaImpressa: number;
+            differences: {
+                code: string;
+                description: string;
+                uploadedBudget: number;
+                printedColumn: number;
             }[];
-            avisos: string[];
+            warnings: string[];
         };
         /** @description Atual menos anterior. "percentual" com 1 casa, nulo com base zero; "novaNoExercicio" quando a base é zero e o valor atual não */
-        VariacaoExercicio: {
-            valor: number;
-            percentual?: number | null;
-            novaNoExercicio: boolean;
+        VariationResponse: {
+            amount: number;
+            percentage?: number | null;
+            newInFiscalYear: boolean;
         };
         /** @description Valor de um exercício num grupo ou rubrica; nulos quando o exercício não tem o grupo ou o dado */
-        ValorComparado: {
-            exercicioId: string;
-            previstoMes?: number | null;
+        ComparedValueResponse: {
+            fiscalYearId: string;
+            monthlyPlanned?: number | null;
             /** @description Previsto dos meses comparados (nulo sem realizado) */
-            previsto?: number | null;
+            planned?: number | null;
             /** @description Fundos 1.9 = arrecadação */
-            realizado?: number | null;
-            variacaoPrevistoMes?: null | components["schemas"]["VariacaoExercicio"];
-            variacaoRealizado?: null | components["schemas"]["VariacaoExercicio"];
-            /** @description Alvo da evidência: "linha:<id>", "grupo:<id>", "fundo:<id>" */
-            alvo?: string | null;
-            linhas: {
+            actual?: number | null;
+            monthlyPlannedVariation?: null | components["schemas"]["VariationResponse"];
+            actualVariation?: null | components["schemas"]["VariationResponse"];
+            /** @description Alvo da evidência: "line:<id>", "group:<id>", "fund:<id>" */
+            target?: string | null;
+            lines: {
                 /** Format: uuid */
-                linhaId: string;
-                codigo: string;
-                descricao: string;
-                alvo?: string | null;
+                lineId: string;
+                code: string;
+                description: string;
+                target?: string | null;
             }[];
         };
-        ComparacaoExercicios: {
-            exercicios: {
+        FiscalYearComparisonResponse: {
+            fiscalYears: {
                 id: string;
                 /** @enum {string} */
-                tipo: "PO" | "COLUNA_IMPRESSA";
-                rotulo: string;
+                type: "PO" | "PRINTED_COLUMN";
+                label: string;
                 /** Format: uuid */
-                poId: string;
-                versao?: number | null;
-                inicio: string;
-                fim: string;
-                /** @description Período da evidência: "acumulado" ou AAAA-MM; nulo na coluna impressa */
-                periodo?: string | null;
+                budgetId: string;
+                version?: number | null;
+                start: string;
+                end: string;
+                /** @description Período da evidência: "cumulative" ou AAAA-MM; nulo na coluna impressa */
+                period?: string | null;
                 /** @description Meses somados no realizado */
-                meses: string[];
+                months: string[];
             }[];
             /** Format: uuid */
-            fundoId?: string | null;
-            mesmosMeses: boolean;
+            fundId?: string | null;
+            sameMonths: boolean;
             /** @description Ex.: "comparando: setembro" (só com mesmosMeses) */
-            comparando?: string | null;
-            resumo: {
-                exercicioId: string;
-                previstoMes: number;
-                previstoExercicio: number;
-                mesesComFluxo: number;
-                previsto?: number | null;
-                realizado?: number | null;
-                execucao?: number | null;
-                maiorExcesso?: null | {
-                    mes: string;
-                    valor: number;
-                    percentual?: number | null;
+            comparing?: string | null;
+            summary: {
+                fiscalYearId: string;
+                monthlyPlanned: number;
+                fiscalYearPlanned: number;
+                monthsWithCashFlow: number;
+                planned?: number | null;
+                actual?: number | null;
+                execution?: number | null;
+                largestOverrun?: null | {
+                    month: string;
+                    amount: number;
+                    percentage?: number | null;
                 };
-                mesesAcimaDoLimite?: number | null;
-                achadosAbertos?: number | null;
-                provisorio: boolean;
-                variacaoPrevistoMes?: null | components["schemas"]["VariacaoExercicio"];
-                variacaoRealizado?: null | components["schemas"]["VariacaoExercicio"];
-                alvo?: string | null;
+                monthsAboveLimit?: number | null;
+                openFindings?: number | null;
+                provisional: boolean;
+                monthlyPlannedVariation?: null | components["schemas"]["VariationResponse"];
+                actualVariation?: null | components["schemas"]["VariationResponse"];
+                target?: string | null;
             }[];
-            grupos: {
-                codigo: string;
-                descricao: string;
-                fundos: boolean;
-                valores: components["schemas"]["ValorComparado"][];
+            groups: {
+                code: string;
+                description: string;
+                funds: boolean;
+                values: components["schemas"]["ComparedValueResponse"][];
             }[];
-            linhas: {
+            lines: {
                 /** Format: uuid */
-                rubricaId: string;
-                nome: string;
-                grupo?: string | null;
-                valores: components["schemas"]["ValorComparado"][];
+                budgetItemId: string;
+                name: string;
+                group?: string | null;
+                values: components["schemas"]["ComparedValueResponse"][];
             }[];
-            semCorrespondencia: {
-                exercicioId: string;
+            unmatched: {
+                fiscalYearId: string;
                 /** Format: uuid */
-                linhaId: string;
-                codigo: string;
-                conta?: string | null;
-                descricao: string;
-                grupo?: string;
-                previstoMes: number;
-                previsto?: number | null;
-                realizado?: number | null;
-                alvo?: string | null;
+                lineId: string;
+                code: string;
+                account?: string | null;
+                description: string;
+                group?: string;
+                monthlyPlanned: number;
+                planned?: number | null;
+                actual?: number | null;
+                target?: string | null;
             }[];
-            avisos: string[];
+            warnings: string[];
         };
-        Indicadores: {
+        IndicatorsResponse: {
             /** Format: uuid */
-            poId: string;
-            rotulo: string;
-            inicio: string;
-            fim: string;
+            budgetId: string;
+            label: string;
+            start: string;
+            end: string;
             /** Format: uuid */
-            fundoId?: string | null;
+            fundId?: string | null;
             /**
              * Format: date-time
              * @description Envio mais recente dos fluxos usados
              */
-            dadosDe?: string | null;
+            dataAsOf?: string | null;
             /** @description Limite da regra dos 20% (Conv. 16.2) */
-            limitePercentual?: number | null;
+            limitPercentage?: number | null;
             /** @description Gráfico 1, realizado ÷ previsto do mês (referência 100%) */
-            execucaoMensal?: {
-                mes: string;
+            monthlyExecution?: {
+                month: string;
                 /** @enum {string} */
-                situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
-                previsto?: number | null;
-                realizado?: number | null;
-                execucao?: number | null;
-                alvo?: string | null;
+                status: "WITH_CASH_FLOW" | "NO_CASH_FLOW" | "TWO_CASH_FLOWS";
+                planned?: number | null;
+                actual?: number | null;
+                execution?: number | null;
+                target?: string | null;
             }[] | null;
             /** @description Gráfico 2; só "acimaDoLimite" usa cor de alerta (RF-11.13) */
-            regra20?: {
-                mes: string;
+            rule20?: {
+                month: string;
                 /** @enum {string} */
-                situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
-                excesso?: number | null;
-                percentual?: number | null;
-                limitePercentual?: number | null;
-                cenarioMaximo?: number | null;
-                percentualCenarioMaximo?: number | null;
-                acimaDoLimite?: boolean | null;
-                provisorio?: boolean | null;
-                alvo?: string | null;
+                status: "WITH_CASH_FLOW" | "NO_CASH_FLOW" | "TWO_CASH_FLOWS";
+                overrun?: number | null;
+                percentage?: number | null;
+                limitPercentage?: number | null;
+                maxScenario?: number | null;
+                maxScenarioPercentage?: number | null;
+                aboveLimit?: boolean | null;
+                provisional?: boolean | null;
+                target?: string | null;
             }[] | null;
             /** @description Gráfico 3, somas até o mês (só meses com fluxo entram) */
-            acumulado?: {
-                mes: string;
+            cumulative?: {
+                month: string;
                 /** @enum {string} */
-                situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
-                previstoAcumulado?: number | null;
-                realizadoAcumulado?: number | null;
-                alvo?: string | null;
+                status: "WITH_CASH_FLOW" | "NO_CASH_FLOW" | "TWO_CASH_FLOWS";
+                cumulativePlanned?: number | null;
+                cumulativeActual?: number | null;
+                target?: string | null;
             }[] | null;
             /** @description Gráfico 4, grupos 1.1 a 1.8 */
-            realizadoPorGrupo?: {
-                codigo: string;
-                descricao: string;
-                pontos: {
-                    mes: string;
+            actualByGroup?: {
+                code: string;
+                description: string;
+                points: {
+                    month: string;
                     /** @enum {string} */
-                    situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
-                    valor?: number | null;
-                    alvo?: string | null;
+                    status: "WITH_CASH_FLOW" | "NO_CASH_FLOW" | "TWO_CASH_FLOWS";
+                    amount?: number | null;
+                    target?: string | null;
                 }[];
             }[] | null;
-            maioresDiferencas?: null | {
-                acima: components["schemas"]["DiferencaIndicador"][];
-                abaixo: components["schemas"]["DiferencaIndicador"][];
+            largestDifferences?: null | {
+                above: components["schemas"]["LineDifferenceResponse"][];
+                below: components["schemas"]["LineDifferenceResponse"][];
             };
             /** @description Gráfico 6, arrecadação × previsto */
-            fundos?: {
+            funds?: {
                 /** Format: uuid */
-                fundoId: string;
-                fundo: string;
-                linhaCodigo?: string | null;
-                pontos: {
-                    mes: string;
+                fundId: string;
+                fund: string;
+                lineCode?: string | null;
+                points: {
+                    month: string;
                     /** @enum {string} */
-                    situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
-                    previsto?: number | null;
-                    arrecadado?: number | null;
-                    alvo?: string | null;
+                    status: "WITH_CASH_FLOW" | "NO_CASH_FLOW" | "TWO_CASH_FLOWS";
+                    planned?: number | null;
+                    collected?: number | null;
+                    target?: string | null;
                 }[];
             }[] | null;
-            comparacao?: null | {
-                exercicios: {
+            comparison?: null | {
+                fiscalYears: {
                     id: string;
-                    rotulo: string;
+                    label: string;
                     /**
                      * Format: uuid
                      * @description nulo para a coluna impressa
                      */
-                    poId?: string | null;
-                    execucao?: number | null;
-                    periodo?: string | null;
+                    budgetId?: string | null;
+                    execution?: number | null;
+                    period?: string | null;
                 }[];
-                grupos: {
-                    codigo: string;
-                    descricao: string;
-                    previstoMes: (number | null)[];
+                groups: {
+                    code: string;
+                    description: string;
+                    monthlyPlanned: (number | null)[];
                     /** @description Alvo do grupo em cada exercício, na ordem de "exercicios"; abre a evidência no previsto × realizado */
-                    alvos: (string | null)[];
+                    targets: (string | null)[];
                 }[];
             };
-            avisos: string[];
+            warnings: string[];
         };
-        DiferencaIndicador: {
+        LineDifferenceResponse: {
             /** Format: uuid */
-            linhaId: string;
-            codigo: string;
-            descricao: string;
-            previsto: number;
-            realizado: number;
+            lineId: string;
+            code: string;
+            description: string;
+            planned: number;
+            actual: number;
             /** @description Realizado menos previsto */
-            diferenca: number;
-            alvo: string;
+            difference: number;
+            target: string;
         };
-        PedidoProrrogacao: {
+        BudgetExtensionRequest: {
             /** @description Último mês prorrogado (AAAA-MM) */
-            ate: string;
-            justificativa: string;
+            until: string;
+            justification: string;
         };
-        PrevisaoDetalhe: {
-            previsao: components["schemas"]["PrevisaoResumo"];
-            colunaOrcadoAnterior?: string | null;
-            colunaOrcado?: string | null;
+        BudgetDetailResponse: {
+            budget: components["schemas"]["BudgetSummaryResponse"];
+            previousBudgetedColumn?: string | null;
+            budgetedColumn?: string | null;
             /** @description Total impresso menos fundos impressos */
-            previstoMesImpresso?: number | null;
+            printedMonthlyPlanned?: number | null;
             /** @description Diferença máxima tratada como arredondamento nesta leitura */
-            toleranciaArredondamento: number;
+            roundingTolerance: number;
             /** @description Mês a partir do qual vale a nova versão */
-            substituidaDesde?: string | null;
+            supersededFrom?: string | null;
             /** @description Dados informados pelo Admin; nulo antes da confirmação */
-            confirmacao?: null | {
+            confirmation?: null | {
                 /** Format: uuid */
-                ataArquivoId?: string | null;
-                semAta: boolean;
+                minutesFileId?: string | null;
+                withoutMinutes: boolean;
                 /** Format: date */
-                dataAprovacao?: string | null;
-                cienteDivergencia: boolean;
-                justificativaDivergencia?: string | null;
+                approvalDate?: string | null;
+                discrepancyAcknowledged: boolean;
+                discrepancyJustification?: string | null;
             };
-            linhas: components["schemas"]["LinhaPo"][];
-            conferencias: components["schemas"]["ConferenciaPo"][];
-            avisos: components["schemas"]["AvisoPo"][];
-            codigosRepetidos: {
-                codigoImpresso: string;
+            lines: components["schemas"]["BudgetLineResponse"][];
+            checks: components["schemas"]["BudgetCheckResponse"][];
+            warnings: components["schemas"]["BudgetWarningResponse"][];
+            repeatedCodes: {
+                printedCode: string;
                 /** @description Os códigos efetivos dessas linhas já são distintos */
-                resolvido: boolean;
-                linhas: {
+                resolved: boolean;
+                lines: {
                     /** Format: uuid */
-                    linhaId: string;
-                    ordem: number;
-                    descricao: string;
-                    codigoEfetivo: string;
+                    lineId: string;
+                    position: number;
+                    description: string;
+                    effectiveCode: string;
                 }[];
             }[];
             /** @description Ligação das linhas de fundo (1.9.x) aos fundos do fluxo, feita na confirmação */
-            fundos: {
+            funds: {
                 /** Format: uuid */
-                linhaId: string;
-                codigoEfetivo: string;
-                descricao: string;
-                orcado: number;
+                lineId: string;
+                effectiveCode: string;
+                description: string;
+                budgeted: number;
                 /** Format: uuid */
-                fundoId: string;
-                fundo: string;
+                fundId: string;
+                fund: string;
             }[];
-            achados: {
+            findings: {
                 /** Format: uuid */
                 id: string;
-                regra: string;
-                versaoRegra: string;
+                rule: string;
+                ruleVersion: string;
                 /** @enum {string} */
-                severidade: "INFORMATIVO" | "ATENCAO" | "CRITICO";
-                competencia: string;
-                descricao: string;
-                estado: components["schemas"]["EstadoAchado"];
+                severity: "INFO" | "WARNING" | "CRITICAL";
+                referenceMonth: string;
+                description: string;
+                status: components["schemas"]["FindingStatus"];
             }[];
         };
-        LinhaPo: {
+        BudgetLineResponse: {
             /**
              * Format: uuid
              * @description Identificador estável da linha (destino do de-para)
              */
             id: string;
-            ordem: number;
-            pagina: number;
+            position: number;
+            page: number;
             /** @enum {string} */
-            tipo: "TOTAL" | "GRUPO" | "LINHA";
-            codigoImpresso: string;
+            type: "TOTAL" | "GROUP" | "LINE";
+            printedCode: string;
             /** @description Igual ao impresso; o Admin muda só quando o código se repete */
-            codigoEfetivo: string;
-            conta?: string | null;
-            contaTexto?: string | null;
+            effectiveCode: string;
+            account?: string | null;
+            accountText?: string | null;
             /** @enum {string|null} */
-            marca?: "RATEIO_A_PARTE" | "NEGOCIADA_ISENCAO" | "SEM_VALOR" | "VALOR_FIXO_SEM_REFERENCIA" | null;
-            descricao: string;
-            orcadoAnterior: number;
-            orcado: number;
+            mark?: "SEPARATE_APPORTIONMENT" | "NEGOTIATED_EXEMPTION" | "NO_AMOUNT" | "FIXED_AMOUNT_NO_REFERENCE" | null;
+            description: string;
+            previousBudgeted: number;
+            budgeted: number;
             /** @description Coluna "%" como lida; não entra em cálculo */
-            percentualTexto?: string | null;
-            observacoes?: string | null;
+            percentageText?: string | null;
+            notes?: string | null;
             /** @description Linha do grupo de fundos (precisa ser ligada a um fundo na confirmação) */
-            linhaDeFundo: boolean;
+            fundLine: boolean;
             /** Format: uuid */
-            arquivoId: string;
+            fileId: string;
             sha256: string;
         };
-        ConferenciaPo: {
-            codigo: string;
-            descricao: string;
+        BudgetCheckResponse: {
+            code: string;
+            description: string;
             ok: boolean;
-            detalhe?: string | null;
+            detail?: string | null;
             /**
-             * @description OK; ARREDONDAMENTO (diferença até a tolerância, só aviso); DIVERGENCIA; CODIGO_REPETIDO (pendência)
+             * @description OK; ROUNDING (diferença até a tolerância, só aviso); DISCREPANCY; REPEATED_CODE (pendência)
              * @enum {string}
              */
-            classificacao: "OK" | "ARREDONDAMENTO" | "DIVERGENCIA" | "CODIGO_REPETIDO";
+            classification: "OK" | "ROUNDING" | "DISCREPANCY" | "REPEATED_CODE";
             /** @description Quando falhou */
-            explicacao?: string | null;
+            explanation?: string | null;
         };
-        AvisoPo: {
+        BudgetWarningResponse: {
             /** @enum {string} */
-            codigo: "ARREDONDAMENTO" | "DIVERGENCIA" | "CODIGO_REPETIDO" | "CONFIRMADA_COM_DIVERGENCIA" | "FORA_PRIMEIRO_TRIMESTRE" | "SEM_ATA" | "REGRA_NAO_AVALIADA";
-            texto: string;
+            code: "ROUNDING" | "DISCREPANCY" | "REPEATED_CODE" | "CONFIRMED_WITH_DISCREPANCY" | "OUTSIDE_FIRST_QUARTER" | "NO_MINUTES" | "RULE_NOT_EVALUATED";
+            text: string;
         };
-        PedidoConfirmacao: {
+        BudgetConfirmationRequest: {
             /** @description AAAA-MM */
-            exercicioInicio: string;
+            fiscalYearStart: string;
             /** @description AAAA-MM */
-            exercicioFim: string;
+            fiscalYearEnd: string;
             /**
              * Format: uuid
-             * @description Arquivo da categoria ATA; nulo com semAta
+             * @description Arquivo da categoria MINUTES; nulo com semAta
              */
-            ataArquivoId?: string | null;
-            semAta: boolean;
+            minutesFileId?: string | null;
+            withoutMinutes: boolean;
             /**
              * Format: date
              * @description Data da assembleia; obrigatória com ata
              */
-            dataAprovacao?: string | null;
+            approvalDate?: string | null;
             /** @description Código distinto para linhas cujo código impresso se repete (mesmo grupo, ex. 1.3.2 → 1.3.25) */
-            codigosEfetivos?: {
+            effectiveCodes?: {
                 /** Format: uuid */
-                linhaId: string;
-                codigo: string;
+                lineId: string;
+                code: string;
             }[];
             /** @description Cada linha de fundo (linhaDeFundo) ligada a um fundo do fluxo, distinto e que não seja o ordinário */
-            fundos?: {
+            funds?: {
                 /** Format: uuid */
-                linhaId: string;
+                lineId: string;
                 /** Format: uuid */
-                fundoId: string;
+                fundId: string;
             }[];
             /** @default false */
-            reaprovacao: boolean;
+            reapproval: boolean;
             /** @default false */
-            cienteDivergencia: boolean;
+            discrepancyAcknowledged: boolean;
             /** @description Obrigatória com cienteDivergencia */
-            justificativa?: string | null;
+            justification?: string | null;
         };
         /**
          * @description Linha da PO; ajuste (não é despesa); meio de pagamento a realocar (RF-02B); transferência entre fundos
          * @enum {string}
          */
-        TipoDestino: "LINHA_PO" | "AJUSTE" | "A_REALOCAR" | "TRANSFERENCIA";
+        MappingTargetType: "BUDGET_LINE" | "ADJUSTMENT" | "TO_REALLOCATE" | "TRANSFER";
         /** @enum {string} */
-        EstadoDepara: "SUGERIDO" | "CONFIRMADO" | "RECUSADO";
+        AccountMappingStatus: "SUGGESTED" | "CONFIRMED" | "REJECTED";
         /** @enum {string} */
-        OrigemDepara: "VERSAO_ANTERIOR" | "PLANILHA" | "NOME" | "ADMIN";
+        AccountMappingSource: "PREVIOUS_VERSION" | "SPREADSHEET" | "NAME" | "ADMIN";
         /**
-         * @description PENDENTES = sem de-para confirmado (sem de-para, sugerido ou recusado)
+         * @description PENDING = sem de-para confirmado (sem de-para, sugerido ou recusado)
          * @enum {string}
          */
-        FiltroDepara: "TODAS" | "PENDENTES" | "SUGERIDO" | "CONFIRMADO" | "RECUSADO" | "SEM_DEPARA" | "IGUAIS_VERSAO_ANTERIOR";
-        DestinoDepara: {
-            tipo: components["schemas"]["TipoDestino"];
+        AccountMappingFilter: "ALL" | "PENDING" | "SUGGESTED" | "CONFIRMED" | "REJECTED" | "UNMAPPED" | "SAME_AS_PREVIOUS_VERSION";
+        MappingTargetResponse: {
+            type: components["schemas"]["MappingTargetType"];
             /**
              * Format: uuid
-             * @description Só com LINHA_PO
+             * @description Só com BUDGET_LINE
              */
-            linhaId?: string | null;
+            lineId?: string | null;
             /** @description Código efetivo da linha */
-            codigo?: string | null;
-            descricao?: string | null;
+            code?: string | null;
+            description?: string | null;
             /** @description Texto do destino especial */
-            detalhe?: string | null;
-            /** @description Ex. "1.7.8 Material hidráulico" ou "AJUSTE (estorno)" */
-            texto: string;
+            detail?: string | null;
+            /** @description Ex. "1.7.8 Material hidráulico" ou "ADJUSTMENT (estorno)" */
+            text: string;
         };
-        ContaDepara: {
+        AccountMappingResponse: {
             /** @description Código da conta do fluxo como impresso */
-            conta: string;
+            account: string;
             /** @description Nome como impresso no fluxo */
-            nome?: string | null;
+            name?: string | null;
             /** @description Débitos do fundo Condomínio no exercício da PO */
-            lancamentos: number;
-            debitos: number;
-            destino?: null | components["schemas"]["DestinoDepara"];
+            ledgerEntries: number;
+            debits: number;
+            target?: null | components["schemas"]["MappingTargetResponse"];
             /** @description Nulo = sem de-para */
-            estado?: null | components["schemas"]["EstadoDepara"];
-            origem?: null | components["schemas"]["OrigemDepara"];
+            status?: null | components["schemas"]["AccountMappingStatus"];
+            source?: null | components["schemas"]["AccountMappingSource"];
             /** @description Nomes comparados */
-            motivo?: string | null;
-            igualVersaoAnterior: boolean;
-            atualizadoPor?: string | null;
+            reason?: string | null;
+            sameAsPreviousVersion: boolean;
+            updatedBy?: string | null;
             /** Format: date-time */
-            atualizadoEm?: string | null;
+            updatedAt?: string | null;
         };
         /** @description Sempre sobre todas as contas, sem o filtro ("N de M contas confirmadas") */
-        ResumoDepara: {
-            contas: number;
-            confirmadas: number;
-            sugeridas: number;
-            recusadas: number;
-            semDepara: number;
+        AccountMappingSummaryResponse: {
+            accounts: number;
+            confirmed: number;
+            suggested: number;
+            rejected: number;
+            withoutMapping: number;
         };
-        DeparaLista: {
+        AccountMappingsResponse: {
             /** Format: uuid */
-            previsaoId: string;
-            versao?: number | null;
-            resumo: components["schemas"]["ResumoDepara"];
-            contas: components["schemas"]["ContaDepara"][];
+            budgetId: string;
+            version?: number | null;
+            summary: components["schemas"]["AccountMappingSummaryResponse"];
+            accounts: components["schemas"]["AccountMappingResponse"][];
         };
-        PedidoDestino: {
-            tipo: components["schemas"]["TipoDestino"];
+        MappingTargetRequest: {
+            type: components["schemas"]["MappingTargetType"];
             /**
              * Format: uuid
-             * @description Obrigatória com LINHA_PO
+             * @description Obrigatória com BUDGET_LINE
              */
-            linhaId?: string | null;
-            detalhe?: string | null;
-            /** @description Nulo ou true confirma; false deixa SUGERIDO */
-            confirmar?: boolean | null;
+            lineId?: string | null;
+            detail?: string | null;
+            /** @description Nulo ou true confirma; false deixa SUGGESTED */
+            confirm?: boolean | null;
         };
-        PedidoLote: {
+        AccountMappingBatchRequest: {
             /** @enum {string} */
-            acao: "CONFIRMAR" | "RECUSAR";
-            contas: string[];
+            action: "CONFIRM" | "REJECT";
+            accounts: string[];
         };
-        ContaIgnorada: {
-            conta: string;
-            motivo: string;
+        SkippedAccountResponse: {
+            account: string;
+            reason: string;
         };
-        ResultadoLote: {
-            alteradas: number;
-            ignoradas: components["schemas"]["ContaIgnorada"][];
+        AccountMappingBatchResponse: {
+            changed: number;
+            skipped: components["schemas"]["SkippedAccountResponse"][];
         };
-        ResultadoSugestoes: {
-            criadas: number;
-            daVersaoAnterior: number;
-            peloNome: number;
-            semSugestao: {
-                conta: string;
-                nome?: string | null;
-                motivo: string;
+        AccountMappingSuggestionsResponse: {
+            created: number;
+            fromPreviousVersion: number;
+            byName: number;
+            withoutSuggestion: {
+                account: string;
+                name?: string | null;
+                reason: string;
             }[];
         };
-        ResultadoPlanilha: {
-            aceitas: number;
-            ignoradas: components["schemas"]["ContaIgnorada"][];
-            recusadas: {
-                linha: number;
-                conteudo: string;
-                motivo: string;
+        AccountMappingSheetResponse: {
+            accepted: number;
+            skipped: components["schemas"]["SkippedAccountResponse"][];
+            rejected: {
+                line: number;
+                content: string;
+                reason: string;
             }[];
         };
-        EventoDepara: {
+        AccountMappingEventResponse: {
             /** Format: uuid */
             id: string;
-            conta: string;
-            nome?: string | null;
+            account: string;
+            name?: string | null;
             /** @enum {string} */
-            acao: "SUGERIDO" | "CONFIRMADO" | "RECUSADO" | "ALTERADO";
-            usuario: string;
+            action: "SUGGESTED" | "CONFIRMED" | "REJECTED" | "CHANGED";
+            username: string;
             /** Format: date-time */
-            em: string;
-            destinoAnterior?: string | null;
-            estadoAnterior?: null | components["schemas"]["EstadoDepara"];
-            destinoNovo: string;
-            estadoNovo: components["schemas"]["EstadoDepara"];
-            origem: components["schemas"]["OrigemDepara"];
-            motivo?: string | null;
+            at: string;
+            previousTarget?: string | null;
+            previousStatus?: null | components["schemas"]["AccountMappingStatus"];
+            newTarget: string;
+            newStatus: components["schemas"]["AccountMappingStatus"];
+            source: components["schemas"]["AccountMappingSource"];
+            reason?: string | null;
         };
         /** @enum {string} */
-        EstadoRubrica: "SUGERIDO" | "CONFIRMADO" | "RECUSADO";
+        BudgetItemStatus: "SUGGESTED" | "CONFIRMED" | "REJECTED";
         /**
          * @description Primeira PO do condomínio; mesma conta da PO e mesmo grupo; linha igual da versão anterior; escolha do Admin
          * @enum {string}
          */
-        OrigemRubrica: "PRIMEIRA_PO" | "CONTA_PO" | "VERSAO_ANTERIOR" | "MANUAL";
+        BudgetItemSource: "FIRST_BUDGET" | "BUDGET_ACCOUNT" | "PREVIOUS_VERSION" | "MANUAL";
         /**
-         * @description PENDENTES = sem rubrica confirmada (sem rubrica, sugerida ou recusada)
+         * @description PENDING = sem rubrica confirmada (sem rubrica, sugerida ou recusada)
          * @enum {string}
          */
-        FiltroRubrica: "TODAS" | "PENDENTES" | "SUGERIDO" | "CONFIRMADO" | "RECUSADO" | "SEM_RUBRICA";
-        Rubrica: {
+        BudgetItemFilter: "ALL" | "PENDING" | "SUGGESTED" | "CONFIRMED" | "REJECTED" | "NO_ITEM";
+        BudgetItemResponse: {
             /** Format: uuid */
             id: string;
             /** @description Ex. "1682 - Sindicatura Profissional" */
-            nome: string;
+            name: string;
             /** @description Grupo da PO onde a rubrica nasceu (ex. 1.3); só informativo */
-            grupo?: string | null;
+            group?: string | null;
             /** Format: uuid */
-            linhaOrigemId?: string | null;
-            criadaPor: string;
+            sourceLineId?: string | null;
+            createdBy: string;
             /** Format: date-time */
-            criadaEm: string;
+            createdAt: string;
         };
-        LinhaComRubrica: {
+        BudgetLineItemResponse: {
             /** Format: uuid */
-            linhaId: string;
+            lineId: string;
             /** @description Código efetivo da linha */
-            codigo: string;
+            code: string;
             /** @description Código do grupo (ex. 1.3) */
-            grupo?: string | null;
+            group?: string | null;
             /** @description O que a sugestão compara: conta da PO, senão o texto da coluna de conta, senão a descrição */
-            conta: string;
-            descricao: string;
-            orcado: number;
-            rubrica?: null | components["schemas"]["Rubrica"];
+            account: string;
+            description: string;
+            budgeted: number;
+            budgetItem?: null | components["schemas"]["BudgetItemResponse"];
             /** @description Nulo = sem rubrica */
-            estado?: null | components["schemas"]["EstadoRubrica"];
-            origem?: null | components["schemas"]["OrigemRubrica"];
+            status?: null | components["schemas"]["BudgetItemStatus"];
+            source?: null | components["schemas"]["BudgetItemSource"];
             /** @description Ex. "mesma conta da PO e mesmo grupo: 1682 - Sindicatura Profissional, 1.3" */
-            motivo?: string | null;
-            atualizadoPor?: string | null;
+            reason?: string | null;
+            updatedBy?: string | null;
             /** Format: date-time */
-            atualizadoEm?: string | null;
+            updatedAt?: string | null;
         };
         /** @description Sempre sobre todas as linhas, sem o filtro */
-        ResumoRubricas: {
-            linhas: number;
-            confirmadas: number;
-            sugeridas: number;
-            recusadas: number;
-            semRubrica: number;
+        BudgetItemSummaryResponse: {
+            lines: number;
+            confirmed: number;
+            suggested: number;
+            rejected: number;
+            withoutItem: number;
         };
-        RubricasDaPo: {
+        BudgetItemsResponse: {
             /** Format: uuid */
-            previsaoId: string;
-            versao?: number | null;
-            resumo: components["schemas"]["ResumoRubricas"];
-            linhas: components["schemas"]["LinhaComRubrica"][];
+            budgetId: string;
+            version?: number | null;
+            summary: components["schemas"]["BudgetItemSummaryResponse"];
+            lines: components["schemas"]["BudgetLineItemResponse"][];
         };
-        PedidoNovaRubrica: {
-            nome: string;
-            grupo?: string | null;
+        NewBudgetItemRequest: {
+            name: string;
+            group?: string | null;
         };
-        PedidoRenomearRubrica: {
-            nome: string;
+        RenameBudgetItemRequest: {
+            name: string;
         };
-        PedidoRubricaLinha: {
+        LineBudgetItemRequest: {
             /**
              * Format: uuid
              * @description Rubrica do catálogo
              */
-            rubricaId?: string | null;
+            budgetItemId?: string | null;
             /** @description Nome de uma rubrica nova criada a partir da linha */
-            novaRubrica?: string | null;
-            /** @description Nulo ou true confirma; false deixa SUGERIDO */
-            confirmar?: boolean | null;
+            newBudgetItem?: string | null;
+            /** @description Nulo ou true confirma; false deixa SUGGESTED */
+            confirm?: boolean | null;
         };
-        PedidoLoteRubrica: {
+        BudgetItemBatchRequest: {
             /** @enum {string} */
-            acao: "CONFIRMAR" | "RECUSAR";
-            linhas: string[];
+            action: "CONFIRM" | "REJECT";
+            lines: string[];
         };
-        ResultadoLoteRubrica: {
-            alteradas: number;
-            ignoradas: {
+        BudgetItemBatchResponse: {
+            changed: number;
+            skipped: {
                 /** Format: uuid */
-                linhaId: string;
-                motivo: string;
+                lineId: string;
+                reason: string;
             }[];
         };
-        ResultadoSugestoesRubrica: {
+        BudgetItemSuggestionsResponse: {
             /** @description O condomínio não tinha rubricas; cada linha virou uma rubrica confirmada */
-            primeiraPo: boolean;
-            rubricasCriadas: number;
-            sugeridas: number;
-            daVersaoAnterior: number;
-            pelaConta: number;
-            semSugestao: {
+            firstBudget: boolean;
+            createdItems: number;
+            suggested: number;
+            fromPreviousVersion: number;
+            byAccount: number;
+            withoutSuggestion: {
                 /** Format: uuid */
-                linhaId: string;
-                codigo: string;
-                conta: string;
-                motivo: string;
+                lineId: string;
+                code: string;
+                account: string;
+                reason: string;
             }[];
         };
-        EventoRubrica: {
+        BudgetItemEventResponse: {
             /** Format: uuid */
             id: string;
             /**
              * Format: uuid
              * @description Nulo na criação e na troca de nome da rubrica
              */
-            linhaId?: string | null;
-            codigo?: string | null;
-            descricao?: string | null;
+            lineId?: string | null;
+            code?: string | null;
+            description?: string | null;
             /** @enum {string} */
-            acao: "CRIADA" | "RENOMEADA" | "SUGERIDO" | "CONFIRMADO" | "RECUSADO" | "ALTERADO";
-            usuario: string;
+            action: "CREATED" | "RENAMED" | "SUGGESTED" | "CONFIRMED" | "REJECTED" | "CHANGED";
+            username: string;
             /** Format: date-time */
-            em: string;
-            rubricaAnterior?: string | null;
-            estadoAnterior?: null | components["schemas"]["EstadoRubrica"];
-            rubricaNova: string;
-            estadoNovo?: null | components["schemas"]["EstadoRubrica"];
-            origem?: null | components["schemas"]["OrigemRubrica"];
-            motivo?: string | null;
+            at: string;
+            previousItem?: string | null;
+            previousStatus?: null | components["schemas"]["BudgetItemStatus"];
+            newItem: string;
+            newStatus?: null | components["schemas"]["BudgetItemStatus"];
+            source?: null | components["schemas"]["BudgetItemSource"];
+            reason?: string | null;
         };
-        PrevistoRealizado: {
+        BudgetVsActualResponse: {
             /** @description Versão das regras do cálculo usada nesta resposta */
-            versaoCalculo: string;
-            /** @description AAAA-MM ou "acumulado" */
-            periodo: string;
+            calculationVersion: string;
+            /** @description AAAA-MM ou "cumulative" */
+            period: string;
             /** @enum {string} */
-            situacao: "CALCULADO" | "SEM_PO" | "PO_NAO_CONFIRMADA" | "SEM_FUNDO_ORDINARIO" | "SEM_FLUXO" | "DOIS_FLUXOS";
-            /** @description Por que não há números (situação diferente de CALCULADO) */
-            mensagem?: string | null;
-            po?: null | {
+            status: "CALCULATED" | "NO_BUDGET" | "BUDGET_NOT_CONFIRMED" | "NO_OPERATING_FUND" | "NO_CASH_FLOW" | "TWO_CASH_FLOWS";
+            /** @description Por que não há números (situação diferente de CALCULATED) */
+            message?: string | null;
+            budget?: null | {
                 /** Format: uuid */
                 id: string;
-                versao?: number | null;
-                estado: components["schemas"]["EstadoPrevisao"];
+                version?: number | null;
+                status: components["schemas"]["BudgetStatus"];
                 /** Format: uuid */
-                arquivoId: string;
-                arquivoNome?: string | null;
+                fileId: string;
+                fileName?: string | null;
                 sha256: string;
-                exercicioInicio?: string | null;
-                exercicioFim?: string | null;
+                fiscalYearStart?: string | null;
+                fiscalYearEnd?: string | null;
             };
             /**
              * @description No acumulado, os meses do exercício e, depois deles, os meses prorrogados (fora da soma, RF-11.3); no mês,
-             *     só ele. Números só com COM_FLUXO
+             *     só ele. Números só com WITH_CASH_FLOW
              */
-            meses: {
-                mes: string;
+            months: {
+                month: string;
                 /** @enum {string} */
-                situacao: "COM_FLUXO" | "SEM_FLUXO" | "DOIS_FLUXOS";
-                fluxos: components["schemas"]["FluxoUsado"][];
-                previsto?: number | null;
-                despesaRealizada?: number | null;
-                excesso?: number | null;
-                percentualExcesso?: number | null;
-                acimaDoLimite?: boolean | null;
+                status: "WITH_CASH_FLOW" | "NO_CASH_FLOW" | "TWO_CASH_FLOWS";
+                cashFlows: components["schemas"]["UsedCashFlowResponse"][];
+                planned?: number | null;
+                actualExpense?: number | null;
+                overrun?: number | null;
+                overrunPercentage?: number | null;
+                aboveLimit?: boolean | null;
                 /** @description Mês depois do exercício em que a PO vale por prorrogação (marca "PO prorrogada") */
-                prorrogado?: boolean;
+                extended?: boolean;
             }[];
-            mesesSomados: string[];
+            summedMonths: string[];
             /** @description Meses sem fluxo antes do último mês com fluxo */
-            mesesSemFluxo: string[];
-            mesesComDoisFluxos: string[];
-            depara?: null | {
+            monthsWithoutCashFlow: string[];
+            monthsWithTwoCashFlows: string[];
+            mapping?: null | {
                 /** @description Contas com débito no fundo Condomínio no período */
-                contas: number;
-                confirmadas: number;
-                semDeparaConfirmado: number;
+                accounts: number;
+                confirmed: number;
+                withoutConfirmedMapping: number;
             };
             /** @description Há valor a realocar ou sem linha da PO */
-            provisorio: boolean;
-            totais?: null | {
-                previstoMes: number;
+            provisional: boolean;
+            totals?: null | {
+                monthlyPlanned: number;
                 /** @description Previsto do mês × meses somados */
-                previsto: number;
+                planned: number;
                 /** @description Em linhas + a realocar + sem linha da PO */
-                despesaRealizada: number;
-                emLinhas: number;
-                diferenca: number;
+                actualExpense: number;
+                inLines: number;
+                difference: number;
                 /** @description % com 1 casa; nulo com previsto zero */
-                execucao?: number | null;
+                execution?: number | null;
                 /** @description Previsto do mês × meses do exercício (referência) */
-                previstoExercicio: number;
+                fiscalYearPlanned: number;
             };
-            grupos: components["schemas"]["GrupoPrevistoRealizado"][];
-            ajustes?: null | components["schemas"]["BlocoPrevistoRealizado"];
-            aRealocar?: null | components["schemas"]["BlocoPrevistoRealizado"];
-            semLinhaPo?: null | components["schemas"]["BlocoPrevistoRealizado"];
-            conferencia?: null | {
-                debitosDoFundo: number;
-                lancamentos: number;
-                despesaRealizada: number;
-                ajustes: number;
-                transferencias: number;
-                confere: boolean;
+            groups: components["schemas"]["BudgetVsActualGroupResponse"][];
+            adjustments?: null | components["schemas"]["EntryBlockResponse"];
+            toReallocate?: null | components["schemas"]["EntryBlockResponse"];
+            withoutBudgetLine?: null | components["schemas"]["EntryBlockResponse"];
+            cashFlowCheck?: null | {
+                fundDebits: number;
+                entries: number;
+                actualExpense: number;
+                adjustments: number;
+                transfers: number;
+                matches: boolean;
             };
             /** @description Regra dos 20% (Conv. 16.2), só no mês */
-            regra20?: null | {
-                regra: string;
-                versaoRegra: string;
-                limitePercentual: number;
-                previstoMes: number;
+            rule20?: null | {
+                rule: string;
+                ruleVersion: string;
+                limitPercentage: number;
+                monthlyPlanned: number;
                 /** @description Soma das diferenças positivas */
-                excesso: number;
-                percentual: number;
+                overrun: number;
+                percentage: number;
                 /** @description Em reais */
-                limite: number;
-                linhasAcima: number;
-                linhas: {
+                limit: number;
+                linesAbove: number;
+                lines: {
                     /** Format: uuid */
-                    linhaId: string;
-                    codigo: string;
-                    descricao: string;
-                    excesso: number;
+                    lineId: string;
+                    code: string;
+                    description: string;
+                    overrun: number;
                 }[];
-                aRealocar: number;
-                semLinhaPo: number;
+                toReallocate: number;
+                withoutBudgetLine: number;
                 /** @description Excesso + a realocar + sem linha da PO */
-                cenarioMaximo: number;
-                percentualCenarioMaximo?: number | null;
-                provisorio: boolean;
-                acimaDoLimite: boolean;
+                maxScenario: number;
+                maxScenarioPercentage?: number | null;
+                provisional: boolean;
+                aboveLimit: boolean;
             };
-            fundos: {
+            funds: {
                 /** Format: uuid */
-                fundoId?: string | null;
+                fundId?: string | null;
                 /** @description Nome impresso no fluxo */
-                fundo?: string | null;
+                fund?: string | null;
                 /** Format: uuid */
-                linhaId?: string | null;
-                linhaCodigo?: string | null;
+                lineId?: string | null;
+                lineCode?: string | null;
                 /** @enum {string} */
-                situacao: "COMPARADO" | "SEM_PREVISTO_NA_PO" | "LINHA_SEM_FUNDO" | "REPROCESSAR_FLUXO";
-                previsto?: number | null;
-                arrecadado?: number | null;
-                diferenca?: number | null;
-                execucao?: number | null;
-                creditos?: number | null;
-                debitos?: number | null;
+                status: "COMPARED" | "NOT_PLANNED_IN_BUDGET" | "LINE_WITHOUT_FUND" | "REPROCESS_CASH_FLOW";
+                planned?: number | null;
+                collected?: number | null;
+                difference?: number | null;
+                execution?: number | null;
+                credits?: number | null;
+                debits?: number | null;
             }[];
-            /** @description Inclui PO_PRORROGADA (mês prorrogado) e MESES_PRORROGADOS (acumulado com meses fora da soma) */
-            avisos: {
-                codigo: string;
-                texto: string;
+            /** @description Inclui BUDGET_EXTENDED (mês prorrogado) e EXTENDED_MONTHS (acumulado com meses fora da soma) */
+            warnings: {
+                code: string;
+                text: string;
             }[];
         };
-        FluxoUsado: {
+        UsedCashFlowResponse: {
             /** Format: uuid */
-            arquivoId: string;
-            nome: string;
+            fileId: string;
+            name: string;
             sha256: string;
             /** Format: date */
-            periodoInicio?: string | null;
+            periodStart?: string | null;
             /** Format: date */
-            periodoFim?: string | null;
+            periodEnd?: string | null;
             /** Format: date-time */
-            enviadoEm?: string | null;
-            enviadoPor?: string | null;
+            uploadedAt?: string | null;
+            uploadedBy?: string | null;
         };
-        GrupoPrevistoRealizado: {
+        BudgetVsActualGroupResponse: {
             /** Format: uuid */
-            linhaId: string;
-            codigo: string;
-            descricao: string;
+            lineId: string;
+            code: string;
+            description: string;
             /** @description Soma das linhas (Q30) */
-            previsto: number;
-            realizado: number;
-            diferenca: number;
-            execucao?: number | null;
-            linhas: {
+            planned: number;
+            actual: number;
+            difference: number;
+            execution?: number | null;
+            lines: {
                 /** Format: uuid */
-                linhaId: string;
-                codigo: string;
-                descricao: string;
-                conta?: string | null;
+                lineId: string;
+                code: string;
+                description: string;
+                account?: string | null;
                 /** @enum {string|null} */
-                marca?: "RATEIO_A_PARTE" | "NEGOCIADA_ISENCAO" | "SEM_VALOR" | "VALOR_FIXO_SEM_REFERENCIA" | null;
-                observacoes?: string | null;
-                pagina: number;
-                previsto: number;
-                realizado: number;
-                diferenca: number;
-                execucao?: number | null;
+                mark?: "SEPARATE_APPORTIONMENT" | "NEGOTIATED_EXEMPTION" | "NO_AMOUNT" | "FIXED_AMOUNT_NO_REFERENCE" | null;
+                notes?: string | null;
+                page: number;
+                planned: number;
+                actual: number;
+                difference: number;
+                execution?: number | null;
                 /** @description Contas do fluxo com de-para confirmado para a linha */
-                contasFluxo: string[];
-                lancamentos: number;
+                cashFlowAccounts: string[];
+                entries: number;
             }[];
         };
-        BlocoPrevistoRealizado: {
+        EntryBlockResponse: {
             total: number;
-            lancamentos: number;
-            contas: {
-                conta?: string | null;
-                nome?: string | null;
-                /** @description Ex. "AJUSTE (estorno)" */
-                detalhe?: string | null;
-                valor: number;
-                lancamentos: number;
+            entries: number;
+            accounts: {
+                account?: string | null;
+                name?: string | null;
+                /** @description Ex. "ADJUSTMENT (estorno)" */
+                detail?: string | null;
+                amount: number;
+                entries: number;
             }[];
         };
-        EvidenciaLancamento: {
+        EvidenceResponse: {
             /** Format: uuid */
-            lancamentoId: string;
+            entryId: string;
             /** Format: date */
-            data: string;
-            conta?: string | null;
-            contaNome?: string | null;
-            historico: string;
-            fornecedor?: string | null;
-            documento?: string | null;
-            valor: number;
-            fundo?: string | null;
+            date: string;
+            account?: string | null;
+            accountName?: string | null;
+            memo: string;
+            supplier?: string | null;
+            document?: string | null;
+            amount: number;
+            fund?: string | null;
             /** Format: uuid */
-            arquivoId: string;
-            arquivoNome?: string | null;
+            fileId: string;
+            fileName?: string | null;
             sha256: string;
-            pagina: number;
-            ordem: number;
+            page: number;
+            position: number;
             /** @description "realocado para <linha> por <usuário> em <data>" */
-            realocacao?: string | null;
+            reallocation?: string | null;
             /**
              * Format: uuid
              * @description Realocação ativa que levou o lançamento à linha (para desfazer)
              */
-            realocacaoId?: string | null;
+            reallocationId?: string | null;
         };
         /** @enum {string} */
-        EstadoAchado: "ABERTO" | "NAO_SE_APLICA_MAIS" | "JUSTIFICADO" | "RESOLVIDO" | "FALSO_POSITIVO";
-        Achado: {
+        FindingStatus: "OPEN" | "NO_LONGER_APPLIES" | "JUSTIFIED" | "RESOLVED" | "FALSE_POSITIVE";
+        FindingResponse: {
             /** Format: uuid */
             id: string;
-            /** @description Ex. EXCESSO_MES_ACIMA_LIMITE */
-            regra: string;
-            versaoRegra: string;
+            /** @description Ex. MONTHLY_OVERRUN_ABOVE_LIMIT */
+            rule: string;
+            ruleVersion: string;
             /** @enum {string} */
-            severidade: "INFORMATIVO" | "ATENCAO" | "CRITICO";
-            competencia: string;
-            /** @description Ex. "fundo-condominio", "conta:8888" */
-            alvo: string;
-            descricao: string;
-            estado: components["schemas"]["EstadoAchado"];
+            severity: "INFO" | "WARNING" | "CRITICAL";
+            referenceMonth: string;
+            /** @description Ex. "operating-fund", "account:8888" */
+            target: string;
+            description: string;
+            status: components["schemas"]["FindingStatus"];
             /** @description Ex. "de-para da conta 8888 confirmado por admin em 04/10/2026" */
-            estadoMotivo?: string | null;
+            statusReason?: string | null;
             /** Format: date-time */
-            estadoEm?: string | null;
+            statusChangedAt?: string | null;
             /** @description A condição da regra existia no último recálculo */
-            condicaoPresente: boolean;
+            conditionPresent: boolean;
             /** Format: date-time */
-            criadoEm: string;
-            evidencias: {
-                ordem: number;
+            createdAt: string;
+            evidence: {
+                position: number;
                 /** Format: uuid */
-                arquivoId: string;
+                fileId: string;
                 sha256: string;
-                pagina?: number | null;
-                referencia: string;
+                page?: number | null;
+                reference: string;
                 /** Format: uuid */
-                linhaPoId?: string | null;
+                budgetLineId?: string | null;
             }[];
-            historico: {
-                estadoAnterior?: components["schemas"]["EstadoAchado"] | null;
-                estadoNovo: components["schemas"]["EstadoAchado"];
-                condicaoPresente: boolean;
-                motivo: string;
-                usuario: string;
+            history: {
+                previousStatus?: components["schemas"]["FindingStatus"] | null;
+                newStatus: components["schemas"]["FindingStatus"];
+                conditionPresent: boolean;
+                reason: string;
+                username: string;
                 /** Format: date-time */
-                em: string;
+                occurredAt: string;
             }[];
         };
-        FundoFluxo: {
+        FundResponse: {
             /** Format: uuid */
             id: string;
             /** @description Nome exato impresso no fluxo */
-            nome: string;
+            name: string;
             /** @description É o fundo ordinário (fundo Condomínio) confirmado */
-            ordinario: boolean;
+            operating: boolean;
         };
-        EventoPrevisao: {
+        BudgetEventResponse: {
             /** @enum {string} */
-            tipo: "CONFIRMADA" | "SUBSTITUIDA" | "FUNDOS_ALTERADOS";
-            usuario: string;
+            type: "CONFIRMED" | "SUPERSEDED" | "FUNDS_CHANGED" | "EXTENDED" | "EXTENSION_UNDONE" | "EXTENSION_SHORTENED";
+            username: string;
             /** Format: date-time */
-            em: string;
-            justificativa?: string | null;
-            detalhe: string;
+            at: string;
+            justification?: string | null;
+            detail: string;
         };
-        PedidoRealocacao: {
+        ReallocationRequest: {
             /**
              * Format: uuid
-             * @description lancamentoId da evidência "A_REALOCAR"
+             * @description lancamentoId da evidência "TO_REALLOCATE"
              */
-            lancamentoId: string;
+            entryId: string;
             /**
              * Format: uuid
              * @description Linha de despesa (1.1 a 1.8) da PO que vale no mês
              */
-            linhaId: string;
+            lineId: string;
         };
-        Realocacao: {
+        ReallocationResponse: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
-            previsaoId: string;
+            budgetId: string;
             /** Format: date */
-            data: string;
-            conta?: string | null;
-            contaNome?: string | null;
-            documento?: string | null;
-            historico: string;
-            valor: number;
+            date: string;
+            account?: string | null;
+            accountName?: string | null;
+            document?: string | null;
+            memo: string;
+            amount: number;
             /** Format: uuid */
-            arquivoId: string;
+            fileId: string;
             sha256: string;
-            pagina: number;
-            ordem: number;
+            page: number;
+            position: number;
             /** Format: uuid */
-            linhaId: string;
-            linhaCodigo?: string | null;
-            linhaDescricao?: string | null;
-            realocadaPor: string;
+            lineId: string;
+            lineCode?: string | null;
+            lineDescription?: string | null;
+            reallocatedBy: string;
             /** Format: date-time */
-            realocadaEm: string;
-            desfeitaPor?: string | null;
+            reallocatedAt: string;
+            undoneBy?: string | null;
             /** Format: date-time */
-            desfeitaEm?: string | null;
-            ativa: boolean;
+            undoneAt?: string | null;
+            active: boolean;
         };
-        Problema: {
+        Problem: {
             title?: string;
             status?: number;
             detail?: string;
             /** Format: uuid */
-            arquivoExistenteId?: string;
+            existingFileId?: string;
             /** @description Em recusa por módulo não contratado (403): código do módulo */
-            modulo?: string;
-            /** @description Motivos da recusa (confirmação da PO */
-            motivos?: string[];
+            feature?: string;
+            /** @description Motivos da recusa (confirmação da PO, configuração de IA) */
+            reasons?: string[];
             /** @description Em recusa do chat pelo modo (409): modo de respostas efetivo */
-            modoIa?: components["schemas"]["ModoIa"];
+            aiMode?: components["schemas"]["AiMode"];
         };
     };
     responses: never;
     parameters: {
-        CondominioId: string;
-        ArquivoId: string;
-        /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
-        CodigoModulo: string;
-        PoId: string;
+        CondominiumId: string;
+        FileId: string;
+        /** @description Código do módulo no catálogo (ex.: ASSISTANT) */
+        FeatureCode: string;
+        BudgetId: string;
     };
     requestBodies: never;
     headers: never;
@@ -2655,7 +2655,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    eu: {
+    currentUser: {
         parameters: {
             query?: never;
             header?: never;
@@ -2670,12 +2670,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UsuarioLogado"];
+                    "application/json": components["schemas"]["CurrentUserResponse"];
                 };
             };
         };
     };
-    categorias: {
+    listCategories: {
         parameters: {
             query?: never;
             header?: never;
@@ -2690,19 +2690,19 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CategoriaDto"][];
+                    "application/json": components["schemas"]["FileCategoryResponse"][];
                 };
             };
         };
     };
-    listarArquivos: {
+    listFiles: {
         parameters: {
             query?: {
-                categoria?: components["schemas"]["Categoria"];
+                category?: components["schemas"]["FileCategory"];
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -2714,19 +2714,19 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ArquivoResumo"][];
+                    "application/json": components["schemas"]["SourceFileResponse"][];
                 };
             };
         };
     };
-    enviarArquivo: {
+    uploadFile: {
         parameters: {
             query: {
-                categoria: components["schemas"]["Categoria"];
+                category: components["schemas"]["FileCategory"];
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -2734,7 +2734,7 @@ export interface operations {
             content: {
                 "multipart/form-data": {
                     /** Format: binary */
-                    arquivo: string;
+                    file: string;
                 };
             };
         };
@@ -2745,7 +2745,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ArquivoResumo"];
+                    "application/json": components["schemas"]["SourceFileResponse"];
                 };
             };
             /** @description Perfil sem permissão */
@@ -2761,17 +2761,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
     };
-    ultimoArquivo: {
+    latestFile: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -2783,7 +2783,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ArquivoResumo"];
+                    "application/json": components["schemas"]["SourceFileResponse"];
                 };
             };
             /** @description Nenhum arquivo ainda */
@@ -2795,13 +2795,13 @@ export interface operations {
             };
         };
     };
-    detalheArquivo: {
+    fileDetail: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                id: components["parameters"]["ArquivoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                id: components["parameters"]["FileId"];
             };
             cookie?: never;
         };
@@ -2813,7 +2813,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ArquivoDetalhe"];
+                    "application/json": components["schemas"]["SourceFileDetailResponse"];
                 };
             };
             /** @description Não encontrado */
@@ -2825,13 +2825,13 @@ export interface operations {
             };
         };
     };
-    conteudoArquivo: {
+    fileContent: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                id: components["parameters"]["ArquivoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                id: components["parameters"]["FileId"];
             };
             cookie?: never;
         };
@@ -2848,13 +2848,13 @@ export interface operations {
             };
         };
     };
-    reprocessarArquivo: {
+    reprocessFile: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                id: components["parameters"]["ArquivoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                id: components["parameters"]["FileId"];
             };
             cookie?: never;
         };
@@ -2866,7 +2866,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ArquivoResumo"];
+                    "application/json": components["schemas"]["SourceFileResponse"];
                 };
             };
             /** @description Já está em processamento */
@@ -2878,19 +2878,19 @@ export interface operations {
             };
         };
     };
-    alterarCategoriaArquivo: {
+    changeFileCategory: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                id: components["parameters"]["ArquivoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                id: components["parameters"]["FileId"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NovaCategoria"];
+                "application/json": components["schemas"]["ChangeCategoryRequest"];
             };
         };
         responses: {
@@ -2900,7 +2900,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ArquivoResumo"];
+                    "application/json": components["schemas"]["SourceFileResponse"];
                 };
             };
             /** @description Categoria não informada ou inválida */
@@ -2933,12 +2933,12 @@ export interface operations {
             };
         };
     };
-    painel: {
+    dashboard: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -2950,7 +2950,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Painel"];
+                    "application/json": components["schemas"]["DashboardResponse"];
                 };
             };
             /** @description Ainda não há fluxo de caixa processado */
@@ -2962,12 +2962,12 @@ export interface operations {
             };
         };
     };
-    confirmarFundoOrdinario: {
+    setOperatingFund: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -2975,7 +2975,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** Format: uuid */
-                    fundoId: string;
+                    fundId: string;
                 };
             };
         };
@@ -3003,12 +3003,12 @@ export interface operations {
             };
         };
     };
-    contextoCondominio: {
+    condominiumContext: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -3020,7 +3020,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContextoCondominio"];
+                    "application/json": components["schemas"]["CondominiumContextResponse"];
                 };
             };
             /** @description Sem acesso a este condomínio */
@@ -3039,12 +3039,12 @@ export interface operations {
             };
         };
     };
-    listarModulos: {
+    listFeatures: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -3056,7 +3056,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ModuloDoCondominio"][];
+                    "application/json": components["schemas"]["FeatureResponse"][];
                 };
             };
             /** @description Sem acesso a este condomínio */
@@ -3068,20 +3068,20 @@ export interface operations {
             };
         };
     };
-    alterarModulo: {
+    changeFeature: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
-                codigo: components["parameters"]["CodigoModulo"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                /** @description Código do módulo no catálogo (ex.: ASSISTANT) */
+                code: components["parameters"]["FeatureCode"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AlteracaoModulo"];
+                "application/json": components["schemas"]["ChangeFeatureRequest"];
             };
         };
         responses: {
@@ -3091,7 +3091,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ModuloDoCondominio"];
+                    "application/json": components["schemas"]["FeatureResponse"];
                 };
             };
             /** @description Estado não informado ou motivo acima de 500 caracteres */
@@ -3100,7 +3100,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Perfil sem permissão */
@@ -3119,14 +3119,14 @@ export interface operations {
             };
         };
     };
-    eventosModulo: {
+    featureEvents: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
-                codigo: components["parameters"]["CodigoModulo"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                /** @description Código do módulo no catálogo (ex.: ASSISTANT) */
+                code: components["parameters"]["FeatureCode"];
             };
             cookie?: never;
         };
@@ -3138,7 +3138,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EventoModulo"][];
+                    "application/json": components["schemas"]["FeatureEventResponse"][];
                 };
             };
             /** @description Perfil sem permissão */
@@ -3157,14 +3157,14 @@ export interface operations {
             };
         };
     };
-    periodosModulo: {
+    featurePeriods: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                /** @description Código do módulo no catálogo (ex.: ASSISTENTE) */
-                codigo: components["parameters"]["CodigoModulo"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                /** @description Código do módulo no catálogo (ex.: ASSISTANT) */
+                code: components["parameters"]["FeatureCode"];
             };
             cookie?: never;
         };
@@ -3176,7 +3176,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PeriodoAtivo"][];
+                    "application/json": components["schemas"]["ActivePeriodResponse"][];
                 };
             };
             /** @description Perfil sem permissão */
@@ -3195,15 +3195,15 @@ export interface operations {
             };
         };
     };
-    usoModulos: {
+    featureUsage: {
         parameters: {
             query: {
-                inicio: string;
-                fim: string;
+                start: string;
+                end: string;
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -3215,7 +3215,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UsoDoPeriodo"];
+                    "application/json": components["schemas"]["UsageResponse"];
                 };
             };
             /** @description Datas ausentes ou início depois do fim */
@@ -3234,15 +3234,15 @@ export interface operations {
             };
         };
     };
-    exportarUsoModulos: {
+    exportFeatureUsage: {
         parameters: {
             query: {
-                inicio: string;
-                fim: string;
+                start: string;
+                end: string;
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -3273,12 +3273,12 @@ export interface operations {
             };
         };
     };
-    listarPrevisoes: {
+    listBudgets: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -3290,7 +3290,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PrevisaoResumo"][];
+                    "application/json": components["schemas"]["BudgetSummaryResponse"][];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -3302,13 +3302,13 @@ export interface operations {
             };
         };
     };
-    detalhePrevisao: {
+    budgetDetail: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -3320,7 +3320,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PrevisaoDetalhe"];
+                    "application/json": components["schemas"]["BudgetDetailResponse"];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -3339,19 +3339,19 @@ export interface operations {
             };
         };
     };
-    confirmarPrevisao: {
+    confirmBudget: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PedidoConfirmacao"];
+                "application/json": components["schemas"]["BudgetConfirmationRequest"];
             };
         };
         responses: {
@@ -3361,7 +3361,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PrevisaoDetalhe"];
+                    "application/json": components["schemas"]["BudgetDetailResponse"];
                 };
             };
             /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
@@ -3384,7 +3384,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Confirmação recusada (lista em motivos) */
@@ -3393,20 +3393,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
     };
-    listarDepara: {
+    listAccountMappings: {
         parameters: {
             query?: {
-                filtro?: components["schemas"]["FiltroDepara"];
+                filtro?: components["schemas"]["AccountMappingFilter"];
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -3418,7 +3418,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DeparaLista"];
+                    "application/json": components["schemas"]["AccountMappingsResponse"];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -3437,21 +3437,21 @@ export interface operations {
             };
         };
     };
-    definirDepara: {
+    setAccountMapping: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
                 /** @description Código da conta do fluxo como impresso (ex. 0028) */
-                conta: string;
+                account: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PedidoDestino"];
+                "application/json": components["schemas"]["MappingTargetRequest"];
             };
         };
         responses: {
@@ -3461,7 +3461,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContaDepara"];
+                    "application/json": components["schemas"]["AccountMappingResponse"];
                 };
             };
             /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
@@ -3494,19 +3494,19 @@ export interface operations {
             };
         };
     };
-    loteDepara: {
+    accountMappingBatch: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PedidoLote"];
+                "application/json": components["schemas"]["AccountMappingBatchRequest"];
             };
         };
         responses: {
@@ -3516,7 +3516,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ResultadoLote"];
+                    "application/json": components["schemas"]["AccountMappingBatchResponse"];
                 };
             };
             /** @description Perfil sem permissão ou sem acesso ao condomínio */
@@ -3542,13 +3542,13 @@ export interface operations {
             };
         };
     };
-    sugerirDepara: {
+    suggestAccountMappings: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -3560,7 +3560,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ResultadoSugestoes"];
+                    "application/json": components["schemas"]["AccountMappingSuggestionsResponse"];
                 };
             };
             /** @description Perfil sem permissão ou sem acesso ao condomínio */
@@ -3586,13 +3586,13 @@ export interface operations {
             };
         };
     };
-    planilhaDepara: {
+    uploadAccountMappingSheet: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -3600,7 +3600,7 @@ export interface operations {
             content: {
                 "multipart/form-data": {
                     /** Format: binary */
-                    arquivo: string;
+                    file: string;
                 };
             };
         };
@@ -3611,7 +3611,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ResultadoPlanilha"];
+                    "application/json": components["schemas"]["AccountMappingSheetResponse"];
                 };
             };
             /** @description Perfil sem permissão ou sem acesso ao condomínio */
@@ -3644,13 +3644,13 @@ export interface operations {
             };
         };
     };
-    eventosDepara: {
+    accountMappingEvents: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -3662,7 +3662,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EventoDepara"][];
+                    "application/json": components["schemas"]["AccountMappingEventResponse"][];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -3681,12 +3681,12 @@ export interface operations {
             };
         };
     };
-    listarRubricas: {
+    listBudgetItems: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -3698,7 +3698,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Rubrica"][];
+                    "application/json": components["schemas"]["BudgetItemResponse"][];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -3710,18 +3710,18 @@ export interface operations {
             };
         };
     };
-    criarRubrica: {
+    createBudgetItem: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PedidoNovaRubrica"];
+                "application/json": components["schemas"]["NewBudgetItemRequest"];
             };
         };
         responses: {
@@ -3731,7 +3731,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Rubrica"];
+                    "application/json": components["schemas"]["BudgetItemResponse"];
                 };
             };
             /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
@@ -3750,19 +3750,19 @@ export interface operations {
             };
         };
     };
-    renomearRubrica: {
+    renameBudgetItem: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                rubricaId: string;
+                condominiumId: components["parameters"]["CondominiumId"];
+                itemId: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PedidoRenomearRubrica"];
+                "application/json": components["schemas"]["RenameBudgetItemRequest"];
             };
         };
         responses: {
@@ -3772,7 +3772,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Rubrica"];
+                    "application/json": components["schemas"]["BudgetItemResponse"];
                 };
             };
             /** @description Perfil sem permissão ou sem acesso ao condomínio */
@@ -3791,15 +3791,15 @@ export interface operations {
             };
         };
     };
-    listarRubricasDaPo: {
+    listBudgetLineItems: {
         parameters: {
             query?: {
-                filtro?: components["schemas"]["FiltroRubrica"];
+                filtro?: components["schemas"]["BudgetItemFilter"];
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -3811,7 +3811,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RubricasDaPo"];
+                    "application/json": components["schemas"]["BudgetItemsResponse"];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -3830,21 +3830,21 @@ export interface operations {
             };
         };
     };
-    definirRubricaDaLinha: {
+    setLineBudgetItem: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
                 /** @description Id da linha da PO */
-                linhaId: string;
+                lineId: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PedidoRubricaLinha"];
+                "application/json": components["schemas"]["LineBudgetItemRequest"];
             };
         };
         responses: {
@@ -3854,7 +3854,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LinhaComRubrica"];
+                    "application/json": components["schemas"]["BudgetLineItemResponse"];
                 };
             };
             /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
@@ -3887,19 +3887,19 @@ export interface operations {
             };
         };
     };
-    loteRubricas: {
+    budgetItemBatch: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PedidoLoteRubrica"];
+                "application/json": components["schemas"]["BudgetItemBatchRequest"];
             };
         };
         responses: {
@@ -3909,7 +3909,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ResultadoLoteRubrica"];
+                    "application/json": components["schemas"]["BudgetItemBatchResponse"];
                 };
             };
             /** @description Perfil sem permissão ou sem acesso ao condomínio */
@@ -3942,13 +3942,13 @@ export interface operations {
             };
         };
     };
-    sugerirRubricas: {
+    suggestBudgetItems: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -3960,7 +3960,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ResultadoSugestoesRubrica"];
+                    "application/json": components["schemas"]["BudgetItemSuggestionsResponse"];
                 };
             };
             /** @description Perfil sem permissão ou sem acesso ao condomínio */
@@ -3986,13 +3986,13 @@ export interface operations {
             };
         };
     };
-    eventosRubricas: {
+    budgetItemEvents: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -4004,7 +4004,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EventoRubrica"][];
+                    "application/json": components["schemas"]["BudgetItemEventResponse"][];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -4023,19 +4023,19 @@ export interface operations {
             };
         };
     };
-    previstoRealizado: {
+    budgetVsActual: {
         parameters: {
             query: {
-                /** @description AAAA-MM ou "acumulado" */
-                periodo: string;
+                /** @description AAAA-MM ou "cumulative" */
+                period: string;
                 /** @description Versão da PO; sem ela */
-                po?: string;
+                budget?: string;
                 /** @description Filtro de fundo (RF-03.1.13). O fundo ordinário mostra só o fundo Condomínio (sem o painel dos fundos); outro fundo mostra só o painel dele, com totais, grupos, blocos, conferência e regra dos 20% nulos ou vazios e provisorio = false. Sem ele, tudo */
-                fundo?: string;
+                fund?: string;
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -4047,7 +4047,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PrevistoRealizado"];
+                    "application/json": components["schemas"]["BudgetVsActualResponse"];
                 };
             };
             /** @description Período inválido */
@@ -4073,17 +4073,17 @@ export interface operations {
             };
         };
     };
-    evidenciaPrevistoRealizado: {
+    budgetVsActualEvidence: {
         parameters: {
             query: {
-                periodo: string;
-                po?: string;
-                /** @description "linha:<linhaId>", "grupo:<linhaId do grupo>" (as linhas do grupo, na ordem da PO), "total" (despesa realizada: linhas de todos os grupos, depois A_REALOCAR e SEM_LINHA_PO), "fundo:<fundoId>" (arrecadação), AJUSTES, A_REALOCAR, SEM_LINHA_PO ou TRANSFERENCIAS */
-                alvo: string;
+                period: string;
+                budget?: string;
+                /** @description "line:<lineId>", "group:<lineId do grupo>" (as linhas do grupo, na ordem da PO), "total" (despesa realizada: linhas de todos os grupos, depois TO_REALLOCATE e NO_BUDGET_LINE), "fund:<fundoId>" (arrecadação), ADJUSTMENTS, TO_REALLOCATE, NO_BUDGET_LINE ou TRANSFERS */
+                target: string;
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -4095,7 +4095,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EvidenciaLancamento"][];
+                    "application/json": components["schemas"]["EvidenceResponse"][];
                 };
             };
             /** @description Período ou alvo inválido */
@@ -4114,7 +4114,7 @@ export interface operations {
             };
         };
     };
-    listarProvedoresIa: {
+    listAiProviders: {
         parameters: {
             query?: never;
             header?: never;
@@ -4129,7 +4129,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProvedorIa"][];
+                    "application/json": components["schemas"]["AiProviderResponse"][];
                 };
             };
             /** @description Perfil sem permissão */
@@ -4145,17 +4145,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
     };
-    obterConfiguracaoIa: {
+    getAiConfiguration: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -4167,7 +4167,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConfiguracaoIa"];
+                    "application/json": components["schemas"]["AiConfigurationResponse"];
                 };
             };
             /** @description Perfil sem permissão ou sem acesso ao condomínio */
@@ -4186,18 +4186,18 @@ export interface operations {
             };
         };
     };
-    gravarConfiguracaoIa: {
+    saveAiConfiguration: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PedidoConfiguracaoIa"];
+                "application/json": components["schemas"]["AiConfigurationRequest"];
             };
         };
         responses: {
@@ -4207,7 +4207,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConfiguracaoIa"];
+                    "application/json": components["schemas"]["AiConfigurationResponse"];
                 };
             };
             /** @description Corpo ausente ou mal formado */
@@ -4216,7 +4216,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Perfil sem permissão ou sem acesso ao condomínio */
@@ -4239,7 +4239,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Rag fora do ar ou sem chave pública; com chave nova */
@@ -4248,33 +4248,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
     };
-    perguntarAssistente: {
+    askAssistant: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PedidoPergunta"];
+                "application/json": components["schemas"]["QuestionRequest"];
             };
         };
         responses: {
-            /** @description Resposta (RESPONDIDA ou NAO_ENCONTRADA) */
+            /** @description Resposta (ANSWERED ou NOT_FOUND) */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RespostaAssistente"];
+                    "application/json": components["schemas"]["AssistantAnswerResponse"];
                 };
             };
             /** @description Pergunta vazia ou acima de 2000 caracteres */
@@ -4283,7 +4283,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Perfil sem permissão */
@@ -4292,7 +4292,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Condomínio não encontrado */
@@ -4303,8 +4303,8 @@ export interface operations {
                 content?: never;
             };
             /**
-             * @description Chat indisponível no modo atual, sem chamar o rag (modoIa diz qual). MCP_EXTERNO: "O assistente deste
-             *     condomínio é o seu Claude, conectado ao MCP." DESLIGADO: "A IA está desligada neste condomínio." Também
+             * @description Chat indisponível no modo atual, sem chamar o rag (modoIa diz qual). EXTERNAL_MCP: "O assistente deste
+             *     condomínio é o seu Claude, conectado ao MCP." OFF: "A IA está desligada neste condomínio." Também
              *     sem chave cadastrada ou chave que o rag não consegue ler ("cadastre a chave de novo").
              */
             409: {
@@ -4312,7 +4312,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Chave de IA do condomínio recusada pelo provedor */
@@ -4321,7 +4321,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Limite de uso do provedor de IA atingido; tentar mais tarde */
@@ -4330,7 +4330,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Rag ou provedor de IA fora do ar */
@@ -4339,7 +4339,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description A resposta passou do prazo */
@@ -4348,23 +4348,23 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
     };
-    buscarDocumentos: {
+    searchDocuments: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PedidoBuscaDocumentos"];
+                "application/json": components["schemas"]["DocumentSearchRequest"];
             };
         };
         responses: {
@@ -4374,7 +4374,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TrechoDocumento"][];
+                    "application/json": components["schemas"]["DocumentChunkResponse"][];
                 };
             };
             /** @description Texto vazio */
@@ -4383,16 +4383,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Sem acesso ao condomínio ou módulo não contratado (modulo = ASSISTENTE) */
+            /** @description Sem acesso ao condomínio ou módulo não contratado (modulo = ASSISTANT) */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Condomínio não encontrado */
@@ -4408,24 +4408,24 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["Problema"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
     };
-    exportarPrevistoRealizado: {
+    exportBudgetVsActual: {
         parameters: {
             query: {
-                formato: "pdf" | "xlsx";
-                /** @description AAAA-MM ou "acumulado" */
-                periodo: string;
-                po?: string;
+                format: "pdf" | "xlsx";
+                /** @description AAAA-MM ou "cumulative" */
+                period: string;
+                budget?: string;
                 /** @description Filtro de fundo (RF-03.1.13). O fundo ordinário mostra só o fundo Condomínio (sem o painel dos fundos); outro fundo mostra só o painel dele, com totais, grupos, blocos, conferência e regra dos 20% nulos ou vazios e provisorio = false. Sem ele, tudo */
-                fundo?: string;
+                fund?: string;
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -4464,12 +4464,12 @@ export interface operations {
             };
         };
     };
-    fundos: {
+    listFunds: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -4481,7 +4481,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FundoFluxo"][];
+                    "application/json": components["schemas"]["FundResponse"][];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -4500,24 +4500,24 @@ export interface operations {
             };
         };
     };
-    alterarFundosPo: {
+    changeBudgetFunds: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
                 "application/json": {
-                    fundos: {
+                    funds: {
                         /** Format: uuid */
-                        linhaId: string;
+                        lineId: string;
                         /** Format: uuid */
-                        fundoId?: string | null;
+                        fundId?: string | null;
                     }[];
                 };
             };
@@ -4529,7 +4529,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PrevisaoDetalhe"];
+                    "application/json": components["schemas"]["BudgetDetailResponse"];
                 };
             };
             /** @description Gestor */
@@ -4559,24 +4559,24 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Problema"];
+                    "application/json": components["schemas"]["Problem"];
                 };
             };
         };
     };
-    prorrogarPo: {
+    extendBudget: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PedidoProrrogacao"];
+                "application/json": components["schemas"]["BudgetExtensionRequest"];
             };
         };
         responses: {
@@ -4586,7 +4586,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PrevisaoDetalhe"];
+                    "application/json": components["schemas"]["BudgetDetailResponse"];
                 };
             };
             /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
@@ -4619,13 +4619,13 @@ export interface operations {
             };
         };
     };
-    desfazerProrrogacaoPo: {
+    undoBudgetExtension: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -4637,7 +4637,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PrevisaoDetalhe"];
+                    "application/json": components["schemas"]["BudgetDetailResponse"];
                 };
             };
             /** @description Perfil sem permissão ou sem acesso ao condomínio */
@@ -4663,12 +4663,12 @@ export interface operations {
             };
         };
     };
-    listarExercicios: {
+    listFiscalYears: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -4680,7 +4680,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Exercicio"][];
+                    "application/json": components["schemas"]["FiscalYearResponse"][];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -4692,10 +4692,10 @@ export interface operations {
             };
         };
     };
-    compararExercicios: {
+    compareFiscalYears: {
         parameters: {
             query?: {
-                /** @description Ids separados por vírgula ("po:<uuid>" ou o uuid, e "coluna:<uuid>"); vazio = os dois mais recentes */
+                /** @description Ids separados por vírgula ("budget:<uuid>" ou o uuid, e "column:<uuid>"); vazio = os dois mais recentes */
                 exercicios?: string[];
                 /** @description Fundo Condomínio = sem os fundos 1.9; outro fundo = só a linha 1.9 dele (arrecadação); vazio = tudo */
                 fundo?: string;
@@ -4704,7 +4704,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -4716,7 +4716,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ComparacaoExercicios"];
+                    "application/json": components["schemas"]["FiscalYearComparisonResponse"];
                 };
             };
             /** @description Id de exercício inválido */
@@ -4749,16 +4749,16 @@ export interface operations {
             };
         };
     };
-    indicadores: {
+    indicators: {
         parameters: {
             query?: {
                 /** @description PO do exercício; vazio = o mais recente */
-                po?: string;
-                fundo?: string;
+                budget?: string;
+                fund?: string;
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -4770,7 +4770,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Indicadores"];
+                    "application/json": components["schemas"]["IndicatorsResponse"];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -4789,13 +4789,13 @@ export interface operations {
             };
         };
     };
-    colunaImpressa: {
+    printedColumn: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -4807,7 +4807,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ConferenciaColuna"];
+                    "application/json": components["schemas"]["PrintedColumnCheckResponse"];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -4826,13 +4826,13 @@ export interface operations {
             };
         };
     };
-    eventosPrevisao: {
+    budgetEvents: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                poId: components["parameters"]["PoId"];
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
             };
             cookie?: never;
         };
@@ -4844,7 +4844,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EventoPrevisao"][];
+                    "application/json": components["schemas"]["BudgetEventResponse"][];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -4863,14 +4863,14 @@ export interface operations {
             };
         };
     };
-    realocacoes: {
+    listReallocations: {
         parameters: {
             query: {
-                po: string;
+                budget: string;
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -4882,7 +4882,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Realocacao"][];
+                    "application/json": components["schemas"]["ReallocationResponse"][];
                 };
             };
             /** @description Sem acesso ao condomínio */
@@ -4901,18 +4901,18 @@ export interface operations {
             };
         };
     };
-    realocar: {
+    reallocate: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PedidoRealocacao"];
+                "application/json": components["schemas"]["ReallocationRequest"];
             };
         };
         responses: {
@@ -4922,7 +4922,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Realocacao"];
+                    "application/json": components["schemas"]["ReallocationResponse"];
                 };
             };
             /** @description Usuário (só consulta) ou sem acesso ao condomínio */
@@ -4955,13 +4955,13 @@ export interface operations {
             };
         };
     };
-    desfazerRealocacao: {
+    undoReallocation: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
-                realocacaoId: string;
+                condominiumId: components["parameters"]["CondominiumId"];
+                reallocationId: string;
             };
             cookie?: never;
         };
@@ -4973,7 +4973,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Realocacao"];
+                    "application/json": components["schemas"]["ReallocationResponse"];
                 };
             };
             /** @description Usuário (só consulta) ou sem acesso ao condomínio */
@@ -4999,15 +4999,15 @@ export interface operations {
             };
         };
     };
-    achados: {
+    listFindings: {
         parameters: {
             query?: {
                 /** @description AAAA-MM; sem ela */
-                competencia?: string;
+                referenceMonth?: string;
             };
             header?: never;
             path: {
-                condominioId: components["parameters"]["CondominioId"];
+                condominiumId: components["parameters"]["CondominiumId"];
             };
             cookie?: never;
         };
@@ -5019,7 +5019,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Achado"][];
+                    "application/json": components["schemas"]["FindingResponse"][];
                 };
             };
             /** @description Competência inválida */

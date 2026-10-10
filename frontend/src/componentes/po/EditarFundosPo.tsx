@@ -13,12 +13,12 @@ import { formatarMoeda } from "../../formato";
 export function EditarFundosPo({ detalhe }: { detalhe: PrevisaoDetalhe }) {
   const { condominioId } = useSessao();
   const { data: fundos = [] } = useFundos(condominioId);
-  const alterar = useAlterarFundosPo(condominioId, detalhe.previsao.id);
-  const linhasDeFundo = detalhe.linhas.filter((l) => l.linhaDeFundo && l.tipo === "LINHA");
-  const atuais = Object.fromEntries(detalhe.fundos.map((f) => [f.linhaId, f.fundoId]));
+  const alterar = useAlterarFundosPo(condominioId, detalhe.budget.id);
+  const linhasDeFundo = detalhe.lines.filter((l) => l.fundLine && l.type === "LINE");
+  const atuais = Object.fromEntries(detalhe.funds.map((f) => [f.lineId, f.fundId]));
   const [escolhidos, setEscolhidos] = useState<Record<string, string>>(atuais);
   const mudou = linhasDeFundo.some((l) => (escolhidos[l.id] ?? "") !== (atuais[l.id] ?? ""));
-  const motivos = alterar.error instanceof ErroApi ? (alterar.error.problema?.motivos ?? []) : [];
+  const motivos = alterar.error instanceof ErroApi ? (alterar.error.problema?.reasons ?? []) : [];
 
   return (
     <section className="bloco formulario">
@@ -27,14 +27,14 @@ export function EditarFundosPo({ detalhe }: { detalhe: PrevisaoDetalhe }) {
       <fieldset>
         {linhasDeFundo.map((l) => (
           <label key={l.id} className="campo">
-            {l.codigoEfetivo} {l.descricao} · {formatarMoeda(l.orcado)}/mês
+            {l.effectiveCode} {l.description} · {formatarMoeda(l.budgeted)}/mês
             <select value={escolhidos[l.id] ?? ""} onChange={(e) => setEscolhidos((a) => ({ ...a, [l.id]: e.target.value }))}>
               <option value="">Sem fundo ligado</option>
               {fundos
-                .filter((f) => !f.ordinario)
+                .filter((f) => !f.operating)
                 .map((f) => (
                   <option key={f.id} value={f.id}>
-                    {f.nome}
+                    {f.name}
                   </option>
                 ))}
             </select>

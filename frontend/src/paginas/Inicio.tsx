@@ -31,36 +31,36 @@ export function Inicio() {
 }
 
 function PainelDoMes({ painel }: { painel: Painel }) {
-  const resultado = painel.entradas - painel.saidas;
+  const resultado = painel.inflows - painel.outflows;
   // Só os 8 fundos com mais movimento, do maior para o menor; os demais aparecem na tabela abaixo
-  const comMovimento = painel.fundos
-    .filter((f) => f.entradas !== 0 || f.saidas !== 0)
-    .sort((a, b) => Math.max(b.entradas, b.saidas) - Math.max(a.entradas, a.saidas))
+  const comMovimento = painel.funds
+    .filter((f) => f.inflows !== 0 || f.outflows !== 0)
+    .sort((a, b) => Math.max(b.inflows, b.outflows) - Math.max(a.inflows, a.outflows))
     .slice(0, 8);
-  const negativos = painel.fundos.filter((f) => f.saldoAtual < 0);
+  const negativos = painel.funds.filter((f) => f.closingBalance < 0);
 
   return (
     <>
       <header className="titulo-pagina">
-        <h1>Resumo de {formatarPeriodo(painel.periodoInicio, painel.periodoFim)}</h1>
-        <span className={painel.conferenciasComFalha === 0 ? "selo ok" : "selo alerta"}>
-          {painel.conferenciasComFalha === 0
+        <h1>Resumo de {formatarPeriodo(painel.periodStart, painel.periodEnd)}</h1>
+        <span className={painel.failedChecks === 0 ? "selo ok" : "selo alerta"}>
+          {painel.failedChecks === 0
             ? "Relatório conferido: todas as somas batem"
-            : `${painel.conferenciasComFalha} conferência(s) não bateram`}
+            : `${painel.failedChecks} conferência(s) não bateram`}
         </span>
       </header>
 
       <div className="cartoes">
-        <CartaoNumero titulo="Saldo no início do mês" valor={painel.saldoAnterior} />
-        <CartaoNumero titulo="Entradas" valor={painel.entradas} />
-        <CartaoNumero titulo="Saídas" valor={painel.saidas} />
+        <CartaoNumero titulo="Saldo no início do mês" valor={painel.openingBalance} />
+        <CartaoNumero titulo="Entradas" valor={painel.inflows} />
+        <CartaoNumero titulo="Saídas" valor={painel.outflows} />
         <CartaoNumero
           titulo="Resultado do mês"
           valor={resultado}
           destaque={resultado >= 0 ? "positivo" : "negativo"}
           dica="Soma de todos os fundos, inclusive os de finalidade própria (energia, água, reserva)"
         />
-        <CartaoNumero titulo="Saldo no fim do mês" valor={painel.saldoAtual} />
+        <CartaoNumero titulo="Saldo no fim do mês" valor={painel.closingBalance} />
         <CartaoSaldoAcumulado painel={painel} />
         <CartaoPrevistoAno />
       </div>
@@ -85,7 +85,7 @@ function PainelDoMes({ painel }: { painel: Painel }) {
           <h2>Saldo por fundo</h2>
           {negativos.length > 0 && (
             <p className="aviso alerta">
-              {negativos.length} fundo(s) com saldo negativo: {negativos.map((f) => f.fundo).join(", ")}
+              {negativos.length} fundo(s) com saldo negativo: {negativos.map((f) => f.fund).join(", ")}
             </p>
           )}
           <table className="tabela">
@@ -97,11 +97,11 @@ function PainelDoMes({ painel }: { painel: Painel }) {
               </tr>
             </thead>
             <tbody>
-              {painel.fundos.map((f) => (
-                <tr key={f.fundo}>
-                  <td>{f.fundo}</td>
-                  <td className={`numero ${f.resultado < 0 ? "negativo" : ""}`}>{formatarMoeda(f.resultado)}</td>
-                  <td className={`numero ${f.saldoAtual < 0 ? "negativo" : ""}`}>{formatarMoeda(f.saldoAtual)}</td>
+              {painel.funds.map((f) => (
+                <tr key={f.fund}>
+                  <td>{f.fund}</td>
+                  <td className={`numero ${f.result < 0 ? "negativo" : ""}`}>{formatarMoeda(f.result)}</td>
+                  <td className={`numero ${f.closingBalance < 0 ? "negativo" : ""}`}>{formatarMoeda(f.closingBalance)}</td>
                 </tr>
               ))}
             </tbody>
@@ -111,16 +111,16 @@ function PainelDoMes({ painel }: { painel: Painel }) {
         <section className="bloco">
           <h2>Maiores despesas do mês</h2>
           <ol className="lista-despesas">
-            {painel.maioresDespesas.map((d, i) => (
+            {painel.largestExpenses.map((d, i) => (
               <li key={i}>
                 <div>
-                  <strong>{formatarMoeda(d.valor)}</strong>
+                  <strong>{formatarMoeda(d.amount)}</strong>
                   <span className="discreto">
-                    {formatarData(d.data)} · {d.fundo} · pág. {d.pagina}
+                    {formatarData(d.date)} · {d.fund} · pág. {d.page}
                   </span>
                 </div>
-                <span className="historico">{d.conta}</span>
-                <span className="historico discreto">{d.historico}</span>
+                <span className="historico">{d.account}</span>
+                <span className="historico discreto">{d.memo}</span>
               </li>
             ))}
           </ol>

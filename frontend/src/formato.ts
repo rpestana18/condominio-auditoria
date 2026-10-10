@@ -33,8 +33,9 @@ export function formatarTamanho(bytes: number): string {
 
 const meses = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
-/** "2026-09" vira "09/2026". "acumulado" continua "acumulado". */
+/** "2026-09" vira "09/2026". O período "cumulative" da API vira "acumulado". */
 export function formatarMes(aaaamm: string): string {
+  if (aaaamm === "cumulative") return "acumulado";
   const [ano, mes] = aaaamm.split("-");
   return mes ? `${mes}/${ano}` : aaaamm;
 }

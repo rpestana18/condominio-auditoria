@@ -14,79 +14,79 @@ import type {
 } from "../../api/tipos";
 
 export const rotuloEstadoPo: Record<EstadoPrevisao, string> = {
-  LIDA: "Lida, aguarda confirmação",
-  LIDA_COM_DIVERGENCIA: "Lida com divergência",
-  CONFIRMADA: "Confirmada",
-  SUBSTITUIDA: "Substituída",
+  READ: "Lida, aguarda confirmação",
+  READ_WITH_DISCREPANCY: "Lida com divergência",
+  CONFIRMED: "Confirmada",
+  SUPERSEDED: "Substituída",
 };
 
 export const rotuloMarca: Record<MarcaLinha, string> = {
-  RATEIO_A_PARTE: "rateio à parte",
-  NEGOCIADA_ISENCAO: "negociada isenção",
-  SEM_VALOR: "sem valor",
-  VALOR_FIXO_SEM_REFERENCIA: "valor fixo (sem referência)",
+  SEPARATE_APPORTIONMENT: "rateio à parte",
+  NEGOTIATED_EXEMPTION: "negociada isenção",
+  NO_AMOUNT: "sem valor",
+  FIXED_AMOUNT_NO_REFERENCE: "valor fixo (sem referência)",
 };
 
 export const rotuloTipoDestino: Record<TipoDestino, string> = {
-  LINHA_PO: "Linha da PO",
-  AJUSTE: "Ajuste (não é despesa)",
-  A_REALOCAR: "Meio de pagamento (a realocar)",
-  TRANSFERENCIA: "Transferência entre fundos",
+  BUDGET_LINE: "Linha da PO",
+  ADJUSTMENT: "Ajuste (não é despesa)",
+  TO_REALLOCATE: "Meio de pagamento (a realocar)",
+  TRANSFER: "Transferência entre fundos",
 };
 
 export const rotuloEstadoDepara: Record<EstadoDepara, string> = {
-  SUGERIDO: "Sugerido",
-  CONFIRMADO: "Confirmado",
-  RECUSADO: "Recusado",
+  SUGGESTED: "Sugerido",
+  CONFIRMED: "Confirmado",
+  REJECTED: "Recusado",
 };
 
 export const rotuloOrigem: Record<OrigemDepara, string> = {
-  VERSAO_ANTERIOR: "versão anterior",
-  PLANILHA: "planilha",
-  NOME: "pelo nome",
+  PREVIOUS_VERSION: "versão anterior",
+  SPREADSHEET: "planilha",
+  NAME: "pelo nome",
   ADMIN: "escolha do Admin",
 };
 
-export const rotuloSituacaoFundo: Record<PrevistoRealizado["fundos"][number]["situacao"], string> = {
-  COMPARADO: "Comparado com a PO",
-  SEM_PREVISTO_NA_PO: "Sem previsto na PO",
-  LINHA_SEM_FUNDO: "Linha sem fundo ligado",
-  REPROCESSAR_FLUXO: "Reprocesse o fluxo para ver a arrecadação",
+export const rotuloSituacaoFundo: Record<PrevistoRealizado["funds"][number]["status"], string> = {
+  COMPARED: "Comparado com a PO",
+  NOT_PLANNED_IN_BUDGET: "Sem previsto na PO",
+  LINE_WITHOUT_FUND: "Linha sem fundo ligado",
+  REPROCESS_CASH_FLOW: "Reprocesse o fluxo para ver a arrecadação",
 };
 
-export const rotuloSeveridade: Record<Achado["severidade"], string> = {
-  INFORMATIVO: "informativo",
-  ATENCAO: "atenção",
-  CRITICO: "crítico",
+export const rotuloSeveridade: Record<Achado["severity"], string> = {
+  INFO: "informativo",
+  WARNING: "atenção",
+  CRITICAL: "crítico",
 };
 
 export const rotuloEstadoAchado: Record<EstadoAchado, string> = {
-  ABERTO: "aberto",
-  NAO_SE_APLICA_MAIS: "não se aplica mais",
-  JUSTIFICADO: "justificado",
-  RESOLVIDO: "resolvido",
-  FALSO_POSITIVO: "falso positivo",
+  OPEN: "aberto",
+  NO_LONGER_APPLIES: "não se aplica mais",
+  JUSTIFIED: "justificado",
+  RESOLVED: "resolvido",
+  FALSE_POSITIVE: "falso positivo",
 };
 
 // Rubricas (RF-11.7)
 export const rotuloEstadoRubrica: Record<EstadoRubrica, string> = {
-  SUGERIDO: "Sugerido",
-  CONFIRMADO: "Confirmado",
-  RECUSADO: "Recusado",
+  SUGGESTED: "Sugerido",
+  CONFIRMED: "Confirmado",
+  REJECTED: "Recusado",
 };
 
 export const rotuloOrigemRubrica: Record<OrigemRubrica, string> = {
-  PRIMEIRA_PO: "primeira PO do condomínio",
-  CONTA_PO: "mesma conta da PO e mesmo grupo",
-  VERSAO_ANTERIOR: "versão anterior",
+  FIRST_BUDGET: "primeira PO do condomínio",
+  BUDGET_ACCOUNT: "mesma conta da PO e mesmo grupo",
+  PREVIOUS_VERSION: "versão anterior",
   MANUAL: "escolha do Admin",
 };
 
-export const rotuloAcaoRubrica: Record<EventoRubrica["acao"], string> = {
-  CRIADA: "rubrica criada",
-  RENOMEADA: "rubrica renomeada",
-  SUGERIDO: "sugerido",
-  CONFIRMADO: "confirmado",
-  RECUSADO: "recusado",
-  ALTERADO: "alterado",
+export const rotuloAcaoRubrica: Record<EventoRubrica["action"], string> = {
+  CREATED: "rubrica criada",
+  RENAMED: "rubrica renomeada",
+  SUGGESTED: "sugerido",
+  CONFIRMED: "confirmado",
+  REJECTED: "recusado",
+  CHANGED: "alterado",
 };

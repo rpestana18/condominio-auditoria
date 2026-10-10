@@ -3,7 +3,7 @@ package br.com.condominioauditoria.api.dto.response.assistant;
 import br.com.condominioauditoria.api.model.enums.AnswerStatus;
 import java.util.List;
 
-/** The Assistant's answer (contracts/openapi.yaml, RespostaAssistente). */
+/** The Assistant's answer (contracts/openapi.yaml, AssistantAnswerResponse). */
 public record AssistantAnswerResponse(
         AnswerStatus status,
         List<DocumentParagraphResponse> fromDocuments,

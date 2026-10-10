@@ -101,7 +101,7 @@ public class ProtestBudgetParserTest {
 
     @Test
     public void scannedBudgetFailsWithReadableReason() {
-        ReadDocument scanned = document(new Page(1, 595, 842, "no_text", List.of()));
+        ReadDocument scanned = document(new Page(1, 595, 842, "sem_texto", List.of()));
 
         assertThat(parser.recognizes(scanned)).isFalse();
         assertThat(ProtestBudgetParser.noText(scanned)).isTrue();

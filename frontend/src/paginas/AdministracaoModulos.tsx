@@ -10,7 +10,7 @@ import { useSessao } from "../contexto";
 export function AdministracaoModulos() {
   const { condominioId, condominioNome, pode } = useSessao();
   const { data: modulos = [], isLoading, error } = useModulos(condominioId);
-  const nomesModulos = Object.fromEntries(modulos.map((m) => [m.codigo, m.nome]));
+  const nomesModulos = Object.fromEntries(modulos.map((m) => [m.code, m.name]));
 
   if (!pode("ADMIN")) {
     return <p className="aviso">Esta tela é do administrador da plataforma.</p>;
@@ -32,7 +32,7 @@ export function AdministracaoModulos() {
       ) : modulos.length === 0 ? (
         <p className="aviso">O catálogo não tem módulos opcionais.</p>
       ) : (
-        modulos.map((m) => <CartaoModulo key={m.codigo} modulo={m} />)
+        modulos.map((m) => <CartaoModulo key={m.code} modulo={m} />)
       )}
 
       <UsoModulos nomesModulos={nomesModulos} />

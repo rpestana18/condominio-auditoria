@@ -10,13 +10,13 @@ export function DetalheArquivo({ id, aoFechar }: { id: string; aoFechar: () => v
   const { data: detalhe } = useDetalheArquivo(condominioId, id);
   const reprocessar = useReprocessar(condominioId);
   if (!detalhe) return null;
-  const { arquivo } = detalhe;
-  const ocupado = arquivo.status === "PENDENTE" || arquivo.status === "PROCESSANDO";
+  const { file: arquivo } = detalhe;
+  const ocupado = arquivo.status === "PENDING" || arquivo.status === "PROCESSING";
 
   return (
     <aside className="detalhe" aria-label="Detalhe do arquivo">
       <header>
-        <h2>{arquivo.nome}</h2>
+        <h2>{arquivo.name}</h2>
         <button className="botao-link" onClick={aoFechar} aria-label="Fechar">
           ✕
         </button>
@@ -24,35 +24,35 @@ export function DetalheArquivo({ id, aoFechar }: { id: string; aoFechar: () => v
       <dl>
         <dt>Situação</dt>
         <dd>
-          <StatusArquivo status={arquivo.status} /> {arquivo.mensagem}
+          <StatusArquivo status={arquivo.status} /> {arquivo.message}
         </dd>
-        {(moduloLigado("ASSISTENTE") || arquivo.indexacao) && (
+        {(moduloLigado("ASSISTANT") || arquivo.indexing) && (
           <>
             <dt title="Indexação para a busca nos documentos e o assistente">Busca</dt>
             <dd>
-              <IndexacaoArquivo indexacao={arquivo.indexacao} completo />
+              <IndexacaoArquivo indexacao={arquivo.indexing} completo />
             </dd>
           </>
         )}
         <dt>Categoria</dt>
-        <dd>{arquivo.categoriaRotulo}</dd>
-        {arquivo.periodoInicio && (
+        <dd>{arquivo.categoryLabel}</dd>
+        {arquivo.periodStart && (
           <>
             <dt>Período</dt>
             <dd>
-              {formatarPeriodo(arquivo.periodoInicio, arquivo.periodoFim)} · {arquivo.totalLancamentos} lançamentos
+              {formatarPeriodo(arquivo.periodStart, arquivo.periodEnd)} · {arquivo.entryCount} lançamentos
             </dd>
           </>
         )}
         <dt>Enviado</dt>
         <dd>
-          {formatarDataHora(arquivo.enviadoEm)} por {arquivo.enviadoPor} · {formatarTamanho(arquivo.tamanhoBytes)}
+          {formatarDataHora(arquivo.uploadedAt)} por {arquivo.uploadedBy} · {formatarTamanho(arquivo.sizeBytes)}
         </dd>
         <dt title="Impressão digital do arquivo: identifica o conteúdo exato">SHA-256</dt>
         <dd className="hash">{detalhe.sha256}</dd>
       </dl>
       <div className="acoes">
-        <button className="botao secundario" onClick={() => abrirArquivo(`/condominios/${condominioId}/arquivos/${id}/conteudo`)}>
+        <button className="botao secundario" onClick={() => abrirArquivo(`/condominiums/${condominioId}/files/${id}/content`)}>
           Abrir original
         </button>
         {pode("GESTOR", "ADMIN") && (
@@ -62,16 +62,16 @@ export function DetalheArquivo({ id, aoFechar }: { id: string; aoFechar: () => v
         )}
       </div>
 
-      {detalhe.conferencias.length > 0 && (
+      {detalhe.totalsChecks.length > 0 && (
         <section>
           <h3>Conferências</h3>
           <ul className="conferencias">
-            {detalhe.conferencias.map((c) => (
-              <li key={c.codigo} className={c.ok ? "ok" : "falha"}>
+            {detalhe.totalsChecks.map((c) => (
+              <li key={c.code} className={c.ok ? "ok" : "falha"}>
                 <span>{c.ok ? "✔" : "✖"}</span>
                 <div>
-                  <strong>{c.descricao}</strong>
-                  <small>{c.detalhe}</small>
+                  <strong>{c.description}</strong>
+                  <small>{c.detail}</small>
                 </div>
               </li>
             ))}
@@ -79,7 +79,7 @@ export function DetalheArquivo({ id, aoFechar }: { id: string; aoFechar: () => v
         </section>
       )}
 
-      {detalhe.fundos.length > 0 && (
+      {detalhe.funds.length > 0 && (
         <section>
           <h3>Posição por fundo</h3>
           <table className="tabela compacta">
@@ -91,13 +91,13 @@ export function DetalheArquivo({ id, aoFechar }: { id: string; aoFechar: () => v
               </tr>
             </thead>
             <tbody>
-              {detalhe.fundos.map((f) => (
-                <tr key={f.fundo}>
-                  <td>{f.fundo}</td>
-                  <td className={`numero ${f.creditos - f.debitos < 0 ? "negativo" : ""}`}>
-                    {formatarMoeda(f.creditos - f.debitos)}
+              {detalhe.funds.map((f) => (
+                <tr key={f.fund}>
+                  <td>{f.fund}</td>
+                  <td className={`numero ${f.credits - f.debits < 0 ? "negativo" : ""}`}>
+                    {formatarMoeda(f.credits - f.debits)}
                   </td>
-                  <td className={`numero ${f.saldoAtual < 0 ? "negativo" : ""}`}>{formatarMoeda(f.saldoAtual)}</td>
+                  <td className={`numero ${f.closingBalance < 0 ? "negativo" : ""}`}>{formatarMoeda(f.closingBalance)}</td>
                 </tr>
               ))}
             </tbody>

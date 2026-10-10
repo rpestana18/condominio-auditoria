@@ -22,7 +22,7 @@ export function FonteDocumento({ trecho, numero, destacada = false, id }: Props)
   const { condominioId } = useSessao();
   const { data: categorias = [] } = useCategorias();
   const [erro, setErro] = useState<string | null>(null);
-  const categoria = categorias.find((c) => c.codigo === trecho.categoria)?.rotulo ?? trecho.categoria;
+  const categoria = categorias.find((c) => c.code === trecho.category)?.label ?? trecho.category;
   const pagina = paginaDoPdf(trecho);
 
   function executar(acao: () => Promise<void>) {
@@ -35,20 +35,20 @@ export function FonteDocumento({ trecho, numero, destacada = false, id }: Props)
       className={`fonte ${destacada ? "destacada" : ""}`}
       id={id}
       tabIndex={-1}
-      aria-label={`Fonte${numero ? ` ${numero}` : ""}: ${trecho.nomeArquivo}, ${formatarLocalizacao(trecho)}`}
+      aria-label={`Fonte${numero ? ` ${numero}` : ""}: ${trecho.fileName}, ${formatarLocalizacao(trecho)}`}
     >
       <header>
         {numero !== undefined && <span className="numero-citacao">{numero}</span>}
         <div>
-          <strong className="nome-documento" title={trecho.nomeArquivo}>
-            {trecho.nomeArquivo}
+          <strong className="nome-documento" title={trecho.fileName}>
+            {trecho.fileName}
           </strong>
           <span className="discreto">
             {categoria} · {formatarLocalizacao(trecho)}
           </span>
         </div>
       </header>
-      <blockquote title="Texto literal do documento, não conferido">{trecho.texto}</blockquote>
+      <blockquote title="Texto literal do documento, não conferido">{trecho.text}</blockquote>
       <div className="acoes">
         {ehPdf(trecho) ? (
           <button type="button" className="botao-link" onClick={() => executar(() => abrirNaPagina(condominioId, trecho))}>

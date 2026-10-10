@@ -56,7 +56,7 @@ public final class TextChunker {
     private static ChunkedDocument chunkPdf(List<Page> pages) {
         var chunks = new Chunks();
         for (Page page : pages) {
-            if ("no_text".equals(page.method()) || page.words().isEmpty()) {
+            if ("sem_texto".equals(page.method()) || page.words().isEmpty()) {
                 continue;
             }
             var local = new Location.Page(page.number());

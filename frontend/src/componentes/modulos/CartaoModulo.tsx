@@ -8,35 +8,35 @@ import { TrilhaModulo } from "./TrilhaModulo";
 export function CartaoModulo({ modulo }: { modulo: ModuloDoCondominio }) {
   const [confirmando, setConfirmando] = useState(false);
   const [verTrilha, setVerTrilha] = useState(false);
-  const idTitulo = `modulo-${modulo.codigo}`;
+  const idTitulo = `modulo-${modulo.code}`;
 
   return (
     <article className="bloco modulo" aria-labelledby={idTitulo}>
       <header className="modulo-topo">
         <div>
-          <h2 id={idTitulo}>{modulo.nome}</h2>
-          <p className="discreto">{modulo.descricao}</p>
+          <h2 id={idTitulo}>{modulo.name}</h2>
+          <p className="discreto">{modulo.description}</p>
         </div>
-        <span className={`selo ${modulo.ligado ? "ok" : "neutro"}`}>{modulo.ligado ? "Ligado" : "Desligado"}</span>
+        <span className={`selo ${modulo.enabled ? "ok" : "neutro"}`}>{modulo.enabled ? "Ligado" : "Desligado"}</span>
       </header>
 
       <dl className="modulo-dados">
         <dt>Desde</dt>
         <dd>
-          {modulo.desde
-            ? formatarDataHora(modulo.desde)
-            : `Nunca alterado (padrão para condomínio novo: ${modulo.ligadoPorPadrao ? "ligado" : "desligado"})`}
+          {modulo.since
+            ? formatarDataHora(modulo.since)
+            : `Nunca alterado (padrão para condomínio novo: ${modulo.enabledByDefault ? "ligado" : "desligado"})`}
         </dd>
-        {modulo.inclui.length > 0 && (
+        {modulo.includes.length > 0 && (
           <>
             <dt>Inclui</dt>
-            <dd>{modulo.inclui.join(" · ")}</dd>
+            <dd>{modulo.includes.join(" · ")}</dd>
           </>
         )}
-        {modulo.dependeDe.length > 0 && (
+        {modulo.dependsOn.length > 0 && (
           <>
             <dt>Depende de</dt>
-            <dd>{modulo.dependeDe.join(", ")}</dd>
+            <dd>{modulo.dependsOn.join(", ")}</dd>
           </>
         )}
       </dl>
@@ -45,8 +45,8 @@ export function CartaoModulo({ modulo }: { modulo: ModuloDoCondominio }) {
         <ConfirmarAlteracaoModulo modulo={modulo} aoFechar={() => setConfirmando(false)} />
       ) : (
         <div className="acoes">
-          <button className={modulo.ligado ? "botao secundario" : "botao"} onClick={() => setConfirmando(true)}>
-            {modulo.ligado ? "Desligar…" : "Ligar…"}
+          <button className={modulo.enabled ? "botao secundario" : "botao"} onClick={() => setConfirmando(true)}>
+            {modulo.enabled ? "Desligar…" : "Ligar…"}
           </button>
           <button className="botao-link" aria-expanded={verTrilha} onClick={() => setVerTrilha((v) => !v)}>
             {verTrilha ? "Esconder trilha e períodos" : "Ver trilha e períodos"}
@@ -54,7 +54,7 @@ export function CartaoModulo({ modulo }: { modulo: ModuloDoCondominio }) {
         </div>
       )}
 
-      {verTrilha && <TrilhaModulo codigo={modulo.codigo} />}
+      {verTrilha && <TrilhaModulo codigo={modulo.code} />}
     </article>
   );
 }

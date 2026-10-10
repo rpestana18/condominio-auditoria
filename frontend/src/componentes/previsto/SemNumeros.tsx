@@ -9,39 +9,39 @@ import { formatarDataHora, formatarMes, hashCurto } from "../../formato";
  */
 export function SemNumeros({ resultado }: { resultado: PrevistoRealizado }) {
   const { pode } = useSessao();
-  const { situacao, po } = resultado;
-  const doisFluxos = resultado.meses.filter((m) => m.situacao === "DOIS_FLUXOS");
+  const { status: situacao, budget: po } = resultado;
+  const doisFluxos = resultado.months.filter((m) => m.status === "TWO_CASH_FLOWS");
 
   return (
     <section className="bloco sem-numeros">
       <h2>{titulos[situacao]}</h2>
-      {resultado.mensagem && <p>{resultado.mensagem}</p>}
+      {resultado.message && <p>{resultado.message}</p>}
 
-      {situacao === "PO_NAO_CONFIRMADA" && po && (
+      {situacao === "BUDGET_NOT_CONFIRMED" && po && (
         <Link className={pode("ADMIN") ? "botao" : "botao-link"} to={`/previsoes/${po.id}`}>
           {pode("ADMIN") ? "Conferir e confirmar a PO" : "Ver a PO lida"}
         </Link>
       )}
-      {situacao === "SEM_PO" && (
+      {situacao === "NO_BUDGET" && (
         <Link className="botao-link" to="/previsoes">
           Ver as POs enviadas
         </Link>
       )}
-      {situacao === "SEM_FUNDO_ORDINARIO" && pode("GESTOR", "ADMIN") && (
+      {situacao === "NO_OPERATING_FUND" && pode("GESTOR", "ADMIN") && (
         <Link className="botao-link" to="/">
           Confirmar o fundo ordinário na tela inicial
         </Link>
       )}
 
       {doisFluxos.map((m) => (
-        <div key={m.mes}>
-          <h3>Dois fluxos para {formatarMes(m.mes)}</h3>
+        <div key={m.month}>
+          <h3>Dois fluxos para {formatarMes(m.month)}</h3>
           <ul className="lista-simples">
-            {m.fluxos.map((f) => (
-              <li key={f.arquivoId}>
-                <strong>{f.nome}</strong>{" "}
+            {m.cashFlows.map((f) => (
+              <li key={f.fileId}>
+                <strong>{f.name}</strong>{" "}
                 <span className="discreto">
-                  {f.enviadoEm && `enviado em ${formatarDataHora(f.enviadoEm)}`} {f.enviadoPor && `por ${f.enviadoPor}`} ·{" "}
+                  {f.uploadedAt && `enviado em ${formatarDataHora(f.uploadedAt)}`} {f.uploadedBy && `por ${f.uploadedBy}`} ·{" "}
                   <span title={f.sha256}>SHA-256 {hashCurto(f.sha256)}…</span>
                 </span>
               </li>
@@ -56,11 +56,11 @@ export function SemNumeros({ resultado }: { resultado: PrevistoRealizado }) {
   );
 }
 
-const titulos: Record<PrevistoRealizado["situacao"], string> = {
-  CALCULADO: "",
-  SEM_PO: "Sem PO aprovada para este período",
-  PO_NAO_CONFIRMADA: "PO não confirmada",
-  SEM_FUNDO_ORDINARIO: "Fundo ordinário ainda não confirmado",
-  SEM_FLUXO: "Sem fluxo carregado",
-  DOIS_FLUXOS: "Dois fluxos para o mesmo mês",
+const titulos: Record<PrevistoRealizado["status"], string> = {
+  CALCULATED: "",
+  NO_BUDGET: "Sem PO aprovada para este período",
+  BUDGET_NOT_CONFIRMED: "PO não confirmada",
+  NO_OPERATING_FUND: "Fundo ordinário ainda não confirmado",
+  NO_CASH_FLOW: "Sem fluxo carregado",
+  TWO_CASH_FLOWS: "Dois fluxos para o mesmo mês",
 };

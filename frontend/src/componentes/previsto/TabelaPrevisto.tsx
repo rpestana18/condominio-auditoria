@@ -27,7 +27,7 @@ export function TabelaPrevisto({ grupos, aoAbrirEvidencia }: Props) {
 
   // Só muda a ordem de exibição; os valores continuam os da API
   const ordenar = (linhas: LinhaPrevistoRealizado[]) =>
-    ordem === "PO" ? linhas : [...linhas].sort((a, b) => b.diferenca - a.diferenca);
+    ordem === "PO" ? linhas : [...linhas].sort((a, b) => b.difference - a.difference);
 
   return (
     <section className="bloco">
@@ -55,24 +55,24 @@ export function TabelaPrevisto({ grupos, aoAbrirEvidencia }: Props) {
             </tr>
           </thead>
           {grupos.map((g) => (
-            <tbody key={g.linhaId}>
-              <tr className="linha-grupo" onClick={() => alternar(g.linhaId)}>
+            <tbody key={g.lineId}>
+              <tr className="linha-grupo" onClick={() => alternar(g.lineId)}>
                 <td>
-                  <span aria-hidden>{fechados.has(g.linhaId) ? "▸" : "▾"}</span> {g.codigo}
+                  <span aria-hidden>{fechados.has(g.lineId) ? "▸" : "▾"}</span> {g.code}
                 </td>
-                <td colSpan={2}>{g.descricao}</td>
-                <td className="numero">{formatarMoeda(g.previsto)}</td>
+                <td colSpan={2}>{g.description}</td>
+                <td className="numero">{formatarMoeda(g.planned)}</td>
                 <td className="numero">
                   <ValorComFonte
-                    valor={g.realizado}
-                    aoAbrir={() => aoAbrirEvidencia({ alvo: `grupo:${g.linhaId}`, titulo: `${g.codigo} ${g.descricao}` })}
+                    valor={g.actual}
+                    aoAbrir={() => aoAbrirEvidencia({ alvo: `group:${g.lineId}`, titulo: `${g.code} ${g.description}` })}
                   />
                 </td>
-                <td className={`numero ${classeDiferenca(g.diferenca)}`}>{formatarDiferenca(g.diferenca)}</td>
-                <td className="numero">{formatarPercentual(g.execucao)}</td>
+                <td className={`numero ${classeDiferenca(g.difference)}`}>{formatarDiferenca(g.difference)}</td>
+                <td className="numero">{formatarPercentual(g.execution)}</td>
               </tr>
-              {!fechados.has(g.linhaId) &&
-                ordenar(g.linhas).map((l) => <LinhaTabela key={l.linhaId} linha={l} aoAbrirEvidencia={aoAbrirEvidencia} />)}
+              {!fechados.has(g.lineId) &&
+                ordenar(g.lines).map((l) => <LinhaTabela key={l.lineId} linha={l} aoAbrirEvidencia={aoAbrirEvidencia} />)}
             </tbody>
           ))}
         </table>
@@ -84,26 +84,26 @@ export function TabelaPrevisto({ grupos, aoAbrirEvidencia }: Props) {
 function LinhaTabela({ linha, aoAbrirEvidencia }: { linha: LinhaPrevistoRealizado; aoAbrirEvidencia: AbrirEvidencia }) {
   const abrir = () =>
     aoAbrirEvidencia({
-      alvo: `linha:${linha.linhaId}`,
-      titulo: `${linha.codigo} ${linha.descricao}`,
-      linhaPo: { pagina: linha.pagina, observacoes: linha.observacoes },
+      alvo: `line:${linha.lineId}`,
+      titulo: `${linha.code} ${linha.description}`,
+      linhaPo: { pagina: linha.page, observacoes: linha.notes },
     });
   return (
     <tr>
-      <td>{linha.codigo}</td>
+      <td>{linha.code}</td>
       <td>
-        {linha.descricao}
-        {linha.marca && <span className="selo neutro">{rotuloMarca[linha.marca]}</span>}
-        {linha.observacoes && <small className="observacao">Obs. da PO: {linha.observacoes}</small>}
+        {linha.description}
+        {linha.mark && <span className="selo neutro">{rotuloMarca[linha.mark]}</span>}
+        {linha.notes && <small className="observacao">Obs. da PO: {linha.notes}</small>}
       </td>
-      <td className="discreto">{linha.contasFluxo.join(", ") || "—"}</td>
-      <td className="numero">{formatarMoeda(linha.previsto)}</td>
+      <td className="discreto">{linha.cashFlowAccounts.join(", ") || "—"}</td>
+      <td className="numero">{formatarMoeda(linha.planned)}</td>
       <td className="numero">
-        <ValorComFonte valor={linha.realizado} aoAbrir={abrir} />
-        {linha.lancamentos > 0 && <small className="discreto"> ({linha.lancamentos})</small>}
+        <ValorComFonte valor={linha.actual} aoAbrir={abrir} />
+        {linha.entries > 0 && <small className="discreto"> ({linha.entries})</small>}
       </td>
-      <td className={`numero ${classeDiferenca(linha.diferenca)}`}>{formatarDiferenca(linha.diferenca)}</td>
-      <td className="numero">{formatarPercentual(linha.execucao)}</td>
+      <td className={`numero ${classeDiferenca(linha.difference)}`}>{formatarDiferenca(linha.difference)}</td>
+      <td className="numero">{formatarPercentual(linha.execution)}</td>
     </tr>
   );
 }

@@ -23,19 +23,19 @@ export function GraficoAcumulado({ pontos, contexto }: Props) {
     colunaRotulo: "Mês",
     colunas: ["Previsto acumulado (R$)", "Realizado acumulado (R$)"],
     linhas: pontos.map((p, i) => ({
-      chave: p.mes,
-      rotulo: formatarMes(p.mes),
+      chave: p.month,
+      rotulo: formatarMes(p.month),
       celulas: [
-        { texto: moedaDoMes(p.previstoAcumulado, p.situacao), aoAbrir: acoes[i] },
-        { texto: moedaDoMes(p.realizadoAcumulado, p.situacao), aoAbrir: acoes[i] },
+        { texto: moedaDoMes(p.cumulativePlanned, p.status), aoAbrir: acoes[i] },
+        { texto: moedaDoMes(p.cumulativeActual, p.status), aoAbrir: acoes[i] },
       ],
     })),
   };
   const dados = pontos.map((p, indice) => ({
     indice,
-    eixo: rotuloEixoMes(p.mes, p.situacao),
-    previsto: p.previstoAcumulado ?? null,
-    realizado: p.realizadoAcumulado ?? null,
+    eixo: rotuloEixoMes(p.month, p.status),
+    previsto: p.cumulativePlanned ?? null,
+    realizado: p.cumulativeActual ?? null,
   }));
 
   return (

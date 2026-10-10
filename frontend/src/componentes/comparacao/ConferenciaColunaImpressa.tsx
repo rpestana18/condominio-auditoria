@@ -22,7 +22,7 @@ export function ConferenciaColunaImpressa({ poId, aoFechar }: Props) {
   return (
     <aside className="detalhe" aria-label="Conferência da coluna impressa">
       <header>
-        <h2>{conferencia?.rotulo ?? "Coluna impressa"}</h2>
+        <h2>{conferencia?.label ?? "Coluna impressa"}</h2>
         <button className="botao-link" onClick={aoFechar} aria-label="Fechar">
           ✕
         </button>
@@ -31,28 +31,28 @@ export function ConferenciaColunaImpressa({ poId, aoFechar }: Props) {
       {error && <p className="aviso erro">{error.message}</p>}
       {conferencia && (
         <>
-          {conferencia.substituida && (
+          {conferencia.superseded && (
             <p className="aviso">
-              A PO {conferencia.poAnteriorRotulo ?? "anterior"} foi enviada e é usada na comparação. A coluna impressa fica só
+              A PO {conferencia.previousBudgetLabel ?? "anterior"} foi enviada e é usada na comparação. A coluna impressa fica só
               como conferência.
             </p>
           )}
           <dl>
             <dt>Total impresso</dt>
             <dd>
-              {formatarMoedaOuTraco(conferencia.totalImpresso)}{" "}
+              {formatarMoedaOuTraco(conferencia.printedTotal)}{" "}
               <span className="discreto">
-                ({conferencia.totalIncluiFundos ? "confere com os subtotais incluindo os fundos" : "comparado aos subtotais sem os fundos"})
+                ({conferencia.totalIncludesFunds ? "confere com os subtotais incluindo os fundos" : "comparado aos subtotais sem os fundos"})
               </span>
             </dd>
             <dt>Fundos</dt>
-            <dd>{formatarMoeda(conferencia.fundos)}</dd>
+            <dd>{formatarMoeda(conferencia.funds)}</dd>
             <dt>Previsto do mês</dt>
             <dd>
-              {formatarMoeda(conferencia.previstoMes)} <span className="discreto">(soma das linhas, sem os fundos)</span>
+              {formatarMoeda(conferencia.monthlyPlanned)} <span className="discreto">(soma das linhas, sem os fundos)</span>
             </dd>
           </dl>
-          {conferencia.avisos.map((a, i) => (
+          {conferencia.warnings.map((a, i) => (
             <p key={i} className="aviso alerta">
               {a}
             </p>
@@ -68,12 +68,12 @@ export function ConferenciaColunaImpressa({ poId, aoFechar }: Props) {
                 <th className="numero">Diferença</th>
               </tr>
             </thead>
-            {conferencia.grupos.map((g) => (
-              <GrupoColuna key={g.codigo} grupo={g} />
+            {conferencia.groups.map((g) => (
+              <GrupoColuna key={g.code} grupo={g} />
             ))}
           </table>
 
-          {conferencia.diferencas.length > 0 && (
+          {conferencia.differences.length > 0 && (
             <>
               <h3>PO anterior enviada × coluna impressa</h3>
               <table className="tabela compacta">
@@ -85,13 +85,13 @@ export function ConferenciaColunaImpressa({ poId, aoFechar }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {conferencia.diferencas.map((d) => (
-                    <tr key={d.codigo}>
+                  {conferencia.differences.map((d) => (
+                    <tr key={d.code}>
                       <td>
-                        {d.codigo} {d.descricao}
+                        {d.code} {d.description}
                       </td>
-                      <td className="numero">{formatarMoeda(d.poEnviada)}</td>
-                      <td className="numero">{formatarMoeda(d.colunaImpressa)}</td>
+                      <td className="numero">{formatarMoeda(d.uploadedBudget)}</td>
+                      <td className="numero">{formatarMoeda(d.printedColumn)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -111,25 +111,25 @@ function GrupoColuna({ grupo }: { grupo: GrupoConferenciaColuna }) {
     <tbody>
       <tr className="linha-grupo" onClick={() => setAberto(!aberto)}>
         <td>
-          <span aria-hidden>{aberto ? "▾" : "▸"}</span> {grupo.codigo} {grupo.descricao}
-          {grupo.fundos && <span className="selo neutro">fundos</span>}
+          <span aria-hidden>{aberto ? "▾" : "▸"}</span> {grupo.code} {grupo.description}
+          {grupo.funds && <span className="selo neutro">fundos</span>}
         </td>
-        <td className="numero">{formatarMoeda(grupo.impresso)}</td>
-        <td className="numero">{formatarMoeda(grupo.valor)}</td>
+        <td className="numero">{formatarMoeda(grupo.printed)}</td>
+        <td className="numero">{formatarMoeda(grupo.amount)}</td>
         <td className="numero">
-          {formatarDiferenca(grupo.diferenca)}
-          <small className="observacao">{grupo.confere ? "confere" : "não confere"}</small>
+          {formatarDiferenca(grupo.difference)}
+          <small className="observacao">{grupo.matches ? "confere" : "não confere"}</small>
         </td>
       </tr>
       {aberto &&
-        grupo.linhas.map((l) => (
-          <tr key={l.linhaId ?? l.codigo}>
+        grupo.lines.map((l) => (
+          <tr key={l.lineId ?? l.code}>
             <td>
-              {l.codigo} {l.descricao}
-              {l.conta && <small className="observacao">{l.conta}</small>}
+              {l.code} {l.description}
+              {l.account && <small className="observacao">{l.account}</small>}
             </td>
-            <td className="numero discreto">{l.percentualTexto ? `% impresso: ${l.percentualTexto}` : ""}</td>
-            <td className="numero">{formatarMoeda(l.valor)}</td>
+            <td className="numero discreto">{l.percentageText ? `% impresso: ${l.percentageText}` : ""}</td>
+            <td className="numero">{formatarMoeda(l.amount)}</td>
             <td />
           </tr>
         ))}

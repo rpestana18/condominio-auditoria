@@ -20,8 +20,9 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * GET /uso (contracts/openapi.yaml, UsoDoPeriodo and TotalUso): estimatedCostUsd absent without tokens, null with a
- * model without price, text with 2 decimals otherwise; costAvailable = false without catalog, with no cost value.
+ * GET /usage (contracts/openapi.yaml, UsageResponse and UsageTotalResponse): estimatedCostUsd absent without
+ * tokens, null with a model without price, text with 2 decimals otherwise; costAvailable = false without catalog,
+ * with no cost value.
  */
 class UsageJsonTest {
 

@@ -73,7 +73,7 @@ public class TextChunkerTest {
 
     @Test
     public void pdfSkipsPageWithoutTextAndNumbersInOrder() {
-        var scanned = new Page(1, 595, 842, "no_text", List.of());
+        var scanned = new Page(1, 595, 842, "sem_texto", List.of());
         var withText = page(2, List.of(new Word("Ata", 10, 30, 10, 20)));
 
         ChunkedDocument chunked = TextChunker.chunk(pdf(scanned, withText));
@@ -87,8 +87,8 @@ public class TextChunkerTest {
 
     @Test
     public void pdfWithNoTextHasReason() {
-        var p1 = new Page(1, 595, 842, "no_text", List.of());
-        var p2 = new Page(2, 595, 842, "no_text", List.of());
+        var p1 = new Page(1, 595, 842, "sem_texto", List.of());
+        var p2 = new Page(2, 595, 842, "sem_texto", List.of());
 
         ChunkedDocument chunked = TextChunker.chunk(pdf(p1, p2));
 

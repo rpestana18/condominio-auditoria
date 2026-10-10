@@ -22,9 +22,9 @@ export function EditorRubrica({ poId, linha, aoFechar }: Props) {
   const { data: catalogo = [], isLoading } = useRubricas(condominioId);
   const janela = useRef<HTMLDialogElement>(null);
   const [modo, setModo] = useState<Modo>("EXISTENTE");
-  const [rubricaId, setRubricaId] = useState(linha.rubrica?.id ?? "");
+  const [rubricaId, setRubricaId] = useState(linha.budgetItem?.id ?? "");
   // Sugestão de nome para a rubrica nova: o que a linha mostra como conta da PO (ex.: "1682 - Sindicatura Profissional")
-  const [nome, setNome] = useState(linha.conta);
+  const [nome, setNome] = useState(linha.account);
   const [busca, setBusca] = useState("");
   const [confirmar, setConfirmar] = useState(true);
 
@@ -35,7 +35,7 @@ export function EditorRubrica({ poId, linha, aoFechar }: Props) {
   const encontradas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     if (!termo) return catalogo;
-    return catalogo.filter((r) => [r.nome, r.grupo ?? ""].some((t) => t.toLowerCase().includes(termo)));
+    return catalogo.filter((r) => [r.name, r.group ?? ""].some((t) => t.toLowerCase().includes(termo)));
   }, [busca, catalogo]);
 
   const nomeValido = nome.trim().length > 0 && nome.trim().length <= 300;
@@ -45,9 +45,9 @@ export function EditorRubrica({ poId, linha, aoFechar }: Props) {
     evento.preventDefault();
     definir.mutate(
       {
-        linhaId: linha.linhaId,
+        linhaId: linha.lineId,
         // O contrato aceita uma rubrica do catálogo ou uma nova, nunca as duas
-        pedido: modo === "EXISTENTE" ? { rubricaId, confirmar } : { novaRubrica: nome.trim(), confirmar },
+        pedido: modo === "EXISTENTE" ? { budgetItemId: rubricaId, confirm: confirmar } : { newBudgetItem: nome.trim(), confirm: confirmar },
       },
       { onSuccess: aoFechar },
     );
@@ -57,13 +57,13 @@ export function EditorRubrica({ poId, linha, aoFechar }: Props) {
     <dialog ref={janela} className="janela larga" onClose={aoFechar}>
       <form onSubmit={salvar}>
         <h2>
-          Rubrica da linha {linha.codigo} {linha.descricao}
+          Rubrica da linha {linha.code} {linha.description}
         </h2>
         <p className="discreto">
-          Conta da PO: {linha.conta} · {formatarMoeda(linha.orcado)} orçado
-          {linha.rubrica && ` · atual: ${linha.rubrica.nome}`}
+          Conta da PO: {linha.account} · {formatarMoeda(linha.budgeted)} orçado
+          {linha.budgetItem && ` · atual: ${linha.budgetItem.name}`}
         </p>
-        {linha.motivo && <p className="discreto">Motivo da sugestão: {linha.motivo}</p>}
+        {linha.reason && <p className="discreto">Motivo da sugestão: {linha.reason}</p>}
 
         <fieldset>
           <legend>Rubrica</legend>
@@ -87,8 +87,8 @@ export function EditorRubrica({ poId, linha, aoFechar }: Props) {
               <select size={8} value={rubricaId} onChange={(e) => setRubricaId(e.target.value)} required aria-label="Rubrica">
                 {encontradas.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.nome}
-                    {r.grupo ? ` (grupo ${r.grupo})` : ""}
+                    {r.name}
+                    {r.group ? ` (grupo ${r.group})` : ""}
                   </option>
                 ))}
               </select>

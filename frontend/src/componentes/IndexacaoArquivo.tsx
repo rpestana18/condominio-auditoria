@@ -2,12 +2,12 @@ import type { IndexacaoArquivo as Indexacao, SituacaoIndexacao } from "../api/ti
 
 /** Rótulos em português de cada situação (RF-04.7). Também usados no filtro da tela Arquivos. */
 export const rotulosIndexacao: Record<SituacaoIndexacao, string> = {
-  NA_FILA: "Na fila",
-  INDEXANDO: "Indexando",
-  INDEXADO: "Pronto para busca",
-  SEM_TEXTO: "Sem texto",
-  RETIRADO: "Fora da busca",
-  ERRO: "Erro",
+  QUEUED: "Na fila",
+  INDEXING: "Indexando",
+  INDEXED: "Pronto para busca",
+  NO_TEXT: "Sem texto",
+  WITHDRAWN: "Fora da busca",
+  ERROR: "Erro",
 };
 
 const plural = (n: number, singular: string, plural: string) => `${n.toLocaleString("pt-BR")} ${n === 1 ? singular : plural}`;
@@ -24,19 +24,19 @@ interface Props {
  * o texto do motivo vem pronto do backend (ex.: quando o arquivo ficou indexado só por palavra).
  */
 export function IndexacaoArquivo({ indexacao, completo = false }: Props) {
-  if (!indexacao) return <span className="indexacao">Não indexado</span>;
-  const { situacao, motivo, paginas, trechos } = indexacao;
+  if (!indexacao) return <span className="indexing">Não indexado</span>;
+  const { status: situacao, reason: motivo, pages: paginas, chunks: trechos } = indexacao;
 
   const partes = [rotulosIndexacao[situacao]];
-  if (situacao === "INDEXADO") {
+  if (situacao === "INDEXED") {
     if (trechos != null) partes.push(plural(trechos, "trecho", "trechos"));
     if (completo && paginas != null) partes.push(plural(paginas, "página lida", "páginas lidas"));
   }
   const texto = partes.join(" · ");
 
-  // INDEXADO com motivo = indexado com ressalva (ex.: só por palavra); vira aviso discreto
-  const comAviso = situacao === "INDEXADO" && !!motivo;
-  const motivoEntreParenteses = (situacao === "SEM_TEXTO" || situacao === "ERRO") && motivo;
+  // INDEXED com motivo = indexado com ressalva (ex.: só por palavra); vira aviso discreto
+  const comAviso = situacao === "INDEXED" && !!motivo;
+  const motivoEntreParenteses = (situacao === "NO_TEXT" || situacao === "ERROR") && motivo;
 
   return (
     <span className={`indexacao indexacao-${situacao.toLowerCase()}${comAviso ? " indexacao-ressalva" : ""}`} title={motivo ?? undefined}>

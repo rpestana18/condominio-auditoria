@@ -74,7 +74,7 @@ public class FileProcessingServiceTest {
 
     private static ReadDocument scanned() {
         return new ReadDocument("1", "leitor-py", new ReadDocument.FileInfo("x.pdf", "a".repeat(64), 10), "pdf",
-                List.of(new Page(1, 595, 842, "no_text", List.of())), List.of(), List.of());
+                List.of(new Page(1, 595, 842, "sem_texto", List.of())), List.of(), List.of());
     }
 
     private static FileReceivedMessage file(String category) {

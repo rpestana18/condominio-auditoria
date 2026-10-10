@@ -21,10 +21,10 @@ interface Props {
   aoTrocarFundo: (fundoId: string | null) => void;
 }
 
-const situacaoMes: Record<MesPrevistoRealizado["situacao"], string> = {
-  COM_FLUXO: "",
-  SEM_FLUXO: " (sem fluxo carregado)",
-  DOIS_FLUXOS: " (dois fluxos)",
+const situacaoMes: Record<MesPrevistoRealizado["status"], string> = {
+  WITH_CASH_FLOW: "",
+  NO_CASH_FLOW: " (sem fluxo carregado)",
+  TWO_CASH_FLOWS: " (dois fluxos)",
 };
 
 /** Filtros do RF-03.1.13 e do RF-11.4: exercício, mês ou acumulado, e fundo. */
@@ -36,12 +36,12 @@ export function FiltrosPrevisto(props: Props) {
       <label>
         Período
         <select value={periodo} onChange={(e) => aoTrocarPeriodo(e.target.value)}>
-          <option value="acumulado">Acumulado do exercício</option>
+          <option value="cumulative">Acumulado do exercício</option>
           {meses.map((m) => (
-            <option key={m.mes} value={m.mes}>
-              {formatarMes(m.mes)}
-              {situacaoMes[m.situacao]}
-              {m.prorrogado ? " · prorrogado" : ""}
+            <option key={m.month} value={m.month}>
+              {formatarMes(m.month)}
+              {situacaoMes[m.status]}
+              {m.extended ? " · prorrogado" : ""}
             </option>
           ))}
         </select>

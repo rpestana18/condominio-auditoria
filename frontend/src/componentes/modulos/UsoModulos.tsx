@@ -7,11 +7,11 @@ import { useSessao } from "../../contexto";
 import { formatarData, formatarDolarTexto, formatarInteiro, formatarMesAbreviado, hojeIso } from "../../formato";
 
 const rotulosFuncao: Record<FuncaoUso, string> = {
-  busca_documentos: "Busca nos documentos (tela)",
-  chamada_mcp: "Busca pelo MCP",
-  indexacao: "Indexação de arquivos",
+  document_search: "Busca nos documentos (tela)",
+  mcp_call: "Busca pelo MCP",
+  indexing: "Indexação de arquivos",
   embeddings: "Embeddings",
-  pergunta: "Perguntas ao assistente",
+  question: "Perguntas ao assistente",
 };
 
 /** Uso dos módulos no período, por função e por mês (RF-09.7), e exportação em planilha (RF-10.6). */
@@ -69,25 +69,25 @@ export function UsoModulos({ nomesModulos }: { nomesModulos: Record<string, stri
         <p className="aviso erro">{error.message}</p>
       ) : !uso ? null : (
         <>
-          <AvisosCusto custoDisponivel={uso.custoDisponivel !== false} modelosSemPreco={uso.modelosSemPreco ?? []} />
+          <AvisosCusto custoDisponivel={uso.costAvailable !== false} modelosSemPreco={uso.modelsWithoutPrice ?? []} />
           <h3>
-            Por função · {formatarData(uso.inicio)} a {formatarData(uso.fim)}
+            Por função · {formatarData(uso.start)} a {formatarData(uso.end)}
           </h3>
-          <TabelaUso linhas={uso.porFuncao} nomesModulos={nomesModulos} />
+          <TabelaUso linhas={uso.byFunction} nomesModulos={nomesModulos} />
           <p className="total-custo">
             Custo estimado do período:{" "}
             <strong>
-              {uso.custoDisponivel === false
+              {uso.costAvailable === false
                 ? "indisponível"
-                : uso.custoEstimadoTotalUsd
-                  ? formatarDolarTexto(uso.custoEstimadoTotalUsd)
-                  : uso.custoEstimadoTotalUsd === null
+                : uso.estimatedTotalCostUsd
+                  ? formatarDolarTexto(uso.estimatedTotalCostUsd)
+                  : uso.estimatedTotalCostUsd === null
                     ? "sem preço para todos os modelos"
                     : "—"}
             </strong>
           </p>
           <h3>Por mês</h3>
-          <TabelaUso linhas={uso.porMes} nomesModulos={nomesModulos} comMes />
+          <TabelaUso linhas={uso.byMonth} nomesModulos={nomesModulos} comMes />
         </>
       )}
     </section>
@@ -110,9 +110,9 @@ function AvisosCusto({ custoDisponivel, modelosSemPreco }: { custoDisponivel: bo
 
 /** Célula de custo: traço sem tokens ou sem custo calculado; "sem preço" quando o modelo não tem preço. */
 function textoCusto(linha: TotalUso): string {
-  if (linha.tokensEntrada === 0 && linha.tokensSaida === 0) return "—";
-  if (linha.custoEstimadoUsd === null) return "sem preço";
-  return linha.custoEstimadoUsd ? formatarDolarTexto(linha.custoEstimadoUsd) : "—";
+  if (linha.inputTokens === 0 && linha.outputTokens === 0) return "—";
+  if (linha.estimatedCostUsd === null) return "sem preço";
+  return linha.estimatedCostUsd ? formatarDolarTexto(linha.estimatedCostUsd) : "—";
 }
 
 interface PropsTabela {
@@ -141,15 +141,15 @@ function TabelaUso({ linhas, nomesModulos, comMes = false }: PropsTabela) {
         </thead>
         <tbody>
           {linhas.map((l) => (
-            <tr key={`${l.mes ?? ""}-${l.modulo}-${l.funcao}`}>
-              {comMes && <td>{formatarMesAbreviado(l.mes)}</td>}
-              <td>{nomesModulos[l.modulo] ?? l.modulo}</td>
-              <td>{rotulosFuncao[l.funcao] ?? l.funcao}</td>
-              <td className="numero">{formatarInteiro(l.quantidade)}</td>
-              <td className="numero">{formatarInteiro(l.tokensEntrada)}</td>
-              <td className="numero">{formatarInteiro(l.tokensSaida)}</td>
-              <td className="numero">{formatarInteiro(l.arquivos)}</td>
-              <td className="numero">{formatarInteiro(l.paginas)}</td>
+            <tr key={`${l.month ?? ""}-${l.feature}-${l.function}`}>
+              {comMes && <td>{formatarMesAbreviado(l.month)}</td>}
+              <td>{nomesModulos[l.feature] ?? l.feature}</td>
+              <td>{rotulosFuncao[l.function] ?? l.function}</td>
+              <td className="numero">{formatarInteiro(l.count)}</td>
+              <td className="numero">{formatarInteiro(l.inputTokens)}</td>
+              <td className="numero">{formatarInteiro(l.outputTokens)}</td>
+              <td className="numero">{formatarInteiro(l.files)}</td>
+              <td className="numero">{formatarInteiro(l.pages)}</td>
               <td className="numero">{textoCusto(l)}</td>
             </tr>
           ))}

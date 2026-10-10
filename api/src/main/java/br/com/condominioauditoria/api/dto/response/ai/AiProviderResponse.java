@@ -3,7 +3,7 @@ package br.com.condominioauditoria.api.dto.response.ai;
 import br.com.condominioauditoria.api.model.enums.AiFunction;
 import java.util.List;
 
-/** A catalog provider, in the rag's order and without the public key (contracts/openapi.yaml, ProvedorIa). */
+/** A catalog provider, in the rag's order and without the public key (contracts/openapi.yaml, AiProviderResponse). */
 public record AiProviderResponse(
         String code,
         String name,

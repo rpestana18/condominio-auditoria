@@ -4,7 +4,7 @@ import { formatarMoeda, formatarMoedaCurta } from "../../formato";
 
 /** Barras previsto × realizado por grupo da PO (ADR 0004, Decisão 6). Os valores vêm prontos da API. */
 export function GraficoGrupos({ grupos }: { grupos: GrupoPrevistoRealizado[] }) {
-  const dados = grupos.map((g) => ({ nome: `${g.codigo} ${g.descricao}`, previsto: g.previsto, realizado: g.realizado }));
+  const dados = grupos.map((g) => ({ nome: `${g.code} ${g.description}`, previsto: g.planned, realizado: g.actual }));
   return (
     <section className="bloco grafico">
       <h2>Previsto × realizado por grupo</h2>

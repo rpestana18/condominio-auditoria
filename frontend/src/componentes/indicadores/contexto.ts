@@ -25,9 +25,9 @@ export interface ContextoGrafico {
 
 /** Ponto de uma série mensal com o alvo da evidência que vem da API. */
 interface PontoComAlvo {
-  mes: string;
-  situacao: string;
-  alvo?: string | null;
+  month: string;
+  status: string;
+  target?: string | null;
 }
 
 /**
@@ -35,6 +35,6 @@ interface PontoComAlvo {
  * (sem fluxo ou dois fluxos) ou sem alvo não tem o que abrir: devolve `undefined`.
  */
 export function abrirPonto(contexto: ContextoGrafico, ponto: PontoComAlvo, fundoId = contexto.fundoId): (() => void) | undefined {
-  if (ponto.situacao !== "COM_FLUXO" || !ponto.alvo) return undefined;
-  return contexto.abrir({ poId: contexto.poId, periodo: ponto.mes, alvo: ponto.alvo, fundoId });
+  if (ponto.status !== "WITH_CASH_FLOW" || !ponto.target) return undefined;
+  return contexto.abrir({ poId: contexto.poId, periodo: ponto.month, alvo: ponto.target, fundoId });
 }

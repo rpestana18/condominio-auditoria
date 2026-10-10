@@ -23,7 +23,7 @@ export function BotoesExportacao({ periodo, poId, fundoId }: Props) {
     setGerando(formato);
     setErro(null);
     try {
-      await baixarArquivo(caminhoExportacao(condominioId, formato, periodo, poId, fundoId), `previsto-realizado-${periodo}.${formato}`);
+      await baixarArquivo(caminhoExportacao(condominioId, formato, periodo, poId, fundoId), `previsto-realizado-${periodo === "cumulative" ? "acumulado" : periodo}.${formato}`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível exportar");
     } finally {

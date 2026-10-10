@@ -35,18 +35,18 @@ export function Previsoes() {
           <tbody>
             {previsoes.map((p) => (
               <tr key={p.id} onClick={() => navegar(`/previsoes/${p.id}`)}>
-                <td>{p.arquivoNome ?? p.titulo}</td>
-                <td>{p.versao ?? "—"}</td>
+                <td>{p.fileName ?? p.title}</td>
+                <td>{p.version ?? "—"}</td>
                 <td>
-                  {p.exercicioInicio && p.exercicioFim
-                    ? `${formatarMes(p.exercicioInicio)} a ${formatarMes(p.exercicioFim)}`
-                    : (p.exercicioImpresso ?? "—")}
+                  {p.fiscalYearStart && p.fiscalYearEnd
+                    ? `${formatarMes(p.fiscalYearStart)} a ${formatarMes(p.fiscalYearEnd)}`
+                    : (p.printedFiscalYear ?? "—")}
                 </td>
-                <td className="numero">{formatarMoeda(p.previstoMes)}</td>
+                <td className="numero">{formatarMoeda(p.monthlyPlanned)}</td>
                 <td>
-                  <span className={p.estado === "CONFIRMADA" ? "selo ok" : "selo alerta"}>{rotuloEstadoPo[p.estado]}</span>
+                  <span className={p.status === "CONFIRMED" ? "selo ok" : "selo alerta"}>{rotuloEstadoPo[p.status]}</span>
                 </td>
-                <td>{formatarDataHora(p.lidaEm)}</td>
+                <td>{formatarDataHora(p.readAt)}</td>
               </tr>
             ))}
           </tbody>

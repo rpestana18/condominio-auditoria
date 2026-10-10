@@ -146,7 +146,7 @@ public class AiConfigurationService {
 
     // Saving
 
-    /** PUT /condominios/{id}/ia. The key is write-only: null keeps the stored one; removeKey deletes it. */
+    /** PUT /condominiums/{id}/ai. The key is write-only: null keeps the stored one; removeKey deletes it. */
     public record Change(AiMode generalMode, AnswersChange answers, EmbeddingsChange embeddings) {
     }
 

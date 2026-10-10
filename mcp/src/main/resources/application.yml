@@ -29,9 +29,9 @@ server:
   port: ${PORTA:8083}
 
 mcp:
-  backend:
-    endereco: ${BACKEND_GRPC:localhost:9090}
-    prazo-segundos: 30
+  api:
+    address: ${BACKEND_GRPC:localhost:9090}
+    timeout-seconds: 30
 
 management:
   endpoints:

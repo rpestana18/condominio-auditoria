@@ -1,4 +1,4 @@
-package br.com.condominioauditoria.mcp.ferramentas;
+package br.com.condominioauditoria.mcp.tool;
 
 import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosRequest;
 import br.com.condominioauditoria.contratos.consulta.v1.ConferenciasDoArquivoRequest;
@@ -9,6 +9,8 @@ import br.com.condominioauditoria.contratos.consulta.v1.ListarLancamentosRequest
 import br.com.condominioauditoria.contratos.consulta.v1.LocalizacaoTrecho;
 import br.com.condominioauditoria.contratos.consulta.v1.ResumoFundosRequest;
 import br.com.condominioauditoria.contratos.consulta.v1.TrechoDocumento;
+import br.com.condominioauditoria.mcp.client.ApiClient;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.grpc.StatusRuntimeException;
 import io.modelcontextprotocol.common.McpTransportContext;
 import java.util.ArrayList;
@@ -20,27 +22,31 @@ import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Component;
 
 /**
- * Ferramentas que a IA externa enxerga. Todas são só de leitura e respondem com os números já gravados e conferidos
- * pelo backend, com a origem (arquivo e página) para o usuário conferir. Valores em reais vêm como texto com duas
- * casas ("1234.56"). A exceção é buscar_documentos, que devolve texto dos documentos para citar (ADR 0003, 5.3).
+ * Tools the external AI sees. All are read-only and answer with the numbers already stored and checked by the api,
+ * with the origin (file and page) for the user to check. Amounts in reais come as text with two decimal places
+ * ("1234.56"). The exception is buscar_documentos, which returns document text to cite (ADR 0003, 5.3).
+ *
+ * The tool names, the parameter names (read by Spring AI from the Java parameters) and the JSON fields of the
+ * responses ({@code @JsonProperty}) are the interface the AI sees, so they keep the Portuguese names until phase 2 of
+ * ADR 0006.
  */
 @Component
-class FerramentasCondominio {
+public class CondominiumTools {
 
-    private final ClienteBackend backend;
+    private final ApiClient api;
 
-    FerramentasCondominio(ClienteBackend backend) {
-        this.backend = backend;
+    public CondominiumTools(ApiClient api) {
+        this.api = api;
     }
 
     @McpTool(name = "listar_condominios",
             description = "Lista os condomínios que o usuário pode consultar, com o id usado nas outras ferramentas.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false))
-    List<Condominio> listarCondominios(McpTransportContext contexto) {
-        return chamar(() -> backend.consulta(contexto)
+    public List<Condominium> listCondominiums(McpTransportContext context) {
+        return call(() -> api.query(context)
                 .listarCondominios(ListarCondominiosRequest.getDefaultInstance())
                 .getCondominiosList().stream()
-                .map(c -> new Condominio(c.getId(), c.getNome()))
+                .map(c -> new Condominium(c.getId(), c.getNome()))
                 .toList());
     }
 
@@ -48,18 +54,18 @@ class FerramentasCondominio {
             description = "Saldo anterior, entradas, saídas e saldo atual de cada fundo no fluxo de caixa mais recente "
                     + "do condomínio, mais o total e quantas conferências aritméticas falharam.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false))
-    ResumoFundos resumoFundos(McpTransportContext contexto,
+    public FundSummary fundSummary(McpTransportContext context,
             @McpToolParam(description = "Id do condomínio (veja listar_condominios)") String condominioId) {
-        return chamar(() -> {
-            var r = backend.consulta(contexto).resumoFundos(
+        return call(() -> {
+            var r = api.query(context).resumoFundos(
                     ResumoFundosRequest.newBuilder().setCondominioId(condominioId).build());
             if (!r.getTemDados()) {
-                return new ResumoFundos(false, null, null, null, null, null, null, null, 0, List.of());
+                return new FundSummary(false, null, null, null, null, null, null, null, 0, List.of());
             }
-            return new ResumoFundos(true, r.getArquivoNome(), r.getPeriodoInicio(), r.getPeriodoFim(),
+            return new FundSummary(true, r.getArquivoNome(), r.getPeriodoInicio(), r.getPeriodoFim(),
                     r.getSaldoAnterior(), r.getEntradas(), r.getSaidas(), r.getSaldoAtual(),
                     r.getConferenciasComFalha(),
-                    r.getFundosList().stream().map(f -> new Fundo(f.getFundo(), f.getSaldoAnterior(), f.getEntradas(),
+                    r.getFundosList().stream().map(f -> new Fund(f.getFundo(), f.getSaldoAnterior(), f.getEntradas(),
                             f.getSaidas(), f.getSaldoAtual())).toList());
         });
     }
@@ -67,18 +73,18 @@ class FerramentasCondominio {
     @McpTool(name = "listar_arquivos",
             description = "Arquivos enviados ao sistema, do mais recente para o mais antigo, com o status da leitura.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false))
-    List<Arquivo> listarArquivos(McpTransportContext contexto,
+    public List<FileInfo> listFiles(McpTransportContext context,
             @McpToolParam(description = "Id do condomínio") String condominioId,
             @McpToolParam(required = false, description = "Categoria: BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, "
                     + "COMPROVANTE, ATA, CONVENCAO_RI ou OUTROS") String categoria,
             @McpToolParam(required = false, description = "Quantos arquivos no máximo (padrão 50)") Integer limite) {
-        return chamar(() -> backend.consulta(contexto).listarArquivos(ListarArquivosRequest.newBuilder()
+        return call(() -> api.query(context).listarArquivos(ListarArquivosRequest.newBuilder()
                         .setCondominioId(condominioId)
                         .setCategoria(Objects.toString(categoria, ""))
                         .setLimite(limite == null ? 0 : limite)
                         .build())
                 .getArquivosList().stream()
-                .map(a -> new Arquivo(a.getId(), a.getCategoria(), a.getNome(), a.getStatus(), a.getMensagem(),
+                .map(a -> new FileInfo(a.getId(), a.getCategoria(), a.getNome(), a.getStatus(), a.getMensagem(),
                         a.getPeriodoInicio(), a.getPeriodoFim(), a.getTotalLancamentos(), a.getEnviadoEm()))
                 .toList());
     }
@@ -87,13 +93,13 @@ class FerramentasCondominio {
             description = "Resultado das conferências aritméticas de um arquivo lido (saldo linha a linha, totais por "
                     + "fundo, saldo final e total da posição financeira), com o detalhe quando algo não bate.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false))
-    List<Conferencia> conferenciasDoArquivo(McpTransportContext contexto,
+    public List<Check> fileChecks(McpTransportContext context,
             @McpToolParam(description = "Id do condomínio") String condominioId,
             @McpToolParam(description = "Id do arquivo (veja listar_arquivos)") String arquivoId) {
-        return chamar(() -> backend.consulta(contexto).conferenciasDoArquivo(ConferenciasDoArquivoRequest.newBuilder()
+        return call(() -> api.query(context).conferenciasDoArquivo(ConferenciasDoArquivoRequest.newBuilder()
                         .setCondominioId(condominioId).setArquivoId(arquivoId).build())
                 .getConferenciasList().stream()
-                .map(c -> new Conferencia(c.getCodigo(), c.getDescricao(), c.getOk(), c.getDetalhe()))
+                .map(c -> new Check(c.getCodigo(), c.getDescricao(), c.getOk(), c.getDetalhe()))
                 .toList());
     }
 
@@ -101,7 +107,7 @@ class FerramentasCondominio {
             description = "Lançamentos do fluxo de caixa com filtros por período, fundo e texto (histórico, fornecedor "
                     + "ou conta). Cada lançamento traz o arquivo e a página de origem.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false))
-    List<Lancamento> buscarLancamentos(McpTransportContext contexto,
+    public List<LedgerEntry> findEntries(McpTransportContext context,
             @McpToolParam(description = "Id do condomínio") String condominioId,
             @McpToolParam(required = false, description = "Data inicial, AAAA-MM-DD") String dataInicio,
             @McpToolParam(required = false, description = "Data final, AAAA-MM-DD") String dataFim,
@@ -111,8 +117,8 @@ class FerramentasCondominio {
             Boolean somenteSaidas,
             @McpToolParam(required = false, description = "Quantos lançamentos no máximo (padrão 500, máximo 5000)")
             Integer limite) {
-        return chamar(() -> {
-            var pedido = ListarLancamentosRequest.newBuilder()
+        return call(() -> {
+            var request = ListarLancamentosRequest.newBuilder()
                     .setCondominioId(condominioId)
                     .setDataInicio(Objects.toString(dataInicio, ""))
                     .setDataFim(Objects.toString(dataFim, ""))
@@ -121,12 +127,12 @@ class FerramentasCondominio {
                     .setSomenteSaidas(Boolean.TRUE.equals(somenteSaidas))
                     .setLimite(limite == null ? 0 : limite)
                     .build();
-            List<Lancamento> lista = new ArrayList<>();
-            backend.consulta(contexto).listarLancamentos(pedido).forEachRemaining(l -> lista.add(new Lancamento(
+            List<LedgerEntry> list = new ArrayList<>();
+            api.query(context).listarLancamentos(request).forEachRemaining(l -> list.add(new LedgerEntry(
                     l.getData(), l.getFundo(), l.getContaCodigo(), l.getContaNome(), l.getHistorico(), l.getCredito(),
                     l.getDebito(), l.getFornecedor(), l.getMeioPagamento(), l.getTransferenciaEntreFundos(),
                     l.getArquivoId(), l.getPagina())));
-            return lista;
+            return list;
         });
     }
 
@@ -140,7 +146,7 @@ class FerramentasCondominio {
                     + "Sem resultado não prova que algo não existe: só que não foi achado nos documentos indexados. "
                     + "Só aparecem arquivos já indexados (situação da indexação na lista de arquivos).",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false))
-    BuscaDocumentos buscarDocumentos(McpTransportContext contexto,
+    public DocumentSearchResult searchDocuments(McpTransportContext context,
             @McpToolParam(description = "Id do condomínio (veja listar_condominios)") String condominioId,
             @McpToolParam(description = "O que procurar, em português. Palavras soltas acham qualquer forma "
                     + "(com ou sem acento); \"frase entre aspas\" exige a frase exata; -palavra exclui trechos com "
@@ -161,101 +167,148 @@ class FerramentasCondominio {
         if (limite != null && limite < 1) {
             throw new IllegalArgumentException("O limite vai de 1 a 50; recebido " + limite);
         }
-        var filtros = FiltrosDocumentos.newBuilder()
-                .addAllCategorias(semVazios(categorias))
+        var filters = FiltrosDocumentos.newBuilder()
+                .addAllCategorias(withoutBlanks(categorias))
                 .setDataInicio(Objects.toString(dataInicio, "").strip())
                 .setDataFim(Objects.toString(dataFim, "").strip())
-                .addAllArquivoIds(semVazios(arquivoIds))
+                .addAllArquivoIds(withoutBlanks(arquivoIds))
                 .build();
-        var pedido = BuscarDocumentosRequest.newBuilder()
+        var request = BuscarDocumentosRequest.newBuilder()
                 .setCondominioId(Objects.toString(condominioId, "").strip())
                 .setTexto(texto.strip())
-                .setFiltros(filtros)
-                .setLimite(limite == null ? LIMITE_PADRAO_BUSCA : Math.min(limite, LIMITE_MAXIMO_BUSCA))
+                .setFiltros(filters)
+                .setLimite(limite == null ? DEFAULT_SEARCH_LIMIT : Math.min(limite, MAX_SEARCH_LIMIT))
                 .build();
-        return chamar(() -> {
-            var r = backend.consulta(contexto).buscarDocumentos(pedido);
-            String modo = switch (r.getModoUsado()) {
+        return call(() -> {
+            var r = api.query(context).buscarDocumentos(request);
+            String mode = switch (r.getModoUsado()) {
                 case MODO_BUSCA_DOCUMENTOS_PALAVRA -> "PALAVRA";
                 case MODO_BUSCA_DOCUMENTOS_HIBRIDA -> "HIBRIDA";
                 default -> "NAO_INFORMADO";
             };
-            List<TrechoEncontrado> trechos = r.getTrechosList().stream().map(FerramentasCondominio::trecho).toList();
-            return new BuscaDocumentos(modo, trechos.size(), trechos, AVISO_BUSCA);
+            List<FoundChunk> chunks = r.getTrechosList().stream().map(CondominiumTools::chunk).toList();
+            return new DocumentSearchResult(mode, chunks.size(), chunks, SEARCH_WARNING);
         });
     }
 
-    private static final int LIMITE_PADRAO_BUSCA = 10;
-    private static final int LIMITE_MAXIMO_BUSCA = 50;
-    private static final String AVISO_BUSCA = "Texto transcrito dos documentos, não conferido. Cite documento e "
+    private static final int DEFAULT_SEARCH_LIMIT = 10;
+    private static final int MAX_SEARCH_LIMIT = 50;
+    private static final String SEARCH_WARNING = "Texto transcrito dos documentos, não conferido. Cite documento e "
             + "localização. Para valores, use as ferramentas numéricas.";
 
-    private static List<String> semVazios(List<String> valores) {
-        return valores == null ? List.of()
-                : valores.stream().filter(Objects::nonNull).map(String::strip).filter(v -> !v.isEmpty()).toList();
+    private static List<String> withoutBlanks(List<String> values) {
+        return values == null ? List.of()
+                : values.stream().filter(Objects::nonNull).map(String::strip).filter(v -> !v.isEmpty()).toList();
     }
 
-    static TrechoEncontrado trecho(TrechoDocumento t) {
-        Integer pagina = t.getLocalizacao().hasPagina() ? t.getLocalizacao().getPagina().getPagina() : null;
-        return new TrechoEncontrado(t.getNomeArquivo(), t.getArquivoId(), t.getCategoria(),
-                localizacaoLegivel(t.getLocalizacao()), pagina, t.getTexto(), t.getSha256(), t.getTrechoId());
+    public static FoundChunk chunk(TrechoDocumento t) {
+        Integer page = t.getLocalizacao().hasPagina() ? t.getLocalizacao().getPagina().getPagina() : null;
+        return new FoundChunk(t.getNomeArquivo(), t.getArquivoId(), t.getCategoria(),
+                readableLocation(t.getLocalizacao()), page, t.getTexto(), t.getSha256(), t.getTrechoId());
     }
 
-    /** "página 3", "aba Plan1, linhas 2–31" ou "parágrafos 4–7, seção Cláusula 5". */
-    static String localizacaoLegivel(LocalizacaoTrecho l) {
+    /** "página 3", "aba Plan1, linhas 2–31" or "parágrafos 4–7, seção Cláusula 5". */
+    public static String readableLocation(LocalizacaoTrecho l) {
         return switch (l.getTipoCase()) {
             case PAGINA -> "página " + l.getPagina().getPagina();
             case PLANILHA -> "aba " + l.getPlanilha().getAba() + ", "
-                    + intervalo("linha", "linhas", l.getPlanilha().getLinhaInicio(), l.getPlanilha().getLinhaFim());
-            case PARAGRAFOS -> intervalo("parágrafo", "parágrafos", l.getParagrafos().getParagrafoInicio(),
+                    + range("linha", "linhas", l.getPlanilha().getLinhaInicio(), l.getPlanilha().getLinhaFim());
+            case PARAGRAFOS -> range("parágrafo", "parágrafos", l.getParagrafos().getParagrafoInicio(),
                     l.getParagrafos().getParagrafoFim())
                     + (l.getParagrafos().getSecao().isBlank() ? "" : ", seção " + l.getParagrafos().getSecao());
             case TIPO_NOT_SET -> "localização não informada";
         };
     }
 
-    private static String intervalo(String singular, String plural, int inicio, int fim) {
-        return fim <= inicio ? singular + " " + inicio : plural + " " + inicio + "–" + fim;
+    private static String range(String singular, String plural, int start, int end) {
+        return end <= start ? singular + " " + start : plural + " " + start + "–" + end;
     }
 
-    private static <T> T chamar(Supplier<T> chamada) {
+    private static <T> T call(Supplier<T> call) {
         try {
-            return chamada.get();
-        } catch (StatusRuntimeException erro) {
-            throw ClienteBackend.traduzir(erro);
+            return call.get();
+        } catch (StatusRuntimeException error) {
+            throw ApiClient.translate(error);
         }
     }
 
-    // ---- respostas (viram JSON para a IA) ----
+    // ---- responses (become JSON for the AI) ----
 
-    record Condominio(String id, String nome) {
+    public record Condominium(String id, @JsonProperty("nome") String name) {
     }
 
-    record ResumoFundos(boolean temDados, String arquivo, String periodoInicio, String periodoFim, String saldoAnterior,
-            String entradas, String saidas, String saldoAtual, int conferenciasComFalha, List<Fundo> fundos) {
+    public record FundSummary(
+            @JsonProperty("temDados") boolean hasData,
+            @JsonProperty("arquivo") String file,
+            @JsonProperty("periodoInicio") String periodStart,
+            @JsonProperty("periodoFim") String periodEnd,
+            @JsonProperty("saldoAnterior") String openingBalance,
+            @JsonProperty("entradas") String inflows,
+            @JsonProperty("saidas") String outflows,
+            @JsonProperty("saldoAtual") String closingBalance,
+            @JsonProperty("conferenciasComFalha") int failedChecks,
+            @JsonProperty("fundos") List<Fund> funds) {
     }
 
-    record Fundo(String fundo, String saldoAnterior, String entradas, String saidas, String saldoAtual) {
+    public record Fund(
+            @JsonProperty("fundo") String fund,
+            @JsonProperty("saldoAnterior") String openingBalance,
+            @JsonProperty("entradas") String inflows,
+            @JsonProperty("saidas") String outflows,
+            @JsonProperty("saldoAtual") String closingBalance) {
     }
 
-    record Arquivo(String id, String categoria, String nome, String status, String mensagem, String periodoInicio,
-            String periodoFim, int totalLancamentos, String enviadoEm) {
+    public record FileInfo(
+            String id,
+            @JsonProperty("categoria") String category,
+            @JsonProperty("nome") String name,
+            String status,
+            @JsonProperty("mensagem") String message,
+            @JsonProperty("periodoInicio") String periodStart,
+            @JsonProperty("periodoFim") String periodEnd,
+            @JsonProperty("totalLancamentos") int entryCount,
+            @JsonProperty("enviadoEm") String uploadedAt) {
     }
 
-    record Conferencia(String codigo, String descricao, boolean ok, String detalhe) {
+    public record Check(
+            @JsonProperty("codigo") String code,
+            @JsonProperty("descricao") String description,
+            boolean ok,
+            @JsonProperty("detalhe") String detail) {
     }
 
-    /** Resultado de buscar_documentos. modoUsado: PALAVRA (só por palavra) ou HIBRIDA (palavra e sentido). */
-    record BuscaDocumentos(String modoUsado, int total, List<TrechoEncontrado> trechos, String aviso) {
+    /** Result of buscar_documentos. modoUsado: PALAVRA (keyword only) or HIBRIDA (keyword and meaning). */
+    public record DocumentSearchResult(
+            @JsonProperty("modoUsado") String modeUsed,
+            int total,
+            @JsonProperty("trechos") List<FoundChunk> chunks,
+            @JsonProperty("aviso") String warning) {
     }
 
-    /** pagina só vem preenchida em PDF; localizacao sempre vem em texto legível para citar. */
-    record TrechoEncontrado(String documento, String arquivoId, String categoria, String localizacao, Integer pagina,
-            String texto, String sha256, String trechoId) {
+    /** pagina is only filled for PDF; localizacao always comes as readable text to cite. */
+    public record FoundChunk(
+            @JsonProperty("documento") String document,
+            @JsonProperty("arquivoId") String fileId,
+            @JsonProperty("categoria") String category,
+            @JsonProperty("localizacao") String location,
+            @JsonProperty("pagina") Integer page,
+            @JsonProperty("texto") String text,
+            String sha256,
+            @JsonProperty("trechoId") String chunkId) {
     }
 
-    record Lancamento(String data, String fundo, String contaCodigo, String contaNome, String historico,
-            String credito, String debito, String fornecedor, String meioPagamento, boolean transferenciaEntreFundos,
-            String arquivoId, int pagina) {
+    public record LedgerEntry(
+            @JsonProperty("data") String date,
+            @JsonProperty("fundo") String fund,
+            @JsonProperty("contaCodigo") String accountCode,
+            @JsonProperty("contaNome") String accountName,
+            @JsonProperty("historico") String memo,
+            @JsonProperty("credito") String credit,
+            @JsonProperty("debito") String debit,
+            @JsonProperty("fornecedor") String supplier,
+            @JsonProperty("meioPagamento") String paymentMethod,
+            @JsonProperty("transferenciaEntreFundos") boolean interFundTransfer,
+            @JsonProperty("arquivoId") String fileId,
+            @JsonProperty("pagina") int page) {
     }
 }

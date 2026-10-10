@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.mcp.config;
 
+import br.com.condominioauditoria.mcp.config.properties.McpProperties;
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
@@ -17,30 +18,34 @@ import tools.jackson.databind.json.JsonMapper;
 @Configuration
 public class McpConfig {
 
-    /** Chave, no contexto de cada chamada MCP, do cabeçalho Authorization recebido (já validado pelo Spring Security). */
-    public static final String AUTORIZACAO = "authorization";
+    /**
+     * Key, in the context of each MCP call, of the received Authorization header (already validated by Spring
+     * Security).
+     */
+    public static final String AUTHORIZATION = "authorization";
 
     /**
-     * Transporte MCP sem sessão (cada pedido é um POST independente), igual ao da autoconfiguração do Spring AI,
-     * mais uma coisa: guarda o cabeçalho Authorization no contexto da chamada. As ferramentas rodam em outra thread,
-     * então é por aqui que o token do usuário chega até a chamada gRPC.
+     * Stateless MCP transport (each request is an independent POST), the same as Spring AI auto-configuration's, plus
+     * one thing: it keeps the Authorization header in the call context. The tools run on another thread, so this is
+     * how the user's token reaches the gRPC call.
      */
     @Bean
     WebMvcStatelessServerTransport webMvcStatelessServerTransport(@Qualifier("mcpServerJsonMapper") JsonMapper json,
-            McpServerStreamableHttpProperties propriedades) {
+            McpServerStreamableHttpProperties properties) {
         return WebMvcStatelessServerTransport.builder()
                 .jsonMapper(new JacksonMcpJsonMapper(json))
-                .messageEndpoint(propriedades.getMcpEndpoint())
-                .contextExtractor(pedido -> {
-                    String valor = pedido.headers().firstHeader(HttpHeaders.AUTHORIZATION);
-                    return valor == null ? McpTransportContext.EMPTY : McpTransportContext.create(Map.of(AUTORIZACAO, valor));
+                .messageEndpoint(properties.getMcpEndpoint())
+                .contextExtractor(request -> {
+                    String value = request.headers().firstHeader(HttpHeaders.AUTHORIZATION);
+                    return value == null ? McpTransportContext.EMPTY : McpTransportContext.create(Map.of(AUTHORIZATION,
+                            value));
                 })
                 .build();
     }
 
-    /** Canal gRPC até o backend, aberto uma vez e reaproveitado (o gRPC multiplexa as chamadas). */
+    /** gRPC channel to the api, opened once and reused (gRPC multiplexes the calls). */
     @Bean(destroyMethod = "shutdown")
-    ManagedChannel canalBackend(PropriedadesMcp propriedades) {
-        return Grpc.newChannelBuilder(propriedades.backend().endereco(), InsecureChannelCredentials.create()).build();
+    ManagedChannel apiChannel(McpProperties properties) {
+        return Grpc.newChannelBuilder(properties.api().address(), InsecureChannelCredentials.create()).build();
     }
 }

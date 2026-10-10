@@ -189,6 +189,8 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | catálogo de provedores (no rag) | `ProviderCatalog`, `AiProperties` | no rag a função de IA já é `ANSWERS`/`EMBEDDINGS`: só vem do `application.yml` |
 | chaves do rag, envelope da chave | `RagKeys`, `KeyEnvelope` | |
 | reais (formatação do bloco de dados gravados) | `ReaisFormatter` | |
+| ferramentas do condomínio (mcp), cliente do api | `CondominiumTools`, `ApiClient` | os nomes das ferramentas, dos parâmetros e dos campos JSON das respostas ficam em português até a fase 2: são a interface que a IA externa vê |
+| entradas, saídas, enviado em | `inflows`, `outflows`, `uploadedAt` | |
 
 ---
 
@@ -314,7 +316,8 @@ mcp/src/main/java/br/com/condominioauditoria/mcp/
 ├── config/
 │   └── properties/
 ├── tool/            # ferramentas MCP (porta de entrada; hoje mcp.ferramentas)
-└── client/          # cliente gRPC do backend (hoje ClienteBackend)
+├── client/          # cliente gRPC do backend (hoje ClienteBackend)
+└── security/        # Spring Security e Keycloak
 ```
 
 ### libs

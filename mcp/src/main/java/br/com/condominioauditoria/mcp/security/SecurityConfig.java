@@ -1,4 +1,4 @@
-package br.com.condominioauditoria.mcp.config;
+package br.com.condominioauditoria.mcp.security;
 
 import java.util.Collection;
 import java.util.List;
@@ -17,45 +17,45 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * O endpoint MCP só aceita token Bearer válido do Keycloak, com perfil no sistema. O mesmo token segue para o
- * backend em cada chamada gRPC, e é lá que o acesso a cada condomínio é conferido.
+ * The MCP endpoint only accepts a valid Keycloak Bearer token with a role in the system. The same token goes on to the
+ * api in each gRPC call, and that is where access to each condominium is checked.
  */
 @Configuration
-class SegurancaConfig {
+class SecurityConfig {
 
     @Bean
-    SecurityFilterChain seguranca(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .anyRequest().hasAnyRole("USUARIO", "GESTOR", "ADMIN"))
-                .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(conversorDePerfis())));
+                .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(roleConverter())));
         return http.build();
     }
 
-    /** Chaves pelo endereço interno do Keycloak; emissor validado é o endereço público (o que está no token). */
+    /** Keys through Keycloak's internal address; the validated issuer is the public address (the one in the token). */
     @Bean
-    JwtDecoder jwtDecoder(OAuth2ResourceServerProperties propriedades) {
-        var jwt = propriedades.getJwt();
+    JwtDecoder jwtDecoder(OAuth2ResourceServerProperties properties) {
+        var jwt = properties.getJwt();
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwt.getJwkSetUri()).build();
         decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(jwt.getIssuerUri()));
         return decoder;
     }
 
-    private static JwtAuthenticationConverter conversorDePerfis() {
-        var conversor = new JwtAuthenticationConverter();
-        conversor.setPrincipalClaimName("preferred_username");
-        conversor.setJwtGrantedAuthoritiesConverter(jwt -> {
+    private static JwtAuthenticationConverter roleConverter() {
+        var converter = new JwtAuthenticationConverter();
+        converter.setPrincipalClaimName("preferred_username");
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
             Map<String, Object> realm = jwt.getClaimAsMap("realm_access");
-            Object perfis = realm == null ? List.of() : realm.getOrDefault("roles", List.of());
-            return ((Collection<?>) perfis).stream()
+            Object roles = realm == null ? List.of() : realm.getOrDefault("roles", List.of());
+            return ((Collection<?>) roles).stream()
                     .map(Object::toString)
                     .filter(p -> p.equals("USUARIO") || p.equals("GESTOR") || p.equals("ADMIN"))
                     .<GrantedAuthority>map(p -> new SimpleGrantedAuthority("ROLE_" + p))
                     .toList();
         });
-        return conversor;
+        return converter;
     }
 }

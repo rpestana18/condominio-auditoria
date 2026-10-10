@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  * (queued, visible on the Files screen) in the same transaction as the change, and the messages go out in a batch after
  * the commit, outside the request. The rag skips what is already indexed with the same hash and model (RF-10.5, Q14).
  *
- * Disabling does nothing here: the index and the originals are kept and no RETIRAR message is published.
+ * Disabling does nothing here: the index and the originals are kept and no WITHDRAW message is published.
  */
 @Component
 class ReindexOnAssistantEnabledListener {

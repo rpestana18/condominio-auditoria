@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Numbers of the home screen. With no cash flow read yet, answers 204. */
 @RestController
-@RequestMapping("/api/condominios/{condominiumId}/painel")
+@RequestMapping("/api/condominiums/{condominiumId}/dashboard")
 class DashboardController {
 
     private final CondominiumAccess access;

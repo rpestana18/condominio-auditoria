@@ -20,7 +20,7 @@ export function App() {
   const { data: usuario, error } = useUsuario();
   if (error) return <p className="aviso erro">Não foi possível falar com o servidor: {error.message}</p>;
   if (!usuario) return <p className="aviso">Carregando…</p>;
-  if (usuario.condominios.length === 0) {
+  if (usuario.condominiums.length === 0) {
     return (
       <p className="aviso">
         Seu usuário ainda não está vinculado a nenhum condomínio. Peça ao administrador.{" "}

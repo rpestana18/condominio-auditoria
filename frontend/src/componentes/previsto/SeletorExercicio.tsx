@@ -18,9 +18,9 @@ interface Props {
  * só aparece em "Comparar exercícios".
  */
 export function SeletorExercicio({ exercicios, previsoes = [], poId, aoTrocar }: Props) {
-  const comPo = exercicios.filter((e) => e.tipo === "PO");
+  const comPo = exercicios.filter((e) => e.type === "PO");
   // Uma versão de PO que não está na lista (ex.: ainda não confirmada) continua podendo ser aberta pelo link
-  const foraDaLista = poId && !comPo.some((e) => e.poId === poId) ? previsoes.find((p) => p.id === poId) : undefined;
+  const foraDaLista = poId && !comPo.some((e) => e.budgetId === poId) ? previsoes.find((p) => p.id === poId) : undefined;
 
   return (
     <label>
@@ -28,15 +28,15 @@ export function SeletorExercicio({ exercicios, previsoes = [], poId, aoTrocar }:
       <select value={poId ?? ""} onChange={(e) => aoTrocar(e.target.value)} disabled={comPo.length === 0 && !foraDaLista}>
         {comPo.length === 0 && !foraDaLista && <option value="">Nenhum exercício confirmado</option>}
         {comPo.map((e) => (
-          <option key={e.id} value={e.poId}>
-            {e.rotulo}
-            {e.versao ? ` · versão ${e.versao}` : ""}
-            {e.prorrogacao ? ` · prorrogada até ${formatarMes(e.prorrogacao.ate)}` : ""}
+          <option key={e.id} value={e.budgetId}>
+            {e.label}
+            {e.version ? ` · versão ${e.version}` : ""}
+            {e.extension ? ` · prorrogada até ${formatarMes(e.extension.until)}` : ""}
           </option>
         ))}
         {foraDaLista && (
           <option value={foraDaLista.id}>
-            {foraDaLista.exercicioImpresso ?? foraDaLista.arquivoNome} · {rotuloEstadoPo[foraDaLista.estado]}
+            {foraDaLista.printedFiscalYear ?? foraDaLista.fileName} · {rotuloEstadoPo[foraDaLista.status]}
           </option>
         )}
       </select>

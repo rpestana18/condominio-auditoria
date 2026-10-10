@@ -11,30 +11,30 @@ interface Props {
 
 /** Cartões do topo: previsto, despesa realizada, diferença e execução (todos calculados pelo backend). */
 export function ResumoPrevisto({ resultado, totais, aoAbrirEvidencia }: Props) {
-  const acumulado = resultado.periodo === "acumulado";
+  const acumulado = resultado.period === "cumulative";
   return (
     <>
       <div className="cartoes">
-        <Cartao titulo={acumulado ? "Previsto dos meses com fluxo" : "Previsto do mês"} valor={formatarMoeda(totais.previsto)} />
+        <Cartao titulo={acumulado ? "Previsto dos meses com fluxo" : "Previsto do mês"} valor={formatarMoeda(totais.planned)} />
         <div
           className="cartao-numero"
-          title={`Em linhas da PO: ${formatarMoeda(totais.emLinhas)}; o restante está em "a realocar" e "sem linha da PO"`}
+          title={`Em linhas da PO: ${formatarMoeda(totais.inLines)}; o restante está em "a realocar" e "sem linha da PO"`}
         >
           <span className="cartao-titulo">Despesa realizada</span>
           <strong>
             <ValorComFonte
-              valor={totais.despesaRealizada}
+              valor={totais.actualExpense}
               aoAbrir={() => aoAbrirEvidencia({ alvo: "total", titulo: "Despesa realizada" })}
             />
           </strong>
         </div>
-        <Cartao titulo="Diferença" valor={formatarDiferenca(totais.diferenca)} classe={classeDiferenca(totais.diferenca)} />
-        <Cartao titulo="Execução" valor={formatarPercentual(totais.execucao)} dica="Realizado ÷ previsto" />
+        <Cartao titulo="Diferença" valor={formatarDiferenca(totais.difference)} classe={classeDiferenca(totais.difference)} />
+        <Cartao titulo="Execução" valor={formatarPercentual(totais.execution)} dica="Realizado ÷ previsto" />
         {acumulado && (
           <Cartao
             titulo="Previsto do exercício (referência)"
-            valor={formatarMoeda(totais.previstoExercicio)}
-            dica={`Previsto do mês (${formatarMoeda(totais.previstoMes)}) × meses do exercício`}
+            valor={formatarMoeda(totais.fiscalYearPlanned)}
+            dica={`Previsto do mês (${formatarMoeda(totais.monthlyPlanned)}) × meses do exercício`}
           />
         )}
       </div>
@@ -54,7 +54,7 @@ function Cartao({ titulo, valor, classe, dica }: { titulo: string; valor: string
 
 /** RF-03.1.10: o acumulado diz quais meses não entraram (nunca os trata como zero). */
 function MesesFaltando({ resultado }: { resultado: PrevistoRealizado }) {
-  const { mesesSomados, mesesSemFluxo, mesesComDoisFluxos } = resultado;
+  const { summedMonths: mesesSomados, monthsWithoutCashFlow: mesesSemFluxo, monthsWithTwoCashFlows: mesesComDoisFluxos } = resultado;
   return (
     <p className="discreto">
       Somados: {mesesSomados.map(formatarMes).join(", ") || "nenhum mês"}.

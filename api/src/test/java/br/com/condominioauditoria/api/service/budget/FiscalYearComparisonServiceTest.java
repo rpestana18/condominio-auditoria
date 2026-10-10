@@ -42,8 +42,8 @@ class FiscalYearComparisonServiceTest {
         FiscalYearComparisonResponse r = scenario.comparison.compare(scenario.condominiumId, null, null, false);
 
         assertThat(r.fiscalYears()).extracting(e -> e.id(), e -> e.type(), e -> e.label()).containsExactly(
-                org.assertj.core.groups.Tuple.tuple("po:" + budget.getId(), FiscalYearType.PO, "2026/2027"),
-                org.assertj.core.groups.Tuple.tuple("coluna:" + budget.getId(), FiscalYearType.COLUNA_IMPRESSA,
+                org.assertj.core.groups.Tuple.tuple("budget:" + budget.getId(), FiscalYearType.PO, "2026/2027"),
+                org.assertj.core.groups.Tuple.tuple("column:" + budget.getId(), FiscalYearType.PRINTED_COLUMN,
                         "2025/2026 (coluna impressa)"));
         FiscalYearSummaryResponse current = r.summary().getFirst();
         FiscalYearSummaryResponse column = r.summary().get(1);
@@ -100,8 +100,8 @@ class FiscalYearComparisonServiceTest {
                 .anyMatch(l -> l.code().equals("1.3.20")));
         assertThat(r.unmatched()).extracting(l -> l.fiscalYearId(), l -> l.code(),
                 l -> l.monthlyPlanned().toPlainString()).containsExactly(
-                org.assertj.core.groups.Tuple.tuple("po:" + budget.getId(), "1.3.20", "8000.00"),
-                org.assertj.core.groups.Tuple.tuple("coluna:" + budget.getId(), "1.3.20", "17195.00"));
+                org.assertj.core.groups.Tuple.tuple("budget:" + budget.getId(), "1.3.20", "8000.00"),
+                org.assertj.core.groups.Tuple.tuple("column:" + budget.getId(), "1.3.20", "17195.00"));
         assertThat(r.warnings()).contains("2026/2027: 1 linha sem rubrica confirmada (bloco \"sem correspondência\")");
     }
 
@@ -116,13 +116,13 @@ class FiscalYearComparisonServiceTest {
         debit(scenario.cashFlow("fluxo-2026-10.pdf", LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31), 1),
                 "700.00",
                 LocalDate.of(2026, 10, 10));
-        List<String> ids = List.of("po:" + previous.getId(), "po:" + current.getId());
+        List<String> ids = List.of("budget:" + previous.getId(), "budget:" + current.getId());
 
         FiscalYearComparisonResponse all = scenario.comparison.compare(scenario.condominiumId, ids, null, false);
         FiscalYearComparisonResponse same = scenario.comparison.compare(scenario.condominiumId, ids, null, true);
 
-        assertThat(all.fiscalYears()).extracting(e -> e.id()).containsExactly("po:" + current.getId(),
-                "po:" + previous.getId());
+        assertThat(all.fiscalYears()).extracting(e -> e.id()).containsExactly("budget:" + current.getId(),
+                "budget:" + previous.getId());
         assertThat(all.comparing()).isNull();
         assertThat(all.summary().getFirst().monthsWithCashFlow()).isEqualTo(2);
         assertThat(all.summary().getFirst().actual()).isEqualByComparingTo("2200.00");
@@ -168,13 +168,13 @@ class FiscalYearComparisonServiceTest {
 
         assertStatus(() -> scenario.comparison.compare(scenario.condominiumId, null, null, false),
                 HttpStatus.UNPROCESSABLE_CONTENT);
-        assertStatus(() -> scenario.comparison.compare(scenario.condominiumId, List.of("po:abc",
-                "po:" + budget.getId()),
+        assertStatus(() -> scenario.comparison.compare(scenario.condominiumId, List.of("budget:abc",
+                "budget:" + budget.getId()),
                 null, false), HttpStatus.BAD_REQUEST);
         assertStatus(() -> scenario.comparison.compare(scenario.condominiumId,
-                List.of("coluna:" + budget.getId(), "po:" + budget.getId()), null, false), HttpStatus.NOT_FOUND);
+                List.of("column:" + budget.getId(), "budget:" + budget.getId()), null, false), HttpStatus.NOT_FOUND);
         assertStatus(() -> scenario.comparison.compare(scenario.condominiumId,
-                List.of("po:" + java.util.UUID.randomUUID(), "po:" + budget.getId()), null, false),
+                List.of("budget:" + java.util.UUID.randomUUID(), "budget:" + budget.getId()), null, false),
                         HttpStatus.NOT_FOUND);
     }
 

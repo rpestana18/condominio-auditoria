@@ -3,12 +3,10 @@ package br.com.condominioauditoria.api.model.file;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.model.enums.IndexingStatus;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -20,71 +18,45 @@ import org.hibernate.annotations.DynamicUpdate;
 // the indexing status saved in the meantime (an indexed file showed up as "queued" again).
 @DynamicUpdate
 @Entity
-@Table(name = "arquivo")
 public class SourceFile {
 
     @Id
     private UUID id;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "categoria")
     @Enumerated(EnumType.STRING)
     private FileCategory category;
-    @Column(name = "nome_original")
     private String originalName;
-    @Column(name = "caminho")
     private String path;
     private String sha256;
-    @Column(name = "tamanho_bytes")
     private long sizeBytes;
-    @Column(name = "tipo_conteudo")
     private String contentType;
     @Enumerated(EnumType.STRING)
     private FileStatus status;
-    @Column(name = "mensagem")
     private String message;
-    @Column(name = "interpretador")
     private String parser;
-    @Column(name = "periodo_inicio")
     private LocalDate periodStart;
-    @Column(name = "periodo_fim")
     private LocalDate periodEnd;
-    @Column(name = "total_lancamentos")
     private Integer entryCount;
-    @Column(name = "enviado_por")
     private String uploadedBy;
-    @Column(name = "enviado_em")
     private Instant uploadedAt;
-    @Column(name = "processado_em")
     private Instant processedAt;
     /** Identifies the read in progress. A result that arrives with another id (old or repeated) is discarded. */
-    @Column(name = "processamento_id")
     private UUID processingId;
     /** When it was last queued; the sweep resends what stalled. */
-    @Column(name = "enfileirado_em")
     private Instant queuedAt;
-    @Column(name = "tentativas")
     private int attempts;
 
     // Indexing for the document search (ADR 0003). All null = the file was never sent to the index.
-    @Column(name = "indexacao_situacao")
     @Enumerated(EnumType.STRING)
     private IndexingStatus indexingStatus;
-    @Column(name = "indexacao_motivo")
     private String indexingReason;
-    @Column(name = "indexacao_paginas")
     private Integer indexingPages;
-    @Column(name = "indexacao_trechos")
     private Integer indexingChunks;
     /** Identifies the indexing request in progress. A result with another id (old or repeated) is discarded. */
-    @Column(name = "indexacao_id")
     private UUID indexingId;
     /** When the indexing request was last queued; the sweep resends what stalled. */
-    @Column(name = "indexacao_enfileirada_em")
     private Instant indexingQueuedAt;
-    @Column(name = "indexacao_tentativas")
     private int indexingAttempts;
-    @Column(name = "indexacao_atualizada_em")
     private Instant indexingUpdatedAt;
 
     protected SourceFile() {
@@ -102,7 +74,7 @@ public class SourceFile {
         this.contentType = contentType;
         this.uploadedBy = uploadedBy;
         this.uploadedAt = Instant.now();
-        this.status = FileStatus.PENDENTE;
+        this.status = FileStatus.PENDING;
         this.processingId = UUID.randomUUID();
         this.queuedAt = this.uploadedAt;
         this.attempts = 1;
@@ -111,7 +83,7 @@ public class SourceFile {
 
     /** New read from scratch (reprocess): results of previous reads are ignored from now on. */
     public void requestProcessing() {
-        status = FileStatus.PENDENTE;
+        status = FileStatus.PENDING;
         message = null;
         processingId = UUID.randomUUID();
         queuedAt = Instant.now();
@@ -135,7 +107,7 @@ public class SourceFile {
 
     /** New indexing request (upload, reprocess, reindex): results of previous requests are ignored from now on. */
     public void requestIndexing() {
-        indexingStatus = IndexingStatus.NA_FILA;
+        indexingStatus = IndexingStatus.QUEUED;
         indexingReason = null;
         indexingPages = null;
         indexingChunks = null;
@@ -157,15 +129,15 @@ public class SourceFile {
 
     /** The rag started. Only leaves Queued: a late "indexing" does not undo a result that already arrived. */
     public void startIndexing() {
-        if (indexingStatus == IndexingStatus.NA_FILA) {
-            indexingStatus = IndexingStatus.INDEXANDO;
+        if (indexingStatus == IndexingStatus.QUEUED) {
+            indexingStatus = IndexingStatus.INDEXING;
             indexingUpdatedAt = Instant.now();
         }
     }
 
     /** Final indexing result (Indexed, No text, Withdrawn or Error), with what the rag reported. */
     public void completeIndexing(IndexingStatus status, String reason, Integer pages, Integer chunks) {
-        if (status == IndexingStatus.NA_FILA || status == IndexingStatus.INDEXANDO) {
+        if (status == IndexingStatus.QUEUED || status == IndexingStatus.INDEXING) {
             throw new IllegalArgumentException("Situação não é final: " + status);
         }
         indexingStatus = status;
@@ -176,11 +148,11 @@ public class SourceFile {
     }
 
     public void failIndexing(String reason) {
-        completeIndexing(IndexingStatus.ERRO, reason, null, null);
+        completeIndexing(IndexingStatus.ERROR, reason, null, null);
     }
 
     public void startProcessing() {
-        status = FileStatus.PROCESSANDO;
+        status = FileStatus.PROCESSING;
         message = null;
     }
 
@@ -196,7 +168,7 @@ public class SourceFile {
     }
 
     public void fail(String reason) {
-        status = FileStatus.FALHOU;
+        status = FileStatus.FAILED;
         message = reason;
         processedAt = Instant.now();
     }

@@ -30,8 +30,8 @@ class UsageExcelReportTest {
         String assistant = FeatureService.ASSISTANT;
         var usage = new UsageSummary(UUID.randomUUID(), LocalDate.of(2026, 11, 1), LocalDate.of(2026, 12, 31),
                 List.of(),
-                List.of(new UsageTotal("2026-11", assistant, UsageFunction.CHAMADA_MCP, 12, 0, 0, 0, 0),
-                        new UsageTotal("2026-12", assistant, UsageFunction.INDEXACAO, 40, 0, 0, 40, 380)));
+                List.of(new UsageTotal("2026-11", assistant, UsageFunction.MCP_CALL, 12, 0, 0, 0, 0),
+                        new UsageTotal("2026-12", assistant, UsageFunction.INDEXING, 40, 0, 0, 40, 380)));
         var closed = new ActivePeriod(FeatureService.ASSISTANT, Instant.parse("2026-11-01T13:00:00Z"),
                 Instant.parse("2026-12-15T18:30:00Z"), "ana", "=HYPERLINK(\"x\")", "bruno", null);
         var open = new ActivePeriod(FeatureService.ASSISTANT, Instant.parse("2027-01-10T13:00:00Z"), null, "carla",
@@ -62,7 +62,7 @@ class UsageExcelReportTest {
 
             Row november = monthUsage.getRow(DATA);
             assertThat(november.getCell(0).getStringCellValue()).isEqualTo("2026-11");
-            assertThat(november.getCell(2).getStringCellValue()).isEqualTo("chamada_mcp");
+            assertThat(november.getCell(2).getStringCellValue()).isEqualTo("Busca pelo MCP");
             assertThat(november.getCell(3).getNumericCellValue()).isEqualTo(12);
             Row december = monthUsage.getRow(DATA + 1);
             assertThat(december.getCell(6).getNumericCellValue()).isEqualTo(40);
@@ -87,9 +87,9 @@ class UsageExcelReportTest {
         String assistant = FeatureService.ASSISTANT;
         var usage = new UsageSummary(UUID.randomUUID(), LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31),
                 List.of(),
-                List.of(new UsageTotal("2026-10", assistant, UsageFunction.BUSCA_DOCUMENTOS, 5, 0, 0, 0, 0),
-                        new UsageTotal("2026-10", assistant, UsageFunction.PERGUNTA, 30, 1_500_000, 100_000, 0, 0)));
-        var cost = new UsageCostCalculator.PeriodCost(java.util.Map.of("2026-10|ASSISTENTE|pergunta",
+                List.of(new UsageTotal("2026-10", assistant, UsageFunction.DOCUMENT_SEARCH, 5, 0, 0, 0, 0),
+                        new UsageTotal("2026-10", assistant, UsageFunction.QUESTION, 30, 1_500_000, 100_000, 0, 0)));
+        var cost = new UsageCostCalculator.PeriodCost(java.util.Map.of("2026-10|ASSISTANT|question",
                 new java.math.BigDecimal("1234.50")), java.util.Map.of(), new java.math.BigDecimal("1234.50"),
                 java.util.Set.of());
 
@@ -110,7 +110,7 @@ class UsageExcelReportTest {
     void withoutCatalogWarnsThatTheCostIsUnavailable() throws Exception {
         var usage = new UsageSummary(UUID.randomUUID(), LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31),
                 List.of(),
-                List.of(new UsageTotal("2026-10", FeatureService.ASSISTANT, UsageFunction.PERGUNTA, 1, 10, 10, 0, 0)));
+                List.of(new UsageTotal("2026-10", FeatureService.ASSISTANT, UsageFunction.QUESTION, 1, 10, 10, 0, 0)));
 
         try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(
                 UsageExcelReport.generate("C", usage, List.of(), null)))) {

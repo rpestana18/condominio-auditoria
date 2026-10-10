@@ -25,20 +25,20 @@ import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.api.service.query.DocumentSearchService;
 import br.com.condominioauditoria.api.service.query.QueryService;
 import br.com.condominioauditoria.api.service.usage.UsageService;
-import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.LocalPagina;
-import br.com.condominioauditoria.contratos.assistente.v1.LocalPlanilha;
-import br.com.condominioauditoria.contratos.assistente.v1.Localizacao;
-import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.Trecho;
-import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosResponse;
-import br.com.condominioauditoria.contratos.consulta.v1.ConsultaGrpc;
-import br.com.condominioauditoria.contratos.consulta.v1.FiltrosDocumentos;
-import br.com.condominioauditoria.contratos.consulta.v1.LocalizacaoTrecho;
-import br.com.condominioauditoria.contratos.consulta.v1.ModoBuscaDocumentos;
+import br.com.condominioauditoria.contracts.assistant.v2.AssistantGrpc;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.PageLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.SheetLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.ChunkLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchMode;
+import br.com.condominioauditoria.contracts.assistant.v2.IndexedChunk;
+import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsRequest;
+import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsResponse;
+import br.com.condominioauditoria.contracts.query.v2.QueryGrpc;
+import br.com.condominioauditoria.contracts.query.v2.DocumentFilters;
+import br.com.condominioauditoria.contracts.query.v2.DocumentChunkLocation;
+import br.com.condominioauditoria.contracts.query.v2.DocumentSearchMode;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
 import io.grpc.Server;
@@ -69,7 +69,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 
 /**
- * rpc BuscarDocumentos end to end in process: mcp (stub) → api (QueryGrpcService with the real authentication) → fake
+ * rpc SearchDocuments end to end in process: mcp (stub) → api (QueryGrpcService with the real authentication) → fake
  * rag (Assistente). Checks the forwarded token, mode, limits, conversion, rejection of another condominium, second
  * barrier and rag down.
  */
@@ -83,20 +83,20 @@ class DocumentSearchGrpcTest {
     private final FeatureService features = mock(FeatureService.class);
     private final UsageService usage = mock(UsageService.class);
     private final AiConfigurationService aiConfiguration = mock(AiConfigurationService.class);
-    private final SourceFile minutesOfA = new SourceFile(CONDOMINIUM_A, FileCategory.ATA, "ata.pdf",
-            "a/ATA/2026/x-ata.pdf",
+    private final SourceFile minutesOfA = new SourceFile(CONDOMINIUM_A, FileCategory.MINUTES, "ata.pdf",
+            "a/MINUTES/2026/x-ata.pdf",
             "a".repeat(64), 10, "application/pdf", "gestor");
     private final SourceFile budgetOfA = new SourceFile(CONDOMINIUM_A, FileCategory.PO, "po.xlsx",
             "a/PO/2026/x-po.xlsx",
             "c".repeat(64), 10, "application/vnd.ms-excel", "gestor");
-    private final SourceFile minutesOfB = new SourceFile(CONDOMINIUM_B, FileCategory.ATA, "ata-b.pdf",
-            "b/ATA/2026/x-ata-b.pdf",
+    private final SourceFile minutesOfB = new SourceFile(CONDOMINIUM_B, FileCategory.MINUTES, "ata-b.pdf",
+            "b/MINUTES/2026/x-ata-b.pdf",
             "b".repeat(64), 10, "application/pdf", "gestor");
 
     /** What the fake rag received and what it will return. */
-    private final List<BuscarRequest> ragRequests = new ArrayList<>();
+    private final List<SearchRequest> ragRequests = new ArrayList<>();
     private final AtomicReference<String> tokenReceivedByRag = new AtomicReference<>();
-    private final List<Trecho> ragResponse = new ArrayList<>();
+    private final List<IndexedChunk> ragResponse = new ArrayList<>();
 
     private Server rag;
     private Server api;
@@ -104,7 +104,7 @@ class DocumentSearchGrpcTest {
     private ManagedChannel apiChannel;
 
     private final JwtDecoder decoder = token -> switch (token) {
-        case "usuario-a" -> jwt(token, "usuario.a", List.of("USUARIO"), List.of(CONDOMINIUM_A.toString()));
+        case "usuario-a" -> jwt(token, "usuario.a", List.of("USER"), List.of(CONDOMINIUM_A.toString()));
         case "admin" -> jwt(token, "admin", List.of("ADMIN"), List.of());
         default -> throw new BadJwtException("assinatura inválida");
     };
@@ -118,12 +118,12 @@ class DocumentSearchGrpcTest {
                     .filter(a -> a.getCondominiumId().equals(CONDOMINIUM_A) && ids.contains(a.getId())).toList();
         });
 
-        var assistant = new AssistenteGrpc.AssistenteImplBase() {
+        var assistant = new AssistantGrpc.AssistantImplBase() {
             @Override
-            public void buscar(BuscarRequest request, StreamObserver<BuscarResponse> response) {
+            public void search(SearchRequest request, StreamObserver<SearchResponse> response) {
                 ragRequests.add(request);
-                response.onNext(BuscarResponse.newBuilder().addAllTrechos(ragResponse)
-                        .setModoUsado(ModoBusca.MODO_BUSCA_HIBRIDA).build());
+                response.onNext(SearchResponse.newBuilder().addAllChunks(ragResponse)
+                        .setModeUsed(SearchMode.SEARCH_MODE_HYBRID).build());
                 response.onCompleted();
             }
         };
@@ -149,7 +149,7 @@ class DocumentSearchGrpcTest {
 
         var converter = new JwtAuthenticationConverter();
         converter.setPrincipalClaimName("preferred_username");
-        converter.setJwtGrantedAuthoritiesConverter(jwt -> jwt.getClaimAsStringList("perfis").stream()
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> jwt.getClaimAsStringList("roles").stream()
                 .map(p -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + p)).toList());
         String apiName = InProcessServerBuilder.generateName();
         api = InProcessServerBuilder.forName(apiName)
@@ -169,37 +169,37 @@ class DocumentSearchGrpcTest {
     @Test
     void forwardsToRagWithTokenAndConvertsChunks() {
         ragResponse.add(chunk(minutesOfA,
-                Localizacao.newBuilder().setPagina(LocalPagina.newBuilder().setPagina(3)).build(),
+                ChunkLocation.newBuilder().setPage(PageLocation.newBuilder().setPage(3)).build(),
                 0.9));
-        ragResponse.add(chunk(budgetOfA, Localizacao.newBuilder().setPlanilha(LocalPlanilha.newBuilder()
-                .setAba("Previsto").setLinhaInicio(10).setLinhaFim(14)).build(), 0.5));
+        ragResponse.add(chunk(budgetOfA, ChunkLocation.newBuilder().setSheet(SheetLocation.newBuilder()
+                .setTab("Previsto").setStartRow(10).setEndRow(14)).build(), 0.5));
 
-        BuscarDocumentosResponse response = stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "  multa  ")
-                .setFiltros(FiltrosDocumentos.newBuilder().addCategorias("ata").setDataInicio("2026-01-01"))
+        SearchDocumentsResponse response = stub("usuario-a").searchDocuments(request(CONDOMINIUM_A, "  multa  ")
+                .setFilters(DocumentFilters.newBuilder().addCategories("minutes").setDateFrom("2026-01-01"))
                 .build());
 
         assertThat(tokenReceivedByRag.get()).isEqualTo("Bearer usuario-a");
-        BuscarRequest inRag = ragRequests.getFirst();
-        assertThat(inRag.getCondominioId()).isEqualTo(CONDOMINIUM_A.toString());
-        assertThat(inRag.getTexto()).isEqualTo("multa");
-        assertThat(inRag.getModo()).isEqualTo(ModoBusca.MODO_BUSCA_HIBRIDA);
-        assertThat(inRag.getLimite()).isEqualTo(10);
-        assertThat(inRag.getFiltros().getCategoriasList()).containsExactly("ATA");
-        assertThat(inRag.getFiltros().getDataInicio()).isEqualTo("2026-01-01");
+        SearchRequest inRag = ragRequests.getFirst();
+        assertThat(inRag.getCondominiumId()).isEqualTo(CONDOMINIUM_A.toString());
+        assertThat(inRag.getText()).isEqualTo("multa");
+        assertThat(inRag.getMode()).isEqualTo(SearchMode.SEARCH_MODE_HYBRID);
+        assertThat(inRag.getLimit()).isEqualTo(10);
+        assertThat(inRag.getFilters().getCategoriesList()).containsExactly("MINUTES");
+        assertThat(inRag.getFilters().getDateFrom()).isEqualTo("2026-01-01");
 
-        assertThat(response.getModoUsado()).isEqualTo(ModoBuscaDocumentos.MODO_BUSCA_DOCUMENTOS_HIBRIDA);
-        assertThat(response.getTrechosList()).hasSize(2);
-        var first = response.getTrechos(0);
-        assertThat(first.getArquivoId()).isEqualTo(minutesOfA.getId().toString());
-        assertThat(first.getNomeArquivo()).isEqualTo("ata.pdf");
+        assertThat(response.getModeUsed()).isEqualTo(DocumentSearchMode.DOCUMENT_SEARCH_MODE_HYBRID);
+        assertThat(response.getChunksList()).hasSize(2);
+        var first = response.getChunks(0);
+        assertThat(first.getFileId()).isEqualTo(minutesOfA.getId().toString());
+        assertThat(first.getFileName()).isEqualTo("ata.pdf");
         assertThat(first.getSha256()).isEqualTo(minutesOfA.getSha256());
-        assertThat(first.getTexto()).isEqualTo("texto de ata.pdf");
-        assertThat(first.getLocalizacao().getTipoCase()).isEqualTo(LocalizacaoTrecho.TipoCase.PAGINA);
-        assertThat(first.getLocalizacao().getPagina().getPagina()).isEqualTo(3);
-        var second = response.getTrechos(1).getLocalizacao().getPlanilha();
-        assertThat(second.getAba()).isEqualTo("Previsto");
-        assertThat(second.getLinhaInicio()).isEqualTo(10);
-        assertThat(second.getLinhaFim()).isEqualTo(14);
+        assertThat(first.getText()).isEqualTo("texto de ata.pdf");
+        assertThat(first.getLocation().getKindCase()).isEqualTo(DocumentChunkLocation.KindCase.PAGE);
+        assertThat(first.getLocation().getPage().getPage()).isEqualTo(3);
+        var second = response.getChunks(1).getLocation().getSheet();
+        assertThat(second.getTab()).isEqualTo("Previsto");
+        assertThat(second.getStartRow()).isEqualTo(10);
+        assertThat(second.getEndRow()).isEqualTo(14);
     }
 
     @Test
@@ -207,7 +207,7 @@ class DocumentSearchGrpcTest {
         doThrow(new FeatureNotEnabledException(FeatureService.ASSISTANT, "Assistente"))
                 .when(features).require(CONDOMINIUM_A, FeatureService.ASSISTANT);
 
-        assertThatThrownBy(() -> stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "multa").build()))
+        assertThatThrownBy(() -> stub("usuario-a").searchDocuments(request(CONDOMINIUM_A, "multa").build()))
                 .isInstanceOfSatisfying(StatusRuntimeException.class, e -> {
                     assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.FAILED_PRECONDITION);
                     assertThat(e.getStatus().getDescription())
@@ -219,7 +219,7 @@ class DocumentSearchGrpcTest {
 
     @Test
     void withoutCondominiumAccessIsRejectedBeforeCheckingFeature() {
-        assertThatThrownBy(() -> stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_B, "multa").build()))
+        assertThatThrownBy(() -> stub("usuario-a").searchDocuments(request(CONDOMINIUM_B, "multa").build()))
                 .isInstanceOfSatisfying(StatusRuntimeException.class,
                         e -> assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED));
         verifyNoInteractions(features);
@@ -228,11 +228,11 @@ class DocumentSearchGrpcTest {
     @Test
     void eachAnsweredSearchRecordsAnMcpCallWithUser() {
         ragResponse.add(chunk(minutesOfA,
-                Localizacao.newBuilder().setPagina(LocalPagina.newBuilder().setPagina(1)).build(),
+                ChunkLocation.newBuilder().setPage(PageLocation.newBuilder().setPage(1)).build(),
                 0.9));
 
-        stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "multa").build());
-        stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "portão").build());
+        stub("usuario-a").searchDocuments(request(CONDOMINIUM_A, "multa").build());
+        stub("usuario-a").searchDocuments(request(CONDOMINIUM_A, "portão").build());
 
         verify(usage, times(2)).recordMcpCall(CONDOMINIUM_A, "usuario.a", true);
     }
@@ -241,29 +241,29 @@ class DocumentSearchGrpcTest {
     void searchFailingInRagDoesNotRecordUsage() {
         rag.shutdownNow();
 
-        assertThatThrownBy(() -> stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "multa").build()))
+        assertThatThrownBy(() -> stub("usuario-a").searchDocuments(request(CONDOMINIUM_A, "multa").build()))
                 .isInstanceOf(StatusRuntimeException.class);
         verifyNoInteractions(usage);
     }
 
     @Test
     void secondBarrierDropsChunkFromOtherCondominiumOrUnknownFile() {
-        var page = Localizacao.newBuilder().setPagina(LocalPagina.newBuilder().setPagina(1)).build();
+        var page = ChunkLocation.newBuilder().setPage(PageLocation.newBuilder().setPage(1)).build();
         ragResponse.add(chunk(minutesOfB, page, 0.99));                  // file of another condominium
         ragResponse.add(chunk(minutesOfA, page, 0.8));                   // ok
-        ragResponse.add(Trecho.newBuilder().setTrechoId("x").setArquivoId(UUID.randomUUID().toString())
-                .setLocalizacao(page).build());                          // file that does not exist in the api
-        ragResponse.add(Trecho.newBuilder().setTrechoId("y").setArquivoId("nao-e-uuid").build());
+        ragResponse.add(IndexedChunk.newBuilder().setChunkId("x").setFileId(UUID.randomUUID().toString())
+                .setLocation(page).build());                          // file that does not exist in the api
+        ragResponse.add(IndexedChunk.newBuilder().setChunkId("y").setFileId("nao-e-uuid").build());
 
-        var response = stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "multa").build());
+        var response = stub("usuario-a").searchDocuments(request(CONDOMINIUM_A, "multa").build());
 
-        assertThat(response.getTrechosList()).extracting(t -> t.getArquivoId())
+        assertThat(response.getChunksList()).extracting(t -> t.getFileId())
                 .containsExactly(minutesOfA.getId().toString());
     }
 
     @Test
     void otherCondominiumIsRejectedWithoutCallingRag() {
-        assertThatThrownBy(() -> stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_B, "multa").build()))
+        assertThatThrownBy(() -> stub("usuario-a").searchDocuments(request(CONDOMINIUM_B, "multa").build()))
                 .isInstanceOfSatisfying(StatusRuntimeException.class,
                         e -> assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED));
         assertThat(ragRequests).isEmpty();
@@ -271,8 +271,8 @@ class DocumentSearchGrpcTest {
 
     @Test
     void withoutTokenIsRejected() {
-        assertThatThrownBy(() -> ConsultaGrpc.newBlockingStub(apiChannel)
-                .buscarDocumentos(request(CONDOMINIUM_A, "multa").build()))
+        assertThatThrownBy(() -> QueryGrpc.newBlockingStub(apiChannel)
+                .searchDocuments(request(CONDOMINIUM_A, "multa").build()))
                 .isInstanceOfSatisfying(StatusRuntimeException.class,
                         e -> assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED));
         assertThat(ragRequests).isEmpty();
@@ -280,7 +280,7 @@ class DocumentSearchGrpcTest {
 
     @Test
     void emptyTextIsInvalid() {
-        assertThatThrownBy(() -> stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "   ").build()))
+        assertThatThrownBy(() -> stub("usuario-a").searchDocuments(request(CONDOMINIUM_A, "   ").build()))
                 .isInstanceOfSatisfying(StatusRuntimeException.class, e -> {
                     assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.INVALID_ARGUMENT);
                     assertThat(e.getStatus().getDescription()).contains("texto");
@@ -290,12 +290,12 @@ class DocumentSearchGrpcTest {
 
     @Test
     void negativeLimitAndBadDateAreInvalid() {
-        assertThatThrownBy(() -> stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A,
-                "multa").setLimite(-1).build()))
+        assertThatThrownBy(() -> stub("usuario-a").searchDocuments(request(CONDOMINIUM_A,
+                "multa").setLimit(-1).build()))
                 .isInstanceOfSatisfying(StatusRuntimeException.class,
                         e -> assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.INVALID_ARGUMENT));
-        assertThatThrownBy(() -> stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "multa")
-                .setFiltros(FiltrosDocumentos.newBuilder().setDataFim("30/09/2026")).build()))
+        assertThatThrownBy(() -> stub("usuario-a").searchDocuments(request(CONDOMINIUM_A, "multa")
+                .setFilters(DocumentFilters.newBuilder().setDateTo("30/09/2026")).build()))
                 .isInstanceOfSatisfying(StatusRuntimeException.class,
                         e -> assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.INVALID_ARGUMENT));
         assertThat(ragRequests).isEmpty();
@@ -303,72 +303,72 @@ class DocumentSearchGrpcTest {
 
     @Test
     void embeddingsOffSearchByWordOnlyWithoutModel() {
-        embeddings(AiMode.DESLIGADO, null);
+        embeddings(AiMode.OFF, null);
 
-        stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "multa").build());
+        stub("usuario-a").searchDocuments(request(CONDOMINIUM_A, "multa").build());
 
-        assertThat(ragRequests.getFirst().getModo()).isEqualTo(ModoBusca.MODO_BUSCA_PALAVRA);
-        assertThat(ragRequests.getFirst().getModeloEmbeddings()).isEmpty();
+        assertThat(ragRequests.getFirst().getMode()).isEqualTo(SearchMode.SEARCH_MODE_KEYWORD);
+        assertThat(ragRequests.getFirst().getEmbeddingModel()).isEmpty();
     }
 
     @Test
     void localEmbeddingsSearchHybridWithConfiguredModel() {
-        stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "multa").build());
+        stub("usuario-a").searchDocuments(request(CONDOMINIUM_A, "multa").build());
 
-        assertThat(ragRequests.getFirst().getModo()).isEqualTo(ModoBusca.MODO_BUSCA_HIBRIDA);
-        assertThat(ragRequests.getFirst().getModeloEmbeddings()).isEqualTo("bge-m3");
+        assertThat(ragRequests.getFirst().getMode()).isEqualTo(SearchMode.SEARCH_MODE_HYBRID);
+        assertThat(ragRequests.getFirst().getEmbeddingModel()).isEqualTo("bge-m3");
     }
 
     private void embeddings(AiMode mode, String model) {
-        var answers = new AiConfigurationService.Answers(null, AiMode.MCP_EXTERNO, null, null, null, null);
-        when(aiConfiguration.read(any())).thenReturn(new AiConfigurationService.Effective(AiMode.MCP_EXTERNO, answers,
+        var answers = new AiConfigurationService.Answers(null, AiMode.EXTERNAL_MCP, null, null, null, null);
+        when(aiConfiguration.read(any())).thenReturn(new AiConfigurationService.Effective(AiMode.EXTERNAL_MCP, answers,
                 new AiConfigurationService.Embeddings(mode, mode == AiMode.LOCAL ? "ollama-local" : null, model), null,
                 null));
     }
 
     @Test
     void limitAboveMaxIsReduced() {
-        stub("admin").buscarDocumentos(request(CONDOMINIUM_A, "multa").setLimite(80).build());
-        assertThat(ragRequests.getFirst().getLimite()).isEqualTo(50);
+        stub("admin").searchDocuments(request(CONDOMINIUM_A, "multa").setLimit(80).build());
+        assertThat(ragRequests.getFirst().getLimit()).isEqualTo(50);
     }
 
     @Test
     void ragDownIsUnavailableWithReadableMessage() {
         rag.shutdownNow();
 
-        assertThatThrownBy(() -> stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "multa").build()))
+        assertThatThrownBy(() -> stub("usuario-a").searchDocuments(request(CONDOMINIUM_A, "multa").build()))
                 .isInstanceOfSatisfying(StatusRuntimeException.class, e -> {
                     assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.UNAVAILABLE);
                     assertThat(e.getStatus().getDescription()).contains("Busca nos documentos indisponível");
                 });
     }
 
-    private ConsultaGrpc.ConsultaBlockingStub stub(String token) {
+    private QueryGrpc.QueryBlockingStub stub(String token) {
         var headers = new Metadata();
         headers.put(GrpcAuthInterceptor.AUTHORIZATION, "Bearer " + token);
-        return ConsultaGrpc.newBlockingStub(apiChannel)
+        return QueryGrpc.newBlockingStub(apiChannel)
                 .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
     }
 
-    private static BuscarDocumentosRequest.Builder request(UUID condominiumId, String text) {
-        return BuscarDocumentosRequest.newBuilder().setCondominioId(condominiumId.toString()).setTexto(text);
+    private static SearchDocumentsRequest.Builder request(UUID condominiumId, String text) {
+        return SearchDocumentsRequest.newBuilder().setCondominiumId(condominiumId.toString()).setText(text);
     }
 
-    private static Trecho chunk(SourceFile file, Localizacao location, double score) {
-        return Trecho.newBuilder()
-                .setTrechoId(UUID.randomUUID().toString())
-                .setArquivoId(file.getId().toString())
-                .setNomeArquivo(file.getOriginalName())
-                .setCategoria(file.getCategory().name())
-                .setLocalizacao(location)
-                .setTexto("texto de " + file.getOriginalName())
-                .setPontuacao(score)
+    private static IndexedChunk chunk(SourceFile file, ChunkLocation location, double score) {
+        return IndexedChunk.newBuilder()
+                .setChunkId(UUID.randomUUID().toString())
+                .setFileId(file.getId().toString())
+                .setFileName(file.getOriginalName())
+                .setCategory(file.getCategory().name())
+                .setLocation(location)
+                .setText("texto de " + file.getOriginalName())
+                .setScore(score)
                 .setSha256(file.getSha256())
                 .build();
     }
 
     private static Jwt jwt(String token, String username, List<String> roles, List<String> condominiums) {
         return new Jwt(token, Instant.now(), Instant.now().plusSeconds(300), Map.of("alg", "none"),
-                Map.of("preferred_username", username, "perfis", roles, "condominios", condominiums));
+                Map.of("preferred_username", username, "roles", roles, "condominiums", condominiums));
     }
 }

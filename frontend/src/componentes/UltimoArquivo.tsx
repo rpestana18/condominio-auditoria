@@ -9,8 +9,8 @@ export function UltimoArquivo() {
   const { data: ultimo } = useUltimoArquivo(condominioId);
   if (!ultimo) return null;
   return (
-    <Link to="/arquivos" className="ultimo-arquivo" title={`Enviado por ${ultimo.enviadoPor}`}>
-      Último arquivo: {ultimo.nome} · {ultimo.categoriaRotulo} · {formatarDataHora(ultimo.enviadoEm)}
+    <Link to="/arquivos" className="ultimo-arquivo" title={`Enviado por ${ultimo.uploadedBy}`}>
+      Último arquivo: {ultimo.name} · {ultimo.categoryLabel} · {formatarDataHora(ultimo.uploadedAt)}
     </Link>
   );
 }

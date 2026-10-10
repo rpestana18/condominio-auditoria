@@ -20,7 +20,7 @@ import javax.crypto.spec.PSource;
 
 /**
  * Encrypts the condominium's API key with the rag's public key (ADR 0003, Sub-decision 4.1 A), in the envelope of
- * contracts/grpc/assistente/v1 (ConfiguracaoPergunta.chave_cifrada), using only the Java standard library:
+ * contracts/grpc/assistant/v2 (AskConfiguration.encrypted_key), using only the Java standard library:
  *
  * <pre>
  * [0]               version = 0x01
@@ -50,7 +50,7 @@ public final class ApiKeyCipher {
     }
 
     /**
-     * Public key in PEM X.509 SubjectPublicKeyInfo ("-----BEGIN PUBLIC KEY-----"), as it comes from ListarProvedores.
+     * Public key in PEM X.509 SubjectPublicKeyInfo ("-----BEGIN PUBLIC KEY-----"), as it comes from ListProviders.
      */
     public static PublicKey publicKey(String pem) {
         if (pem == null || pem.isBlank()) {

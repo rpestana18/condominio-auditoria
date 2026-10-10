@@ -149,7 +149,7 @@ public class BudgetConfirmationService {
         lines.saveAll(budgetLines);
         links.forEach((line, fund) -> fundLinks.save(new BudgetFundLink(budget.getId(), line.getId(), fund.getId())));
 
-        boolean acknowledged = budget.getStatus() == BudgetStatus.LIDA_COM_DIVERGENCIA;
+        boolean acknowledged = budget.getStatus() == BudgetStatus.READ_WITH_DISCREPANCY;
         String justification = acknowledged ? request.justification().trim() : null;
         budget.confirm(version, start, end, minutes == null ? null : minutes.getId(), request.withoutMinutes(),
                 request.approvalDate(),
@@ -198,8 +198,8 @@ public class BudgetConfirmationService {
         SourceFile minutes = files.findByIdAndCondominiumId(request.minutesFileId(), condominiumId).orElse(null);
         if (minutes == null) {
             reasons.add("A ata informada não é um arquivo deste condomínio.");
-        } else if (minutes.getCategory() != FileCategory.ATA) {
-            reasons.add("O arquivo \"" + minutes.getOriginalName() + "\" não está na categoria \"" + FileCategory.ATA.label()
+        } else if (minutes.getCategory() != FileCategory.MINUTES) {
+            reasons.add("O arquivo \"" + minutes.getOriginalName() + "\" não está na categoria \"" + FileCategory.MINUTES.label()
                     + "\".");
         }
         if (request.approvalDate() == null) {
@@ -211,7 +211,7 @@ public class BudgetConfirmationService {
     /** Q29: a budget read with a sum discrepancy is only confirmed "aware of the discrepancy", with a justification. */
     private static void validateDiscrepancy(Budget budget, BudgetConfirmationRequest request,
             BudgetReadingAssessment.Result assessment, List<String> reasons) {
-        if (budget.getStatus() != BudgetStatus.LIDA_COM_DIVERGENCIA) {
+        if (budget.getStatus() != BudgetStatus.READ_WITH_DISCREPANCY) {
             return;
         }
         String sums = String.join("; ", assessment.discrepancies());
@@ -312,7 +312,7 @@ public class BudgetConfirmationService {
     private List<Budget> overlapping(UUID condominiumId, Budget budget, YearMonth start,
             YearMonth end, boolean reapproval) {
         List<BudgetValidity> conflicts = budgets.findByCondominiumIdAndStatusIn(condominiumId,
-                        EnumSet.of(BudgetStatus.CONFIRMADA, BudgetStatus.SUBSTITUIDA)).stream()
+                        EnumSet.of(BudgetStatus.CONFIRMED, BudgetStatus.SUPERSEDED)).stream()
                 .filter(p -> !p.getId().equals(budget.getId()))
                 .map(BudgetValidity::of).flatMap(java.util.Optional::stream)
                 .filter(v -> v.overlaps(start, end)).toList();
@@ -346,7 +346,7 @@ public class BudgetConfirmationService {
         String reason = "PO " + start.getYear() + "/" + end.getYear() + " confirmada (versão " + version + ", "
                 + start + " a " + end + ")";
         for (Budget other : budgets.findByCondominiumIdAndStatusIn(budget.getCondominiumId(),
-                EnumSet.of(BudgetStatus.CONFIRMADA, BudgetStatus.SUBSTITUIDA))) {
+                EnumSet.of(BudgetStatus.CONFIRMED, BudgetStatus.SUPERSEDED))) {
             YearMonth until = other.getExtendedUntil();
             if (other.getId().equals(budget.getId()) || until == null) {
                 continue;
@@ -388,11 +388,11 @@ public class BudgetConfirmationService {
     }
 
     static String target(Budget budget, BudgetLine line) {
-        return targetPrefix(budget) + "linha:" + line.getId();
+        return targetPrefix(budget) + "line:" + line.getId();
     }
 
     static String targetPrefix(Budget budget) {
-        return "previsao:" + budget.getId() + ":";
+        return "budget:" + budget.getId() + ":";
     }
 
     private static String eventDetail(Budget budget, SourceFile minutes, List<String> changes,

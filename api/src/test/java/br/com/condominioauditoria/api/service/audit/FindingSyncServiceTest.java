@@ -77,8 +77,8 @@ class FindingSyncServiceTest {
         assertThat(first).isEqualTo(new SyncResult(1, 0, 0, 0));
         assertThat(second).isEqualTo(new SyncResult(0, 0, 0, 1));
         assertThat(findings).singleElement().satisfies(a -> {
-            assertThat(a.getStatus()).isEqualTo(FindingStatus.ABERTO);
-            assertThat(a.getSeverity()).isEqualTo(Severity.ATENCAO);
+            assertThat(a.getStatus()).isEqualTo(FindingStatus.OPEN);
+            assertThat(a.getSeverity()).isEqualTo(Severity.WARNING);
         });
         assertThat(evidence).hasSize(1);
         assertThat(events).hasSize(1);
@@ -92,16 +92,16 @@ class FindingSyncServiceTest {
         sync.synchronize(condominium, SEPTEMBER, RULES, List.of(), trigger("de-para da conta 8888 confirmado"));
         sync.synchronize(condominium, SEPTEMBER, RULES, List.of(), trigger("outra mudança"));
 
-        assertThat(a.getStatus()).isEqualTo(FindingStatus.NAO_SE_APLICA_MAIS);
+        assertThat(a.getStatus()).isEqualTo(FindingStatus.NO_LONGER_APPLIES);
         assertThat(a.getStatusReason()).isEqualTo("de-para da conta 8888 confirmado por admin em 04/10/2026");
         assertThat(events).hasSize(2);
 
         sync.synchronize(condominium, SEPTEMBER, RULES, List.of(account8888()), trigger("de-para desfeito"));
 
         assertThat(findings).singleElement().isSameAs(a);
-        assertThat(a.getStatus()).isEqualTo(FindingStatus.ABERTO);
-        assertThat(events).extracting(FindingEvent::getNewStatus).containsExactly(FindingStatus.ABERTO,
-                FindingStatus.NAO_SE_APLICA_MAIS, FindingStatus.ABERTO);
+        assertThat(a.getStatus()).isEqualTo(FindingStatus.OPEN);
+        assertThat(events).extracting(FindingEvent::getNewStatus).containsExactly(FindingStatus.OPEN,
+                FindingStatus.NO_LONGER_APPLIES, FindingStatus.OPEN);
         assertThat(evidence).hasSize(1);
     }
 
@@ -111,26 +111,26 @@ class FindingSyncServiceTest {
         Finding a = findings.getFirst();
         var state = Finding.class.getDeclaredField("status");
         state.setAccessible(true);
-        state.set(a, FindingStatus.JUSTIFICADO); // human marking (RF-02.8, the findings screen does not exist yet)
+        state.set(a, FindingStatus.JUSTIFIED); // human marking (RF-02.8, the findings screen does not exist yet)
 
         sync.synchronize(condominium, SEPTEMBER, RULES, List.of(), trigger("de-para da conta 8888 confirmado"));
 
-        assertThat(a.getStatus()).isEqualTo(FindingStatus.JUSTIFICADO);
+        assertThat(a.getStatus()).isEqualTo(FindingStatus.JUSTIFIED);
         assertThat(a.isConditionPresent()).isFalse();
-        assertThat(events.getLast().getNewStatus()).isEqualTo(FindingStatus.JUSTIFICADO);
+        assertThat(events.getLast().getNewStatus()).isEqualTo(FindingStatus.JUSTIFIED);
         assertThat(events.getLast().getReason()).contains("estado marcado por pessoa mantido");
     }
 
     @Test
     void ruleNotAssessedInTheMonthLeavesItsFindingsUnchanged() {
         sync.synchronize(condominium, SEPTEMBER, Set.of(UnmappedAccountRule.CODE, MonthlyOverrunRule.CODE),
-                List.of(account8888(), new AssessedFinding(MonthlyOverrunRule.CODE, "1", Severity.CRITICO,
-                        "fundo-condominio",
+                List.of(account8888(), new AssessedFinding(MonthlyOverrunRule.CODE, "1", Severity.CRITICAL,
+                        "operating-fund",
                         "excesso de 21,9% do previsto do mês", List.of())), trigger("fluxo gravado"));
 
         sync.synchronize(condominium, SEPTEMBER, RULES, List.of(account8888()), trigger("limite descadastrado"));
 
-        assertThat(findings).hasSize(2).allMatch(a -> a.getStatus() == FindingStatus.ABERTO);
+        assertThat(findings).hasSize(2).allMatch(a -> a.getStatus() == FindingStatus.OPEN);
     }
 
     private static AssessedFinding account8888() {

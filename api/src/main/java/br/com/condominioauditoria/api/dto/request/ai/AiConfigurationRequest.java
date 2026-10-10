@@ -1,10 +1,9 @@
 package br.com.condominioauditoria.api.dto.request.ai;
 
 import br.com.condominioauditoria.api.model.enums.AiMode;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
-/** PUT /condominios/{id}/ia (contracts/openapi.yaml, PedidoConfiguracaoIa). */
+/** PUT /condominiums/{id}/ai (contracts/openapi.yaml, AiConfigurationRequest). */
 public record AiConfigurationRequest(
-        @JsonProperty("modoGeral") AiMode generalMode,
-        @JsonProperty("assistente") AiAssistantRequest assistant) {
+        AiMode generalMode,
+        AiAssistantRequest assistant) {
 }

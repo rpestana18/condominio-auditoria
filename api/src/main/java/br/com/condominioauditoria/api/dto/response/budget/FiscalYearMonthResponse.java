@@ -1,7 +1,6 @@
 package br.com.condominioauditoria.api.dto.response.budget;
 
 import br.com.condominioauditoria.api.model.enums.MonthStatus;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -11,15 +10,15 @@ import java.util.List;
  * cumulative view it comes after the 12, outside the sum.
  */
 public record FiscalYearMonthResponse(
-        @JsonProperty("mes") String month,
-        @JsonProperty("situacao") MonthStatus status,
-        @JsonProperty("fluxos") List<UsedCashFlowResponse> cashFlows,
-        @JsonProperty("previsto") BigDecimal planned,
-        @JsonProperty("despesaRealizada") BigDecimal actualExpense,
-        @JsonProperty("excesso") BigDecimal overrun,
-        @JsonProperty("percentualExcesso") BigDecimal overrunPercentage,
-        @JsonProperty("acimaDoLimite") Boolean aboveLimit,
-        @JsonProperty("prorrogado") boolean extended) {
+        String month,
+        MonthStatus status,
+        List<UsedCashFlowResponse> cashFlows,
+        BigDecimal planned,
+        BigDecimal actualExpense,
+        BigDecimal overrun,
+        BigDecimal overrunPercentage,
+        Boolean aboveLimit,
+        boolean extended) {
 
     public FiscalYearMonthResponse withExtended(boolean amount) {
         return new FiscalYearMonthResponse(month, status, cashFlows, planned, actualExpense, overrun, overrunPercentage,

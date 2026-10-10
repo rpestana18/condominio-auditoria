@@ -36,14 +36,14 @@ class ReindexOnAssistantEnabledListenerTest {
         List<SourceFile> forty = IntStream.range(0, 40).mapToObj(i -> file()).toList();
         SourceFile alreadyIndexed = forty.getFirst();
         alreadyIndexed.requestIndexing();
-        alreadyIndexed.completeIndexing(IndexingStatus.INDEXADO, null, 3, 5);
+        alreadyIndexed.completeIndexing(IndexingStatus.INDEXED, null, 3, 5);
         UUID oldRequest = alreadyIndexed.getIndexingId();
         when(files.findByCondominiumIdOrderByUploadedAtDesc(CONDOMINIUM)).thenReturn(forty);
 
         listener.onFeatureChanged(new FeatureChanged(CONDOMINIUM, FeatureService.ASSISTANT, true, "admin"));
 
         assertThat(forty).allSatisfy(a -> {
-            assertThat(a.getIndexingStatus()).isEqualTo(IndexingStatus.NA_FILA);
+            assertThat(a.getIndexingStatus()).isEqualTo(IndexingStatus.QUEUED);
             assertThat(a.getIndexingId()).isNotNull();
         });
         assertThat(alreadyIndexed.getIndexingId()).isNotEqualTo(oldRequest);
@@ -70,7 +70,7 @@ class ReindexOnAssistantEnabledListenerTest {
     }
 
     private static SourceFile file() {
-        return new SourceFile(CONDOMINIUM, FileCategory.ATA, "ata.pdf", "c/ATA/2026/" + UUID.randomUUID() + "-ata.pdf",
+        return new SourceFile(CONDOMINIUM, FileCategory.MINUTES, "ata.pdf", "c/MINUTES/2026/" + UUID.randomUUID() + "-ata.pdf",
                 UUID.randomUUID().toString().replace("-", "").repeat(2), 10, "application/pdf", "gestor");
     }
 }

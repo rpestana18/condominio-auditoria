@@ -25,14 +25,14 @@ import type {
 export function useExercicios(condominioId: string) {
   return useQuery({
     queryKey: ["exercicios", condominioId],
-    queryFn: async () => (await obter<Exercicio[]>(`${base(condominioId)}/exercicios`)) ?? [],
+    queryFn: async () => (await obter<Exercicio[]>(`${base(condominioId)}/fiscal-years`)) ?? [],
   });
 }
 
 // ---------- Comparar exercícios (RF-11.6) ----------
 
 export interface FiltroComparacao {
-  /** Ids da lista de exercícios ("po:<uuid>" ou "coluna:<uuid>"). Nulo = o backend escolhe os dois mais recentes. */
+  /** Ids da lista de exercícios ("budget:<uuid>" ou "column:<uuid>"). Nulo = o backend escolhe os dois mais recentes. */
   exercicios: string[] | null;
   fundoId: string | null;
   mesmosMeses: boolean;
@@ -44,11 +44,11 @@ export function useComparacaoExercicios(condominioId: string, filtro: FiltroComp
     queryKey: ["comparacao-exercicios", condominioId, exercicios?.join(",") ?? "padrao", fundoId ?? "todos", mesmosMeses],
     queryFn: () =>
       obter<ComparacaoExercicios>(
-        `${base(condominioId)}/comparacao-exercicios${consulta({
+        `${base(condominioId)}/fiscal-year-comparison${consulta({
           // O contrato pede a lista separada por vírgula (style: form, explode: false)
-          exercicios: exercicios?.join(","),
-          fundo: fundoId,
-          mesmosMeses: mesmosMeses ? "true" : null,
+          fiscalYears: exercicios?.join(","),
+          fund: fundoId,
+          sameMonths: mesmosMeses ? "true" : null,
         })}`,
       ),
   });
@@ -58,7 +58,7 @@ export function useComparacaoExercicios(condominioId: string, filtro: FiltroComp
 export function useColunaImpressa(condominioId: string, poId: string | null) {
   return useQuery({
     queryKey: ["coluna-impressa", condominioId, poId],
-    queryFn: () => obter<ConferenciaColuna>(`${base(condominioId)}/previsoes/${poId}/coluna-impressa`),
+    queryFn: () => obter<ConferenciaColuna>(`${base(condominioId)}/budgets/${poId}/printed-column`),
     enabled: !!poId,
   });
 }
@@ -72,7 +72,7 @@ export function useColunaImpressa(condominioId: string, poId: string | null) {
 export function useIndicadores(condominioId: string, poId: string | null, fundoId: string | null) {
   return useQuery({
     queryKey: ["indicadores", condominioId, poId ?? "vigente", fundoId ?? "todos"],
-    queryFn: () => obter<Indicadores>(`${base(condominioId)}/indicadores${consulta({ po: poId, fundo: fundoId })}`),
+    queryFn: () => obter<Indicadores>(`${base(condominioId)}/indicators${consulta({ budget: poId, fund: fundoId })}`),
   });
 }
 
@@ -82,7 +82,7 @@ export function useIndicadores(condominioId: string, poId: string | null, fundoI
 export function useRubricas(condominioId: string, ativo = true) {
   return useQuery({
     queryKey: ["rubricas", condominioId],
-    queryFn: async () => (await obter<Rubrica[]>(`${base(condominioId)}/rubricas`)) ?? [],
+    queryFn: async () => (await obter<Rubrica[]>(`${base(condominioId)}/budget-items`)) ?? [],
     enabled: ativo,
   });
 }
@@ -92,7 +92,7 @@ export function useRubricasDaPo(condominioId: string, poId: string | undefined, 
     queryKey: ["rubricas-po", condominioId, poId, filtro],
     queryFn: () =>
       obter<RubricasDaPo>(
-        `${base(condominioId)}/previsoes/${poId}/rubricas${consulta({ filtro: filtro === "TODAS" ? null : filtro })}`,
+        `${base(condominioId)}/budgets/${poId}/budget-items${consulta({ filter: filtro === "ALL" ? null : filtro })}`,
       ),
     enabled: !!poId,
   });
@@ -101,7 +101,7 @@ export function useRubricasDaPo(condominioId: string, poId: string | undefined, 
 export function useEventosRubricas(condominioId: string, poId: string, ativo: boolean) {
   return useQuery({
     queryKey: ["rubricas-eventos", condominioId, poId],
-    queryFn: async () => (await obter<EventoRubrica[]>(`${base(condominioId)}/previsoes/${poId}/rubricas/eventos`)) ?? [],
+    queryFn: async () => (await obter<EventoRubrica[]>(`${base(condominioId)}/budgets/${poId}/budget-items/events`)) ?? [],
     enabled: ativo,
   });
 }
@@ -111,7 +111,7 @@ export function useDefinirRubrica(condominioId: string, poId: string) {
   const recarregar = useRecarregarOrcamento();
   return useMutation({
     mutationFn: ({ linhaId, pedido }: { linhaId: string; pedido: PedidoRubricaLinha }) =>
-      atualizar<LinhaComRubrica>(`${base(condominioId)}/previsoes/${poId}/rubricas/${linhaId}`, pedido),
+      atualizar<LinhaComRubrica>(`${base(condominioId)}/budgets/${poId}/budget-items/${linhaId}`, pedido),
     onSuccess: recarregar,
   });
 }
@@ -121,7 +121,7 @@ export function useLoteRubricas(condominioId: string, poId: string) {
   const recarregar = useRecarregarOrcamento();
   return useMutation({
     mutationFn: (pedido: PedidoLoteRubrica) =>
-      enviarJson<ResultadoLoteRubrica>(`${base(condominioId)}/previsoes/${poId}/rubricas/lote`, pedido),
+      enviarJson<ResultadoLoteRubrica>(`${base(condominioId)}/budgets/${poId}/budget-items/batch`, pedido),
     onSuccess: recarregar,
   });
 }
@@ -130,7 +130,7 @@ export function useLoteRubricas(condominioId: string, poId: string) {
 export function useSugerirRubricas(condominioId: string, poId: string) {
   const recarregar = useRecarregarOrcamento();
   return useMutation({
-    mutationFn: () => enviarJson<ResultadoSugestoesRubrica>(`${base(condominioId)}/previsoes/${poId}/rubricas/sugestoes`),
+    mutationFn: () => enviarJson<ResultadoSugestoesRubrica>(`${base(condominioId)}/budgets/${poId}/budget-items/suggestions`),
     onSuccess: recarregar,
   });
 }

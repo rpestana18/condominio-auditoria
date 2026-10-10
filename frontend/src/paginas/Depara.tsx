@@ -10,21 +10,21 @@ import { rotuloEstadoPo } from "../componentes/previsto/rotulos";
 import { useSessao } from "../contexto";
 
 const filtros: { codigo: FiltroDepara; rotulo: string }[] = [
-  { codigo: "TODAS", rotulo: "Todas" },
-  { codigo: "PENDENTES", rotulo: "Pendentes" },
-  { codigo: "IGUAIS_VERSAO_ANTERIOR", rotulo: "Iguais à versão anterior" },
-  { codigo: "SUGERIDO", rotulo: "Sugeridas" },
-  { codigo: "CONFIRMADO", rotulo: "Confirmadas" },
-  { codigo: "RECUSADO", rotulo: "Recusadas" },
-  { codigo: "SEM_DEPARA", rotulo: "Sem de-para" },
+  { codigo: "ALL", rotulo: "Todas" },
+  { codigo: "PENDING", rotulo: "Pendentes" },
+  { codigo: "SAME_AS_PREVIOUS_VERSION", rotulo: "Iguais à versão anterior" },
+  { codigo: "SUGGESTED", rotulo: "Sugeridas" },
+  { codigo: "CONFIRMED", rotulo: "Confirmadas" },
+  { codigo: "REJECTED", rotulo: "Recusadas" },
+  { codigo: "UNMAPPED", rotulo: "Sem de-para" },
 ];
 
 /** A PO padrão é a confirmada mais recente (a lista já vem da mais recente para a mais antiga). */
-const poPadrao = (previsoes: PrevisaoResumo[]) => previsoes.find((p) => p.estado === "CONFIRMADA") ?? previsoes[0];
+const poPadrao = (previsoes: PrevisaoResumo[]) => previsoes.find((p) => p.status === "CONFIRMED") ?? previsoes[0];
 
 /**
  * Tela "De-para" (RF-03.1.13): todos consultam; só o Admin edita, confirma e recusa.
- * O filtro fica no endereço (?filtro=PENDENTES), para o aviso do previsto × realizado trazer o Admin direto aqui.
+ * O filtro fica no endereço (?filtro=PENDING), para o aviso do previsto × realizado trazer o Admin direto aqui.
  */
 export function Depara() {
   const { condominioId, pode } = useSessao();
@@ -32,7 +32,7 @@ export function Depara() {
   const [parametros, setParametros] = useSearchParams();
   const { data: previsoes = [], isLoading: carregandoPos } = usePrevisoes(condominioId);
   const poId = parametros.get("po") ?? poPadrao(previsoes)?.id;
-  const filtro = (parametros.get("filtro") as FiltroDepara | null) ?? "TODAS";
+  const filtro = (parametros.get("filtro") as FiltroDepara | null) ?? "ALL";
   const { data: lista, isLoading, error } = useDepara(condominioId, poId, filtro);
   const { data: previsao } = usePrevisao(condominioId, poId);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
@@ -58,18 +58,18 @@ export function Depara() {
     );
   }
 
-  const poConfirmada = previsao?.previsao.estado === "CONFIRMADA";
+  const poConfirmada = previsao?.budget.status === "CONFIRMED";
   // Linhas que podem ser destino: só as de despesa (sem total, grupo nem fundos)
-  const linhasDestino = previsao?.linhas.filter((l) => l.tipo === "LINHA" && !l.linhaDeFundo) ?? [];
-  const contas = lista?.contas ?? [];
+  const linhasDestino = previsao?.lines.filter((l) => l.type === "LINE" && !l.fundLine) ?? [];
+  const contas = lista?.accounts ?? [];
 
   return (
     <>
       <header className="titulo-pagina">
         <h1>De-para das contas do fluxo</h1>
         {lista && (
-          <span className={lista.resumo.confirmadas === lista.resumo.contas ? "selo ok" : "selo alerta"}>
-            {lista.resumo.confirmadas} de {lista.resumo.contas} contas confirmadas
+          <span className={lista.summary.confirmed === lista.summary.accounts ? "selo ok" : "selo alerta"}>
+            {lista.summary.confirmed} de {lista.summary.accounts} contas confirmadas
           </span>
         )}
         <Link className="botao-link" to={`/previsto-realizado?po=${poId}`}>
@@ -83,7 +83,7 @@ export function Depara() {
           <select value={poId} onChange={(e) => trocar("po", e.target.value)}>
             {previsoes.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.versao ? `Versão ${p.versao}` : "Sem versão"} · {p.exercicioImpresso ?? p.arquivoNome} · {rotuloEstadoPo[p.estado]}
+                {p.version ? `Versão ${p.version}` : "Sem versão"} · {p.printedFiscalYear ?? p.fileName} · {rotuloEstadoPo[p.status]}
               </option>
             ))}
           </select>
@@ -92,7 +92,7 @@ export function Depara() {
 
       {lista && (
         <p className="discreto">
-          {lista.resumo.sugeridas} sugeridas · {lista.resumo.recusadas} recusadas · {lista.resumo.semDepara} sem de-para. Só as
+          {lista.summary.suggested} sugeridas · {lista.summary.rejected} recusadas · {lista.summary.withoutMapping} sem de-para. Só as
           confirmadas entram no previsto × realizado; sugestão nunca muda número.
         </p>
       )}
@@ -108,7 +108,7 @@ export function Depara() {
 
       <div className="abas" role="tablist">
         {filtros.map((f) => (
-          <button key={f.codigo} role="tab" aria-selected={filtro === f.codigo} onClick={() => trocar("filtro", f.codigo === "TODAS" ? null : f.codigo)}>
+          <button key={f.codigo} role="tab" aria-selected={filtro === f.codigo} onClick={() => trocar("filtro", f.codigo === "ALL" ? null : f.codigo)}>
             {f.rotulo}
           </button>
         ))}
@@ -134,7 +134,7 @@ export function Depara() {
                       else novo.delete(conta);
                       return novo;
                     }),
-                  aoSelecionarTodas: (marcadas) => setSelecionadas(marcadas ? new Set(contas.map((c) => c.conta)) : new Set()),
+                  aoSelecionarTodas: (marcadas) => setSelecionadas(marcadas ? new Set(contas.map((c) => c.account)) : new Set()),
                   aoEditar: setEditando,
                 }
               : undefined

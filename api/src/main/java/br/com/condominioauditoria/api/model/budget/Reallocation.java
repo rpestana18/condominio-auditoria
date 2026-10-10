@@ -3,10 +3,8 @@ package br.com.condominioauditoria.api.model.budget;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntryFingerprint;
 import br.com.condominioauditoria.api.service.calculator.BudgetVsActualCalculator;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,45 +16,27 @@ import java.util.UUID;
  * each reprocessing. Undoing ends the reallocation; nothing is deleted.
  */
 @Entity
-@Table(name = "realocacao")
 public class Reallocation {
 
     @Id
     private UUID id;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "previsao_id")
     private UUID budgetId;
-    @Column(name = "chave_lancamento")
     private String entryKey;
-    @Column(name = "arquivo_id")
     private UUID fileId;
     private String sha256;
-    @Column(name = "pagina")
     private int page;
-    @Column(name = "ordem")
     private int position;
-    @Column(name = "data")
     private LocalDate date;
-    @Column(name = "conta_codigo")
     private String accountCode;
-    @Column(name = "conta_nome")
     private String accountName;
-    @Column(name = "documento")
     private String document;
-    @Column(name = "historico")
     private String memo;
-    @Column(name = "valor")
     private BigDecimal amount;
-    @Column(name = "linha_po_id")
     private UUID budgetLineId;
-    @Column(name = "realocada_por")
     private String reallocatedBy;
-    @Column(name = "realocada_em")
     private Instant reallocatedAt;
-    @Column(name = "desfeita_por")
     private String undoneBy;
-    @Column(name = "desfeita_em")
     private Instant undoneAt;
 
     protected Reallocation() {

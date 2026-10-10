@@ -75,16 +75,16 @@ public class FileIndexingServiceTest {
         assertThat(cut.getValue().chunks()).hasSize(1);
         verify(repository, never()).markError(any(), any(), any());
         List<JsonNode> published = published(2);
-        assertThat(published.get(0).get("situacao").asString()).isEqualTo("INDEXANDO");
-        assertThat(published.get(1).get("situacao").asString()).isEqualTo("INDEXADO");
-        assertThat(published.get(1).get("modeloEmbeddings").isNull()).isTrue();
-        assertThat(published.get(1).get("trechos").asInt()).isEqualTo(1);
-        assertThat(published.get(1).get("motivo").asString()).contains("Ollama fora do ar");
+        assertThat(published.get(0).get("status").asString()).isEqualTo("INDEXING");
+        assertThat(published.get(1).get("status").asString()).isEqualTo("INDEXED");
+        assertThat(published.get(1).get("embeddingModel").isNull()).isTrue();
+        assertThat(published.get(1).get("chunks").asInt()).isEqualTo(1);
+        assertThat(published.get(1).get("reason").asString()).contains("Ollama fora do ar");
     }
 
     @Test
     public void indexedWithoutVectorIsReindexedWithBgeM3() throws Exception {
-        when(repository.find(FILE)).thenReturn(Optional.of(new IndexedDocument(FILE, SHA, "indexado",
+        when(repository.find(FILE)).thenReturn(Optional.of(new IndexedDocument(FILE, SHA, "indexed",
                 "Indexado só para a busca por palavra", 1, 1, null, "1", false)));
         when(embeddings.generate(anyList())).thenReturn(List.of(new float[1024]));
 
@@ -92,19 +92,19 @@ public class FileIndexingServiceTest {
 
         verify(repository, never()).confirmUnchanged(any());
         verify(repository).replace(any(), any(), anyList(), eq("bge-m3"), isNull());
-        assertThat(published(2).get(1).get("modeloEmbeddings").asString()).isEqualTo("bge-m3");
+        assertThat(published(2).get(1).get("embeddingModel").asString()).isEqualTo("bge-m3");
     }
 
     @Test
     public void indexedWithBgeM3IsSkipped() throws Exception {
-        when(repository.find(FILE)).thenReturn(Optional.of(new IndexedDocument(FILE, SHA, "indexado",
+        when(repository.find(FILE)).thenReturn(Optional.of(new IndexedDocument(FILE, SHA, "indexed",
                 null, 1, 1, "bge-m3", "1", false)));
 
         service.onReceive(request());
 
         verify(repository).confirmUnchanged(any());
         verify(repository, never()).replace(any(), any(), any(), any(), any());
-        assertThat(published(1).getFirst().get("situacao").asString()).isEqualTo("INDEXADO");
+        assertThat(published(1).getFirst().get("status").asString()).isEqualTo("INDEXED");
     }
 
     private List<JsonNode> published(int count) {
@@ -116,7 +116,7 @@ public class FileIndexingServiceTest {
 
     private static Message request() throws Exception {
         byte[] json = Files.readAllBytes(Path.of(System.getProperty("contratos.dir"),
-                "mensagens/v1/exemplos/indexar-arquivo-indexar.json"));
+                "mensagens/v3/examples/index-file-index.json"));
         return new Message(json, new MessageProperties());
     }
 }

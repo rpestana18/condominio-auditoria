@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * Catalog of AI providers and models, configuration only (block {@code condominio.ai} of application.yml, ADR 0003,
  * Decision 1 and RF-09.6). The rag is the one that knows the implementations; the api reads this catalog through the
- * {@code ListarProvedores} rpc to build the admin screen and validate what is saved.
+ * {@code ListProviders} rpc to build the admin screen and validate what is saved.
  *
  * Adding a provider of an already implemented type ({@code anthropic}, {@code ollama}) is configuration only; a new
  * type is code and requires an ADR.

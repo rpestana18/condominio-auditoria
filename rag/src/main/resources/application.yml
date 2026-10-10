@@ -35,7 +35,7 @@ spring:
         # Quantos arquivos são lidos ao mesmo tempo; cada um pega uma mensagem por vez
         concurrency: ${RAG_PARALELISMO:2}
         prefetch: 1
-        # Erro inesperado (ex.: fila do backend fora do ar): tenta de novo e depois manda para a fila .erro
+        # Erro inesperado (ex.: fila do backend fora do ar): tenta de novo e depois manda para a fila .error
         default-requeue-rejected: false
         retry:
           enabled: true
@@ -65,7 +65,7 @@ rag:
     timeout-seconds: 300
   assistant:
     # Par de chaves do rag (ADR 0003, Sub-decisão 4.1 A). Sem arquivo e sem permissão de gerar, o chat fica
-    # indisponível: ListarProvedores vem sem chave pública e Perguntar recusa com FAILED_PRECONDITION.
+    # indisponível: ListProviders vem sem chave pública e Ask recusa com FAILED_PRECONDITION.
     private-key-file: ${RAG_CHAVE_PRIVADA_ARQUIVO:}
     generate-dev-key: ${RAG_GERAR_CHAVE_DEV:false}
     # Provedor das respostas; um cliente novo por pergunta, com a chave do condomínio

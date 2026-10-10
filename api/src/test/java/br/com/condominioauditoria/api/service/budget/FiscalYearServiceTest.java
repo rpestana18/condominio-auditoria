@@ -40,20 +40,20 @@ class FiscalYearServiceTest {
 
         List<FiscalYearResponse> list = scenario.fiscalYears.list(scenario.condominiumId);
 
-        assertThat(list).extracting(FiscalYearResponse::id).containsExactly("po:" + budget.getId(),
-                "coluna:" + budget.getId());
+        assertThat(list).extracting(FiscalYearResponse::id).containsExactly("budget:" + budget.getId(),
+                "column:" + budget.getId());
         FiscalYearResponse current = list.getFirst();
         assertThat(current.type()).isEqualTo(FiscalYearType.PO);
         assertThat(current.label()).isEqualTo("2026/2027");
         assertThat(current.version()).isEqualTo(1);
         assertThat(current.monthlyPlanned()).isEqualByComparingTo("451620.13");
-        assertThat(current.months()).hasSize(12).allMatch(m -> m.status() == MonthStatus.SEM_FLUXO && !m.extended());
+        assertThat(current.months()).hasSize(12).allMatch(m -> m.status() == MonthStatus.NO_CASH_FLOW && !m.extended());
         assertThat(current.mapping()).isNotNull();
         assertThat(current.budgetItems().lines()).isPositive();
         assertThat(current.printedColumn()).isNull();
 
         FiscalYearResponse column = list.get(1);
-        assertThat(column.type()).isEqualTo(FiscalYearType.COLUNA_IMPRESSA);
+        assertThat(column.type()).isEqualTo(FiscalYearType.PRINTED_COLUMN);
         assertThat(column.label()).isEqualTo("2025/2026 (coluna impressa)");
         assertThat(column.budgetId()).isEqualTo(budget.getId());
         assertThat(column.start()).isEqualTo("2025-05");
@@ -72,7 +72,7 @@ class FiscalYearServiceTest {
 
         PrintedColumnCheckResponse c = scenario.fiscalYears.printedColumn(scenario.condominiumId, budget.getId());
 
-        assertThat(c.id()).isEqualTo("coluna:" + budget.getId());
+        assertThat(c.id()).isEqualTo("column:" + budget.getId());
         assertThat(c.superseded()).isFalse();
         assertThat(c.previousBudgetId()).isNull();
         assertThat(c.printedTotal()).isEqualByComparingTo("441304.38");
@@ -112,11 +112,11 @@ class FiscalYearServiceTest {
 
         List<FiscalYearResponse> list = scenario.fiscalYears.list(scenario.condominiumId);
 
-        assertThat(list).extracting(FiscalYearResponse::id).containsExactly("po:" + current.getId(),
-                "po:" + previous.getId());
+        assertThat(list).extracting(FiscalYearResponse::id).containsExactly("budget:" + current.getId(),
+                "budget:" + previous.getId());
         FiscalYearResponse previousFiscalYear = list.get(1);
         assertThat(previousFiscalYear.label()).isEqualTo("2025/2026");
-        assertThat(previousFiscalYear.printedColumn()).isEqualTo("coluna:" + current.getId());
+        assertThat(previousFiscalYear.printedColumn()).isEqualTo("column:" + current.getId());
         assertThat(previousFiscalYear.warnings()).contains("A coluna \"Orçado anterior\" difere da PO anterior enviada no grupo"
                 + " 1.1 PESSOAL: 69.193,86 (PO enviada) × 37.661,43 (coluna impressa)");
         PrintedColumnCheckResponse c = scenario.fiscalYears.printedColumn(scenario.condominiumId, current.getId());
@@ -137,10 +137,10 @@ class FiscalYearServiceTest {
         FiscalYearResponse ex = scenario.fiscalYears.list(scenario.condominiumId).getFirst();
 
         assertThat(ex.months()).hasSize(13);
-        assertThat(ex.months().get(4)).isEqualTo(new FiscalYearMonthSummaryResponse("2026-09", MonthStatus.COM_FLUXO,
+        assertThat(ex.months().get(4)).isEqualTo(new FiscalYearMonthSummaryResponse("2026-09", MonthStatus.WITH_CASH_FLOW,
                 false));
         assertThat(ex.months().getLast()).isEqualTo(new FiscalYearMonthSummaryResponse("2027-05",
-                MonthStatus.SEM_FLUXO, true));
+                MonthStatus.NO_CASH_FLOW, true));
         assertThat(ex.extension().until()).isEqualTo("2027-05");
     }
 
@@ -149,7 +149,7 @@ class FiscalYearServiceTest {
         Budget budget = confirm(PilotBudget.defaults(), "2026-05", "2027-04");
 
         assertThat(scenario.fiscalYears.list(scenario.condominiumId)).extracting(FiscalYearResponse::id)
-                .containsExactly("po:" + budget.getId());
+                .containsExactly("budget:" + budget.getId());
         assertThatThrownBy(() -> scenario.fiscalYears.printedColumn(scenario.condominiumId, budget.getId()))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));

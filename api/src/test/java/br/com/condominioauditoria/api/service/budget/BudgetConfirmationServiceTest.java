@@ -34,7 +34,7 @@ class BudgetConfirmationServiceTest {
         var detail = scenario.confirmation.confirm(scenario.condominiumId, budget.getId(),
                 scenario.pilotRequest(budget), "admin");
 
-        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.CONFIRMADA);
+        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.CONFIRMED);
         assertThat(budget.getVersion()).isEqualTo(1);
         assertThat(budget.getFiscalYearStart()).isEqualTo(YearMonth.of(2026, 5));
         assertThat(budget.getFiscalYearEnd()).isEqualTo(YearMonth.of(2027, 4));
@@ -78,7 +78,7 @@ class BudgetConfirmationServiceTest {
         assertThat(detail.findings()).isEmpty();
         assertThat(scenario.findings).isEmpty();
         // The roundings of 1.3 and 1.9 stay visible as warnings
-        assertThat(detail.warnings()).filteredOn(a -> a.code() == BudgetWarningCode.ARREDONDAMENTO).hasSize(2);
+        assertThat(detail.warnings()).filteredOn(a -> a.code() == BudgetWarningCode.ROUNDING).hasSize(2);
     }
 
     @Test
@@ -91,7 +91,7 @@ class BudgetConfirmationServiceTest {
 
         var detail = scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), request, "admin");
 
-        assertThat(detail.warnings()).extracting(BudgetWarningResponse::code).doesNotContain(BudgetWarningCode.FORA_PRIMEIRO_TRIMESTRE);
+        assertThat(detail.warnings()).extracting(BudgetWarningResponse::code).doesNotContain(BudgetWarningCode.OUTSIDE_FIRST_QUARTER);
     }
 
     @Test
@@ -106,7 +106,7 @@ class BudgetConfirmationServiceTest {
     @Test
     void reserveFundAbove5PercentCreatesAttentionFindingWithEvidence() {
         Budget budget = scenario.readBudget(PilotBudget.defaults().withReserveFund("25000.00"));
-        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.LIDA);
+        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.READ);
 
         var detail = scenario.confirmation.confirm(scenario.condominiumId, budget.getId(),
                 scenario.pilotRequest(budget), "admin");
@@ -114,7 +114,7 @@ class BudgetConfirmationServiceTest {
         assertThat(scenario.findings).singleElement().satisfies(a -> {
             assertThat(a.getRule()).isEqualTo(ReserveFundCapRule.CODE);
             assertThat(a.getRuleVersion()).isEqualTo(ReserveFundCapRule.VERSION);
-            assertThat(a.getSeverity()).isEqualTo(Severity.ATENCAO);
+            assertThat(a.getSeverity()).isEqualTo(Severity.WARNING);
             assertThat(a.getReferenceMonth()).isEqualTo(YearMonth.of(2026, 5));
             assertThat(a.getDescription()).isEqualTo("Fundo de reserva previsto na PO (linha 1.9.1): 25.000,00 por mês,"
                     + " 5,5% do previsto do mês (451.620,13). O teto da Conv. 20.1 é 5%. Verificar a ata que aprovou a PO.");
@@ -125,7 +125,7 @@ class BudgetConfirmationServiceTest {
             assertThat(e.getPage()).isEqualTo(1);
             assertThat(e.getBudgetLineId()).isEqualTo(scenario.line(budget, "1.9.1", 0).getId());
         });
-        assertThat(detail.findings()).singleElement().satisfies(a -> assertThat(a.severity()).isEqualTo("ATENCAO"));
+        assertThat(detail.findings()).singleElement().satisfies(a -> assertThat(a.severity()).isEqualTo("WARNING"));
     }
 
     @Test
@@ -137,7 +137,7 @@ class BudgetConfirmationServiceTest {
                 scenario.pilotRequest(budget), "admin");
 
         assertThat(scenario.findings).isEmpty();
-        assertThat(detail.warnings()).filteredOn(a -> a.code() == BudgetWarningCode.REGRA_NAO_AVALIADA).singleElement()
+        assertThat(detail.warnings()).filteredOn(a -> a.code() == BudgetWarningCode.RULE_NOT_EVALUATED).singleElement()
                 .satisfies(a -> assertThat(a.text()).contains("teto não cadastrado"));
     }
 
@@ -156,7 +156,7 @@ class BudgetConfirmationServiceTest {
                     assertThat(e.reasons()).singleElement().asString()
                             .startsWith("Código repetido sem código efetivo distinto: 1.3.2 (ordens 8, 12)");
                 });
-        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.LIDA);
+        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.READ);
         assertThat(scenario.line(budget, "1.3.2", 1).getEffectiveCode()).isEqualTo("1.3.2");
         assertThat(scenario.budgetEvents).isEmpty();
         assertThat(scenario.fundLinks).isEmpty();
@@ -197,7 +197,7 @@ class BudgetConfirmationServiceTest {
     @Test
     void budgetWithDiscrepancyIsConfirmedOnlyAcknowledgedWithJustification() {
         Budget budget = scenario.readBudget(PilotBudget.defaults().withStaffSubtotal("69193.00"));
-        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
+        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.READ_WITH_DISCREPANCY);
         var p = scenario.pilotRequest(budget);
 
         assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), p, "admin"))
@@ -211,16 +211,16 @@ class BudgetConfirmationServiceTest {
                 withoutJustification, "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class, e -> assertThat(e.reasons())
                         .containsExactly("A confirmação ciente da divergência exige justificativa."));
-        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
+        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.READ_WITH_DISCREPANCY);
 
         var detail = scenario.confirmation.confirm(scenario.condominiumId, budget.getId(),
                 acknowledged(p, "Subtotal impresso errado no documento aprovado; linhas conferidas no PDF"), "admin");
 
-        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.CONFIRMADA);
+        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.CONFIRMED);
         assertThat(budget.isDiscrepancyAcknowledged()).isTrue();
         // Calculations use the lines' sum: the wrong printed subtotal does not enter the monthly planned amount
         assertThat(budget.getMonthlyPlanned()).isEqualByComparingTo("451620.13");
-        assertThat(detail.warnings()).filteredOn(a -> a.code() == BudgetWarningCode.CONFIRMADA_COM_DIVERGENCIA)
+        assertThat(detail.warnings()).filteredOn(a -> a.code() == BudgetWarningCode.CONFIRMED_WITH_DISCREPANCY)
                 .singleElement().satisfies(a -> assertThat(a.text())
                         .startsWith("PO confirmada com divergência: 1.1 PESSOAL impresso 69.193,00; soma das linhas 69.193,86"));
         assertThat(detail.findings()).isEmpty();
@@ -245,7 +245,7 @@ class BudgetConfirmationServiceTest {
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class,
                         e -> assertThat(e.reasons()).singleElement()
                         .asString().contains("código repetido não é divergência de soma"));
-        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
+        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.READ_WITH_DISCREPANCY);
     }
 
     @Test
@@ -260,14 +260,14 @@ class BudgetConfirmationServiceTest {
 
         assertThat(budget.isWithoutMinutes()).isTrue();
         assertThat(detail.warnings()).extracting(BudgetWarningResponse::code)
-                .contains(BudgetWarningCode.SEM_ATA, BudgetWarningCode.FORA_PRIMEIRO_TRIMESTRE);
+                .contains(BudgetWarningCode.NO_MINUTES, BudgetWarningCode.OUTSIDE_FIRST_QUARTER);
     }
 
     @Test
     void minutesMustBeMinutesCategoryWithDate() {
         Budget budget = scenario.readBudget(PilotBudget.defaults());
         var p = scenario.pilotRequest(budget);
-        var contract = scenario.file(FileCategory.CONTRATO, "contrato.pdf");
+        var contract = scenario.file(FileCategory.CONTRACT, "contrato.pdf");
         var request = new BudgetConfirmationRequest("2026-05", "2027-04", contract.getId(), false, null,
                 p.effectiveCodes(),
                 p.funds(), false, false, null);
@@ -310,7 +310,7 @@ class BudgetConfirmationServiceTest {
                     assertThat(e.status()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(e.getMessage()).contains("versão 1 (2026-05 a 2027-04)", "Só uma PO vale para cada mês");
                 });
-        assertThat(second.getStatus()).isEqualTo(BudgetStatus.LIDA);
+        assertThat(second.getStatus()).isEqualTo(BudgetStatus.READ);
     }
 
     @Test
@@ -325,7 +325,7 @@ class BudgetConfirmationServiceTest {
 
         scenario.confirmation.confirm(scenario.condominiumId, second.getId(), reapproval, "admin");
 
-        assertThat(first.getStatus()).isEqualTo(BudgetStatus.SUBSTITUIDA);
+        assertThat(first.getStatus()).isEqualTo(BudgetStatus.SUPERSEDED);
         assertThat(first.getSupersededFrom()).isEqualTo(YearMonth.of(2026, 9));
         assertThat(second.getVersion()).isEqualTo(2);
         assertThat(scenario.budgetOfMonth(YearMonth.of(2026, 8))).contains(first);
@@ -348,7 +348,7 @@ class BudgetConfirmationServiceTest {
                 "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class,
                         e -> assertThat(e.getMessage()).contains("precisa cobrir até 2027-04"));
-        assertThat(first.getStatus()).isEqualTo(BudgetStatus.CONFIRMADA);
+        assertThat(first.getStatus()).isEqualTo(BudgetStatus.CONFIRMED);
     }
 
     @Test

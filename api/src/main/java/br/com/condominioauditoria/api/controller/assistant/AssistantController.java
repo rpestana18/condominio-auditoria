@@ -18,13 +18,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The "Assistente" screen (RF-04.8 to 04.18). Question and search: USUARIO, GESTOR and ADMIN with access to the
+ * The "Assistente" screen (RF-04.8 to 04.18). Question and search: USER, MANAGER and ADMIN with access to the
  * condominium (RF-04.3), always with the Assistant feature enabled (403 "Módulo Assistente não contratado para este
  * condomínio." without it).
  */
 @RestController
-@RequestMapping("/api/condominios/{condominiumId}/assistente")
-@PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+@RequestMapping("/api/condominiums/{condominiumId}/assistant")
+@PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
 public class AssistantController {
 
     private final AssistantQuestionService questions;
@@ -40,14 +40,14 @@ public class AssistantController {
         this.condominiums = condominiums;
     }
 
-    @PostMapping("/perguntas")
+    @PostMapping("/questions")
     public AssistantAnswerResponse ask(@PathVariable UUID condominiumId,
             @RequestBody(required = false) QuestionRequest request) {
         requireCondominium(condominiumId);
         return questions.ask(condominiumId, request);
     }
 
-    @PostMapping("/busca")
+    @PostMapping("/search")
     public List<DocumentChunkResponse> search(@PathVariable UUID condominiumId,
             @RequestBody(required = false) DocumentSearchRequest request) {
         requireCondominium(condominiumId);

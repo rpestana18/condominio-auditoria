@@ -32,24 +32,24 @@ export function LinhasPo({ linhas, colunaOrcadoAnterior, colunaOrcado }: Props) 
           </thead>
           <tbody>
             {linhas.map((l) => (
-              <tr key={l.id} className={l.tipo === "LINHA" ? undefined : "linha-grupo"}>
+              <tr key={l.id} className={l.type === "LINE" ? undefined : "linha-grupo"}>
                 <td>
-                  {l.codigoEfetivo}
-                  {l.codigoEfetivo !== l.codigoImpresso && <small className="discreto"> (impresso {l.codigoImpresso})</small>}
+                  {l.effectiveCode}
+                  {l.effectiveCode !== l.printedCode && <small className="discreto"> (impresso {l.printedCode})</small>}
                 </td>
-                <td>{l.marca ? <span className="selo neutro">{rotuloMarca[l.marca]}</span> : (l.conta ?? l.contaTexto ?? "")}</td>
-                <td>{l.descricao}</td>
-                <td className="numero">{formatarMoeda(l.orcadoAnterior)}</td>
-                <td className="numero">{formatarMoeda(l.orcado)}</td>
-                <td className="numero">{l.percentualTexto}</td>
-                <td className="discreto">{l.observacoes}</td>
+                <td>{l.mark ? <span className="selo neutro">{rotuloMarca[l.mark]}</span> : (l.account ?? l.accountText ?? "")}</td>
+                <td>{l.description}</td>
+                <td className="numero">{formatarMoeda(l.previousBudgeted)}</td>
+                <td className="numero">{formatarMoeda(l.budgeted)}</td>
+                <td className="numero">{l.percentageText}</td>
+                <td className="discreto">{l.notes}</td>
                 <td>
                   <button
                     className="botao-link"
                     title={`SHA-256 ${l.sha256}`}
-                    onClick={() => void abrirArquivo(`/condominios/${condominioId}/arquivos/${l.arquivoId}/conteudo`, l.pagina)}
+                    onClick={() => void abrirArquivo(`/condominiums/${condominioId}/files/${l.fileId}/content`, l.page)}
                   >
-                    pág. {l.pagina}
+                    pág. {l.page}
                   </button>
                 </td>
               </tr>

@@ -44,12 +44,12 @@ const vazio = (condominioId: string): EstadoConversa => ({ condominioId, convers
  * como vieram da API (sem recalcular nada). Serve só para o modelo entender "e no ano anterior?".
  */
 function textoDaResposta(resposta: RespostaAssistente): string {
-  if (resposta.situacao === "NAO_ENCONTRADA") {
-    return ["Não encontrei nos documentos.", resposta.sugestao].filter(Boolean).join(" ");
+  if (resposta.status === "NOT_FOUND") {
+    return ["Não encontrei nos documentos.", resposta.suggestion].filter(Boolean).join(" ");
   }
-  const documentos = resposta.nosDocumentos.map((p) => p.texto);
-  const dados = resposta.nosDadosGravados.map(
-    (d) => `${d.consulta}: ${d.linhas.map((l) => `${l.rotulo} ${l.valor}`).join("; ")}`,
+  const documentos = resposta.fromDocuments.map((p) => p.text);
+  const dados = resposta.fromStoredData.map(
+    (d) => `${d.query}: ${d.rows.map((l) => `${l.label} ${l.value}`).join("; ")}`,
   );
   return [...documentos, ...dados].join("\n");
 }
@@ -57,10 +57,10 @@ function textoDaResposta(resposta: RespostaAssistente): string {
 /** Filtros sem campos vazios: a API entende ausente como "todos". */
 export function filtrosParaApi(filtros: FiltrosDocumentos): FiltrosDocumentos | undefined {
   const limpo: FiltrosDocumentos = {};
-  if (filtros.categorias?.length) limpo.categorias = filtros.categorias;
-  if (filtros.arquivoIds?.length) limpo.arquivoIds = filtros.arquivoIds;
-  if (filtros.dataInicio) limpo.dataInicio = filtros.dataInicio;
-  if (filtros.dataFim) limpo.dataFim = filtros.dataFim;
+  if (filtros.categories?.length) limpo.categories = filtros.categories;
+  if (filtros.fileIds?.length) limpo.fileIds = filtros.fileIds;
+  if (filtros.startDate) limpo.startDate = filtros.startDate;
+  if (filtros.endDate) limpo.endDate = filtros.endDate;
   return Object.keys(limpo).length > 0 ? limpo : undefined;
 }
 
@@ -97,13 +97,13 @@ export function ProvedorConversa({ children }: { children: ReactNode }) {
     const historico: TrocaHistorico[] = atual.trocas
       .filter((t) => t.resposta)
       .slice(-TROCAS_NO_HISTORICO)
-      .map((t) => ({ pergunta: t.pergunta, resposta: textoDaResposta(t.resposta!) }));
-    const pedido: PedidoPergunta = { pergunta, historico, filtros: filtrosParaApi(atual.filtros) };
+      .map((t) => ({ question: t.pergunta, answer: textoDaResposta(t.resposta!) }));
+    const pedido: PedidoPergunta = { question: pergunta, history: historico, filters: filtrosParaApi(atual.filtros) };
     const { conversaId } = atual;
     const trocaId = novoId();
     setEstado((e) => ({ ...e, trocas: [...e.trocas, { id: trocaId, pergunta }] }));
 
-    enviarJson<RespostaAssistente>(`/condominios/${condominioId}/assistente/perguntas`, pedido)
+    enviarJson<RespostaAssistente>(`/condominiums/${condominioId}/assistant/questions`, pedido)
       .then((resposta) => concluir(conversaId, trocaId, { resposta }))
       .catch((erro: unknown) => {
         concluir(conversaId, trocaId, { erro: mensagemErroAssistente(erro) });

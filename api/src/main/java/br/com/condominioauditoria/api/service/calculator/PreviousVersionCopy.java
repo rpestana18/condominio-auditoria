@@ -42,7 +42,7 @@ public final class PreviousVersionCopy {
      */
     public static Result copy(AccountMapping previous, Map<UUID, BudgetLine> previousLines,
             Map<String, BudgetLine> newTargets) {
-        if (previous.getTargetType() != MappingTargetType.LINHA_PO) {
+        if (previous.getTargetType() != MappingTargetType.BUDGET_LINE) {
             MappingTarget d = previous.target();
             return new Copied(d, true, SAME + ": " + d.text());
         }

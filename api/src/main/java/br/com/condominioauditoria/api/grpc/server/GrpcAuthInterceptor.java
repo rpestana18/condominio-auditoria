@@ -20,7 +20,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Component;
 
 /**
- * Same rule as the REST API, in gRPC: only calls with a valid Keycloak Bearer token and the USUARIO, GESTOR or ADMIN
+ * Same rule as the REST API, in gRPC: only calls with a valid Keycloak Bearer token and the USER, MANAGER or ADMIN
  * role get in. The token's user becomes the call's user, so the per-condominium isolation ({@code CondominiumAccess})
  * works the same on both paths.
  */
@@ -29,7 +29,7 @@ public class GrpcAuthInterceptor implements ServerInterceptor {
 
     public static final Metadata.Key<String> AUTHORIZATION = Metadata.Key.of("authorization",
             Metadata.ASCII_STRING_MARSHALLER);
-    private static final Set<String> ROLES = Set.of("ROLE_USUARIO", "ROLE_GESTOR", "ROLE_ADMIN");
+    private static final Set<String> ROLES = Set.of("ROLE_USER", "ROLE_MANAGER", "ROLE_ADMIN");
 
     private final JwtDecoder decoder;
     private final JwtAuthenticationConverter converter;

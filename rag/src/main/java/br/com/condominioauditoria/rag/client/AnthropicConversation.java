@@ -192,7 +192,7 @@ final class AnthropicConversation implements AiGateway.Conversation {
         return output;
     }
 
-    /** Provider errors to the gRPC statuses of the specification (assistente.proto, Perguntar error list). */
+    /** Provider errors to the gRPC statuses of the specification (assistant.proto, Ask error list). */
     private static ProviderErrorException translate(AnthropicServiceException error) {
         int code = error.statusCode();
         if (code == 401 || code == 403) {

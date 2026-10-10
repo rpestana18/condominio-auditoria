@@ -8,7 +8,7 @@ import { formatarData, formatarDataHora, formatarMoeda } from "../../formato";
 function useLinhasDestino(poId: string) {
   const { condominioId } = useSessao();
   const { data } = usePrevisao(condominioId, poId);
-  return data?.linhas.filter((l) => l.tipo === "LINHA" && !l.linhaDeFundo) ?? [];
+  return data?.lines.filter((l) => l.type === "LINE" && !l.fundLine) ?? [];
 }
 
 /**
@@ -26,14 +26,14 @@ export function RealocarLancamento({ poId, lancamento }: { poId: string; lancame
         <option value="">Realocar para a linha…</option>
         {linhas.map((l) => (
           <option key={l.id} value={l.id}>
-            {l.codigoEfetivo} {l.descricao}
+            {l.effectiveCode} {l.description}
           </option>
         ))}
       </select>
       <button
         className="botao secundario"
         disabled={!linhaId || realocar.isPending}
-        onClick={() => realocar.mutate({ lancamentoId: lancamento.lancamentoId, linhaId })}
+        onClick={() => realocar.mutate({ entryId: lancamento.entryId, lineId: linhaId })}
       >
         Realocar
       </button>
@@ -63,7 +63,7 @@ export function ListaRealocacoes({ poId }: { poId: string }) {
   if (realocacoes.length === 0) return null;
   return (
     <details>
-      <summary>Realocações feitas ({realocacoes.filter((r) => r.ativa).length} ativas)</summary>
+      <summary>Realocações feitas ({realocacoes.filter((r) => r.active).length} ativas)</summary>
       <table className="tabela compacta">
         <thead>
           <tr>
@@ -76,19 +76,19 @@ export function ListaRealocacoes({ poId }: { poId: string }) {
         </thead>
         <tbody>
           {realocacoes.map((r) => (
-            <tr key={r.id} className={r.ativa ? undefined : "desfeita"}>
+            <tr key={r.id} className={r.active ? undefined : "desfeita"}>
               <td>
-                {formatarData(r.data)} · {r.conta} {r.historico} <span className="discreto">pág. {r.pagina}</span>
+                {formatarData(r.date)} · {r.account} {r.memo} <span className="discreto">pág. {r.page}</span>
               </td>
-              <td className="numero">{formatarMoeda(r.valor)}</td>
+              <td className="numero">{formatarMoeda(r.amount)}</td>
               <td>
-                {r.linhaCodigo} {r.linhaDescricao}
+                {r.lineCode} {r.lineDescription}
               </td>
               <td className="discreto">
-                {r.realocadaPor} em {formatarDataHora(r.realocadaEm)}
-                {!r.ativa && r.desfeitaEm && ` · desfeita por ${r.desfeitaPor} em ${formatarDataHora(r.desfeitaEm)}`}
+                {r.reallocatedBy} em {formatarDataHora(r.reallocatedAt)}
+                {!r.active && r.undoneAt && ` · desfeita por ${r.undoneBy} em ${formatarDataHora(r.undoneAt)}`}
               </td>
-              <td>{r.ativa && pode("GESTOR", "ADMIN") && <DesfazerRealocacao realocacaoId={r.id} />}</td>
+              <td>{r.active && pode("MANAGER", "ADMIN") && <DesfazerRealocacao realocacaoId={r.id} />}</td>
             </tr>
           ))}
         </tbody>

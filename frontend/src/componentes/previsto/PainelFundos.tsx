@@ -15,9 +15,9 @@ interface Props {
  * aparecem como "sem previsto na PO", só com a movimentação, sem diferença.
  */
 export function PainelFundos({ fundos, aoAbrirEvidencia }: Props) {
-  const comparados = fundos.filter((f) => f.situacao === "COMPARADO");
-  const demais = fundos.filter((f) => f.situacao !== "COMPARADO");
-  const nome = (f: FundoPrevistoRealizado) => [f.linhaCodigo, f.fundo].filter(Boolean).join(" · ") || "—";
+  const comparados = fundos.filter((f) => f.status === "COMPARED");
+  const demais = fundos.filter((f) => f.status !== "COMPARED");
+  const nome = (f: FundoPrevistoRealizado) => [f.lineCode, f.fund].filter(Boolean).join(" · ") || "—";
 
   return (
     <>
@@ -29,7 +29,7 @@ export function PainelFundos({ fundos, aoAbrirEvidencia }: Props) {
           <>
             <ResponsiveContainer width="100%" height={Math.max(160, comparados.length * 60)}>
               <BarChart
-                data={comparados.map((f) => ({ nome: nome(f), previsto: f.previsto, arrecadado: f.arrecadado }))}
+                data={comparados.map((f) => ({ nome: nome(f), previsto: f.planned, arrecadado: f.collected }))}
                 layout="vertical"
                 margin={{ left: 24, right: 24 }}
               >
@@ -54,23 +54,23 @@ export function PainelFundos({ fundos, aoAbrirEvidencia }: Props) {
               </thead>
               <tbody>
                 {comparados.map((f) => (
-                  <tr key={f.linhaId ?? f.fundoId}>
+                  <tr key={f.lineId ?? f.fundId}>
                     <td>{nome(f)}</td>
-                    <td className="numero">{formatarMoeda(f.previsto ?? 0)}</td>
+                    <td className="numero">{formatarMoeda(f.planned ?? 0)}</td>
                     <td className="numero">
-                      {f.fundoId && f.arrecadado !== null && f.arrecadado !== undefined ? (
+                      {f.fundId && f.collected !== null && f.collected !== undefined ? (
                         <ValorComFonte
-                          valor={f.arrecadado}
-                          aoAbrir={() => aoAbrirEvidencia({ alvo: `fundo:${f.fundoId}`, titulo: `Arrecadação: ${f.fundo}` })}
+                          valor={f.collected}
+                          aoAbrir={() => aoAbrirEvidencia({ alvo: `fund:${f.fundId}`, titulo: `Arrecadação: ${f.fund}` })}
                         />
                       ) : (
                         "—"
                       )}
                     </td>
-                    <td className={`numero ${classeDiferenca(f.diferenca ?? 0)}`}>
-                      {f.diferenca === null || f.diferenca === undefined ? "—" : formatarDiferenca(f.diferenca)}
+                    <td className={`numero ${classeDiferenca(f.difference ?? 0)}`}>
+                      {f.difference === null || f.difference === undefined ? "—" : formatarDiferenca(f.difference)}
                     </td>
-                    <td className="numero">{formatarPercentual(f.execucao)}</td>
+                    <td className="numero">{formatarPercentual(f.execution)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -93,13 +93,13 @@ export function PainelFundos({ fundos, aoAbrirEvidencia }: Props) {
             </thead>
             <tbody>
               {demais.map((f, i) => (
-                <tr key={f.fundoId ?? f.linhaId ?? i}>
+                <tr key={f.fundId ?? f.lineId ?? i}>
                   <td>{nome(f)}</td>
                   <td className="discreto">
-                    {f.situacao === "LINHA_SEM_FUNDO" ? `Linha ${f.linhaCodigo} sem fundo ligado` : rotuloSituacaoFundo[f.situacao]}
+                    {f.status === "LINE_WITHOUT_FUND" ? `Linha ${f.lineCode} sem fundo ligado` : rotuloSituacaoFundo[f.status]}
                   </td>
-                  <td className="numero">{f.creditos === null || f.creditos === undefined ? "—" : formatarMoeda(f.creditos)}</td>
-                  <td className="numero">{f.debitos === null || f.debitos === undefined ? "—" : formatarMoeda(f.debitos)}</td>
+                  <td className="numero">{f.credits === null || f.credits === undefined ? "—" : formatarMoeda(f.credits)}</td>
+                  <td className="numero">{f.debits === null || f.debits === undefined ? "—" : formatarMoeda(f.debits)}</td>
                 </tr>
               ))}
             </tbody>

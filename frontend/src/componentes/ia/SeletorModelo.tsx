@@ -4,8 +4,8 @@ import type { ModeloIa, ProvedorIa } from "../../api/tipos";
 const preco = (texto: string) => texto.replace(".", ",");
 
 function rotuloModelo(m: ModeloIa): string {
-  const precos = `US$ ${preco(m.precoEntradaMilhaoUsd)} entrada / US$ ${preco(m.precoSaidaMilhaoUsd)} saída por milhão de tokens`;
-  return `${m.nome}${m.padrao ? " (padrão)" : ""} · ${precos}`;
+  const precos = `US$ ${preco(m.inputPricePerMillionUsd)} entrada / US$ ${preco(m.outputPricePerMillionUsd)} saída por milhão de tokens`;
+  return `${m.name}${m.isDefault ? " (padrão)" : ""} · ${precos}`;
 }
 
 interface Props {
@@ -20,7 +20,7 @@ interface Props {
 
 /** Provedor e modelo do catálogo. Modelo vazio = o padrão do provedor (o backend escolhe). */
 export function SeletorModelo({ id, provedores, provedor, modelo, aoMudar, semPrecos = false }: Props) {
-  const escolhido = provedores.find((p) => p.codigo === provedor);
+  const escolhido = provedores.find((p) => p.code === provedor);
   return (
     <div className="filtros">
       <label className="campo">
@@ -28,8 +28,8 @@ export function SeletorModelo({ id, provedores, provedor, modelo, aoMudar, semPr
         <select id={`${id}-provedor`} value={provedor} onChange={(e) => aoMudar(e.target.value, "")}>
           {!escolhido && <option value="">Escolha…</option>}
           {provedores.map((p) => (
-            <option key={p.codigo} value={p.codigo}>
-              {p.nome}
+            <option key={p.code} value={p.code}>
+              {p.name}
             </option>
           ))}
         </select>
@@ -38,9 +38,9 @@ export function SeletorModelo({ id, provedores, provedor, modelo, aoMudar, semPr
         Modelo
         <select id={`${id}-modelo`} value={modelo} onChange={(e) => aoMudar(provedor, e.target.value)} disabled={!escolhido}>
           <option value="">Padrão do provedor</option>
-          {escolhido?.modelos.map((m) => (
+          {escolhido?.models.map((m) => (
             <option key={m.id} value={m.id}>
-              {semPrecos ? `${m.nome}${m.padrao ? " (padrão)" : ""}` : rotuloModelo(m)}
+              {semPrecos ? `${m.name}${m.isDefault ? " (padrão)" : ""}` : rotuloModelo(m)}
             </option>
           ))}
         </select>

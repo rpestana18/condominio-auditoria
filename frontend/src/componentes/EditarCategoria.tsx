@@ -8,7 +8,7 @@ export function EditarCategoria({ arquivo, aoFechar }: { arquivo: ArquivoResumo;
   const { condominioId } = useSessao();
   const { data: categorias = [] } = useCategorias();
   const alterar = useAlterarCategoria(condominioId);
-  const [categoria, setCategoria] = useState<Categoria>(arquivo.categoria);
+  const [categoria, setCategoria] = useState<Categoria>(arquivo.category);
   const janela = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -17,7 +17,7 @@ export function EditarCategoria({ arquivo, aoFechar }: { arquivo: ArquivoResumo;
 
   function salvar(evento: FormEvent) {
     evento.preventDefault();
-    if (categoria === arquivo.categoria) {
+    if (categoria === arquivo.category) {
       aoFechar();
       return;
     }
@@ -28,20 +28,20 @@ export function EditarCategoria({ arquivo, aoFechar }: { arquivo: ArquivoResumo;
     <dialog ref={janela} className="janela" onClose={aoFechar} onClick={(e) => e.stopPropagation()}>
       <form onSubmit={salvar}>
         <h2>Editar categoria</h2>
-        <p className="discreto">{arquivo.nome}</p>
+        <p className="discreto">{arquivo.name}</p>
         <fieldset>
           <legend>Categoria</legend>
           {categorias.map((c) => (
-            <label key={c.codigo}>
+            <label key={c.code}>
               <input
                 type="radio"
                 name="categoria"
-                value={c.codigo}
-                checked={categoria === c.codigo}
-                onChange={() => setCategoria(c.codigo)}
+                value={c.code}
+                checked={categoria === c.code}
+                onChange={() => setCategoria(c.code)}
               />
-              {c.rotulo}
-              {c.codigo === arquivo.categoria && <span className="discreto"> (atual)</span>}
+              {c.label}
+              {c.code === arquivo.category && <span className="discreto"> (atual)</span>}
             </label>
           ))}
         </fieldset>

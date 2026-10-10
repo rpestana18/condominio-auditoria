@@ -5,7 +5,7 @@ import { useSessao } from "../../contexto";
 import { formatarDataHora, formatarMes } from "../../formato";
 import { rotuloEstadoAchado, rotuloSeveridade } from "./rotulos";
 
-const classeSeveridade: Record<Achado["severidade"], string> = { INFORMATIVO: "neutro", ATENCAO: "alerta", CRITICO: "critico" };
+const classeSeveridade: Record<Achado["severity"], string> = { INFO: "neutro", WARNING: "alerta", CRITICAL: "critico" };
 
 /**
  * Achados do mês (só leitura nesta entrega). Cada um traz a evidência original, que abre o documento
@@ -24,39 +24,39 @@ export function AchadosDoMes({ competencia }: { competencia: string }) {
           <li key={a.id}>
             <div className="evidencia-topo">
               <span>
-                <span className={`selo ${classeSeveridade[a.severidade]}`}>{rotuloSeveridade[a.severidade]}</span>{" "}
-                <span className="selo neutro">{rotuloEstadoAchado[a.estado]}</span>
+                <span className={`selo ${classeSeveridade[a.severity]}`}>{rotuloSeveridade[a.severity]}</span>{" "}
+                <span className="selo neutro">{rotuloEstadoAchado[a.status]}</span>
               </span>
-              <span className="discreto">criado em {formatarDataHora(a.criadoEm)}</span>
+              <span className="discreto">criado em {formatarDataHora(a.createdAt)}</span>
             </div>
-            <span>{a.descricao}</span>
-            {a.estadoMotivo && <span className="discreto">{a.estadoMotivo}</span>}
+            <span>{a.description}</span>
+            {a.statusReason && <span className="discreto">{a.statusReason}</span>}
             <span className="discreto">
               Evidência:{" "}
-              {a.evidencias.map((e, i) => (
-                <span key={e.ordem}>
+              {a.evidence.map((e, i) => (
+                <span key={e.position}>
                   {i > 0 && " · "}
                   <button
                     className="botao-link"
                     title={`SHA-256 ${e.sha256}`}
                     onClick={() =>
-                      void abrirArquivo(`/condominios/${condominioId}/arquivos/${e.arquivoId}/conteudo`, e.pagina ?? undefined)
+                      void abrirArquivo(`/condominiums/${condominioId}/files/${e.fileId}/content`, e.page ?? undefined)
                     }
                   >
-                    {e.referencia}
-                    {e.pagina ? `, pág. ${e.pagina}` : ""}
+                    {e.reference}
+                    {e.page ? `, pág. ${e.page}` : ""}
                   </button>
                 </span>
               ))}
             </span>
-            {a.historico.length > 1 && (
+            {a.history.length > 1 && (
               <details>
-                <summary className="discreto">Histórico ({a.historico.length})</summary>
+                <summary className="discreto">Histórico ({a.history.length})</summary>
                 <ul className="lista-simples">
-                  {a.historico.map((h, i) => (
+                  {a.history.map((h, i) => (
                     <li key={i}>
-                      {formatarDataHora(h.em)} · {h.usuario}: {h.estadoAnterior ? `${rotuloEstadoAchado[h.estadoAnterior]} → ` : ""}
-                      {rotuloEstadoAchado[h.estadoNovo]} ({h.motivo})
+                      {formatarDataHora(h.occurredAt)} · {h.username}: {h.previousStatus ? `${rotuloEstadoAchado[h.previousStatus]} → ` : ""}
+                      {rotuloEstadoAchado[h.newStatus]} ({h.reason})
                     </li>
                   ))}
                 </ul>

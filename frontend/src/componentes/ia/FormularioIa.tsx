@@ -10,7 +10,7 @@ import { SeletorModelo } from "./SeletorModelo";
 
 /** Respostas do Assistente: herdar o modo geral ou um modo próprio. */
 type ModoRespostas = "HERDAR" | ModoIa;
-type ModoEmbeddings = "LOCAL" | "DESLIGADO";
+type ModoEmbeddings = "LOCAL" | "OFF";
 
 interface Props {
   configuracao: ConfiguracaoIa;
@@ -20,7 +20,7 @@ interface Props {
 }
 
 /** Provedor inicial: o gravado; senão, o primeiro do catálogo para aquele uso. */
-const inicial = (gravado: string | null | undefined, lista: ProvedorIa[]) => gravado ?? lista[0]?.codigo ?? "";
+const inicial = (gravado: string | null | undefined, lista: ProvedorIa[]) => gravado ?? lista[0]?.code ?? "";
 
 /**
  * Formulário da configuração de IA (RF-09.1, RF-09.2, RF-09.6). Só monta o pedido: quem valida e recusa
@@ -29,20 +29,20 @@ const inicial = (gravado: string | null | undefined, lista: ProvedorIa[]) => gra
 export function FormularioIa({ configuracao, provedores, erroCatalogo }: Props) {
   const { condominioId } = useSessao();
   const gravar = useGravarConfiguracaoIa(condominioId);
-  const { respostas, embeddings } = configuracao.assistente;
-  const provedoresRespostas = provedores.filter((p) => p.uso === "RESPOSTAS");
+  const { answers: respostas, embeddings } = configuracao.assistant;
+  const provedoresRespostas = provedores.filter((p) => p.function === "ANSWERS");
   // Embeddings só com provedor local nesta fase (Q12)
-  const provedoresEmbeddings = provedores.filter((p) => p.uso === "EMBEDDINGS" && p.local);
+  const provedoresEmbeddings = provedores.filter((p) => p.function === "EMBEDDINGS" && p.local);
 
-  const [modoGeral, setModoGeral] = useState<ModoIa>(configuracao.modoGeral);
-  const [modoRespostas, setModoRespostas] = useState<ModoRespostas>(respostas.modo ?? "HERDAR");
-  const [provedorRespostas, setProvedorRespostas] = useState(inicial(respostas.provedor, provedoresRespostas));
-  const [modeloRespostas, setModeloRespostas] = useState(respostas.modelo ?? "");
+  const [modoGeral, setModoGeral] = useState<ModoIa>(configuracao.generalMode);
+  const [modoRespostas, setModoRespostas] = useState<ModoRespostas>(respostas.mode ?? "HERDAR");
+  const [provedorRespostas, setProvedorRespostas] = useState(inicial(respostas.provider, provedoresRespostas));
+  const [modeloRespostas, setModeloRespostas] = useState(respostas.model ?? "");
   const [chave, setChave] = useState("");
   const [removerChave, setRemoverChave] = useState(false);
-  const [modoEmbeddings, setModoEmbeddings] = useState<ModoEmbeddings>(embeddings.modo === "DESLIGADO" ? "DESLIGADO" : "LOCAL");
-  const [provedorEmbeddings, setProvedorEmbeddings] = useState(inicial(embeddings.provedor, provedoresEmbeddings));
-  const [modeloEmbeddings, setModeloEmbeddings] = useState(embeddings.modelo ?? "");
+  const [modoEmbeddings, setModoEmbeddings] = useState<ModoEmbeddings>(embeddings.mode === "OFF" ? "OFF" : "LOCAL");
+  const [provedorEmbeddings, setProvedorEmbeddings] = useState(inicial(embeddings.provider, provedoresEmbeddings));
+  const [modeloEmbeddings, setModeloEmbeddings] = useState(embeddings.model ?? "");
   const [gravado, setGravado] = useState(false);
 
   // Só para mostrar ou esconder os campos de provedor e chave; o modo efetivo de verdade quem calcula é o backend
@@ -53,20 +53,20 @@ export function FormularioIa({ configuracao, provedores, erroCatalogo }: Props) 
     evento.preventDefault();
     setGravado(false);
     const pedido: PedidoConfiguracaoIa = {
-      modoGeral,
-      assistente: {
-        respostas: {
-          modo: modoRespostas === "HERDAR" ? null : modoRespostas,
-          provedor: provedorRespostas || null,
-          modelo: modeloRespostas || null,
+      generalMode: modoGeral,
+      assistant: {
+        answers: {
+          mode: modoRespostas === "HERDAR" ? null : modoRespostas,
+          provider: provedorRespostas || null,
+          model: modeloRespostas || null,
           // Em branco = mantém a chave guardada (a chave nunca volta do servidor)
-          chave: removerChave ? null : chave.trim() || null,
-          removerChave,
+          key: removerChave ? null : chave.trim() || null,
+          removeKey: removerChave,
         },
         embeddings: {
-          modo: modoEmbeddings,
-          provedor: modoEmbeddings === "LOCAL" ? provedorEmbeddings || null : null,
-          modelo: modoEmbeddings === "LOCAL" ? modeloEmbeddings || null : null,
+          mode: modoEmbeddings,
+          provider: modoEmbeddings === "LOCAL" ? provedorEmbeddings || null : null,
+          model: modoEmbeddings === "LOCAL" ? modeloEmbeddings || null : null,
         },
       },
     };
@@ -79,7 +79,7 @@ export function FormularioIa({ configuracao, provedores, erroCatalogo }: Props) 
     });
   }
 
-  const motivos = gravar.error instanceof ErroApi ? (gravar.error.problema?.motivos ?? []) : [];
+  const motivos = gravar.error instanceof ErroApi ? (gravar.error.problema?.reasons ?? []) : [];
 
   return (
     <form onSubmit={salvar} onChange={() => setGravado(false)}>
@@ -105,7 +105,7 @@ export function FormularioIa({ configuracao, provedores, erroCatalogo }: Props) 
           aoMudar={setModoRespostas}
         />
         <p className="discreto">
-          Modo efetivo gravado agora: <strong>{descricoesModo[respostas.modoEfetivo as keyof typeof descricoesModo]?.rotulo ?? respostas.modoEfetivo}</strong>
+          Modo efetivo gravado agora: <strong>{descricoesModo[respostas.effectiveMode as keyof typeof descricoesModo]?.rotulo ?? respostas.effectiveMode}</strong>
         </p>
 
         {usaChave && (
@@ -127,8 +127,8 @@ export function FormularioIa({ configuracao, provedores, erroCatalogo }: Props) 
             )}
             <h3>Chave de API do condomínio</h3>
             <CampoChave
-              chaveCadastrada={respostas.chaveCadastrada}
-              chaveFinal={respostas.chaveFinal}
+              chaveCadastrada={respostas.keyRegistered}
+              chaveFinal={respostas.keySuffix}
               chave={chave}
               aoMudarChave={setChave}
               remover={removerChave}
@@ -139,9 +139,9 @@ export function FormularioIa({ configuracao, provedores, erroCatalogo }: Props) 
             />
           </>
         )}
-        {!usaChave && respostas.chaveCadastrada && (
+        {!usaChave && respostas.keyRegistered && (
           <p className="discreto">
-            Chave cadastrada terminando em ••••{respostas.chaveFinal}; fica guardada, mas não é usada neste modo.{" "}
+            Chave cadastrada terminando em ••••{respostas.keySuffix}; fica guardada, mas não é usada neste modo.{" "}
             <button type="button" className="botao-link" onClick={() => setRemoverChave(!removerChave)}>
               {removerChave ? "Desfazer remoção" : "Remover chave"}
             </button>
@@ -157,7 +157,7 @@ export function FormularioIa({ configuracao, provedores, erroCatalogo }: Props) 
           legenda="Modo dos embeddings"
           opcoes={[
             { valor: "LOCAL", rotulo: "Local", descricao: "Modelo na infraestrutura do sistema; nenhum texto vai para fora." },
-            { valor: "DESLIGADO", rotulo: "Desligado", descricao: "Sem busca por significado; a busca por palavra continua." },
+            { valor: "OFF", rotulo: "Desligado", descricao: "Sem busca por significado; a busca por palavra continua." },
           ]}
           valor={modoEmbeddings}
           aoMudar={setModoEmbeddings}
@@ -200,9 +200,9 @@ export function FormularioIa({ configuracao, provedores, erroCatalogo }: Props) 
         <button type="submit" className="botao" disabled={gravar.isPending}>
           {gravar.isPending ? "Gravando…" : "Salvar"}
         </button>
-        {configuracao.atualizadoPor && configuracao.atualizadoEm ? (
+        {configuracao.updatedBy && configuracao.updatedAt ? (
           <span className="discreto">
-            Última alteração por {configuracao.atualizadoPor} em {formatarDataHora(configuracao.atualizadoEm)}
+            Última alteração por {configuracao.updatedBy} em {formatarDataHora(configuracao.updatedAt)}
           </span>
         ) : (
           <span className="discreto">Nunca gravada: valem os padrões.</span>

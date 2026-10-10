@@ -23,17 +23,17 @@ export function GraficoExecucaoMensal({ pontos, contexto }: Props) {
     colunaRotulo: "Mês",
     colunas: ["Previsto (R$)", "Despesa realizada (R$)", "Execução (%)"],
     linhas: pontos.map((p, i) => ({
-      chave: p.mes,
-      rotulo: formatarMes(p.mes),
+      chave: p.month,
+      rotulo: formatarMes(p.month),
       celulas: [
-        { texto: moedaDoMes(p.previsto, p.situacao), aoAbrir: acoes[i] },
-        { texto: moedaDoMes(p.realizado, p.situacao), aoAbrir: acoes[i] },
-        { texto: percentualDoMes(p.execucao, p.situacao), aoAbrir: acoes[i] },
+        { texto: moedaDoMes(p.planned, p.status), aoAbrir: acoes[i] },
+        { texto: moedaDoMes(p.actual, p.status), aoAbrir: acoes[i] },
+        { texto: percentualDoMes(p.execution, p.status), aoAbrir: acoes[i] },
       ],
     })),
   };
   // Valor nulo continua nulo: sem barra, nunca zero
-  const dados = pontos.map((p, indice) => ({ indice, eixo: rotuloEixoMes(p.mes, p.situacao), execucao: p.execucao ?? null }));
+  const dados = pontos.map((p, indice) => ({ indice, eixo: rotuloEixoMes(p.month, p.status), execucao: p.execution ?? null }));
 
   return (
     <CartaoIndicador

@@ -87,7 +87,7 @@ class FiscalYearControllerPermissionTest {
 
     @Test
     void allRolesRead() {
-        for (String role : List.of("USUARIO", "GESTOR", "ADMIN")) {
+        for (String role : List.of("USER", "MANAGER", "ADMIN")) {
             logIn(CONDOMINIUM, "pessoa-" + role, role);
             controller.list(CONDOMINIUM);
             controller.printedColumn(CONDOMINIUM, BUDGET);
@@ -102,7 +102,7 @@ class FiscalYearControllerPermissionTest {
 
     @Test
     void managerOfOtherCondominiumDoesNotRead() {
-        logIn(UUID.randomUUID(), "gestor", "GESTOR");
+        logIn(UUID.randomUUID(), "gestor", "MANAGER");
         assertThatThrownBy(() -> controller.list(CONDOMINIUM)).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> controller.printedColumn(CONDOMINIUM,
                 BUDGET)).isInstanceOf(AccessDeniedException.class);
@@ -115,7 +115,7 @@ class FiscalYearControllerPermissionTest {
 
     private static void logIn(UUID condominium, String username, String role) {
         Jwt jwt = Jwt.withTokenValue("t").header("alg", "none").subject(username).claim("preferred_username", username)
-                .claim("condominios", List.of(condominium.toString())).build();
+                .claim("condominiums", List.of(condominium.toString())).build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role)), username));
     }

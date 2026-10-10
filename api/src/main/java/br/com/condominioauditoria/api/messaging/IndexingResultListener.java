@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 /**
  * Receives the indexing progress and results from the rag. A single consumer, so that "indexing" and "indexed" of the
  * same file are applied in the order they arrived. A message outside the contract or a failing save goes back to the
- * queue (retry) and, if it keeps failing, goes to backend.indexacao.erro.
+ * queue (retry) and, if it keeps failing, goes to api.indexing-results.error.
  */
 @Component
 class IndexingResultListener {

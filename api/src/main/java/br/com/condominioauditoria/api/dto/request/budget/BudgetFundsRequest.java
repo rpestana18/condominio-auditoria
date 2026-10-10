@@ -1,8 +1,7 @@
 package br.com.condominioauditoria.api.dto.request.budget;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /** Complete link of the budget's fund lines. */
-public record BudgetFundsRequest(@JsonProperty("fundos") List<FundLinkRequest> funds) {
+public record BudgetFundsRequest(List<FundLinkRequest> funds) {
 }

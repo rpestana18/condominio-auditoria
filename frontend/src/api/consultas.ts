@@ -23,24 +23,24 @@ import type {
 
 /** Processamento ou indexação ainda em curso: a tela continua perguntando a cada 3 segundos. */
 const emAndamento = (a: ArquivoResumo) =>
-  a.status === "PENDENTE" ||
-  a.status === "PROCESSANDO" ||
-  a.indexacao?.situacao === "NA_FILA" ||
-  a.indexacao?.situacao === "INDEXANDO";
+  a.status === "PENDING" ||
+  a.status === "PROCESSING" ||
+  a.indexing?.status === "QUEUED" ||
+  a.indexing?.status === "INDEXING";
 
 export function useUsuario() {
-  return useQuery({ queryKey: ["eu"], queryFn: () => obter<UsuarioLogado>("/eu") });
+  return useQuery({ queryKey: ["eu"], queryFn: () => obter<UsuarioLogado>("/me") });
 }
 
 export function useCategorias() {
-  return useQuery({ queryKey: ["categorias"], queryFn: async () => (await obter<CategoriaDto[]>("/categorias")) ?? [], staleTime: Infinity });
+  return useQuery({ queryKey: ["categorias"], queryFn: async () => (await obter<CategoriaDto[]>("/categories")) ?? [], staleTime: Infinity });
 }
 
 export function useArquivos(condominioId: string, categoria?: Categoria) {
-  const filtro = categoria ? `?categoria=${categoria}` : "";
+  const filtro = categoria ? `?category=${categoria}` : "";
   return useQuery({
     queryKey: ["arquivos", condominioId, categoria ?? "todas"],
-    queryFn: async () => (await obter<ArquivoResumo[]>(`/condominios/${condominioId}/arquivos${filtro}`)) ?? [],
+    queryFn: async () => (await obter<ArquivoResumo[]>(`/condominiums/${condominioId}/files${filtro}`)) ?? [],
     // Enquanto algum arquivo estiver na fila ou processando, atualiza a lista a cada 3 segundos
     refetchInterval: (consulta) => (consulta.state.data?.some(emAndamento) ? 3000 : false),
   });
@@ -49,7 +49,7 @@ export function useArquivos(condominioId: string, categoria?: Categoria) {
 export function useUltimoArquivo(condominioId: string) {
   return useQuery({
     queryKey: ["arquivos", condominioId, "ultimo"],
-    queryFn: () => obter<ArquivoResumo>(`/condominios/${condominioId}/arquivos/ultimo`),
+    queryFn: () => obter<ArquivoResumo>(`/condominiums/${condominioId}/files/latest`),
     refetchInterval: (consulta) => (consulta.state.data && emAndamento(consulta.state.data) ? 3000 : false),
   });
 }
@@ -57,16 +57,16 @@ export function useUltimoArquivo(condominioId: string) {
 export function useDetalheArquivo(condominioId: string, id: string | null) {
   return useQuery({
     queryKey: ["arquivo", condominioId, id],
-    queryFn: () => obter<ArquivoDetalhe>(`/condominios/${condominioId}/arquivos/${id}`),
+    queryFn: () => obter<ArquivoDetalhe>(`/condominiums/${condominioId}/files/${id}`),
     enabled: id !== null,
-    refetchInterval: (consulta) => (consulta.state.data && emAndamento(consulta.state.data.arquivo) ? 3000 : false),
+    refetchInterval: (consulta) => (consulta.state.data && emAndamento(consulta.state.data.file) ? 3000 : false),
   });
 }
 
 export function usePainel(condominioId: string) {
   return useQuery({
     queryKey: ["painel", condominioId],
-    queryFn: () => obter<Painel>(`/condominios/${condominioId}/painel`),
+    queryFn: () => obter<Painel>(`/condominiums/${condominioId}/dashboard`),
   });
 }
 
@@ -85,8 +85,8 @@ export function useEnviarArquivo(condominioId: string) {
   return useMutation({
     mutationFn: ({ categoria, arquivo }: { categoria: Categoria; arquivo: File }) => {
       const corpo = new FormData();
-      corpo.append("arquivo", arquivo);
-      return enviar<ArquivoResumo>(`/condominios/${condominioId}/arquivos?categoria=${categoria}`, corpo);
+      corpo.append("file", arquivo);
+      return enviar<ArquivoResumo>(`/condominiums/${condominioId}/files?category=${categoria}`, corpo);
     },
     onSuccess: recarregar,
   });
@@ -95,7 +95,7 @@ export function useEnviarArquivo(condominioId: string) {
 export function useReprocessar(condominioId: string) {
   const recarregar = useRecarregarArquivos();
   return useMutation({
-    mutationFn: (id: string) => enviar<ArquivoResumo>(`/condominios/${condominioId}/arquivos/${id}/reprocessar`),
+    mutationFn: (id: string) => enviar<ArquivoResumo>(`/condominiums/${condominioId}/files/${id}/reprocess`),
     onSuccess: recarregar,
   });
 }
@@ -105,7 +105,7 @@ export function useAlterarCategoria(condominioId: string) {
   const recarregar = useRecarregarArquivos();
   return useMutation({
     mutationFn: ({ id, categoria }: { id: string; categoria: Categoria }) =>
-      atualizar<ArquivoResumo>(`/condominios/${condominioId}/arquivos/${id}/categoria`, { categoria } satisfies NovaCategoria),
+      atualizar<ArquivoResumo>(`/condominiums/${condominioId}/files/${id}/category`, { category: categoria } satisfies NovaCategoria),
     onSuccess: recarregar,
   });
 }
@@ -113,7 +113,7 @@ export function useAlterarCategoria(condominioId: string) {
 export function useConfirmarFundoOrdinario(condominioId: string) {
   const cliente = useQueryClient();
   return useMutation({
-    mutationFn: (fundoId: string) => gravar(`/condominios/${condominioId}/fundo-ordinario`, { fundoId }),
+    mutationFn: (fundoId: string) => gravar(`/condominiums/${condominioId}/operating-fund`, { fundId: fundoId }),
     onSuccess: () => void cliente.invalidateQueries({ queryKey: ["painel", condominioId] }),
   });
 }
@@ -124,14 +124,14 @@ export function useConfirmarFundoOrdinario(condominioId: string) {
 export function useContexto(condominioId: string) {
   return useQuery({
     queryKey: ["contexto", condominioId],
-    queryFn: () => obter<ContextoCondominio>(`/condominios/${condominioId}/contexto`),
+    queryFn: () => obter<ContextoCondominio>(`/condominiums/${condominioId}/context`),
   });
 }
 
 export function useModulos(condominioId: string) {
   return useQuery({
     queryKey: ["modulos", condominioId],
-    queryFn: async () => (await obter<ModuloDoCondominio[]>(`/condominios/${condominioId}/modulos`)) ?? [],
+    queryFn: async () => (await obter<ModuloDoCondominio[]>(`/condominiums/${condominioId}/features`)) ?? [],
   });
 }
 
@@ -139,7 +139,7 @@ export function useModulos(condominioId: string) {
 export function useEventosModulo(condominioId: string, codigo: string) {
   return useQuery({
     queryKey: ["modulos", condominioId, codigo, "eventos"],
-    queryFn: async () => (await obter<EventoModulo[]>(`/condominios/${condominioId}/modulos/${codigo}/eventos`)) ?? [],
+    queryFn: async () => (await obter<EventoModulo[]>(`/condominiums/${condominioId}/features/${codigo}/events`)) ?? [],
   });
 }
 
@@ -147,7 +147,7 @@ export function useEventosModulo(condominioId: string, codigo: string) {
 export function usePeriodosModulo(condominioId: string, codigo: string) {
   return useQuery({
     queryKey: ["modulos", condominioId, codigo, "periodos"],
-    queryFn: async () => (await obter<PeriodoAtivo[]>(`/condominios/${condominioId}/modulos/${codigo}/periodos`)) ?? [],
+    queryFn: async () => (await obter<PeriodoAtivo[]>(`/condominiums/${condominioId}/features/${codigo}/periods`)) ?? [],
   });
 }
 
@@ -156,7 +156,7 @@ export function useAlterarModulo(condominioId: string) {
   const cliente = useQueryClient();
   return useMutation({
     mutationFn: ({ codigo, alteracao }: { codigo: string; alteracao: AlteracaoModulo }) =>
-      atualizar<ModuloDoCondominio>(`/condominios/${condominioId}/modulos/${codigo}`, alteracao),
+      atualizar<ModuloDoCondominio>(`/condominiums/${condominioId}/features/${codigo}`, alteracao),
     onSuccess: () => {
       void cliente.invalidateQueries({ queryKey: ["modulos", condominioId] });
       void cliente.invalidateQueries({ queryKey: ["contexto", condominioId] });
@@ -168,7 +168,7 @@ export function useAlterarModulo(condominioId: string) {
 
 /** Caminho do uso no período; a exportação usa o mesmo filtro. Datas em AAAA-MM-DD. */
 export const caminhoUso = (condominioId: string, inicio: string, fim: string, exportacao = false) =>
-  `/condominios/${condominioId}/uso${exportacao ? "/exportacao" : ""}?inicio=${inicio}&fim=${fim}`;
+  `/condominiums/${condominioId}/usage${exportacao ? "/export" : ""}?start=${inicio}&end=${fim}`;
 
 /** Só pergunta à API com as duas datas e o início antes do fim (AAAA-MM-DD compara como texto). */
 export const periodoPreenchido = (inicio: string, fim: string) => inicio !== "" && fim !== "" && inicio <= fim;
@@ -187,7 +187,7 @@ export function useUso(condominioId: string, inicio: string, fim: string) {
 export function useConfiguracaoIa(condominioId: string) {
   return useQuery({
     queryKey: ["ia", condominioId],
-    queryFn: () => obter<ConfiguracaoIa>(`/condominios/${condominioId}/ia`),
+    queryFn: () => obter<ConfiguracaoIa>(`/condominiums/${condominioId}/ai`),
   });
 }
 
@@ -195,7 +195,7 @@ export function useConfiguracaoIa(condominioId: string) {
 export function useProvedoresIa() {
   return useQuery({
     queryKey: ["ia", "provedores"],
-    queryFn: async () => (await obter<ProvedorIa[]>("/ia/provedores")) ?? [],
+    queryFn: async () => (await obter<ProvedorIa[]>("/ai/providers")) ?? [],
     staleTime: 5 * 60_000,
   });
 }
@@ -207,7 +207,7 @@ export function useProvedoresIa() {
 export function useGravarConfiguracaoIa(condominioId: string) {
   const cliente = useQueryClient();
   return useMutation({
-    mutationFn: (pedido: PedidoConfiguracaoIa) => atualizar<ConfiguracaoIa>(`/condominios/${condominioId}/ia`, pedido),
+    mutationFn: (pedido: PedidoConfiguracaoIa) => atualizar<ConfiguracaoIa>(`/condominiums/${condominioId}/ai`, pedido),
     onSuccess: (configuracao) => {
       cliente.setQueryData(["ia", condominioId], configuracao);
       void cliente.invalidateQueries({ queryKey: ["contexto", condominioId] });
@@ -219,6 +219,6 @@ export function useGravarConfiguracaoIa(condominioId: string) {
 export function useBuscarDocumentos(condominioId: string) {
   return useMutation({
     mutationFn: async (pedido: PedidoBuscaDocumentos) =>
-      (await enviarJson<TrechoDocumento[]>(`/condominios/${condominioId}/assistente/busca`, pedido)) ?? [],
+      (await enviarJson<TrechoDocumento[]>(`/condominiums/${condominioId}/assistant/search`, pedido)) ?? [],
   });
 }

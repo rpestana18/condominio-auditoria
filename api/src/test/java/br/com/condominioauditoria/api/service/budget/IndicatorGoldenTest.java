@@ -44,7 +44,7 @@ class IndicatorGoldenTest {
         assertThat(set.actual()).isEqualByComparingTo("446176.89");
         assertThat(set.planned()).isEqualByComparingTo("451620.13");
         assertThat(r.monthlyExecution()).filteredOn(p -> !p.month().equals("2026-09"))
-                .allMatch(p -> p.status() == MonthStatus.SEM_FLUXO && p.execution() == null && p.actual() == null);
+                .allMatch(p -> p.status() == MonthStatus.NO_CASH_FLOW && p.execution() == null && p.actual() == null);
         // Chart 2: 8,6%, limit 20%, maximum scenario 8,8% provisional
         Rule20PointResponse rule = r.rule20().get(SEPTEMBER);
         assertThat(rule.percentage()).isEqualByComparingTo("8.6");
@@ -64,7 +64,7 @@ class IndicatorGoldenTest {
         LineDifferenceResponse watchman = r.largestDifferences().above().stream().filter(d -> d.code().equals("1.3.10"))
                 .findFirst().orElseThrow();
         assertThat(watchman.difference()).isEqualByComparingTo("6793.38");
-        assertThat(watchman.target()).isEqualTo("linha:" + watchman.lineId());
+        assertThat(watchman.target()).isEqualTo("line:" + watchman.lineId());
         assertThat(c.budgetVsActual.evidence(c.condominiumId, "2026-09", g.budget.getId(), watchman.target()).stream()
                 .map(EvidenceResponse::amount).reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add))
                 .isEqualByComparingTo("86816.34");

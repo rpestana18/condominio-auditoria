@@ -53,7 +53,7 @@ class SourceFileServiceFeatureTest {
     void uploadWithFeatureDisabledOnlyReads() throws Exception {
         when(features.isEnabled(CONDOMINIUM, FeatureService.ASSISTANT)).thenReturn(false);
 
-        SourceFileResponse file = service.upload(CONDOMINIUM, FileCategory.ATA, upload(), "gestor");
+        SourceFileResponse file = service.upload(CONDOMINIUM, FileCategory.MINUTES, upload(), "gestor");
 
         assertThat(file.indexing()).isNull();
         verify(events).publishEvent(new FileReadRequested(file.id()));
@@ -64,34 +64,34 @@ class SourceFileServiceFeatureTest {
     void uploadWithFeatureEnabledRequestsIndexing() throws Exception {
         when(features.isEnabled(CONDOMINIUM, FeatureService.ASSISTANT)).thenReturn(true);
 
-        SourceFileResponse file = service.upload(CONDOMINIUM, FileCategory.ATA, upload(), "gestor");
+        SourceFileResponse file = service.upload(CONDOMINIUM, FileCategory.MINUTES, upload(), "gestor");
 
-        assertThat(file.indexing().status()).isEqualTo(IndexingStatus.NA_FILA);
+        assertThat(file.indexing().status()).isEqualTo(IndexingStatus.QUEUED);
         verify(events).publishEvent(new FileIndexRequested(file.id()));
     }
 
     @Test
     void reprocessWithFeatureDisabledKeepsIndexingStatus() {
         when(features.isEnabled(CONDOMINIUM, FeatureService.ASSISTANT)).thenReturn(false);
-        SourceFile file = new SourceFile(CONDOMINIUM, FileCategory.ATA, "ata.pdf", "c/ATA/2026/x-ata.pdf", "a".repeat(64), 10,
+        SourceFile file = new SourceFile(CONDOMINIUM, FileCategory.MINUTES, "ata.pdf", "c/MINUTES/2026/x-ata.pdf", "a".repeat(64), 10,
                 "application/pdf", "gestor");
         file.requestIndexing();
-        file.completeIndexing(IndexingStatus.INDEXADO, null, 2, 3);
+        file.completeIndexing(IndexingStatus.INDEXED, null, 2, 3);
         UUID request = file.getIndexingId();
 
         when(files.findByIdAndCondominiumId(file.getId(), CONDOMINIUM)).thenReturn(Optional.of(file));
 
         service.reprocess(CONDOMINIUM, file.getId());
 
-        assertThat(file.getStatus()).isEqualTo(FileStatus.PENDENTE);
-        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.INDEXADO); // index kept (Q14)
+        assertThat(file.getStatus()).isEqualTo(FileStatus.PENDING);
+        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.INDEXED); // index kept (Q14)
         assertThat(file.getIndexingId()).isEqualTo(request);
         verify(events).publishEvent(new FileReadRequested(file.getId()));
         verify(events, never()).publishEvent(any(FileIndexRequested.class));
     }
 
     private static MockMultipartFile upload() {
-        return new MockMultipartFile("arquivo", "ata.pdf", "application/pdf",
+        return new MockMultipartFile("file", "ata.pdf", "application/pdf",
                 ("conteudo " + UUID.randomUUID()).getBytes());
     }
 }

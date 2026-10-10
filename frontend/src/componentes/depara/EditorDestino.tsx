@@ -13,7 +13,7 @@ interface Props {
   aoFechar: () => void;
 }
 
-const tipos: TipoDestino[] = ["LINHA_PO", "AJUSTE", "A_REALOCAR", "TRANSFERENCIA"];
+const tipos: TipoDestino[] = ["BUDGET_LINE", "ADJUSTMENT", "TO_REALLOCATE", "TRANSFER"];
 
 /**
  * Admin escolhe o destino de uma conta do fluxo (RF-03.1.4 e RF-03.1.5). A busca é por código e por nome
@@ -23,9 +23,9 @@ export function EditorDestino({ poId, conta, linhas, aoFechar }: Props) {
   const { condominioId } = useSessao();
   const definir = useDefinirDepara(condominioId, poId);
   const janela = useRef<HTMLDialogElement>(null);
-  const [tipo, setTipo] = useState<TipoDestino>(conta.destino?.tipo ?? "LINHA_PO");
-  const [linhaId, setLinhaId] = useState<string>(conta.destino?.linhaId ?? "");
-  const [detalhe, setDetalhe] = useState(conta.destino?.detalhe ?? "");
+  const [tipo, setTipo] = useState<TipoDestino>(conta.target?.type ?? "BUDGET_LINE");
+  const [linhaId, setLinhaId] = useState<string>(conta.target?.lineId ?? "");
+  const [detalhe, setDetalhe] = useState(conta.target?.detail ?? "");
   const [busca, setBusca] = useState("");
   const [confirmar, setConfirmar] = useState(true);
 
@@ -38,7 +38,7 @@ export function EditorDestino({ poId, conta, linhas, aoFechar }: Props) {
     const termo = busca.trim().toLowerCase();
     if (!termo) return linhas;
     return linhas.filter((l) =>
-      [l.codigoEfetivo, l.descricao, l.conta ?? "", l.contaTexto ?? ""].some((t) => t.toLowerCase().includes(termo)),
+      [l.effectiveCode, l.description, l.account ?? "", l.accountText ?? ""].some((t) => t.toLowerCase().includes(termo)),
     );
   }, [busca, linhas]);
 
@@ -46,8 +46,8 @@ export function EditorDestino({ poId, conta, linhas, aoFechar }: Props) {
     evento.preventDefault();
     definir.mutate(
       {
-        conta: conta.conta,
-        pedido: { tipo, linhaId: tipo === "LINHA_PO" ? linhaId : null, detalhe: tipo === "LINHA_PO" ? null : detalhe || null, confirmar },
+        conta: conta.account,
+        pedido: { type: tipo, lineId: tipo === "BUDGET_LINE" ? linhaId : null, detail: tipo === "BUDGET_LINE" ? null : detalhe || null, confirm: confirmar },
       },
       { onSuccess: aoFechar },
     );
@@ -57,13 +57,13 @@ export function EditorDestino({ poId, conta, linhas, aoFechar }: Props) {
     <dialog ref={janela} className="janela larga" onClose={aoFechar}>
       <form onSubmit={salvar}>
         <h2>
-          Destino da conta {conta.conta} {conta.nome}
+          Destino da conta {conta.account} {conta.name}
         </h2>
         <p className="discreto">
-          {conta.lancamentos} lançamentos · {formatarMoeda(conta.debitos)} no exercício
-          {conta.destino && ` · atual: ${conta.destino.texto}`}
+          {conta.ledgerEntries} lançamentos · {formatarMoeda(conta.debits)} no exercício
+          {conta.target && ` · atual: ${conta.target.text}`}
         </p>
-        {conta.motivo && <p className="discreto">Motivo da sugestão: {conta.motivo}</p>}
+        {conta.reason && <p className="discreto">Motivo da sugestão: {conta.reason}</p>}
 
         <fieldset>
           <legend>Tipo de destino</legend>
@@ -75,15 +75,15 @@ export function EditorDestino({ poId, conta, linhas, aoFechar }: Props) {
           ))}
         </fieldset>
 
-        {tipo === "LINHA_PO" ? (
+        {tipo === "BUDGET_LINE" ? (
           <fieldset>
             <legend>Linha da PO</legend>
             <input type="search" placeholder="Buscar por código ou nome (ex.: 1.7.8 ou hidráulico)" value={busca} onChange={(e) => setBusca(e.target.value)} />
             <select size={8} value={linhaId} onChange={(e) => setLinhaId(e.target.value)} required aria-label="Linha da PO">
               {encontradas.map((l) => (
                 <option key={l.id} value={l.id}>
-                  {l.codigoEfetivo} {l.descricao}
-                  {l.conta ? ` (${l.conta})` : ""}
+                  {l.effectiveCode} {l.description}
+                  {l.account ? ` (${l.account})` : ""}
                 </option>
               ))}
             </select>
@@ -105,7 +105,7 @@ export function EditorDestino({ poId, conta, linhas, aoFechar }: Props) {
           <button className="botao secundario" type="button" onClick={aoFechar}>
             Cancelar
           </button>
-          <button className="botao" type="submit" disabled={definir.isPending || (tipo === "LINHA_PO" && !linhaId)}>
+          <button className="botao" type="submit" disabled={definir.isPending || (tipo === "BUDGET_LINE" && !linhaId)}>
             {definir.isPending ? "Salvando…" : "Salvar"}
           </button>
         </div>

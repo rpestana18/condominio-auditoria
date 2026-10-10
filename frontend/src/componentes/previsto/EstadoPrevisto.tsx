@@ -9,23 +9,23 @@ import { rotuloEstadoPo } from "./rotulos";
  */
 export function EstadoPrevisto({ resultado }: { resultado: PrevistoRealizado }) {
   const { pode } = useSessao();
-  const { po, depara } = resultado;
-  const pendentes = depara?.semDeparaConfirmado ?? 0;
-  const linkPendentes = po ? `/depara?po=${po.id}&filtro=PENDENTES` : "/depara?filtro=PENDENTES";
+  const { budget: po, mapping: depara } = resultado;
+  const pendentes = depara?.withoutConfirmedMapping ?? 0;
+  const linkPendentes = po ? `/depara?po=${po.id}&filtro=PENDING` : "/depara?filtro=PENDING";
 
   return (
     <div className="estado-previsto">
       {po && (
-        <Link to={`/previsoes/${po.id}`} className={po.estado === "CONFIRMADA" ? "selo ok" : "selo alerta"}>
-          PO {po.versao ? `versão ${po.versao}` : ""} · {rotuloEstadoPo[po.estado]}
+        <Link to={`/previsoes/${po.id}`} className={po.status === "CONFIRMED" ? "selo ok" : "selo alerta"}>
+          PO {po.version ? `versão ${po.version}` : ""} · {rotuloEstadoPo[po.status]}
         </Link>
       )}
       {depara && (
         <span className={pendentes === 0 ? "selo ok" : "selo alerta"}>
-          De-para: {depara.confirmadas} de {depara.contas} contas confirmadas
+          De-para: {depara.confirmed} de {depara.accounts} contas confirmadas
         </span>
       )}
-      {resultado.provisorio && (
+      {resultado.provisional && (
         <span className="selo alerta" title="Há valor a realocar ou conta sem linha da PO">
           Provisório
         </span>

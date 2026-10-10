@@ -13,7 +13,7 @@ interface Props {
  * do seu exercício. Nunca são somadas a outra linha; a correspondência é feita pelo Admin na tela da PO.
  */
 export function SemCorrespondencia({ exercicios, linhas, abridor }: Props) {
-  const rotulo = (exercicioId: string) => exercicios.find((e) => e.id === exercicioId)?.rotulo ?? exercicioId;
+  const rotulo = (exercicioId: string) => exercicios.find((e) => e.id === exercicioId)?.label ?? exercicioId;
   return (
     <section className="bloco">
       <h2>Sem correspondência ({linhas.length})</h2>
@@ -39,22 +39,22 @@ export function SemCorrespondencia({ exercicios, linhas, abridor }: Props) {
             </thead>
             <tbody>
               {linhas.map((l) => {
-                const abrir = abridor(l.exercicioId, l.alvo);
+                const abrir = abridor(l.fiscalYearId, l.target);
                 return (
-                  <tr key={`${l.exercicioId}-${l.linhaId}`}>
-                    <td>{rotulo(l.exercicioId)}</td>
-                    <td>{l.codigo}</td>
-                    <td className="discreto">{l.conta ?? "—"}</td>
-                    <td>{l.descricao}</td>
-                    <td className="discreto">{l.grupo ?? "—"}</td>
+                  <tr key={`${l.fiscalYearId}-${l.lineId}`}>
+                    <td>{rotulo(l.fiscalYearId)}</td>
+                    <td>{l.code}</td>
+                    <td className="discreto">{l.account ?? "—"}</td>
+                    <td>{l.description}</td>
+                    <td className="discreto">{l.group ?? "—"}</td>
                     <td className="numero">
-                      <ValorOuTraco valor={l.previstoMes} aoAbrir={abrir} />
+                      <ValorOuTraco valor={l.monthlyPlanned} aoAbrir={abrir} />
                     </td>
                     <td className="numero">
-                      <ValorOuTraco valor={l.previsto} />
+                      <ValorOuTraco valor={l.planned} />
                     </td>
                     <td className="numero">
-                      <ValorOuTraco valor={l.realizado} aoAbrir={abrir} />
+                      <ValorOuTraco valor={l.actual} aoAbrir={abrir} />
                     </td>
                   </tr>
                 );

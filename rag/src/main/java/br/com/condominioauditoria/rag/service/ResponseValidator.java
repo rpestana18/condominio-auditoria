@@ -16,7 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Check of the model's answer before it goes out (RF-04.2, RF-04.12 to RF-04.15; assistente.proto, "o que o rag valida
+ * Check of the model's answer before it goes out (RF-04.2, RF-04.12 to RF-04.15; assistant.proto, "o que o rag valida
  * antes de devolver"):
  * <ol>
  * <li>every paragraph of "nos documentos" cites at least one chunk;</li>

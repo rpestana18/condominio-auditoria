@@ -1,30 +1,30 @@
 package br.com.condominioauditoria.rag.grpc;
 
-import br.com.condominioauditoria.contratos.assistente.v1.Andamento;
-import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.DadoGravado;
-import br.com.condominioauditoria.contratos.assistente.v1.EtapaPergunta;
-import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.LinhaDado;
-import br.com.condominioauditoria.contratos.assistente.v1.ListarProvedoresRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.ListarProvedoresResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.LocalPagina;
-import br.com.condominioauditoria.contratos.assistente.v1.LocalParagrafos;
-import br.com.condominioauditoria.contratos.assistente.v1.LocalPlanilha;
-import br.com.condominioauditoria.contratos.assistente.v1.ModeloProvedor;
-import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.ParagrafoDocumentos;
-import br.com.condominioauditoria.contratos.assistente.v1.ParametroConsulta;
-import br.com.condominioauditoria.contratos.assistente.v1.PerguntarEvento;
-import br.com.condominioauditoria.contratos.assistente.v1.PerguntarRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.Provedor;
-import br.com.condominioauditoria.contratos.assistente.v1.RespostaPergunta;
-import br.com.condominioauditoria.contratos.assistente.v1.SituacaoResposta;
-import br.com.condominioauditoria.contratos.assistente.v1.Trecho;
-import br.com.condominioauditoria.contratos.assistente.v1.UsoPergunta;
-import br.com.condominioauditoria.contratos.assistente.v1.UsoProvedor;
+import br.com.condominioauditoria.contracts.assistant.v2.Progress;
+import br.com.condominioauditoria.contracts.assistant.v2.AssistantGrpc;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.StoredData;
+import br.com.condominioauditoria.contracts.assistant.v2.AskStage;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchFilters;
+import br.com.condominioauditoria.contracts.assistant.v2.DataRow;
+import br.com.condominioauditoria.contracts.assistant.v2.ListProvidersRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.ListProvidersResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.PageLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.ParagraphsLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.SheetLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.ProviderModel;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchMode;
+import br.com.condominioauditoria.contracts.assistant.v2.DocumentParagraph;
+import br.com.condominioauditoria.contracts.assistant.v2.QueryParameter;
+import br.com.condominioauditoria.contracts.assistant.v2.AskEvent;
+import br.com.condominioauditoria.contracts.assistant.v2.AskRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.Provider;
+import br.com.condominioauditoria.contracts.assistant.v2.Answer;
+import br.com.condominioauditoria.contracts.assistant.v2.AnswerOutcome;
+import br.com.condominioauditoria.contracts.assistant.v2.IndexedChunk;
+import br.com.condominioauditoria.contracts.assistant.v2.AskUsage;
+import br.com.condominioauditoria.contracts.assistant.v2.ProviderUsage;
 import br.com.condominioauditoria.rag.client.ModelContract;
 import br.com.condominioauditoria.rag.config.properties.AiProperties;
 import br.com.condominioauditoria.rag.dto.QueriedData;
@@ -51,14 +51,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Implementation of contracts/grpc/assistente/v1: Buscar (delivery 1), Perguntar and ListarProvedores (delivery 3).
+ * Implementation of contracts/grpc/assistant/v2: Search (delivery 1), Ask and ListProviders (delivery 3).
  * Validates the input (INVALID_ARGUMENT with a readable reason), converts it to the index search and returns the
- * citable chunks in order of relevance; in Perguntar, sends the progress events and, last, the already checked answer.
+ * citable chunks in order of relevance; in Ask, sends the progress events and, last, the already checked answer.
  *
  * No error message carries the AI key or any part of it.
  */
 @Component
-public class AssistantGrpcService extends AssistenteGrpc.AssistenteImplBase {
+public class AssistantGrpcService extends AssistantGrpc.AssistantImplBase {
 
     private static final Logger log = LoggerFactory.getLogger(AssistantGrpcService.class);
 
@@ -78,47 +78,47 @@ public class AssistantGrpcService extends AssistenteGrpc.AssistenteImplBase {
     }
 
     @Override
-    public void buscar(BuscarRequest request, StreamObserver<BuscarResponse> response) {
+    public void search(SearchRequest request, StreamObserver<SearchResponse> response) {
         IndexRepository.SearchFilters filters;
         DocumentSearch.Mode mode;
         try {
-            if (request.getTexto().isBlank()) {
+            if (request.getText().isBlank()) {
                 throw new IllegalArgumentException("Texto da busca é obrigatório");
             }
-            if (request.getLimite() < 0) {
+            if (request.getLimit() < 0) {
                 throw new IllegalArgumentException("Limite não pode ser negativo");
             }
-            if (!embeddings.accepts(request.getModeloEmbeddings())) {
-                throw new IllegalArgumentException("Modelo de embeddings " + request.getModeloEmbeddings()
+            if (!embeddings.accepts(request.getEmbeddingModel())) {
+                throw new IllegalArgumentException("Modelo de embeddings " + request.getEmbeddingModel()
                         + " não está disponível neste rag (disponível: " + embeddings.model() + ")");
             }
             filters = filters(request);
-            mode = request.getModo() == ModoBusca.MODO_BUSCA_PALAVRA ? DocumentSearch.Mode.KEYWORD
+            mode = request.getMode() == SearchMode.SEARCH_MODE_KEYWORD ? DocumentSearch.Mode.KEYWORD
                     : DocumentSearch.Mode.HYBRID;
         } catch (IllegalArgumentException error) {
             response.onError(Status.INVALID_ARGUMENT.withDescription(error.getMessage()).asRuntimeException());
             return;
         }
         try {
-            DocumentSearch.Result result = search.search(filters, request.getTexto(), mode, request.getLimite());
-            var output = BuscarResponse.newBuilder()
-                    .setModoUsado(result.modeUsed() == DocumentSearch.Mode.KEYWORD ? ModoBusca.MODO_BUSCA_PALAVRA
-                            : ModoBusca.MODO_BUSCA_HIBRIDA);
-            result.chunks().forEach(t -> output.addTrechos(chunk(t)));
+            DocumentSearch.Result result = search.search(filters, request.getText(), mode, request.getLimit());
+            var output = SearchResponse.newBuilder()
+                    .setModeUsed(result.modeUsed() == DocumentSearch.Mode.KEYWORD ? SearchMode.SEARCH_MODE_KEYWORD
+                            : SearchMode.SEARCH_MODE_HYBRID);
+            result.chunks().forEach(t -> output.addChunks(chunk(t)));
             response.onNext(output.build());
             response.onCompleted();
         } catch (RuntimeException error) {
-            log.warn("Falha na busca do condomínio {}: {}", request.getCondominioId(), error.getMessage(), error);
+            log.warn("Falha na busca do condomínio {}: {}", request.getCondominiumId(), error.getMessage(), error);
             response.onError(Status.INTERNAL.withDescription("Falha na busca nos documentos").asRuntimeException());
         }
     }
 
     // -----------------------------------------------------------------------------------------------------------
-    // Perguntar (delivery 3)
+    // Ask (delivery 3)
     // -----------------------------------------------------------------------------------------------------------
 
     @Override
-    public void perguntar(PerguntarRequest request, StreamObserver<PerguntarEvento> stream) {
+    public void ask(AskRequest request, StreamObserver<AskEvent> stream) {
         String authorization = GrpcAuthorization.AUTHORIZATION.get();
         if (authorization == null || authorization.isBlank()) {
             stream.onError(Status.UNAUTHENTICATED
@@ -135,9 +135,9 @@ public class AssistantGrpcService extends AssistenteGrpc.AssistenteImplBase {
         }
         try {
             QuestionResult result = questions.answer(input, (stage, attempt) -> stream
-                    .onNext(PerguntarEvento.newBuilder().setAndamento(Andamento.newBuilder()
-                            .setEtapa(stage(stage)).setTentativa(attempt)).build()));
-            stream.onNext(PerguntarEvento.newBuilder().setResposta(response(result)).build());
+                    .onNext(AskEvent.newBuilder().setProgress(Progress.newBuilder()
+                            .setStage(stage(stage)).setAttempt(attempt)).build()));
+            stream.onNext(AskEvent.newBuilder().setAnswer(response(result)).build());
             stream.onCompleted();
         } catch (QuestionService.InvalidQuestionException error) {
             stream.onError(Status.INVALID_ARGUMENT.withDescription(error.getMessage()).asRuntimeException());
@@ -145,7 +145,7 @@ public class AssistantGrpcService extends AssistenteGrpc.AssistenteImplBase {
                 | RagKeys.NoKeyPairException error) {
             stream.onError(Status.FAILED_PRECONDITION.withDescription(error.getMessage()).asRuntimeException());
         } catch (KeyEnvelope.UnreadableKeyException error) {
-            log.warn("Chave de IA do condomínio {} não pôde ser lida: {}", request.getCondominioId(),
+            log.warn("Chave de IA do condomínio {} não pôde ser lida: {}", request.getCondominiumId(),
                     error.getMessage());
             stream.onError(Status.FAILED_PRECONDITION.withDescription(
                     "A chave de IA deste condomínio não pôde ser lida; cadastre de novo.").asRuntimeException());
@@ -158,7 +158,7 @@ public class AssistantGrpcService extends AssistenteGrpc.AssistenteImplBase {
                     "Não foi possível consultar os dados gravados agora; tente de novo em instantes.")
                     .asRuntimeException());
         } catch (RuntimeException error) {
-            log.error("Falha ao responder a pergunta do condomínio {}: {}", request.getCondominioId(),
+            log.error("Falha ao responder a pergunta do condomínio {}: {}", request.getCondominiumId(),
                     error.getMessage(), error);
             stream.onError(Status.INTERNAL.withDescription("Falha ao responder a pergunta.").asRuntimeException());
         }
@@ -179,8 +179,8 @@ public class AssistantGrpcService extends AssistenteGrpc.AssistenteImplBase {
         };
     }
 
-    private QuestionRequest toRequest(PerguntarRequest request, String authorization) {
-        String question = request.getPergunta().strip();
+    private QuestionRequest toRequest(AskRequest request, String authorization) {
+        String question = request.getQuestion().strip();
         if (question.isEmpty()) {
             throw new IllegalArgumentException("A pergunta é obrigatória.");
         }
@@ -188,79 +188,79 @@ public class AssistantGrpcService extends AssistenteGrpc.AssistenteImplBase {
             throw new IllegalArgumentException(
                     "A pergunta passa de " + QuestionRequest.MAX_CHARS + " caracteres.");
         }
-        if (request.getLimiteTrechos() < 0) {
+        if (request.getChunkLimit() < 0) {
             throw new IllegalArgumentException("limite_trechos não pode ser negativo");
         }
-        var configuration = request.getConfiguracao();
-        if (!embeddings.accepts(configuration.getModeloEmbeddings())) {
-            throw new IllegalArgumentException("Modelo de embeddings " + configuration.getModeloEmbeddings()
+        var configuration = request.getConfiguration();
+        if (!embeddings.accepts(configuration.getEmbeddingModel())) {
+            throw new IllegalArgumentException("Modelo de embeddings " + configuration.getEmbeddingModel()
                     + " não está disponível neste rag (disponível: " + embeddings.model() + ")");
         }
-        var filters = filters(request.getCondominioId(), request.getFiltros());
-        var mode = configuration.getModoBusca() == ModoBusca.MODO_BUSCA_PALAVRA ? DocumentSearch.Mode.KEYWORD
+        var filters = filters(request.getCondominiumId(), request.getFilters());
+        var mode = configuration.getSearchMode() == SearchMode.SEARCH_MODE_KEYWORD ? DocumentSearch.Mode.KEYWORD
                 : DocumentSearch.Mode.HYBRID;
-        var history = request.getHistoricoList().stream()
-                .map(t -> new QuestionRequest.Exchange(t.getPergunta(), t.getResposta())).toList();
-        return new QuestionRequest(filters, question, history, mode, configuration.getProvedor(),
-                configuration.getModelo(), configuration.getChaveCifrada().toByteArray(), request.getLimiteTrechos(),
+        var history = request.getHistoryList().stream()
+                .map(t -> new QuestionRequest.Exchange(t.getQuestion(), t.getAnswer())).toList();
+        return new QuestionRequest(filters, question, history, mode, configuration.getProvider(),
+                configuration.getModel(), configuration.getEncryptedKey().toByteArray(), request.getChunkLimit(),
                 authorization);
     }
 
-    private static EtapaPergunta stage(QuestionService.Stage stage) {
+    private static AskStage stage(QuestionService.Stage stage) {
         return switch (stage) {
-            case SEARCHING_CHUNKS -> EtapaPergunta.ETAPA_PERGUNTA_BUSCANDO_TRECHOS;
-            case QUERYING_DATA -> EtapaPergunta.ETAPA_PERGUNTA_CONSULTANDO_DADOS;
-            case DRAFTING -> EtapaPergunta.ETAPA_PERGUNTA_REDIGINDO;
-            case VALIDATING -> EtapaPergunta.ETAPA_PERGUNTA_VALIDANDO;
-            case RETRYING -> EtapaPergunta.ETAPA_PERGUNTA_NOVA_TENTATIVA;
+            case SEARCHING_CHUNKS -> AskStage.ASK_STAGE_SEARCHING_CHUNKS;
+            case QUERYING_DATA -> AskStage.ASK_STAGE_QUERYING_DATA;
+            case DRAFTING -> AskStage.ASK_STAGE_DRAFTING;
+            case VALIDATING -> AskStage.ASK_STAGE_VALIDATING;
+            case RETRYING -> AskStage.ASK_STAGE_RETRYING;
         };
     }
 
-    private static RespostaPergunta response(QuestionResult result) {
-        var output = RespostaPergunta.newBuilder()
-                .setSituacao(result.status() == QuestionResult.Status.ANSWERED
-                        ? SituacaoResposta.SITUACAO_RESPOSTA_RESPONDIDA
-                        : SituacaoResposta.SITUACAO_RESPOSTA_NAO_ENCONTRADA)
-                .setSugestao(result.suggestion() == null ? "" : result.suggestion())
-                .setAviso(result.warning() == null ? "" : result.warning())
-                .setUso(usage(result.usage()));
-        result.inDocuments().forEach(p -> output.addNosDocumentos(ParagrafoDocumentos.newBuilder()
-                .setTexto(p.text()).addAllTrechoIds(p.chunkIds())));
-        result.inStoredData().forEach(d -> output.addNosDadosGravados(storedData(d)));
-        result.citedChunks().forEach(t -> output.addTrechosCitados(chunk(t)));
+    private static Answer response(QuestionResult result) {
+        var output = Answer.newBuilder()
+                .setOutcome(result.status() == QuestionResult.Status.ANSWERED
+                        ? AnswerOutcome.ANSWER_OUTCOME_ANSWERED
+                        : AnswerOutcome.ANSWER_OUTCOME_NOT_FOUND)
+                .setSuggestion(result.suggestion() == null ? "" : result.suggestion())
+                .setWarning(result.warning() == null ? "" : result.warning())
+                .setUsage(usage(result.usage()));
+        result.inDocuments().forEach(p -> output.addInDocuments(DocumentParagraph.newBuilder()
+                .setText(p.text()).addAllChunkIds(p.chunkIds())));
+        result.inStoredData().forEach(d -> output.addInStoredData(storedData(d)));
+        result.citedChunks().forEach(t -> output.addCitedChunks(chunk(t)));
         return output.build();
     }
 
-    private static DadoGravado storedData(QuestionResult.DataItem dataItem) {
+    private static StoredData storedData(QuestionResult.DataItem dataItem) {
         QueriedData queried = dataItem.queried();
-        var output = DadoGravado.newBuilder()
-                .setChamadaId(queried.callId())
-                .setConsulta(queried.query())
-                .setComentario(dataItem.comment() == null ? "" : dataItem.comment());
-        queried.params().forEach(p -> output.addParametros(ParametroConsulta.newBuilder()
-                .setNome(p.name()).setValor(p.value())));
-        queried.rows().forEach(l -> output.addLinhas(LinhaDado.newBuilder()
-                .setRotulo(l.label()).setValor(l.value())));
+        var output = StoredData.newBuilder()
+                .setCallId(queried.callId())
+                .setQuery(queried.query())
+                .setComment(dataItem.comment() == null ? "" : dataItem.comment());
+        queried.params().forEach(p -> output.addParameters(QueryParameter.newBuilder()
+                .setName(p.name()).setValue(p.value())));
+        queried.rows().forEach(l -> output.addRows(DataRow.newBuilder()
+                .setLabel(l.label()).setValue(l.value())));
         return output.build();
     }
 
-    private static UsoPergunta usage(QuestionResult.Usage usage) {
-        return UsoPergunta.newBuilder()
-                .setTokensEntrada(usage.inputTokens())
-                .setTokensSaida(usage.outputTokens())
-                .setProvedor(usage.provider())
-                .setModelo(usage.model())
-                .setVersaoPrompt(usage.promptVersion())
-                .setTentativas(usage.attempts())
+    private static AskUsage usage(QuestionResult.Usage usage) {
+        return AskUsage.newBuilder()
+                .setInputTokens(usage.inputTokens())
+                .setOutputTokens(usage.outputTokens())
+                .setProvider(usage.provider())
+                .setModel(usage.model())
+                .setPromptVersion(usage.promptVersion())
+                .setAttempts(usage.attempts())
                 .build();
     }
 
     // -----------------------------------------------------------------------------------------------------------
-    // ListarProvedores (delivery 3)
+    // ListProviders (delivery 3)
     // -----------------------------------------------------------------------------------------------------------
 
     @Override
-    public void listarProvedores(ListarProvedoresRequest request, StreamObserver<ListarProvedoresResponse> response) {
+    public void listProviders(ListProvidersRequest request, StreamObserver<ListProvidersResponse> response) {
         String authorization = GrpcAuthorization.AUTHORIZATION.get();
         if (authorization == null || authorization.isBlank()) {
             response.onError(Status.UNAUTHENTICATED
@@ -268,44 +268,44 @@ public class AssistantGrpcService extends AssistenteGrpc.AssistenteImplBase {
                     .asRuntimeException());
             return;
         }
-        var output = ListarProvedoresResponse.newBuilder().setChavePublicaPem(keys.publicPem());
-        catalog.providers().forEach(p -> output.addProvedores(provider(p)));
+        var output = ListProvidersResponse.newBuilder().setPublicKeyPem(keys.publicPem());
+        catalog.providers().forEach(p -> output.addProviders(provider(p)));
         response.onNext(output.build());
         response.onCompleted();
     }
 
-    private static Provedor provider(AiProperties.AiProvider provider) {
-        var output = Provedor.newBuilder()
-                .setCodigo(provider.code())
-                .setNome(provider.name())
-                .setTipo(provider.type())
-                .setUso(provider.function() == AiProperties.AiFunction.ANSWERS ? UsoProvedor.USO_PROVEDOR_RESPOSTAS
-                        : UsoProvedor.USO_PROVEDOR_EMBEDDINGS)
+    private static Provider provider(AiProperties.AiProvider provider) {
+        var output = Provider.newBuilder()
+                .setCode(provider.code())
+                .setName(provider.name())
+                .setType(provider.type())
+                .setUsage(provider.function() == AiProperties.AiFunction.ANSWERS ? ProviderUsage.PROVIDER_USAGE_ANSWERS
+                        : ProviderUsage.PROVIDER_USAGE_EMBEDDINGS)
                 .setLocal(provider.local())
-                .setPrecisaChave(provider.requiresKey())
-                .setDimensao(provider.dimension());
-        provider.models().forEach(m -> output.addModelos(ModeloProvedor.newBuilder()
+                .setRequiresKey(provider.requiresKey())
+                .setDimension(provider.dimension());
+        provider.models().forEach(m -> output.addModels(ProviderModel.newBuilder()
                 .setId(m.id())
-                .setNome(m.name())
-                .setPadrao(m.isDefault())
-                .setPrecoEntradaMilhaoUsd(m.inputPricePerMillionUsd())
-                .setPrecoSaidaMilhaoUsd(m.outputPricePerMillionUsd())));
+                .setName(m.name())
+                .setIsDefault(m.isDefault())
+                .setInputPricePerMillionUsd(m.inputPricePerMillionUsd())
+                .setOutputPricePerMillionUsd(m.outputPricePerMillionUsd())));
         return output.build();
     }
 
-    private static IndexRepository.SearchFilters filters(BuscarRequest request) {
-        return filters(request.getCondominioId(), request.getFiltros());
+    private static IndexRepository.SearchFilters filters(SearchRequest request) {
+        return filters(request.getCondominiumId(), request.getFilters());
     }
 
-    private static IndexRepository.SearchFilters filters(String condominiumId, FiltrosBusca f) {
+    private static IndexRepository.SearchFilters filters(String condominiumId, SearchFilters f) {
         UUID condominium = uuid(condominiumId, "condominio_id");
-        LocalDate start = date(f.getDataInicio(), "data_inicio");
-        LocalDate end = date(f.getDataFim(), "data_fim");
+        LocalDate start = date(f.getDateFrom(), "data_inicio");
+        LocalDate end = date(f.getDateTo(), "data_fim");
         if (start != null && end != null && start.isAfter(end)) {
             throw new IllegalArgumentException("data_inicio depois de data_fim");
         }
-        List<UUID> files = f.getArquivoIdsList().stream().map(id -> uuid(id, "arquivo_ids")).toList();
-        List<String> categories = f.getCategoriasList().stream().filter(c -> !c.isBlank()).toList();
+        List<UUID> files = f.getFileIdsList().stream().map(id -> uuid(id, "arquivo_ids")).toList();
+        List<String> categories = f.getCategoriesList().stream().filter(c -> !c.isBlank()).toList();
         return new IndexRepository.SearchFilters(condominium, categories, start, end, files);
     }
 
@@ -328,24 +328,24 @@ public class AssistantGrpcService extends AssistenteGrpc.AssistenteImplBase {
         }
     }
 
-    public static Trecho chunk(FoundChunk t) {
-        var local = br.com.condominioauditoria.contratos.assistente.v1.Localizacao.newBuilder();
+    public static IndexedChunk chunk(FoundChunk t) {
+        var local = br.com.condominioauditoria.contracts.assistant.v2.ChunkLocation.newBuilder();
         switch (t.location()) {
-            case Location.Page l -> local.setPagina(LocalPagina.newBuilder().setPagina(l.number()));
-            case Location.Sheet l -> local.setPlanilha(LocalPlanilha.newBuilder().setAba(l.tab())
-                    .setLinhaInicio(l.startRow()).setLinhaFim(l.endRow()));
-            case Location.Paragraphs l -> local.setParagrafos(LocalParagrafos.newBuilder()
-                    .setParagrafoInicio(l.start()).setParagrafoFim(l.end())
-                    .setSecao(l.section() == null ? "" : l.section()));
+            case Location.Page l -> local.setPage(PageLocation.newBuilder().setPage(l.number()));
+            case Location.Sheet l -> local.setSheet(SheetLocation.newBuilder().setTab(l.tab())
+                    .setStartRow(l.startRow()).setEndRow(l.endRow()));
+            case Location.Paragraphs l -> local.setParagraphs(ParagraphsLocation.newBuilder()
+                    .setParagraphStart(l.start()).setParagraphEnd(l.end())
+                    .setSection(l.section() == null ? "" : l.section()));
         }
-        return Trecho.newBuilder()
-                .setTrechoId(t.chunkId().toString())
-                .setArquivoId(t.fileId().toString())
-                .setNomeArquivo(t.fileName())
-                .setCategoria(t.category())
-                .setLocalizacao(local)
-                .setTexto(t.text())
-                .setPontuacao(t.score())
+        return IndexedChunk.newBuilder()
+                .setChunkId(t.chunkId().toString())
+                .setFileId(t.fileId().toString())
+                .setFileName(t.fileName())
+                .setCategory(t.category())
+                .setLocation(local)
+                .setText(t.text())
+                .setScore(t.score())
                 .setSha256(t.sha256())
                 .build();
     }

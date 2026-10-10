@@ -6,7 +6,7 @@ import { Variacao } from "./Variacao";
 import { ValorOuTraco } from "./ValorOuTraco";
 
 /** O que a tabela mostra de cada exercício: o previsto do mês ou os meses comparados (previsto e realizado). */
-export type ModoValores = "PREVISTO_MES" | "MESES";
+export type ModoValores = "MONTHLY_PLANNED" | "MESES";
 
 /** Uma linha da tabela: um grupo (1.1 a 1.9) ou uma rubrica, com o valor de cada exercício. */
 export interface LinhaComparada {
@@ -27,7 +27,7 @@ interface Props {
 
 /** Visões 2 e 3 do RF-11.6: valores de cada exercício lado a lado, com a variação contra o exercício seguinte. */
 export function TabelaComparada({ exercicios, linhas, modo, abridor, mostrarLinhasDaPo }: Props) {
-  const colunas = modo === "PREVISTO_MES" ? 2 : 3;
+  const colunas = modo === "MONTHLY_PLANNED" ? 2 : 3;
   return (
     <div className="rolagem">
       <table className="tabela comparada">
@@ -38,13 +38,13 @@ export function TabelaComparada({ exercicios, linhas, modo, abridor, mostrarLinh
             </th>
             {exercicios.map((e) => (
               <th key={e.id} colSpan={colunas} scope="colgroup" className="inicio-exercicio">
-                {e.rotulo}
+                {e.label}
               </th>
             ))}
           </tr>
           <tr>
             {exercicios.map((e) =>
-              modo === "PREVISTO_MES" ? (
+              modo === "MONTHLY_PLANNED" ? (
                 <CabecalhosValores key={e.id} nomes={["Previsto do mês", "Variação"]} />
               ) : (
                 <CabecalhosValores key={e.id} nomes={["Previsto", "Realizado", "Variação do realizado"]} />
@@ -62,7 +62,7 @@ export function TabelaComparada({ exercicios, linhas, modo, abridor, mostrarLinh
               {exercicios.map((e) => (
                 <CelulasExercicio
                   key={e.id}
-                  valor={l.valores.find((v) => v.exercicioId === e.id)}
+                  valor={l.valores.find((v) => v.fiscalYearId === e.id)}
                   modo={modo}
                   exercicioId={e.id}
                   abridor={abridor}
@@ -99,20 +99,20 @@ interface PropsCelulas {
 }
 
 function CelulasExercicio({ valor, modo, exercicioId, abridor, mostrarLinhasDaPo }: PropsCelulas) {
-  const abrir = abridor(exercicioId, valor?.alvo);
-  const linhasDaPo = mostrarLinhasDaPo && valor && valor.linhas.length > 0 && (
+  const abrir = abridor(exercicioId, valor?.target);
+  const linhasDaPo = mostrarLinhasDaPo && valor && valor.lines.length > 0 && (
     <small className="observacao">
-      {valor.linhas.map((l, i) => {
-        const abrirLinha = abridor(exercicioId, l.alvo);
+      {valor.lines.map((l, i) => {
+        const abrirLinha = abridor(exercicioId, l.target);
         return (
-          <span key={l.linhaId}>
+          <span key={l.lineId}>
             {i > 0 && ", "}
             {abrirLinha ? (
-              <button type="button" className="botao-link" onClick={abrirLinha} title={l.descricao}>
-                {l.codigo}
+              <button type="button" className="botao-link" onClick={abrirLinha} title={l.description}>
+                {l.code}
               </button>
             ) : (
-              <span title={l.descricao}>{l.codigo}</span>
+              <span title={l.description}>{l.code}</span>
             )}
           </span>
         );
@@ -120,15 +120,15 @@ function CelulasExercicio({ valor, modo, exercicioId, abridor, mostrarLinhasDaPo
     </small>
   );
 
-  if (modo === "PREVISTO_MES") {
+  if (modo === "MONTHLY_PLANNED") {
     return (
       <>
         <td className="numero inicio-exercicio">
-          <ValorOuTraco valor={valor?.previstoMes} aoAbrir={abrir} />
+          <ValorOuTraco valor={valor?.monthlyPlanned} aoAbrir={abrir} />
           {linhasDaPo}
         </td>
         <td className="numero">
-          <Variacao variacao={valor?.variacaoPrevistoMes} />
+          <Variacao variacao={valor?.monthlyPlannedVariation} />
         </td>
       </>
     );
@@ -136,14 +136,14 @@ function CelulasExercicio({ valor, modo, exercicioId, abridor, mostrarLinhasDaPo
   return (
     <>
       <td className="numero inicio-exercicio">
-        {formatarMoedaOuTraco(valor?.previsto)}
+        {formatarMoedaOuTraco(valor?.planned)}
         {linhasDaPo}
       </td>
       <td className="numero">
-        <ValorOuTraco valor={valor?.realizado} aoAbrir={abrir} />
+        <ValorOuTraco valor={valor?.actual} aoAbrir={abrir} />
       </td>
       <td className="numero">
-        <Variacao variacao={valor?.variacaoRealizado} />
+        <Variacao variacao={valor?.actualVariation} />
       </td>
     </>
   );

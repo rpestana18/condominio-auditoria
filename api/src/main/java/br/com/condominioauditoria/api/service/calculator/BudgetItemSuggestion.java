@@ -19,9 +19,9 @@ import java.util.UUID;
  * <li>Two or more lines of this budget with the same account in the same group: no suggestion (adding them up needs
  * the Admin).</li>
  * <li>Same line (same effective code and same account) confirmed in the previous version of the same fiscal year: its
- * item, source {@code VERSAO_ANTERIOR}.</li>
+ * item, source {@code PREVIOUS_VERSION}.</li>
  * <li>Confirmed lines of other budgets with the same budget account and the same group: if all are in a single item,
- * that one, source {@code CONTA_PO}; if they are in more than one, or there is none, no suggestion.</li>
+ * that one, source {@code BUDGET_ACCOUNT}; if they are in more than one, or there is none, no suggestion.</li>
  * </ol>
  * Never uses the item code (it changes between budgets). The description, usually the supplier, only counts when the
  * line has neither an account nor text in the account column.
@@ -62,7 +62,7 @@ public final class BudgetItemSuggestion {
     public record NoSuggestion(String reason) implements Result {
     }
 
-    /** Lines that receive an item: every LINHA-type line, expense and fund, in budget order. */
+    /** Lines that receive an item: every LINE-type line, expense and fund, in budget order. */
     public static List<LineWithGroup> lines(BudgetStructure structure) {
         List<LineWithGroup> all = new ArrayList<>();
         structure.ungrouped().forEach(l -> all.add(new LineWithGroup(l, null)));
@@ -129,12 +129,12 @@ public final class BudgetItemSuggestion {
         }
         UUID previous = fromPrevious.get(l.line().getEffectiveCode() + "|" + l.key());
         if (previous != null) {
-            return new Suggested(previous, BudgetItemSource.VERSAO_ANTERIOR, "linha igual na versão anterior: "
+            return new Suggested(previous, BudgetItemSource.PREVIOUS_VERSION, "linha igual na versão anterior: "
                     + l.line().getEffectiveCode() + " " + l.label());
         }
         Set<UUID> items = byAccountAndGroup.getOrDefault(l.keyWithGroup(), Set.of());
         if (items.size() == 1) {
-            return new Suggested(items.iterator().next(), BudgetItemSource.CONTA_PO,
+            return new Suggested(items.iterator().next(), BudgetItemSource.BUDGET_ACCOUNT,
                     sameField(l.line()) + " e mesmo grupo: " + l.label() + ", " + group);
         }
         if (items.size() > 1) {

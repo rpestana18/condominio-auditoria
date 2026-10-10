@@ -14,7 +14,7 @@ public record RagProperties(Storage storage, Reader reader, Grpc grpc, Indexing 
     public record Reader(String url, int timeoutSeconds) {
     }
 
-    /** gRPC server of the assistant (contracts/grpc/assistente/v1), internal network only. */
+    /** gRPC server of the assistant (contracts/grpc/assistant/v2), internal network only. */
     public record Grpc(int port) {
     }
 
@@ -27,7 +27,7 @@ public record RagProperties(Storage storage, Reader reader, Grpc grpc, Indexing 
 
     /**
      * Assistant chat (ADR 0003, Decisions 1 and 5.2). Nothing here is condominium configuration: the mode, the
-     * provider, the model and the encrypted key come in each Perguntar request, resolved by the api.
+     * provider, the model and the encrypted key come in each Ask request, resolved by the api.
      *
      * @param privateKeyFile PKCS#8 PEM file with the rag's private key (RAG_CHAVE_PRIVADA_ARQUIVO)
      * @param generateDevKey generates the RSA 3072 pair when the file does not exist (development only)

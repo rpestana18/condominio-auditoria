@@ -10,7 +10,7 @@ import javax.crypto.spec.GCMParameterSpec;
 
 /**
  * The api side of the envelope, written here only for the test: builds the bytes exactly as
- * contracts/grpc/assistente/v1/assistente.proto describes. If the rag changes the format without changing the
+ * contracts/grpc/assistant/v2/assistant.proto describes. If the rag changes the format without changing the
  * contract, the round-trip test breaks.
  */
 final class TestEncryptor {

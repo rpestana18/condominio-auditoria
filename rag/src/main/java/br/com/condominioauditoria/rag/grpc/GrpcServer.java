@@ -13,15 +13,15 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
 
 /**
- * gRPC server of the assistant (contracts/grpc/assistente/v1), on the internal network (port 9091). Starts and stops
+ * gRPC server of the assistant (contracts/grpc/assistant/v2), on the internal network (port 9091). Starts and stops
  * together with Spring. Only the api calls it.
  *
  * No TLS inside the docker compose network; in the cloud, TLS lives in the service mesh or comes in here as a
  * parameter.
  *
- * {@link GrpcAuthorization} keeps the "authorization" metadata in the context: Perguntar and ListarProvedores require
- * the token (UNAUTHENTICATED without it) and Perguntar passes it on to the api's numeric tools.
- * TODO(ADR 0003, Decision 5.2 and contract assistente.proto): check the JWT signature like the api's gRPC
+ * {@link GrpcAuthorization} keeps the "authorization" metadata in the context: Ask and ListProviders require
+ * the token (UNAUTHENTICATED without it) and Ask passes it on to the api's numeric tools.
+ * TODO(ADR 0003, Decision 5.2 and contract assistant.proto): check the JWT signature like the api's gRPC
  * authentication, with spring-boot-starter-oauth2-resource-server. Today the rag trusts the api (internal network),
  * which has already checked token, role, condominium and module before calling.
  */

@@ -2,7 +2,7 @@ package br.com.condominioauditoria.api.service.assistant;
 
 import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
-import br.com.condominioauditoria.contratos.assistente.v1.Trecho;
+import br.com.condominioauditoria.contracts.assistant.v2.IndexedChunk;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -26,10 +26,10 @@ public class FileAccessBarrier {
     }
 
     /** Ids (as text) of the cited files that may appear in the answer. */
-    Set<String> visibleIds(UUID condominiumId, Collection<Trecho> chunks) {
+    Set<String> visibleIds(UUID condominiumId, Collection<IndexedChunk> chunks) {
         Set<UUID> cited = new HashSet<>();
-        for (Trecho t : chunks) {
-            uuid(t.getArquivoId()).ifPresent(cited::add);
+        for (IndexedChunk t : chunks) {
+            uuid(t.getFileId()).ifPresent(cited::add);
         }
         if (cited.isEmpty()) {
             return Set.of();
@@ -38,8 +38,8 @@ public class FileAccessBarrier {
                 .map(SourceFile::getId).map(UUID::toString).collect(Collectors.toSet());
     }
 
-    static boolean isAllowed(Trecho t, Set<String> visible) {
-        return uuid(t.getArquivoId()).map(UUID::toString).filter(visible::contains).isPresent();
+    static boolean isAllowed(IndexedChunk t, Set<String> visible) {
+        return uuid(t.getFileId()).map(UUID::toString).filter(visible::contains).isPresent();
     }
 
     private static java.util.Optional<UUID> uuid(String value) {

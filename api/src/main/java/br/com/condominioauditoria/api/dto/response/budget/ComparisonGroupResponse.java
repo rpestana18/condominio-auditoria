@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.api.dto.response.budget;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -10,8 +9,8 @@ import java.util.List;
  * is the printed column.
  */
 public record ComparisonGroupResponse(
-        @JsonProperty("codigo") String code,
-        @JsonProperty("descricao") String description,
-        @JsonProperty("previstoMes") List<BigDecimal> monthlyPlanned,
-        @JsonProperty("alvos") List<String> targets) {
+        String code,
+        String description,
+        List<BigDecimal> monthlyPlanned,
+        List<String> targets) {
 }

@@ -3,7 +3,7 @@ package br.com.condominioauditoria.api.service.assistant;
 import br.com.condominioauditoria.api.dto.request.assistant.DocumentFiltersRequest;
 import br.com.condominioauditoria.api.exception.InvalidRequestException;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
-import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchFilters;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -15,7 +15,7 @@ final class RagRequests {
     }
 
     /** Request filters for the rag; null = no filters. Inverted period = 400. */
-    static FiltrosBusca filters(DocumentFiltersRequest f) {
+    static SearchFilters filters(DocumentFiltersRequest f) {
         if (f == null) {
             return null;
         }
@@ -23,16 +23,16 @@ final class RagRequests {
             throw new InvalidRequestException("Data inicial (" + f.startDate() + ") depois da final (" + f.endDate()
                     + ")");
         }
-        var builder = FiltrosBusca.newBuilder();
+        var builder = SearchFilters.newBuilder();
         orEmpty(f.categories()).stream().filter(Objects::nonNull).map(FileCategory::name).distinct()
-                .forEach(builder::addCategorias);
+                .forEach(builder::addCategories);
         orEmpty(f.fileIds()).stream().filter(Objects::nonNull).map(UUID::toString).distinct()
-                .forEach(builder::addArquivoIds);
+                .forEach(builder::addFileIds);
         if (f.startDate() != null) {
-            builder.setDataInicio(f.startDate().toString());
+            builder.setDateFrom(f.startDate().toString());
         }
         if (f.endDate() != null) {
-            builder.setDataFim(f.endDate().toString());
+            builder.setDateTo(f.endDate().toString());
         }
         return builder.build();
     }

@@ -1,9 +1,9 @@
 package br.com.condominioauditoria.api.service.ai;
 
-import br.com.condominioauditoria.contratos.assistente.v1.ListarProvedoresResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.ModeloProvedor;
-import br.com.condominioauditoria.contratos.assistente.v1.Provedor;
-import br.com.condominioauditoria.contratos.assistente.v1.UsoProvedor;
+import br.com.condominioauditoria.contracts.assistant.v2.ListProvidersResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.ProviderModel;
+import br.com.condominioauditoria.contracts.assistant.v2.Provider;
+import br.com.condominioauditoria.contracts.assistant.v2.ProviderUsage;
 
 /** Catalog like the rag's in delivery 3, plus an external embeddings provider (to test the Q12 rejection). */
 public final class TestCatalog {
@@ -11,24 +11,24 @@ public final class TestCatalog {
     private TestCatalog() {
     }
 
-    public static ListarProvedoresResponse response(String publicKeyPem) {
-        return ListarProvedoresResponse.newBuilder()
-                .addProvedores(Provedor.newBuilder().setCodigo("anthropic").setNome("Anthropic (Claude)")
-                        .setTipo("anthropic").setUso(UsoProvedor.USO_PROVEDOR_RESPOSTAS).setPrecisaChave(true)
-                        .addModelos(ModeloProvedor.newBuilder().setId("claude-sonnet-5-5").setNome("Claude Sonnet 5.5")
-                                .setPadrao(true).setPrecoEntradaMilhaoUsd("2.00").setPrecoSaidaMilhaoUsd("10.00"))
-                        .addModelos(ModeloProvedor.newBuilder().setId("claude-haiku-4-5").setNome("Claude Haiku 4.5")
-                                .setPrecoEntradaMilhaoUsd("1.00").setPrecoSaidaMilhaoUsd("5.00")))
-                .addProvedores(Provedor.newBuilder().setCodigo("ollama-local").setNome("Ollama (local)")
-                        .setTipo("ollama").setUso(UsoProvedor.USO_PROVEDOR_EMBEDDINGS).setLocal(true).setDimensao(1024)
-                        .addModelos(ModeloProvedor.newBuilder().setId("bge-m3").setNome("BGE-M3").setPadrao(true)
-                                .setPrecoEntradaMilhaoUsd("0").setPrecoSaidaMilhaoUsd("0")))
-                .addProvedores(Provedor.newBuilder().setCodigo("voyage").setNome("Voyage (externo)")
-                        .setTipo("voyage").setUso(UsoProvedor.USO_PROVEDOR_EMBEDDINGS).setPrecisaChave(true)
-                        .setDimensao(1024)
-                        .addModelos(ModeloProvedor.newBuilder().setId("voyage-4").setNome("Voyage 4").setPadrao(true)
-                                .setPrecoEntradaMilhaoUsd("0.06").setPrecoSaidaMilhaoUsd("0")))
-                .setChavePublicaPem(publicKeyPem)
+    public static ListProvidersResponse response(String publicKeyPem) {
+        return ListProvidersResponse.newBuilder()
+                .addProviders(Provider.newBuilder().setCode("anthropic").setName("Anthropic (Claude)")
+                        .setType("anthropic").setUsage(ProviderUsage.PROVIDER_USAGE_ANSWERS).setRequiresKey(true)
+                        .addModels(ProviderModel.newBuilder().setId("claude-sonnet-5-5").setName("Claude Sonnet 5.5")
+                                .setIsDefault(true).setInputPricePerMillionUsd("2.00").setOutputPricePerMillionUsd("10.00"))
+                        .addModels(ProviderModel.newBuilder().setId("claude-haiku-4-5").setName("Claude Haiku 4.5")
+                                .setInputPricePerMillionUsd("1.00").setOutputPricePerMillionUsd("5.00")))
+                .addProviders(Provider.newBuilder().setCode("ollama-local").setName("Ollama (local)")
+                        .setType("ollama").setUsage(ProviderUsage.PROVIDER_USAGE_EMBEDDINGS).setLocal(true).setDimension(1024)
+                        .addModels(ProviderModel.newBuilder().setId("bge-m3").setName("BGE-M3").setIsDefault(true)
+                                .setInputPricePerMillionUsd("0").setOutputPricePerMillionUsd("0")))
+                .addProviders(Provider.newBuilder().setCode("voyage").setName("Voyage (externo)")
+                        .setType("voyage").setUsage(ProviderUsage.PROVIDER_USAGE_EMBEDDINGS).setRequiresKey(true)
+                        .setDimension(1024)
+                        .addModels(ProviderModel.newBuilder().setId("voyage-4").setName("Voyage 4").setIsDefault(true)
+                                .setInputPricePerMillionUsd("0.06").setOutputPricePerMillionUsd("0")))
+                .setPublicKeyPem(publicKeyPem)
                 .build();
     }
 }

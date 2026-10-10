@@ -16,7 +16,7 @@ interface Props {
 
 /** Linhas da PO com a rubrica, o estado, a origem e o motivo da sugestão (RF-11.7). */
 export function TabelaRubricas({ linhas, edicao }: Props) {
-  const todas = edicao && linhas.length > 0 && linhas.every((l) => edicao.selecionadas.has(l.linhaId));
+  const todas = edicao && linhas.length > 0 && linhas.every((l) => edicao.selecionadas.has(l.lineId));
   return (
     <div className="rolagem">
       <table className="tabela">
@@ -38,30 +38,30 @@ export function TabelaRubricas({ linhas, edicao }: Props) {
         </thead>
         <tbody>
           {linhas.map((l) => (
-            <tr key={l.linhaId} className={edicao?.selecionadas.has(l.linhaId) ? "selecionado" : undefined}>
+            <tr key={l.lineId} className={edicao?.selecionadas.has(l.lineId) ? "selecionado" : undefined}>
               {edicao && (
                 <td>
                   <input
                     type="checkbox"
-                    aria-label={`Selecionar a linha ${l.codigo}`}
-                    checked={edicao.selecionadas.has(l.linhaId)}
-                    onChange={(e) => edicao.aoSelecionar(l.linhaId, e.target.checked)}
+                    aria-label={`Selecionar a linha ${l.code}`}
+                    checked={edicao.selecionadas.has(l.lineId)}
+                    onChange={(e) => edicao.aoSelecionar(l.lineId, e.target.checked)}
                   />
                 </td>
               )}
               <td>
-                <strong>{l.codigo}</strong> {l.descricao}
-                {l.grupo && <small className="observacao">grupo {l.grupo}</small>}
+                <strong>{l.code}</strong> {l.description}
+                {l.group && <small className="observacao">grupo {l.group}</small>}
               </td>
-              <td className="discreto">{l.conta}</td>
-              <td className="numero">{formatarMoeda(l.orcado)}</td>
-              <td>{l.rubrica?.nome ?? <span className="discreto">—</span>}</td>
+              <td className="discreto">{l.account}</td>
+              <td className="numero">{formatarMoeda(l.budgeted)}</td>
+              <td>{l.budgetItem?.name ?? <span className="discreto">—</span>}</td>
               <td>
-                <SeloEstadoRubrica estado={l.estado} />
+                <SeloEstadoRubrica estado={l.status} />
               </td>
               <td className="discreto">
-                {l.origem && <span>{rotuloOrigemRubrica[l.origem]}</span>}
-                {l.motivo && <small className="observacao">{l.motivo}</small>}
+                {l.source && <span>{rotuloOrigemRubrica[l.source]}</span>}
+                {l.reason && <small className="observacao">{l.reason}</small>}
               </td>
               {edicao && (
                 <td>

@@ -8,12 +8,12 @@ import { TabelaRubricas } from "./TabelaRubricas";
 import { TrilhaRubricas } from "./TrilhaRubricas";
 
 const filtros: { codigo: FiltroRubrica; rotulo: string }[] = [
-  { codigo: "TODAS", rotulo: "Todas" },
-  { codigo: "PENDENTES", rotulo: "Pendentes" },
-  { codigo: "SUGERIDO", rotulo: "Sugeridas" },
-  { codigo: "CONFIRMADO", rotulo: "Confirmadas" },
-  { codigo: "RECUSADO", rotulo: "Recusadas" },
-  { codigo: "SEM_RUBRICA", rotulo: "Sem rubrica" },
+  { codigo: "ALL", rotulo: "Todas" },
+  { codigo: "PENDING", rotulo: "Pendentes" },
+  { codigo: "SUGGESTED", rotulo: "Sugeridas" },
+  { codigo: "CONFIRMED", rotulo: "Confirmadas" },
+  { codigo: "REJECTED", rotulo: "Recusadas" },
+  { codigo: "NO_ITEM", rotulo: "Sem rubrica" },
 ];
 
 /**
@@ -22,12 +22,12 @@ const filtros: { codigo: FiltroRubrica; rotulo: string }[] = [
  */
 export function RubricasPo({ previsao }: { previsao: PrevisaoResumo }) {
   const { condominioId, pode } = useSessao();
-  const [filtro, setFiltro] = useState<FiltroRubrica>("TODAS");
+  const [filtro, setFiltro] = useState<FiltroRubrica>("ALL");
   const { data: lista, isLoading, error } = useRubricasDaPo(condominioId, previsao.id, filtro);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [editando, setEditando] = useState<LinhaComRubrica | null>(null);
-  const edita = pode("ADMIN") && previsao.estado === "CONFIRMADA";
-  const linhas = lista?.linhas ?? [];
+  const edita = pode("ADMIN") && previsao.status === "CONFIRMED";
+  const linhas = lista?.lines ?? [];
 
   const trocarFiltro = (novo: FiltroRubrica) => {
     setSelecionadas(new Set());
@@ -39,14 +39,14 @@ export function RubricasPo({ previsao }: { previsao: PrevisaoResumo }) {
       <header className="titulo-bloco">
         <h2>Rubricas (correspondência entre exercícios)</h2>
         {lista && (
-          <span className={lista.resumo.confirmadas === lista.resumo.linhas ? "selo ok" : "selo alerta"}>
-            {lista.resumo.confirmadas} de {lista.resumo.linhas} linhas confirmadas
+          <span className={lista.summary.confirmed === lista.summary.lines ? "selo ok" : "selo alerta"}>
+            {lista.summary.confirmed} de {lista.summary.lines} linhas confirmadas
           </span>
         )}
       </header>
       {lista && (
         <p className="discreto">
-          {lista.resumo.sugeridas} sugeridas · {lista.resumo.recusadas} recusadas · {lista.resumo.semRubrica} sem rubrica. Linhas de
+          {lista.summary.suggested} sugeridas · {lista.summary.rejected} recusadas · {lista.summary.withoutItem} sem rubrica. Linhas de
           exercícios diferentes com a mesma rubrica confirmada são comparadas em "Comparar exercícios"; sugestão nunca vale
           sozinha.
         </p>
@@ -89,7 +89,7 @@ export function RubricasPo({ previsao }: { previsao: PrevisaoResumo }) {
                       else novo.delete(linhaId);
                       return novo;
                     }),
-                  aoSelecionarTodas: (marcadas) => setSelecionadas(marcadas ? new Set(linhas.map((l) => l.linhaId)) : new Set()),
+                  aoSelecionarTodas: (marcadas) => setSelecionadas(marcadas ? new Set(linhas.map((l) => l.lineId)) : new Set()),
                   aoEditar: setEditando,
                 }
               : undefined

@@ -6,5 +6,5 @@ package br.com.condominioauditoria.api.model.enums;
  * the Admin's choice.
  */
 public enum BudgetItemSource {
-    PRIMEIRA_PO, CONTA_PO, VERSAO_ANTERIOR, MANUAL
+    FIRST_BUDGET, BUDGET_ACCOUNT, PREVIOUS_VERSION, MANUAL
 }

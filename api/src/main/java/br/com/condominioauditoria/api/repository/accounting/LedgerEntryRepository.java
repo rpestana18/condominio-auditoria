@@ -41,7 +41,7 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, UUID> 
               and l.date >= :start and l.date <= :end
               and l.debit <> 0 and l.interFundTransfer = false and l.accountCode is not null
               and l.fileId in (select f.id from SourceFile f
-                               where f.category = br.com.condominioauditoria.api.model.enums.FileCategory.BALANCETE)
+                               where f.category = br.com.condominioauditoria.api.model.enums.FileCategory.TRIAL_BALANCE)
             order by l.date, l.fileId, l.sequence""")
     List<LedgerEntry> debitsWithAccount(UUID condominiumId, UUID fundId, java.time.LocalDate start,
             java.time.LocalDate end);

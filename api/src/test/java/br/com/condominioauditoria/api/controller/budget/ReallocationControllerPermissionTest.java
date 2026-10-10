@@ -69,7 +69,7 @@ class ReallocationControllerPermissionTest {
 
     @Test
     void userReadsButNeitherReallocatesNorUndoes() {
-        logIn(CONDOMINIUM, "usuario", "USUARIO");
+        logIn(CONDOMINIUM, "usuario", "USER");
 
         controller.list(CONDOMINIUM, UUID.randomUUID());
         assertThatThrownBy(() -> controller.reallocate(CONDOMINIUM, REQUEST)).isInstanceOf(AccessDeniedException.class);
@@ -81,7 +81,7 @@ class ReallocationControllerPermissionTest {
 
     @Test
     void managerAndAdminReallocateAndUndo() {
-        for (String role : List.of("GESTOR", "ADMIN")) {
+        for (String role : List.of("MANAGER", "ADMIN")) {
             logIn(CONDOMINIUM, "pessoa-" + role, role);
             controller.reallocate(CONDOMINIUM, REQUEST);
             controller.undo(CONDOMINIUM, UUID.randomUUID());
@@ -92,7 +92,7 @@ class ReallocationControllerPermissionTest {
 
     @Test
     void managerOfOtherCondominiumDoesNotReallocate() {
-        logIn(UUID.randomUUID(), "gestor-de-outro", "GESTOR");
+        logIn(UUID.randomUUID(), "gestor-de-outro", "MANAGER");
 
         assertThatThrownBy(() -> controller.reallocate(CONDOMINIUM, REQUEST)).isInstanceOf(AccessDeniedException.class);
         verify(service, never()).reallocate(any(), any(), any());
@@ -100,7 +100,7 @@ class ReallocationControllerPermissionTest {
 
     private static void logIn(UUID condominium, String username, String role) {
         Jwt jwt = Jwt.withTokenValue("t").header("alg", "none").subject(username).claim("preferred_username", username)
-                .claim("condominios", List.of(condominium.toString())).build();
+                .claim("condominiums", List.of(condominium.toString())).build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role)), username));
     }

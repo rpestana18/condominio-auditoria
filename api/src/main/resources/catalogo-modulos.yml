@@ -5,15 +5,15 @@
 catalogo-modulos:
   version: 1
   features:
-    - code: ASSISTENTE
+    - code: ASSISTANT
       name: Assistente
       description: >-
         Busca nos documentos enviados e, a partir da entrega 3, chat sobre eles, sempre com citação de arquivo e
         localização (RF-04).
       includes:
-        - Indexação dos arquivos enviados para a busca (fila rag.indexacao), inclusive ao ligar o módulo
+        - Indexação dos arquivos enviados para a busca (fila rag.indexing), inclusive ao ligar o módulo
         - Busca nos documentos por palavra e por significado
-        - Ferramenta buscar_documentos no MCP (rpc BuscarDocumentos)
+        - Ferramenta search_documents no MCP (rpc SearchDocuments)
         - Tela "Assistente" com chat sobre os documentos (previsto, entrega 3)
         - Registro de uso (indexação, buscas e chamadas)
       depends-on: []

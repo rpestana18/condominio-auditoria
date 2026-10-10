@@ -32,7 +32,7 @@ dependencies {
     // uma chave única no boot. Nenhuma biblioteca nova: só esta, aprovada na ADR.
     implementation("org.springframework.ai:spring-ai-starter-model-anthropic")
 
-    // Servidor gRPC do assistente (contracts/grpc/assistente/v1)
+    // Servidor gRPC do assistente (contracts/grpc/assistant/v2)
     implementation(libs.grpc.netty.shaded)
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")

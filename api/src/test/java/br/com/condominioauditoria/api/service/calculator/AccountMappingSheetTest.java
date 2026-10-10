@@ -36,12 +36,12 @@ class AccountMappingSheetTest {
         assertThat(reading.items()).extracting(AccountMappingSheet.Item::account)
                 .containsExactly("1621", "1324", "1064", "2133", "0028");
         assertThat(reading.items().get(0).target().code()).isEqualTo("1.7.8");
-        assertThat(reading.items().get(1).target()).isEqualTo(MappingTarget.special(MappingTargetType.AJUSTE,
+        assertThat(reading.items().get(1).target()).isEqualTo(MappingTarget.special(MappingTargetType.ADJUSTMENT,
                 "estorno"));
-        assertThat(reading.items().get(2).target()).isEqualTo(MappingTarget.special(MappingTargetType.A_REALOCAR,
+        assertThat(reading.items().get(2).target()).isEqualTo(MappingTarget.special(MappingTargetType.TO_REALLOCATE,
                 "cartão"));
         assertThat(reading.items().get(2).target().text()).isEqualTo("REALOCAR (cartão)");
-        assertThat(reading.items().get(3).target().type()).isEqualTo(MappingTargetType.TRANSFERENCIA);
+        assertThat(reading.items().get(3).target().type()).isEqualTo(MappingTargetType.TRANSFER);
     }
 
     @Test

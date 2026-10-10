@@ -28,11 +28,11 @@ import org.springframework.stereotype.Component;
 /**
  * The rag's RSA key pair (ADR 0003, Sub-decision 4.1 A). The private key lives in a PKCS#8 PEM file pointed to by
  * {@code RAG_CHAVE_PRIVADA_ARQUIVO}; the public key is read from a file next to it ({@code <file>.pub}, X.509 PEM) or
- * derived from the private key, and published in {@code ListarProvedores.chave_publica_pem}.
+ * derived from the private key, and published in {@code ListProviders.public_key_pem}.
  *
  * Without a file and with {@code RAG_GERAR_CHAVE_DEV=true} (default only in compose), generates an RSA 3072 pair and
  * writes both files with permission 600, to survive restarts. Without a file and without permission to generate, the
- * rag starts without a pair: {@code ListarProvedores} comes without a public key and {@code Perguntar} rejects with
+ * rag starts without a pair: {@code ListProviders} comes without a public key and {@code Ask} rejects with
  * FAILED_PRECONDITION.
  *
  * The private key never goes to the log; neither does the condominium's API key, opened by {@link KeyEnvelope}.
@@ -99,7 +99,7 @@ public class RagKeys {
     private static KeyPair load(String configuredPath, boolean canGenerate) {
         if (configuredPath == null || configuredPath.isBlank()) {
             log.warn("RAG_CHAVE_PRIVADA_ARQUIVO não configurado: o chat do assistente fica indisponível "
-                    + "(ListarProvedores sem chave pública, Perguntar recusa)");
+                    + "(ListProviders sem chave pública, Ask recusa)");
             return null;
         }
         Path file = Path.of(configuredPath);

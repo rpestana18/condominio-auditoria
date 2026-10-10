@@ -56,27 +56,27 @@ class BudgetVsActualExportGoldenTest {
 
         // RF-03.1.14 criterion
         assertThat(text).contains("446.176,89", "451.620,13", "98,8%", "38.880,19", "8,6%");
-        JsonNode totals = json.get("totais");
-        assertThat(text).contains(seq(totals, "previsto", "despesaRealizada", "emLinhas", "diferenca")
-                + " " + percent(totals.get("execucao")));
-        JsonNode rule = json.get("regra20");
-        assertThat(text).contains(money(rule.get("excesso")) + " " + percent(rule.get("percentual")) + " "
-                + money(rule.get("limite")));
+        JsonNode totals = json.get("totals");
+        assertThat(text).contains(seq(totals, "planned", "actualExpense", "inLines", "difference")
+                + " " + percent(totals.get("execution")));
+        JsonNode rule = json.get("rule20");
+        assertThat(text).contains(money(rule.get("overrun")) + " " + percent(rule.get("percentage")) + " "
+                + money(rule.get("limit")));
         int lines = 0;
-        for (JsonNode group : json.get("grupos")) {
-            assertThat(text).as("grupo %s", group.get("codigo").asString())
-                    .contains(seq(group, "previsto", "realizado", "diferenca") + " " + percent(group.get("execucao")));
-            for (JsonNode l : group.get("linhas")) {
-                assertThat(text).as("linha %s", l.get("codigo").asString())
-                        .contains(seq(l, "previsto", "realizado", "diferenca") + " " + percent(l.get("execucao")));
+        for (JsonNode group : json.get("groups")) {
+            assertThat(text).as("grupo %s", group.get("code").asString())
+                    .contains(seq(group, "planned", "actual", "difference") + " " + percent(group.get("execution")));
+            for (JsonNode l : group.get("lines")) {
+                assertThat(text).as("linha %s", l.get("code").asString())
+                        .contains(seq(l, "planned", "actual", "difference") + " " + percent(l.get("execution")));
                 lines++;
             }
         }
         assertThat(lines).isGreaterThanOrEqualTo(70);
-        for (JsonNode f : json.get("fundos")) {
-            if ("COMPARADO".equals(f.get("situacao").asString())) {
-                assertThat(text).contains(seq(f, "previsto", "arrecadado",
-                        "diferenca") + " " + percent(f.get("execucao")));
+        for (JsonNode f : json.get("funds")) {
+            if ("COMPARED".equals(f.get("status").asString())) {
+                assertThat(text).contains(seq(f, "planned", "collected",
+                        "difference") + " " + percent(f.get("execution")));
             }
         }
         // Header
@@ -106,19 +106,19 @@ class BudgetVsActualExportGoldenTest {
                 }
             }
             int checked = 0;
-            for (JsonNode group : json.get("grupos")) {
-                Row gr = groups.get(group.get("codigo").asString());
+            for (JsonNode group : json.get("groups")) {
+                Row gr = groups.get(group.get("code").asString());
                 assertThat(gr).isNotNull();
-                assertEqual(gr, 4, group.get("previsto"));
-                assertEqual(gr, 5, group.get("realizado"));
-                assertEqual(gr, 6, group.get("diferenca"));
-                for (JsonNode l : group.get("linhas")) {
-                    Row lineItem = lines.get(l.get("codigo").asString());
-                    assertThat(lineItem).as("linha %s no Excel", l.get("codigo").asString()).isNotNull();
-                    assertEqual(lineItem, 4, l.get("previsto"));
-                    assertEqual(lineItem, 5, l.get("realizado"));
-                    assertEqual(lineItem, 6, l.get("diferenca"));
-                    assertEqual(lineItem, 7, l.get("execucao"));
+                assertEqual(gr, 4, group.get("planned"));
+                assertEqual(gr, 5, group.get("actual"));
+                assertEqual(gr, 6, group.get("difference"));
+                for (JsonNode l : group.get("lines")) {
+                    Row lineItem = lines.get(l.get("code").asString());
+                    assertThat(lineItem).as("linha %s no Excel", l.get("code").asString()).isNotNull();
+                    assertEqual(lineItem, 4, l.get("planned"));
+                    assertEqual(lineItem, 5, l.get("actual"));
+                    assertEqual(lineItem, 6, l.get("difference"));
+                    assertEqual(lineItem, 7, l.get("execution"));
                     // Money as a masked number, never a formula
                     assertThat(lineItem.getCell(5).getCellType()).isEqualTo(CellType.NUMERIC);
                     assertThat(lineItem.getCell(5).getCellStyle().getDataFormatString()).isEqualTo("#,##0.00");
@@ -127,13 +127,13 @@ class BudgetVsActualExportGoldenTest {
             }
             assertThat(checked).isEqualTo(lines.size());
             Row totals = lineBelow(summary, "Totais do fundo Condomínio", 2);
-            assertEqual(totals, 0, json.get("totais").get("previsto"));
-            assertEqual(totals, 1, json.get("totais").get("despesaRealizada"));
-            assertEqual(totals, 4, json.get("totais").get("execucao"));
+            assertEqual(totals, 0, json.get("totals").get("planned"));
+            assertEqual(totals, 1, json.get("totals").get("actualExpense"));
+            assertEqual(totals, 4, json.get("totals").get("execution"));
             assertThat(totals.getCell(1).getNumericCellValue()).isEqualTo(446176.89);
             Row rule = lineBelow(summary, "Regra dos 20% (Conv. 16.2)", 2);
-            assertEqual(rule, 0, json.get("regra20").get("excesso"));
-            assertEqual(rule, 1, json.get("regra20").get("percentual"));
+            assertEqual(rule, 0, json.get("rule20").get("overrun"));
+            assertEqual(rule, 1, json.get("rule20").get("percentage"));
             assertThat(rule.getCell(0).getNumericCellValue()).isEqualTo(38880.19);
             assertThat(rule.getCell(1).getNumericCellValue()).isEqualTo(8.6);
 
@@ -145,7 +145,7 @@ class BudgetVsActualExportGoldenTest {
             calculation.result().funds().stream().filter(f -> f.lineCode() != null && f.fundId() != null)
                     .forEach(f -> linked.add(BudgetVsActualCalculator.fundTarget(f.fundId())));
             int total = calculation.evidence().entrySet().stream()
-                    .filter(x -> !x.getKey().startsWith("fundo:") || linked.contains(x.getKey()))
+                    .filter(x -> !x.getKey().startsWith("fund:") || linked.contains(x.getKey()))
                     .mapToInt(x -> x.getValue().size()).sum();
             assertThat(evidence.getLastRowNum()).isEqualTo(total);
             BigDecimal concierge = BigDecimal.ZERO;
@@ -197,7 +197,7 @@ class BudgetVsActualExportGoldenTest {
     void noConductTermAndNoChart() throws IOException {
         SeptemberGolden g = golden();
         g.confirmMap();
-        for (String period : List.of("2026-09", "acumulado")) {
+        for (String period : List.of("2026-09", "cumulative")) {
             var calculation = g.scenario.budgetVsActual.calculate(g.scenario.condominiumId, period, null);
             BudgetVsActualReport report = report(calculation);
             byte[] pdf = new BudgetVsActualPdfReport().generate(report);

@@ -57,7 +57,7 @@ class BudgetValidityTest {
 
     private static Budget read() {
         Budget p = new Budget(UUID.randomUUID(), UUID.randomUUID(), "a".repeat(64));
-        p.recordReading("po-protest", "t", "e", "a", "b", BudgetStatus.LIDA, BigDecimal.TEN, BigDecimal.ONE,
+        p.recordReading("po-protest", "t", "e", "a", "b", BudgetStatus.READ, BigDecimal.TEN, BigDecimal.ONE,
                 BigDecimal.ONE, new BigDecimal("0.01"), Instant.now());
         return p;
     }

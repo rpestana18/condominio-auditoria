@@ -75,8 +75,8 @@ public class ProtestBudgetParserGoldenTest {
                 .containsExactlyElementsOf(java.util.stream.IntStream.rangeClosed(1, 98).boxed().toList());
         Map<BudgetLineType, Long> byType = budget.lines().stream()
                 .collect(Collectors.groupingBy(BudgetLine::type, LinkedHashMap::new, Collectors.counting()));
-        assertThat(byType).containsEntry(BudgetLineType.TOTAL, 1L).containsEntry(BudgetLineType.GRUPO, 9L)
-                .containsEntry(BudgetLineType.LINHA, 88L);
+        assertThat(byType).containsEntry(BudgetLineType.TOTAL, 1L).containsEntry(BudgetLineType.GROUP, 9L)
+                .containsEntry(BudgetLineType.LINE, 88L);
         assertThat(budget.lines()).allSatisfy(l -> {
             assertThat(l.budgeted().scale()).isEqualTo(2);
             assertThat(l.previousBudgeted().scale()).isEqualTo(2);
@@ -88,7 +88,7 @@ public class ProtestBudgetParserGoldenTest {
     @Test
     public void line1320ProfessionalManagement() {
         BudgetLine l = line("1.3.20");
-        assertThat(l.type()).isEqualTo(BudgetLineType.LINHA);
+        assertThat(l.type()).isEqualTo(BudgetLineType.LINE);
         assertThat(l.account()).isEqualTo("1682 - Sindicatura Profissional");
         assertThat(l.accountText()).isNull();
         assertThat(l.mark()).isNull();
@@ -117,7 +117,7 @@ public class ProtestBudgetParserGoldenTest {
     public void marks() {
         for (String code : List.of("1.4.1", "1.4.2", "1.4.3", "1.6.15")) {
             BudgetLine l = line(code);
-            assertThat(l.mark()).as(code).isEqualTo(BudgetLineMark.RATEIO_A_PARTE);
+            assertThat(l.mark()).as(code).isEqualTo(BudgetLineMark.SEPARATE_APPORTIONMENT);
             assertThat(l.account()).as(code).isNull();
             assertThat(l.budgeted()).as(code).isEqualByComparingTo("0.00");
         }
@@ -125,11 +125,11 @@ public class ProtestBudgetParserGoldenTest {
         assertThat(line("1.4.2").description()).isEqualTo("Água e Esgoto");
         assertThat(line("1.4.3").description()).isEqualTo("Gás");
         assertThat(line("1.6.15").description()).isEqualTo("Seguro predial");
-        assertThat(line("1.6.11").mark()).isEqualTo(BudgetLineMark.SEM_VALOR);
-        assertThat(line("1.6.12").mark()).isEqualTo(BudgetLineMark.NEGOCIADA_ISENCAO);
-        assertThat(line("1.6.13").mark()).isEqualTo(BudgetLineMark.NEGOCIADA_ISENCAO);
+        assertThat(line("1.6.11").mark()).isEqualTo(BudgetLineMark.NO_AMOUNT);
+        assertThat(line("1.6.12").mark()).isEqualTo(BudgetLineMark.NEGOTIATED_EXEMPTION);
+        assertThat(line("1.6.13").mark()).isEqualTo(BudgetLineMark.NEGOTIATED_EXEMPTION);
         for (String code : List.of("1.5.3", "1.6.17", "1.7.6", "1.7.12")) {
-            assertThat(line(code).mark()).as(code).isEqualTo(BudgetLineMark.VALOR_FIXO_SEM_REFERENCIA);
+            assertThat(line(code).mark()).as(code).isEqualTo(BudgetLineMark.FIXED_AMOUNT_NO_REFERENCE);
             assertThat(line(code).account()).as(code).isNull();
         }
         assertThat(line("1.6.17").budgeted()).isEqualByComparingTo("99.03");
@@ -149,7 +149,7 @@ public class ProtestBudgetParserGoldenTest {
         assertThat(line("1.9.2").accountText()).isEqualTo("Obras Reformas e Infraestrutura");
         assertThat(budget.lines()).filteredOn(l -> l.accountText() != null)
                 .allSatisfy(l -> assertThat(l.account()).isNull());
-        assertThat(budget.lines()).filteredOn(l -> l.type() == BudgetLineType.LINHA && l.mark() == null
+        assertThat(budget.lines()).filteredOn(l -> l.type() == BudgetLineType.LINE && l.mark() == null
                 && !l.printedCode().startsWith("1.9.")).allSatisfy(l -> {
                     assertThat(l.account()).as(l.printedCode()).matches("^\\d{4} - .+");
                     assertThat(l.accountText()).as(l.printedCode()).isNull();
@@ -191,7 +191,7 @@ public class ProtestBudgetParserGoldenTest {
         assertThat(repeatedLines.get(1).description()).isEqualTo("Caixa D'água");
         assertThat(repeatedLines.get(1).budgeted()).isEqualByComparingTo("1518.93");
 
-        TotalsCheck repeated = check("CODIGO_REPETIDO");
+        TotalsCheck repeated = check("REPEATED_CODE");
         assertThat(repeated.ok()).isFalse();
         assertThat(repeated.detail()).isEqualTo("1.3.2 aparece 2 vezes (ordens 20 e 43)");
     }
@@ -213,11 +213,11 @@ public class ProtestBudgetParserGoldenTest {
         expected.put("1.7", "15200.00");
         expected.put("1.8", "10020.00");
         expected.put("1.9", "22581.01");
-        assertThat(budget.lines()).filteredOn(l -> l.type() == BudgetLineType.GRUPO).extracting(BudgetLine::printedCode)
+        assertThat(budget.lines()).filteredOn(l -> l.type() == BudgetLineType.GROUP).extracting(BudgetLine::printedCode)
                 .containsExactlyElementsOf(expected.keySet());
         expected.forEach((code, amount) -> assertThat(line(code).budgeted()).as(code).isEqualByComparingTo(amount));
 
-        List<TotalsCheck> subtotals = checks.stream().filter(v -> v.code().equals("SUBTOTAL_GRUPO")).toList();
+        List<TotalsCheck> subtotals = checks.stream().filter(v -> v.code().equals("GROUP_SUBTOTAL")).toList();
         assertThat(subtotals).extracting(TotalsCheck::detail).containsExactly(
                 "1.1 PESSOAL: soma das linhas 69.193,86; impresso 69.193,86",
                 "1.2 CONSUMO/UTILIDADES: soma das linhas 694,05; impresso 694,05",
@@ -234,13 +234,13 @@ public class ProtestBudgetParserGoldenTest {
         assertThat(line("1").budgeted()).isEqualByComparingTo("474201.13");
         assertThat(check("TOTAL").ok()).isTrue();
         assertThat(check("TOTAL").detail()).isEqualTo("soma dos grupos 474.201,13; impresso 474.201,13");
-        assertThat(check("PREVISTO_MES").ok()).isTrue();
-        assertThat(check("PREVISTO_MES").detail())
+        assertThat(check("MONTHLY_PLANNED").ok()).isTrue();
+        assertThat(check("MONTHLY_PLANNED").detail())
                 .isEqualTo("474.201,13 - 22.581,01 = 451.620,12; soma das linhas dos demais grupos 451.620,13");
         assertThat(BudgetCheck.monthlyPlanned(budget)).hasValueSatisfying(v -> assertThat(v).isEqualByComparingTo("451620.12"));
-        assertThat(checks).extracting(TotalsCheck::code).containsExactly("SUBTOTAL_GRUPO", "SUBTOTAL_GRUPO",
-                "SUBTOTAL_GRUPO", "SUBTOTAL_GRUPO", "SUBTOTAL_GRUPO", "SUBTOTAL_GRUPO", "SUBTOTAL_GRUPO",
-                "SUBTOTAL_GRUPO", "SUBTOTAL_GRUPO", "TOTAL", "PREVISTO_MES", "FUNDO_TAXA", "CODIGO_REPETIDO");
+        assertThat(checks).extracting(TotalsCheck::code).containsExactly("GROUP_SUBTOTAL", "GROUP_SUBTOTAL",
+                "GROUP_SUBTOTAL", "GROUP_SUBTOTAL", "GROUP_SUBTOTAL", "GROUP_SUBTOTAL", "GROUP_SUBTOTAL",
+                "GROUP_SUBTOTAL", "GROUP_SUBTOTAL", "TOTAL", "MONTHLY_PLANNED", "FUND_RATE", "REPEATED_CODE");
     }
 
     /** RF-03.1.3: reserve 3% and works 2% of 451.620,12. */
@@ -250,7 +250,7 @@ public class ProtestBudgetParserGoldenTest {
         assertThat(line("1.9.1").percentageText()).isEqualTo("3,00%");
         assertThat(line("1.9.2").budgeted()).isEqualByComparingTo("9032.40");
         assertThat(line("1.9.2").percentageText()).isEqualTo("2,00%");
-        TotalsCheck rate = check("FUNDO_TAXA");
+        TotalsCheck rate = check("FUND_RATE");
         assertThat(rate.ok()).isTrue();
         assertThat(rate.detail()).isEqualTo("1.9.1 Fundo de Reserva: 3,00% de 451.620,12 = 13.548,60; impresso 13.548,60; "
                 + "1.9.2 Fundo de Obras: 2,00% de 451.620,12 = 9.032,40; impresso 9.032,40");
@@ -266,7 +266,7 @@ public class ProtestBudgetParserGoldenTest {
 
         List<TotalsCheck> result = BudgetCheck.check(changed);
         TotalsCheck personnel = result.getFirst();
-        assertThat(personnel.code()).isEqualTo("SUBTOTAL_GRUPO");
+        assertThat(personnel.code()).isEqualTo("GROUP_SUBTOTAL");
         assertThat(personnel.ok()).isFalse();
         assertThat(personnel.detail()).isEqualTo("1.1 PESSOAL: soma das linhas 69.193,86; impresso 69.193,00; diferença -0,86");
         TotalsCheck total = result.stream().filter(v -> v.code().equals("TOTAL")).findFirst().orElseThrow();
@@ -280,20 +280,20 @@ public class ProtestBudgetParserGoldenTest {
     /** The reading fits the v2 contract and matches, field by field, the lines of the contract example. */
     @Test
     public void resultInV2ContractEqualsExample() throws Exception {
-        var file = new FileReceivedMessage(1, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "PO",
+        var file = new FileReceivedMessage(3, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "PO",
                 "po.pdf", "x/po.pdf", "a".repeat(64));
         byte[] json = new MessageContract().write(ProcessingResultMessage.completedBudget(file, "po-protest", 1, budget,
                 checks));
         JsonMapper mapper = JsonMapper.builder().build();
-        JsonNode produced = mapper.readTree(json).get("previsaoOrcamentaria");
+        JsonNode produced = mapper.readTree(json).get("budget");
         JsonNode example = mapper.readTree(Files.readString(Path.of(System.getProperty("contratos.dir"),
-                "mensagens/v2/exemplos/resultado-concluido-po.json"))).get("previsaoOrcamentaria");
+                "mensagens/v3/examples/processing-result-budget.json"))).get("budget");
 
-        assertThat(produced.get("titulo")).isEqualTo(example.get("titulo"));
-        assertThat(produced.get("colunasOrcado")).isEqualTo(example.get("colunasOrcado"));
-        for (JsonNode exampleLine : example.get("linhas")) {
-            int sequence = exampleLine.get("ordem").asInt();
-            assertThat(produced.get("linhas").get(sequence - 1)).as("ordem " + sequence).isEqualTo(exampleLine);
+        assertThat(produced.get("title")).isEqualTo(example.get("title"));
+        assertThat(produced.get("budgetColumns")).isEqualTo(example.get("budgetColumns"));
+        for (JsonNode exampleLine : example.get("lines")) {
+            int sequence = exampleLine.get("sequence").asInt();
+            assertThat(produced.get("lines").get(sequence - 1)).as("ordem " + sequence).isEqualTo(exampleLine);
         }
     }
 

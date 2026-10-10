@@ -1,0 +1,14 @@
+{
+  "version": 3,
+  "operation": "WITHDRAW",
+  "indexingId": "7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b",
+  "fileId": "5a1c9e3b-2f4d-4b8a-8c7e-1d2f3a4b5c6d",
+  "condominiumId": "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001",
+  "category": "MINUTES",
+  "originalName": "ata-assembleia-2026-09.pdf",
+  "path": "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001/ATA/2026/5a1c9e3b-ata-assembleia-2026-09.pdf",
+  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "periodStart": null,
+  "periodEnd": null,
+  "fileVersion": null
+}

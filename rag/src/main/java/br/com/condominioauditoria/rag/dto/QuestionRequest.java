@@ -21,7 +21,7 @@ public record QuestionRequest(IndexRepository.SearchFilters filters, String ques
     }
 
     public static final int MAX_CHARS = 2000;
-    /** Chunks offered to the model: 0 = default 8, above 20 is reduced to 20 (assistente.proto). */
+    /** Chunks offered to the model: 0 = default 8, above 20 is reduced to 20 (assistant.proto). */
     public static final int DEFAULT_CHUNKS = 8;
     public static final int MAX_CHUNKS = 20;
 }

@@ -19,12 +19,12 @@ export function AcoesDepara({ poId, selecionadas, aoConcluirLote }: Props) {
   const ocupado = lote.isPending || sugerir.isPending || planilha.isPending;
   const erro = lote.error ?? sugerir.error ?? planilha.error;
 
-  const executarLote = (acao: "CONFIRMAR" | "RECUSAR") =>
+  const executarLote = (acao: "CONFIRM" | "REJECT") =>
     lote.mutate(
-      { acao, contas: selecionadas },
+      { action: acao, accounts: selecionadas },
       {
         onSuccess: (r) => {
-          setMensagem({ texto: `${r.alteradas} conta(s) ${acao === "CONFIRMAR" ? "confirmadas" : "recusadas"}.`, ignoradas: r.ignoradas });
+          setMensagem({ texto: `${r.changed} conta(s) ${acao === "CONFIRM" ? "confirmadas" : "recusadas"}.`, ignoradas: r.skipped });
           aoConcluirLote();
         },
       },
@@ -32,10 +32,10 @@ export function AcoesDepara({ poId, selecionadas, aoConcluirLote }: Props) {
 
   return (
     <div className="envio">
-      <button className="botao" disabled={ocupado || selecionadas.length === 0} onClick={() => executarLote("CONFIRMAR")}>
+      <button className="botao" disabled={ocupado || selecionadas.length === 0} onClick={() => executarLote("CONFIRM")}>
         Confirmar selecionadas ({selecionadas.length})
       </button>
-      <button className="botao secundario" disabled={ocupado || selecionadas.length === 0} onClick={() => executarLote("RECUSAR")}>
+      <button className="botao secundario" disabled={ocupado || selecionadas.length === 0} onClick={() => executarLote("REJECT")}>
         Recusar selecionadas
       </button>
       <button
@@ -46,8 +46,8 @@ export function AcoesDepara({ poId, selecionadas, aoConcluirLote }: Props) {
           sugerir.mutate(undefined, {
             onSuccess: (r) =>
               setMensagem({
-                texto: `${r.criadas} sugestão(ões): ${r.daVersaoAnterior} da versão anterior, ${r.peloNome} pelo nome. ${r.semSugestao.length} sem sugestão.`,
-                ignoradas: r.semSugestao.map((s) => ({ conta: s.conta, motivo: s.motivo })),
+                texto: `${r.created} sugestão(ões): ${r.fromPreviousVersion} da versão anterior, ${r.byName} pelo nome. ${r.withoutSuggestion.length} sem sugestão.`,
+                ignoradas: r.withoutSuggestion.map((s) => ({ account: s.account, reason: s.reason })),
               }),
           })
         }
@@ -68,10 +68,10 @@ export function AcoesDepara({ poId, selecionadas, aoConcluirLote }: Props) {
             planilha.mutate(arquivo, {
               onSuccess: (r) =>
                 setMensagem({
-                  texto: `${r.aceitas} linha(s) da planilha entraram como sugerido. ${r.recusadas.length} recusada(s).`,
+                  texto: `${r.accepted} linha(s) da planilha entraram como sugerido. ${r.rejected.length} recusada(s).`,
                   ignoradas: [
-                    ...r.ignoradas,
-                    ...r.recusadas.map((x) => ({ conta: `linha ${x.linha}`, motivo: `${x.motivo}: ${x.conteudo}` })),
+                    ...r.skipped,
+                    ...r.rejected.map((x) => ({ account: `linha ${x.line}`, reason: `${x.reason}: ${x.content}` })),
                   ],
                 }),
             });
@@ -88,7 +88,7 @@ export function AcoesDepara({ poId, selecionadas, aoConcluirLote }: Props) {
               <ul className="lista-simples">
                 {mensagem.ignoradas.map((i, n) => (
                   <li key={n}>
-                    {i.conta}: {i.motivo}
+                    {i.account}: {i.reason}
                   </li>
                 ))}
               </ul>

@@ -10,12 +10,12 @@ export function Variacao({ variacao }: { variacao: VariacaoExercicio | null | un
   if (!variacao) return <span className="discreto">—</span>;
   return (
     <>
-      {formatarDiferenca(variacao.valor)}
-      {variacao.novaNoExercicio ? (
+      {formatarDiferenca(variacao.amount)}
+      {variacao.newInFiscalYear ? (
         <small className="observacao">nova no exercício</small>
       ) : (
-        variacao.percentual !== null &&
-        variacao.percentual !== undefined && <small className="observacao">{formatarPercentualComSinal(variacao.percentual)}</small>
+        variacao.percentage !== null &&
+        variacao.percentage !== undefined && <small className="observacao">{formatarPercentualComSinal(variacao.percentage)}</small>
       )}
     </>
   );

@@ -160,7 +160,7 @@
   <thead><tr><th>Fundo</th><th>Linha da PO</th><th>Situação</th><th class="n">Previsto</th><th class="n">Arrecadado</th><th class="n">Diferença</th><th class="n">Execução</th><th class="n">Créditos</th><th class="n">Débitos</th></tr></thead>
   <tr th:each="x : ${r.funds()}">
     <td th:text="${x.fund() ?: '—'}"></td><td th:text="${x.lineCode() ?: '—'}"></td>
-    <td th:text="${x.status().name() == 'COMPARADO' ? 'arrecadação × previsto' : (x.status().name() == 'SEM_PREVISTO_NA_PO' ? 'sem previsto na PO' : (x.status().name() == 'LINHA_SEM_FUNDO' ? 'linha sem fundo ligado' : 'reprocesse o fluxo'))}"></td>
+    <td th:text="${x.status().name() == 'COMPARED' ? 'arrecadação × previsto' : (x.status().name() == 'NOT_PLANNED_IN_BUDGET' ? 'sem previsto na PO' : (x.status().name() == 'LINE_WITHOUT_FUND' ? 'linha sem fundo ligado' : 'reprocesse o fluxo'))}"></td>
     <td class="n" th:text="${f.money(x.planned())}"></td>
     <td class="n" th:text="${f.money(x.collected())}"></td>
     <td class="n" th:text="${f.money(x.difference())}"></td>
@@ -177,7 +177,7 @@
   <thead><tr><th>Mês</th><th>Situação</th><th class="n">Previsto</th><th class="n">Despesa realizada</th><th class="n">Excesso</th><th class="n">% excesso</th></tr></thead>
   <tr th:each="m : ${r.months()}">
     <td th:text="${f.month(m.month())}"></td>
-    <td th:text="${m.status().name() == 'COM_FLUXO' ? 'com fluxo' : (m.status().name() == 'SEM_FLUXO' ? 'sem fluxo carregado' : 'dois fluxos')}"></td>
+    <td th:text="${m.status().name() == 'WITH_CASH_FLOW' ? 'com fluxo' : (m.status().name() == 'NO_CASH_FLOW' ? 'sem fluxo carregado' : 'dois fluxos')}"></td>
     <td class="n" th:text="${f.money(m.planned())}"></td>
     <td class="n" th:text="${f.money(m.actualExpense())}"></td>
     <td class="n" th:text="${f.money(m.overrun())}"></td>

@@ -32,7 +32,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
- * An indexing request goes to rag.indexacao following the contract; the sweep resends what stalled and gives up after
+ * An indexing request goes to rag.indexing following the contract; the sweep resends what stalled and gives up after
  * 3.
  */
 class IndexingPublisherTest {
@@ -60,7 +60,7 @@ class IndexingPublisherTest {
         var message = ArgumentCaptor.forClass(Message.class);
         verify(rabbit).send(eq(""), eq(QueueConfig.INDEXING), message.capture());
         String json = new String(message.getValue().getBody(), StandardCharsets.UTF_8);
-        assertThat(json).contains(file.getIndexingId().toString()).contains("\"operacao\":\"INDEXAR\"");
+        assertThat(json).contains(file.getIndexingId().toString()).contains("\"operation\":\"INDEX\"");
     }
 
     @Test
@@ -77,8 +77,8 @@ class IndexingPublisherTest {
 
         assertThat(stalled.getIndexingAttempts()).isEqualTo(2);
         assertThat(stalled.getIndexingId()).isEqualTo(request);
-        assertThat(stalled.getIndexingStatus()).isEqualTo(IndexingStatus.NA_FILA);
-        assertThat(exhausted.getIndexingStatus()).isEqualTo(IndexingStatus.ERRO);
+        assertThat(stalled.getIndexingStatus()).isEqualTo(IndexingStatus.QUEUED);
+        assertThat(exhausted.getIndexingStatus()).isEqualTo(IndexingStatus.ERROR);
         assertThat(exhausted.getIndexingReason()).contains("3 tentativas");
         verify(rabbit, times(1)).send(eq(""), eq(QueueConfig.INDEXING), any(Message.class));
     }
@@ -116,7 +116,7 @@ class IndexingPublisherTest {
         publisher.sweep(Instant.now());
 
         assertThat(stalled.getIndexingAttempts()).isEqualTo(1);
-        assertThat(stalled.getIndexingStatus()).isEqualTo(IndexingStatus.NA_FILA);
+        assertThat(stalled.getIndexingStatus()).isEqualTo(IndexingStatus.QUEUED);
         verify(rabbit, never()).send(any(String.class), any(String.class), any(Message.class));
     }
 
@@ -140,7 +140,7 @@ class IndexingPublisherTest {
     }
 
     private static SourceFile file(UUID condominium) {
-        SourceFile file = new SourceFile(condominium, FileCategory.BALANCETE, "fluxo.pdf", "c/BALANCETE/2026/x-fluxo.pdf",
+        SourceFile file = new SourceFile(condominium, FileCategory.TRIAL_BALANCE, "fluxo.pdf", "c/TRIAL_BALANCE/2026/x-fluxo.pdf",
                 "b".repeat(64), 10, "application/pdf", "gestor");
         file.requestIndexing();
         return file;

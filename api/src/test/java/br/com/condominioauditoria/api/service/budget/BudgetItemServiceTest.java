@@ -36,11 +36,11 @@ class BudgetItemServiceTest {
         Budget a = scenario.confirmedBudget();
 
         long budgetLines = scenario.lines.stream()
-                .filter(l -> l.getBudgetId().equals(a.getId()) && l.getType() == BudgetLineType.LINHA).count();
+                .filter(l -> l.getBudgetId().equals(a.getId()) && l.getType() == BudgetLineType.LINE).count();
         assertThat(scenario.budgetItems).hasSize((int) budgetLines);
         assertThat(scenario.lineItems).hasSize((int) budgetLines).allSatisfy(lineItem -> {
-            assertThat(lineItem.getStatus()).isEqualTo(BudgetItemStatus.CONFIRMADO);
-            assertThat(lineItem.getSource()).isEqualTo(BudgetItemSource.PRIMEIRA_PO);
+            assertThat(lineItem.getStatus()).isEqualTo(BudgetItemStatus.CONFIRMED);
+            assertThat(lineItem.getSource()).isEqualTo(BudgetItemSource.FIRST_BUDGET);
         });
         assertThat(scenario.budgetItemEvents).hasSize((int) budgetLines);
         assertThat(itemOf(a, "1.3.20", 0).getName()).isEqualTo("1682 - Sindicatura Profissional");
@@ -61,14 +61,14 @@ class BudgetItemServiceTest {
         Budget b = nextFiscalYear(PilotBudget.defaults());
 
         BudgetLineItem lineItem = link(b, "1.3.20", 0);
-        assertThat(lineItem.getStatus()).isEqualTo(BudgetItemStatus.SUGERIDO);
-        assertThat(lineItem.getSource()).isEqualTo(BudgetItemSource.CONTA_PO);
+        assertThat(lineItem.getStatus()).isEqualTo(BudgetItemStatus.SUGGESTED);
+        assertThat(lineItem.getSource()).isEqualTo(BudgetItemSource.BUDGET_ACCOUNT);
         assertThat(lineItem.getReason())
                 .isEqualTo("mesma conta da PO e mesmo grupo: 1682 - Sindicatura Profissional, 1.3");
         assertThat(lineItem.getBudgetItemId()).isEqualTo(link(a, "1.3.20", 0).getBudgetItemId());
         // Suggestion neither creates an item nor confirms anything
         assertThat(scenario.budgetItems).hasSize(itemsOfA);
-        var pending = scenario.budgetItemService.list(scenario.condominiumId, b.getId(), BudgetItemFilter.CONFIRMADO);
+        var pending = scenario.budgetItemService.list(scenario.condominiumId, b.getId(), BudgetItemFilter.CONFIRMED);
         assertThat(pending.lines()).isEmpty();
     }
 
@@ -104,25 +104,25 @@ class BudgetItemServiceTest {
         scenario.confirmedBudget();
         Budget b = nextFiscalYear(PilotBudget.defaults());
         List<UUID> suggested = scenario.lineItems.stream()
-                .filter(lineItem -> lineItem.getBudgetId().equals(b.getId()) && lineItem.getStatus() == BudgetItemStatus.SUGERIDO)
+                .filter(lineItem -> lineItem.getBudgetId().equals(b.getId()) && lineItem.getStatus() == BudgetItemStatus.SUGGESTED)
                 .map(BudgetLineItem::getBudgetLineId).toList();
         assertThat(suggested).isNotEmpty();
         int eventsBefore = scenario.budgetItemEvents.size();
 
         var r = scenario.budgetItemService.batch(scenario.condominiumId, b.getId(),
-                new BudgetItemBatchRequest(BudgetItemBatchAction.CONFIRMAR, suggested), "admin");
+                new BudgetItemBatchRequest(BudgetItemBatchAction.CONFIRM, suggested), "admin");
 
         assertThat(r.changed()).isEqualTo(suggested.size());
         assertThat(r.skipped()).isEmpty();
         assertThat(scenario.budgetItemEvents.subList(eventsBefore, scenario.budgetItemEvents.size()))
                 .hasSize(suggested.size())
                 .allSatisfy(e -> {
-                    assertThat(e.getAction()).isEqualTo(BudgetItemAction.CONFIRMADO);
-                    assertThat(e.getPreviousStatus()).isEqualTo(BudgetItemStatus.SUGERIDO);
+                    assertThat(e.getAction()).isEqualTo(BudgetItemAction.CONFIRMED);
+                    assertThat(e.getPreviousStatus()).isEqualTo(BudgetItemStatus.SUGGESTED);
                     assertThat(e.getUsername()).isEqualTo("admin");
                 });
         var again = scenario.budgetItemService.batch(scenario.condominiumId, b.getId(),
-                new BudgetItemBatchRequest(BudgetItemBatchAction.CONFIRMAR, suggested.subList(0, 1)), "admin");
+                new BudgetItemBatchRequest(BudgetItemBatchAction.CONFIRM, suggested.subList(0, 1)), "admin");
         assertThat(again.changed()).isZero();
         assertThat(again.skipped().getFirst().reason()).isEqualTo("já está confirmado");
     }
@@ -136,10 +136,10 @@ class BudgetItemServiceTest {
 
         var changed = scenario.budgetItemService.setItem(scenario.condominiumId, b.getId(), waterTankLine,
                 new LineBudgetItemRequest(pumps, null, null), "admin");
-        assertThat(changed.status()).isEqualTo(BudgetItemStatus.CONFIRMADO);
+        assertThat(changed.status()).isEqualTo(BudgetItemStatus.CONFIRMED);
         assertThat(changed.source()).isEqualTo(BudgetItemSource.MANUAL);
         assertThat(changed.budgetItem().id()).isEqualTo(pumps);
-        assertThat(scenario.budgetItemEvents.getLast().getAction()).isEqualTo(BudgetItemAction.ALTERADO);
+        assertThat(scenario.budgetItemEvents.getLast().getAction()).isEqualTo(BudgetItemAction.CHANGED);
         assertThat(scenario.budgetItemEvents.getLast().getPreviousItem()).isEqualTo("1624 - Caixa D'água");
 
         int itemsBefore = scenario.budgetItems.size();
@@ -151,7 +151,7 @@ class BudgetItemServiceTest {
         var lastOnes = scenario.budgetItemEvents.subList(scenario.budgetItemEvents.size() - 2,
                 scenario.budgetItemEvents.size());
         assertThat(lastOnes).extracting(BudgetItemEvent::getAction)
-                .containsExactly(BudgetItemAction.CRIADA, BudgetItemAction.ALTERADO);
+                .containsExactly(BudgetItemAction.CREATED, BudgetItemAction.CHANGED);
 
         assertThatThrownBy(() -> scenario.budgetItemService.setItem(scenario.condominiumId, b.getId(), waterTankLine,
                 new LineBudgetItemRequest(pumps, "outra", null), "admin"))
@@ -170,8 +170,8 @@ class BudgetItemServiceTest {
                 "admin");
 
         BudgetLineItem lineItem = link(second, "1.3.20", 0);
-        assertThat(lineItem.getSource()).isEqualTo(BudgetItemSource.VERSAO_ANTERIOR);
-        assertThat(lineItem.getStatus()).isEqualTo(BudgetItemStatus.SUGERIDO);
+        assertThat(lineItem.getSource()).isEqualTo(BudgetItemSource.PREVIOUS_VERSION);
+        assertThat(lineItem.getStatus()).isEqualTo(BudgetItemStatus.SUGGESTED);
         assertThat(lineItem.getReason()).isEqualTo("linha igual na versão anterior: 1.3.20 1682 - Sindicatura Profissional");
         assertThat(lineItem.getBudgetItemId()).isEqualTo(link(a, "1.3.20", 0).getBudgetItemId());
     }
@@ -224,7 +224,7 @@ class BudgetItemServiceTest {
         assertThat(created.name()).isEqualTo("Academia");
         assertThat(renamed.name()).isEqualTo("Academia e ginástica");
         assertThat(scenario.budgetItemEvents).extracting(BudgetItemEvent::getAction)
-                .containsExactly(BudgetItemAction.CRIADA, BudgetItemAction.RENOMEADA);
+                .containsExactly(BudgetItemAction.CREATED, BudgetItemAction.RENAMED);
         assertThat(scenario.budgetItemEvents.getLast().getPreviousItem()).isEqualTo("Academia");
         assertThatThrownBy(() -> scenario.budgetItemService.create(scenario.condominiumId, new NewBudgetItemRequest(" ",
                 null),

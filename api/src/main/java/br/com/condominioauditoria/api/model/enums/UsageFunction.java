@@ -7,20 +7,27 @@ import java.util.Arrays;
 /** Function recorded in a feature's usage (RF-09.7). The database and the API store the lowercase code. */
 public enum UsageFunction {
     /** Document search made from the screen (the assistant's REST API, from delivery 3 on). */
-    BUSCA_DOCUMENTOS("busca_documentos"),
-    /** buscar_documentos called by the MCP (rpc BuscarDocumentos). */
-    CHAMADA_MCP("chamada_mcp"),
+    DOCUMENT_SEARCH("document_search", "Busca nos documentos (tela)"),
+    /** search_documents called by the MCP (rpc SearchDocuments). */
+    MCP_CALL("mcp_call", "Busca pelo MCP"),
     /** One indexed file (files = 1, pages read). */
-    INDEXACAO("indexacao"),
+    INDEXING("indexing", "Indexação de arquivos"),
     /** Embedding generation outside indexing (e.g. of the chat question; delivery 3). */
-    EMBEDDINGS("embeddings"),
+    EMBEDDINGS("embeddings", "Embeddings"),
     /** Question to the chat (delivery 3). */
-    PERGUNTA("pergunta");
+    QUESTION("question", "Perguntas ao assistente");
 
     private final String code;
+    private final String label;
 
-    UsageFunction(String code) {
+    UsageFunction(String code, String label) {
         this.code = code;
+        this.label = label;
+    }
+
+    /** Name shown in the usage export, in Portuguese. */
+    public String label() {
+        return label;
     }
 
     public String code() {

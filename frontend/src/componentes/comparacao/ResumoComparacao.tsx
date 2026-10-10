@@ -27,38 +27,38 @@ const inteiroOuTraco = (valor: number | null | undefined) => (valor === null || 
  */
 export function ResumoComparacao({ exercicios, resumo, abridor }: Props) {
   const metricas: Metrica[] = [
-    { rotulo: "Previsto do mês", dica: "Soma das linhas sem os fundos", celula: (r) => formatarMoeda(r.previstoMes) },
-    { rotulo: "Variação do previsto do mês", celula: (r) => <Variacao variacao={r.variacaoPrevistoMes} /> },
-    { rotulo: "Previsto do exercício", celula: (r) => formatarMoeda(r.previstoExercicio) },
-    { rotulo: "Meses com fluxo", celula: (r) => String(r.mesesComFluxo) },
-    { rotulo: "Previsto dos meses comparados", celula: (r) => <ValorOuTraco valor={r.previsto} /> },
+    { rotulo: "Previsto do mês", dica: "Soma das linhas sem os fundos", celula: (r) => formatarMoeda(r.monthlyPlanned) },
+    { rotulo: "Variação do previsto do mês", celula: (r) => <Variacao variacao={r.monthlyPlannedVariation} /> },
+    { rotulo: "Previsto do exercício", celula: (r) => formatarMoeda(r.fiscalYearPlanned) },
+    { rotulo: "Meses com fluxo", celula: (r) => String(r.monthsWithCashFlow) },
+    { rotulo: "Previsto dos meses comparados", celula: (r) => <ValorOuTraco valor={r.planned} /> },
     {
       rotulo: "Realizado dos meses comparados",
       dica: "Clique para ver os lançamentos no previsto × realizado",
-      celula: (r) => <ValorOuTraco valor={r.realizado} aoAbrir={abridor(r.exercicioId, r.alvo)} />,
+      celula: (r) => <ValorOuTraco valor={r.actual} aoAbrir={abridor(r.fiscalYearId, r.target)} />,
     },
-    { rotulo: "Variação do realizado", celula: (r) => <Variacao variacao={r.variacaoRealizado} /> },
-    { rotulo: "Execução", dica: "Realizado ÷ previsto", celula: (r) => formatarPercentual(r.execucao) },
+    { rotulo: "Variação do realizado", celula: (r) => <Variacao variacao={r.actualVariation} /> },
+    { rotulo: "Execução", dica: "Realizado ÷ previsto", celula: (r) => formatarPercentual(r.execution) },
     {
       rotulo: "Maior excesso mensal (regra dos 20%)",
       celula: (r) =>
-        r.maiorExcesso ? (
+        r.largestOverrun ? (
           <>
-            {formatarMoeda(r.maiorExcesso.valor)}
+            {formatarMoeda(r.largestOverrun.amount)}
             <small className="observacao">
-              {formatarPercentual(r.maiorExcesso.percentual)} em {formatarMes(r.maiorExcesso.mes)}
+              {formatarPercentual(r.largestOverrun.percentage)} em {formatarMes(r.largestOverrun.month)}
             </small>
           </>
         ) : (
           "—"
         ),
     },
-    { rotulo: "Meses acima do limite", celula: (r) => inteiroOuTraco(r.mesesAcimaDoLimite) },
-    { rotulo: "Achados abertos", celula: (r) => inteiroOuTraco(r.achadosAbertos) },
+    { rotulo: "Meses acima do limite", celula: (r) => inteiroOuTraco(r.monthsAboveLimit) },
+    { rotulo: "Achados abertos", celula: (r) => inteiroOuTraco(r.openFindings) },
     {
       rotulo: "Situação",
       dica: "Há valor a realocar ou conta sem linha da PO",
-      celula: (r) => (r.provisorio ? <span className="selo alerta">Provisório</span> : "—"),
+      celula: (r) => (r.provisional ? <span className="selo alerta">Provisório</span> : "—"),
     },
   ];
 
@@ -72,7 +72,7 @@ export function ResumoComparacao({ exercicios, resumo, abridor }: Props) {
               <th scope="col">Número</th>
               {exercicios.map((e) => (
                 <th key={e.id} scope="col" className="numero">
-                  {e.rotulo}
+                  {e.label}
                 </th>
               ))}
             </tr>
@@ -84,7 +84,7 @@ export function ResumoComparacao({ exercicios, resumo, abridor }: Props) {
                   {m.rotulo}
                 </th>
                 {exercicios.map((e) => {
-                  const r = resumo.find((x) => x.exercicioId === e.id);
+                  const r = resumo.find((x) => x.fiscalYearId === e.id);
                   return (
                     <td key={e.id} className="numero">
                       {r ? m.celula(r) : "—"}

@@ -8,7 +8,7 @@ import { DesfazerRealocacao, RealocarLancamento } from "./Realocacao";
 
 interface Props {
   periodo: Periodo;
-  po: NonNullable<PrevistoRealizado["po"]>;
+  po: NonNullable<PrevistoRealizado["budget"]>;
   alvo: AlvoEvidencia;
   aoFechar: () => void;
 }
@@ -19,10 +19,10 @@ interface Props {
  */
 export function PainelEvidencia({ periodo, po, alvo, aoFechar }: Props) {
   const { condominioId, pode } = useSessao();
-  const podeRealocar = pode("GESTOR", "ADMIN");
+  const podeRealocar = pode("MANAGER", "ADMIN");
   const { data: lancamentos = [], isLoading, error } = useEvidencia(condominioId, periodo, po.id, alvo.alvo);
   const abrirNaPagina = (arquivoId: string, pagina: number) =>
-    void abrirArquivo(`/condominios/${condominioId}/arquivos/${arquivoId}/conteudo`, pagina);
+    void abrirArquivo(`/condominiums/${condominioId}/files/${arquivoId}/content`, pagina);
 
   return (
     <aside className="detalhe" aria-label="Evidência">
@@ -37,11 +37,11 @@ export function PainelEvidencia({ periodo, po, alvo, aoFechar }: Props) {
         <section className="linha-po-fonte">
           <h3>Linha da PO</h3>
           {alvo.linhaPo.observacoes && <p>Observações da PO: “{alvo.linhaPo.observacoes}”</p>}
-          <button className="botao-link" onClick={() => abrirNaPagina(po.arquivoId, alvo.linhaPo!.pagina)}>
+          <button className="botao-link" onClick={() => abrirNaPagina(po.fileId, alvo.linhaPo!.pagina)}>
             Abrir a PO na página {alvo.linhaPo.pagina}
           </button>
           <p className="discreto">
-            {po.arquivoNome} · <span title={po.sha256}>SHA-256 {hashCurto(po.sha256)}…</span>
+            {po.fileName} · <span title={po.sha256}>SHA-256 {hashCurto(po.sha256)}…</span>
           </p>
         </section>
       )}
@@ -52,24 +52,24 @@ export function PainelEvidencia({ periodo, po, alvo, aoFechar }: Props) {
       {!isLoading && lancamentos.length === 0 && <p className="aviso">Nenhum lançamento neste número.</p>}
       <ul className="evidencias">
         {lancamentos.map((l) => (
-          <li key={l.lancamentoId}>
+          <li key={l.entryId}>
             <div className="evidencia-topo">
-              <strong>{formatarMoeda(l.valor)}</strong>
-              <span className="discreto">{formatarData(l.data)}</span>
+              <strong>{formatarMoeda(l.amount)}</strong>
+              <span className="discreto">{formatarData(l.date)}</span>
             </div>
-            <span>{l.historico}</span>
-            {l.fornecedor && <span className="discreto">Favorecido: {l.fornecedor}</span>}
+            <span>{l.memo}</span>
+            {l.supplier && <span className="discreto">Favorecido: {l.supplier}</span>}
             <span className="discreto">
-              {l.conta && `Conta ${l.conta}${l.contaNome ? ` ${l.contaNome}` : ""}`}
-              {l.documento && ` · doc. ${l.documento}`}
-              {l.fundo && ` · ${l.fundo}`}
+              {l.account && `Conta ${l.account}${l.accountName ? ` ${l.accountName}` : ""}`}
+              {l.document && ` · doc. ${l.document}`}
+              {l.fund && ` · ${l.fund}`}
             </span>
-            {l.realocacao && <span className="selo alerta">{l.realocacao}</span>}
-            {podeRealocar && l.realocacaoId && <DesfazerRealocacao realocacaoId={l.realocacaoId} />}
-            {podeRealocar && alvo.alvo === "A_REALOCAR" && !l.realocacaoId && <RealocarLancamento poId={po.id} lancamento={l} />}
+            {l.reallocation && <span className="selo alerta">{l.reallocation}</span>}
+            {podeRealocar && l.reallocationId && <DesfazerRealocacao realocacaoId={l.reallocationId} />}
+            {podeRealocar && alvo.alvo === "TO_REALLOCATE" && !l.reallocationId && <RealocarLancamento poId={po.id} lancamento={l} />}
             <span className="discreto">
-              <button className="botao-link" onClick={() => abrirNaPagina(l.arquivoId, l.pagina)}>
-                {l.arquivoNome ?? "Fluxo"}, pág. {l.pagina}
+              <button className="botao-link" onClick={() => abrirNaPagina(l.fileId, l.page)}>
+                {l.fileName ?? "Fluxo"}, pág. {l.page}
               </button>{" "}
               · <span title={l.sha256}>SHA-256 {hashCurto(l.sha256)}…</span>
             </span>

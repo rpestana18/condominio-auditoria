@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** The condominium's funds, by the name printed in the cash flow (RF-03.1.9). Every role can read them. */
 @RestController
-@RequestMapping("/api/condominios/{condominiumId}/fundos")
+@RequestMapping("/api/condominiums/{condominiumId}/funds")
 class FundController {
 
     private final CondominiumAccess access;
@@ -25,7 +25,7 @@ class FundController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     List<FundResponse> list(@PathVariable UUID condominiumId) {
         access.require(condominiumId);
         return funds.list(condominiumId);

@@ -14,7 +14,7 @@ import org.springframework.web.client.ResourceAccessException;
  * dimensions). The same model is used to index and to search; changing the model requires reindexing.
  *
  * No text leaves the machine: Ollama runs on the internal network. A failure becomes an
- * {@link EmbeddingsUnavailableException} with a readable reason; the caller decides (indexing = ERRO; hybrid search =
+ * {@link EmbeddingsUnavailableException} with a readable reason; the caller decides (indexing = ERROR; hybrid search =
  * falls back to keyword search).
  */
 @Component

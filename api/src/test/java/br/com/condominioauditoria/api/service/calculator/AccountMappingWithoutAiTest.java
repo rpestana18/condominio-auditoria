@@ -11,7 +11,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
- * RF-03.1.5 and RF-09.7: account mapping works without AI (DESLIGADO mode) and no AI call happens. The api has no AI
+ * RF-03.1.5 and RF-09.7: account mapping works without AI (OFF mode) and no AI call happens. The api has no AI
  * client on the classpath, and no budget class talks to AI, to rag (the assistant's gRPC) or to the network: the
  * suggestion is the pure function {@link NameSuggestion}, which takes no collaborator.
  */

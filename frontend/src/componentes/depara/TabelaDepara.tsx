@@ -16,7 +16,7 @@ interface Props {
 
 /** Contas do fluxo com o destino, o estado, a origem e o motivo da sugestão (RF-03.1.13). */
 export function TabelaDepara({ contas, edicao }: Props) {
-  const todas = edicao && contas.length > 0 && contas.every((c) => edicao.selecionadas.has(c.conta));
+  const todas = edicao && contas.length > 0 && contas.every((c) => edicao.selecionadas.has(c.account));
   return (
     <div className="rolagem">
       <table className="tabela">
@@ -38,30 +38,30 @@ export function TabelaDepara({ contas, edicao }: Props) {
         </thead>
         <tbody>
           {contas.map((c) => (
-            <tr key={c.conta} className={edicao?.selecionadas.has(c.conta) ? "selecionado" : undefined}>
+            <tr key={c.account} className={edicao?.selecionadas.has(c.account) ? "selecionado" : undefined}>
               {edicao && (
                 <td>
                   <input
                     type="checkbox"
-                    aria-label={`Selecionar a conta ${c.conta}`}
-                    checked={edicao.selecionadas.has(c.conta)}
-                    onChange={(e) => edicao.aoSelecionar(c.conta, e.target.checked)}
+                    aria-label={`Selecionar a conta ${c.account}`}
+                    checked={edicao.selecionadas.has(c.account)}
+                    onChange={(e) => edicao.aoSelecionar(c.account, e.target.checked)}
                   />
                 </td>
               )}
               <td>
-                <strong>{c.conta}</strong> {c.nome}
+                <strong>{c.account}</strong> {c.name}
               </td>
-              <td className="numero">{c.lancamentos}</td>
-              <td className="numero">{formatarMoeda(c.debitos)}</td>
-              <td>{c.destino?.texto ?? <span className="discreto">—</span>}</td>
+              <td className="numero">{c.ledgerEntries}</td>
+              <td className="numero">{formatarMoeda(c.debits)}</td>
+              <td>{c.target?.text ?? <span className="discreto">—</span>}</td>
               <td>
-                <SeloEstadoDepara estado={c.estado} />
-                {c.igualVersaoAnterior && <span className="selo neutro">igual à versão anterior</span>}
+                <SeloEstadoDepara estado={c.status} />
+                {c.sameAsPreviousVersion && <span className="selo neutro">igual à versão anterior</span>}
               </td>
               <td className="discreto">
-                {c.origem && <span>{rotuloOrigem[c.origem]}</span>}
-                {c.motivo && <small className="observacao">{c.motivo}</small>}
+                {c.source && <span>{rotuloOrigem[c.source]}</span>}
+                {c.reason && <small className="observacao">{c.reason}</small>}
               </td>
               {edicao && (
                 <td>

@@ -21,7 +21,7 @@ public record BudgetValidity(Budget budget, YearMonth start, YearMonth end) {
             return Optional.empty();
         }
         YearMonth end = p.getFiscalYearEnd();
-        if (p.getStatus() == BudgetStatus.SUBSTITUIDA && p.getSupersededFrom() != null) {
+        if (p.getStatus() == BudgetStatus.SUPERSEDED && p.getSupersededFrom() != null) {
             YearMonth before = p.getSupersededFrom().minusMonths(1);
             end = before.isBefore(end) ? before : end;
         }
@@ -35,7 +35,7 @@ public record BudgetValidity(Budget budget, YearMonth start, YearMonth end) {
      * Extended months of the budget (from the month after the end of the fiscal year until the extension), or empty.
      */
     public static Optional<BudgetValidity> extension(Budget p) {
-        if (p.getStatus() != BudgetStatus.CONFIRMADA || p.getFiscalYearEnd() == null || p.getExtendedUntil() == null
+        if (p.getStatus() != BudgetStatus.CONFIRMED || p.getFiscalYearEnd() == null || p.getExtendedUntil() == null
                 || !p.getExtendedUntil().isAfter(p.getFiscalYearEnd())) {
             return Optional.empty();
         }

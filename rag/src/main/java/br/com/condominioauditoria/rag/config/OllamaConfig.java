@@ -10,7 +10,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 /**
- * Ollama client with a short connect timeout: Ollama down becomes a readable error within seconds (indexing = ERRO,
+ * Ollama client with a short connect timeout: Ollama down becomes a readable error within seconds (indexing = ERROR,
  * hybrid search = keyword search), without holding the queue. Replaces the OllamaApi from Spring AI
  * auto-configuration.
  */

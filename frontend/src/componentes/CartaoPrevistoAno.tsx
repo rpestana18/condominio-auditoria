@@ -9,27 +9,27 @@ import { formatarMes, formatarMoeda, formatarPercentual } from "../formato";
  */
 export function CartaoPrevistoAno() {
   const { condominioId } = useSessao();
-  const { data: resultado } = usePrevistoRealizado(condominioId, "acumulado");
+  const { data: resultado } = usePrevistoRealizado(condominioId, "cumulative");
   if (!resultado) return null;
 
-  const totais = resultado.situacao === "CALCULADO" ? resultado.totais : null;
+  const totais = resultado.status === "CALCULATED" ? resultado.totals : null;
   return (
     <Link to="/previsto-realizado?periodo=acumulado" className="cartao-numero cartao-link" title="Abrir o previsto × realizado">
       <span className="cartao-titulo">Previsto × realizado no exercício</span>
       {totais ? (
         <>
-          <strong>{formatarPercentual(totais.execucao)}</strong>
+          <strong>{formatarPercentual(totais.execution)}</strong>
           <span className="discreto">
-            {formatarMoeda(totais.despesaRealizada)} de {formatarMoeda(totais.previsto)}
+            {formatarMoeda(totais.actualExpense)} de {formatarMoeda(totais.planned)}
           </span>
           <span className="discreto">
-            {resultado.mesesSomados.length} {resultado.mesesSomados.length === 1 ? "mês" : "meses"} com fluxo
-            {resultado.mesesSemFluxo.length > 0 && ` · faltam ${resultado.mesesSemFluxo.map(formatarMes).join(", ")}`}
-            {resultado.provisorio && " · provisório"}
+            {resultado.summedMonths.length} {resultado.summedMonths.length === 1 ? "mês" : "meses"} com fluxo
+            {resultado.monthsWithoutCashFlow.length > 0 && ` · faltam ${resultado.monthsWithoutCashFlow.map(formatarMes).join(", ")}`}
+            {resultado.provisional && " · provisório"}
           </span>
         </>
       ) : (
-        <span className="discreto">{resultado.mensagem ?? "Sem números para o exercício"}</span>
+        <span className="discreto">{resultado.message ?? "Sem números para o exercício"}</span>
       )}
     </Link>
   );

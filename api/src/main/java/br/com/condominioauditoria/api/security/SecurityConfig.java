@@ -21,7 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 /**
  * The api is a "resource server": it only accepts a valid Bearer token issued by Keycloak. Roles come from
- * realm_access.roles (USUARIO, GESTOR, ADMIN) and become ROLE_USUARIO etc.
+ * realm_access.roles (USER, MANAGER, ADMIN) and become ROLE_USER etc.
  */
 @Configuration
 @EnableMethodSecurity
@@ -41,7 +41,7 @@ class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Spring's error page: without this, 400 and 404 handled by Spring itself become an empty 403
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/**").hasAnyRole("USUARIO", "GESTOR", "ADMIN")
+                        .requestMatchers("/api/**").hasAnyRole("USER", "MANAGER", "ADMIN")
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(roleConverter)));
         return http.build();
@@ -69,7 +69,7 @@ class SecurityConfig {
             Object roles = realm == null ? List.of() : realm.getOrDefault("roles", List.of());
             return ((Collection<?>) roles).stream()
                     .map(Object::toString)
-                    .filter(p -> p.equals("USUARIO") || p.equals("GESTOR") || p.equals("ADMIN"))
+                    .filter(p -> p.equals("USER") || p.equals("MANAGER") || p.equals("ADMIN"))
                     .<GrantedAuthority>map(p -> new SimpleGrantedAuthority("ROLE_" + p))
                     .toList();
         });

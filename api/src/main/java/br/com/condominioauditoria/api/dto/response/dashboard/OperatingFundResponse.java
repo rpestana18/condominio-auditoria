@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.api.dto.response.dashboard;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -11,8 +10,8 @@ import java.util.UUID;
  * @param closingBalance null when the confirmed fund does not appear in the report
  */
 public record OperatingFundResponse(
-        @JsonProperty("fundoId") UUID fundId,
-        @JsonProperty("fundo") String fund,
-        @JsonProperty("confirmado") boolean confirmed,
-        @JsonProperty("saldoAtual") BigDecimal closingBalance) {
+        UUID fundId,
+        String fund,
+        boolean confirmed,
+        BigDecimal closingBalance) {
 }

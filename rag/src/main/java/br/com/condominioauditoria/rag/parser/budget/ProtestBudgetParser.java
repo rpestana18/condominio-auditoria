@@ -57,10 +57,10 @@ public final class ProtestBudgetParser {
 
     private static Map<String, BudgetLineMark> marks() {
         Map<String, BudgetLineMark> m = new LinkedHashMap<>();
-        m.put("rateio a parte", BudgetLineMark.RATEIO_A_PARTE);
-        m.put("negociada isencao", BudgetLineMark.NEGOCIADA_ISENCAO);
-        m.put("sem valor", BudgetLineMark.SEM_VALOR);
-        m.put("valor fixo (sem referencia)", BudgetLineMark.VALOR_FIXO_SEM_REFERENCIA);
+        m.put("rateio a parte", BudgetLineMark.SEPARATE_APPORTIONMENT);
+        m.put("negociada isencao", BudgetLineMark.NEGOTIATED_EXEMPTION);
+        m.put("sem valor", BudgetLineMark.NO_AMOUNT);
+        m.put("valor fixo (sem referencia)", BudgetLineMark.FIXED_AMOUNT_NO_REFERENCE);
         return m;
     }
 
@@ -237,7 +237,7 @@ public final class ProtestBudgetParser {
             BudgetLineMark accountMark = mark(accountLabel);
             BudgetLineMark mark = accountMark != null ? accountMark
                     : notesText != null && normalize(notesText).contains(APPORTIONMENT_IN_NOTES)
-                            ? BudgetLineMark.RATEIO_A_PARTE : null;
+                            ? BudgetLineMark.SEPARATE_APPORTIONMENT : null;
             String budgetAccount = ACCOUNT.matcher(accountLabel).matches() ? accountLabel : null;
             String accountText = budgetAccount == null && accountMark == null && !accountLabel.isEmpty() ? accountLabel : null;
             lines.add(new BudgetLine(lines.size() + 1, line.page(), type(code, line), code, budgetAccount, accountText,
@@ -274,8 +274,8 @@ public final class ProtestBudgetParser {
         private static BudgetLineType type(String code, TextLine line) {
             return switch (code.split("\\.").length) {
                 case 1 -> BudgetLineType.TOTAL;
-                case 2 -> BudgetLineType.GRUPO;
-                case 3 -> BudgetLineType.LINHA;
+                case 2 -> BudgetLineType.GROUP;
+                case 3 -> BudgetLineType.LINE;
                 default -> throw new BudgetReadException("Código %s com mais de três níveis na pág. %d"
                         .formatted(code, line.page()));
             };

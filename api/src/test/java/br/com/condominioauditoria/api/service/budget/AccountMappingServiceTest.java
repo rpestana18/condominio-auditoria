@@ -53,19 +53,19 @@ class AccountMappingServiceTest {
         assertThat(r.withoutSuggestion()).extracting(AccountWithoutSuggestionResponse::account).containsExactly("1108",
                 "1324");
         AccountMapping d = single("1621");
-        assertThat(d.getStatus()).isEqualTo(AccountMappingStatus.SUGERIDO);
-        assertThat(d.getSource()).isEqualTo(AccountMappingSource.NOME);
+        assertThat(d.getStatus()).isEqualTo(AccountMappingStatus.SUGGESTED);
+        assertThat(d.getSource()).isEqualTo(AccountMappingSource.NAME);
         assertThat(d.getBudgetLineId()).isEqualTo(scenario.line(budget, "1.7.8", 0).getId());
         assertThat(d.getBudgetLineId()).isNotEqualTo(scenario.line(budget, "1.3.23", 0).getId());
         assertThat(d.getReason()).contains("MATERIAL HIDRAULICO");
         assertThat(scenario.mappingEvents).singleElement().satisfies(e -> {
-            assertThat(e.getAction()).isEqualTo(AccountMappingAction.SUGERIDO);
+            assertThat(e.getAction()).isEqualTo(AccountMappingAction.SUGGESTED);
             assertThat(e.getPreviousTarget()).isNull();
             assertThat(e.getNewTarget()).startsWith("1.7.8");
             assertThat(e.getUsername()).isEqualTo("admin");
         });
 
-        var list = scenario.accountMapping.list(scenario.condominiumId, budget.getId(), AccountMappingFilter.TODAS);
+        var list = scenario.accountMapping.list(scenario.condominiumId, budget.getId(), AccountMappingFilter.ALL);
         assertThat(list.summary()).isEqualTo(new AccountMappingSummaryResponse(3, 0, 1, 0, 2));
         assertThat(list.accounts()).extracting(AccountMappingResponse::account).containsExactly("1108", "1324", "1621");
         assertThat(EffectiveAccountMapping.confirmed(scenario.mappings)).isEmpty();
@@ -92,12 +92,12 @@ class AccountMappingServiceTest {
 
         assertThat(r.accepted()).isEqualTo(3);
         assertThat(r.rejected()).singleElement().satisfies(x -> assertThat(x.line()).isEqualTo(4));
-        assertThat(scenario.mappings).allMatch(d -> d.getStatus() == AccountMappingStatus.SUGERIDO
-                && d.getSource() == AccountMappingSource.PLANILHA);
+        assertThat(scenario.mappings).allMatch(d -> d.getStatus() == AccountMappingStatus.SUGGESTED
+                && d.getSource() == AccountMappingSource.SPREADSHEET);
         assertThat(EffectiveAccountMapping.confirmed(scenario.mappings)).isEmpty();
 
         scenario.accountMapping.batch(scenario.condominiumId, budget.getId(),
-                new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRMAR, List.of("1621")), "admin");
+                new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRM, List.of("1621")), "admin");
         var second = scenario.accountMapping.loadSheet(scenario.condominiumId, budget.getId(), "mapa.csv",
                 "1621;1.3.20\n",
                 "admin");
@@ -114,54 +114,54 @@ class AccountMappingServiceTest {
         int before = scenario.mappingEvents.size();
 
         var r = scenario.accountMapping.batch(scenario.condominiumId, budget.getId(),
-                new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRMAR, List.of("1621", "1108", "1324",
+                new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRM, List.of("1621", "1108", "1324",
                         "5555")), "admin");
 
         assertThat(r.changed()).isEqualTo(3);
         assertThat(r.skipped()).extracting(SkippedAccountResponse::account).containsExactly("5555");
         assertThat(scenario.mappingEvents.subList(before, scenario.mappingEvents.size()))
-                .hasSize(3).allMatch(e -> e.getAction() == AccountMappingAction.CONFIRMADO
-                        && e.getPreviousStatus() == AccountMappingStatus.SUGERIDO && e.getNewStatus() == AccountMappingStatus.CONFIRMADO);
+                .hasSize(3).allMatch(e -> e.getAction() == AccountMappingAction.CONFIRMED
+                        && e.getPreviousStatus() == AccountMappingStatus.SUGGESTED && e.getNewStatus() == AccountMappingStatus.CONFIRMED);
         assertThat(EffectiveAccountMapping.confirmed(scenario.mappings)).containsOnlyKeys("1108", "1324", "1621");
 
         scenario.accountMapping.batch(scenario.condominiumId, budget.getId(),
-                new AccountMappingBatchRequest(AccountMappingBatchAction.RECUSAR, List.of("1324")), "admin");
+                new AccountMappingBatchRequest(AccountMappingBatchAction.REJECT, List.of("1324")), "admin");
         assertThat(EffectiveAccountMapping.confirmed(scenario.mappings)).containsOnlyKeys("1108", "1621");
         assertThat(scenario.accountMapping.list(scenario.condominiumId, budget.getId(),
-                AccountMappingFilter.PENDENTES).accounts())
+                AccountMappingFilter.PENDING).accounts())
                 .extracting(AccountMappingResponse::account).containsExactly("1324");
     }
 
     @Test
     void targetChangeRecordsPreviousAndNew() {
         scenario.accountMapping.setTarget(scenario.condominiumId, budget.getId(), "1108",
-                new MappingTargetRequest(MappingTargetType.LINHA_PO, scenario.line(budget, "1.3.20", 0).getId(), null,
+                new MappingTargetRequest(MappingTargetType.BUDGET_LINE, scenario.line(budget, "1.3.20", 0).getId(), null,
                         null), "admin");
         scenario.accountMapping.setTarget(scenario.condominiumId, budget.getId(), "1108",
-                new MappingTargetRequest(MappingTargetType.LINHA_PO, scenario.line(budget, "1.3.1", 0).getId(), null,
+                new MappingTargetRequest(MappingTargetType.BUDGET_LINE, scenario.line(budget, "1.3.1", 0).getId(), null,
                         true), "admin2");
 
         AccountMappingEvent change = scenario.mappingEvents.getLast();
-        assertThat(change.getAction()).isEqualTo(AccountMappingAction.ALTERADO);
+        assertThat(change.getAction()).isEqualTo(AccountMappingAction.CHANGED);
         assertThat(change.getPreviousTarget()).startsWith("1.3.20");
         assertThat(change.getNewTarget()).startsWith("1.3.1 ");
         assertThat(change.getUsername()).isEqualTo("admin2");
-        assertThat(change.getPreviousStatus()).isEqualTo(AccountMappingStatus.CONFIRMADO);
+        assertThat(change.getPreviousStatus()).isEqualTo(AccountMappingStatus.CONFIRMED);
         assertThat(scenario.accountMapping.events(scenario.condominiumId, budget.getId())).hasSize(2);
     }
 
     @Test
     void invalidTargetIsRejected() {
         assertThatThrownBy(() -> scenario.accountMapping.setTarget(scenario.condominiumId, budget.getId(), "1108",
-                new MappingTargetRequest(MappingTargetType.LINHA_PO, scenario.line(budget, "1.9.1", 0).getId(), null,
+                new MappingTargetRequest(MappingTargetType.BUDGET_LINE, scenario.line(budget, "1.9.1", 0).getId(), null,
                         null), "admin"))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("1.9");
         assertThatThrownBy(() -> scenario.accountMapping.setTarget(scenario.condominiumId, budget.getId(), "1108",
-                new MappingTargetRequest(MappingTargetType.LINHA_PO, scenario.line(budget, "1.3", 0).getId(), null,
+                new MappingTargetRequest(MappingTargetType.BUDGET_LINE, scenario.line(budget, "1.3", 0).getId(), null,
                         null), "admin"))
                 .isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> scenario.accountMapping.setTarget(scenario.condominiumId, budget.getId(), "abc",
-                new MappingTargetRequest(MappingTargetType.AJUSTE, null, null, null), "admin"))
+                new MappingTargetRequest(MappingTargetType.ADJUSTMENT, null, null, null), "admin"))
                 .isInstanceOf(ResponseStatusException.class);
         assertThat(scenario.mappings).isEmpty();
     }
@@ -180,7 +180,7 @@ class AccountMappingServiceTest {
                 "1621;1.7.8\n1324;AJUSTE (estorno)\n",
                 "admin");
         scenario.accountMapping.batch(scenario.condominiumId, budget.getId(),
-                new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRMAR, List.of("1621", "1324")),
+                new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRM, List.of("1621", "1324")),
                 "admin");
         Budget v2 = scenario.readBudget(PilotBudget.defaults());
         var request = scenario.pilotRequest(v2);
@@ -193,10 +193,10 @@ class AccountMappingServiceTest {
 
         assertThat(r.fromPreviousVersion()).isEqualTo(2);
         var same = scenario.accountMapping.list(scenario.condominiumId, v2.getId(),
-                AccountMappingFilter.IGUAIS_VERSAO_ANTERIOR);
+                AccountMappingFilter.SAME_AS_PREVIOUS_VERSION);
         assertThat(same.accounts()).extracting(AccountMappingResponse::account).containsExactly("1324", "1621");
-        assertThat(same.accounts()).allMatch(c -> c.status() == AccountMappingStatus.SUGERIDO
-                && c.source() == AccountMappingSource.VERSAO_ANTERIOR && c.reason().startsWith("igual à versão anterior"));
+        assertThat(same.accounts()).allMatch(c -> c.status() == AccountMappingStatus.SUGGESTED
+                && c.source() == AccountMappingSource.PREVIOUS_VERSION && c.reason().startsWith("igual à versão anterior"));
         assertThat(same.accounts().get(1).target().lineId()).isEqualTo(scenario.line(v2, "1.7.8", 0).getId());
         // Version 1 does not change; version 2 does not inherit confirmation
         assertThat(EffectiveAccountMapping.confirmed(scenario.mappings.stream()
@@ -205,7 +205,7 @@ class AccountMappingServiceTest {
                 .filter(d -> d.getBudgetId().equals(v2.getId())).toList())).isEmpty();
 
         scenario.accountMapping.batch(scenario.condominiumId, v2.getId(),
-                new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRMAR,
+                new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRM,
                         same.accounts().stream().map(AccountMappingResponse::account).toList()),
                 "admin");
         assertThat(scenario.accountMapping.list(scenario.condominiumId, v2.getId(),

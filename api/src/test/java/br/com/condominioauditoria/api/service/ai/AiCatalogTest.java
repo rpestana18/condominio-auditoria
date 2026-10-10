@@ -52,7 +52,7 @@ class AiCatalogTest {
         assertThat(loaded.providers()).extracting(AiCatalog.AiProvider::code)
                 .containsExactly("anthropic", "ollama-local", "voyage");
         var anthropic = loaded.provider("anthropic").orElseThrow();
-        assertThat(anthropic.function()).isEqualTo(AiFunction.RESPOSTAS);
+        assertThat(anthropic.function()).isEqualTo(AiFunction.ANSWERS);
         assertThat(anthropic.requiresKey()).isTrue();
         assertThat(anthropic.dimension()).isNull();
         assertThat(anthropic.defaultModel().orElseThrow().id()).isEqualTo("claude-sonnet-5-5");

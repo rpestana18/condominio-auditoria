@@ -357,7 +357,7 @@ public final class BudgetScenario {
                 eventRepo,
                 query, published::add);
 
-        minutes = file(FileCategory.ATA, "ata-ago-2026-05.pdf");
+        minutes = file(FileCategory.MINUTES, "ata-ago-2026-05.pdf");
     }
 
     /**
@@ -374,8 +374,8 @@ public final class BudgetScenario {
 
     /** Cash flow file of the trial balances category, read (completed), covering the period. */
     public SourceFile cashFlow(String name, LocalDate start, LocalDate end, int entries) {
-        SourceFile a = file(FileCategory.BALANCETE, name);
-        a.complete(FileStatus.CONCLUIDO, "Todas as conferências passaram", "fluxo-protest", start, end, entries);
+        SourceFile a = file(FileCategory.TRIAL_BALANCE, name);
+        a.complete(FileStatus.COMPLETED, "Todas as conferências passaram", "fluxo-protest", start, end, entries);
         return a;
     }
 

@@ -49,7 +49,7 @@ class FundControllerTest {
 
     @Test
     void listsByPrintedNameWithTheOperatingFundFlagged() {
-        logIn(condominiumId, "USUARIO");
+        logIn(condominiumId, "USER");
 
         var list = controller.list(condominiumId);
 
@@ -66,7 +66,7 @@ class FundControllerTest {
         when(condominiums.findById(condominiumId)).thenReturn(Optional.of(withoutOperatingFund));
         FundRepository funds = mock(FundRepository.class);
         when(funds.findByCondominiumId(condominiumId)).thenReturn(List.of(operatingFund, new Fund(condominiumId, "OBRAS")));
-        logIn(condominiumId, "GESTOR");
+        logIn(condominiumId, "MANAGER");
 
         var list = new FundController(new CondominiumAccess(), new FundService(condominiums, funds)).list(condominiumId);
 
@@ -76,13 +76,13 @@ class FundControllerTest {
 
     @Test
     void otherCondominiumIsNotListed() {
-        logIn(UUID.randomUUID(), "GESTOR");
+        logIn(UUID.randomUUID(), "MANAGER");
 
         assertThatThrownBy(() -> controller.list(condominiumId)).isInstanceOf(AccessDeniedException.class);
     }
 
     private static void logIn(UUID condominium, String role) {
-        Jwt jwt = Jwt.withTokenValue("t").header("alg", "none").subject("p").claim("condominios",
+        Jwt jwt = Jwt.withTokenValue("t").header("alg", "none").subject("p").claim("condominiums",
                 List.of(condominium.toString())).build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role)), "p"));

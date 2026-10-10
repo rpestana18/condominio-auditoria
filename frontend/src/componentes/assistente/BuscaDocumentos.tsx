@@ -25,7 +25,7 @@ export function BuscaDocumentos() {
     const termo = texto.trim();
     if (!termo) return;
     setBuscado(termo);
-    buscar.mutate({ texto: termo, filtros: filtrosParaApi(filtros), limite: LIMITE_RESULTADOS });
+    buscar.mutate({ text: termo, filters: filtrosParaApi(filtros), limit: LIMITE_RESULTADOS });
   }
 
   return (
@@ -64,7 +64,7 @@ export function BuscaDocumentos() {
               </p>
               <div className="lista-trechos">
                 {buscar.data.map((t) => (
-                  <FonteDocumento key={t.trechoId} trecho={t} />
+                  <FonteDocumento key={t.chunkId} trecho={t} />
                 ))}
               </div>
             </>

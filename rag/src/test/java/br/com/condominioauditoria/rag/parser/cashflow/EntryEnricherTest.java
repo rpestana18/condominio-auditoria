@@ -28,8 +28,8 @@ public class EntryEnricherTest {
 
     @Test
     public void otherCreditsAreNotCondoFee() {
-        assertThat(EntryEnricher.condoFeeReceipt("RECIBOS DE CONTRATO", new BigDecimal("1742.10"), ZERO)).isFalse();
-        assertThat(EntryEnricher.condoFeeReceipt("TRANSFERENCIA DE CONDOMÍNIO", new BigDecimal("50.00"),
+        assertThat(EntryEnricher.condoFeeReceipt("RECIBOS DE CONTRACT", new BigDecimal("1742.10"), ZERO)).isFalse();
+        assertThat(EntryEnricher.condoFeeReceipt("TRANSFER DE CONDOMÍNIO", new BigDecimal("50.00"),
                 ZERO)).isFalse();
     }
 }

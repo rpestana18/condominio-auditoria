@@ -10,21 +10,21 @@ import br.com.condominioauditoria.api.repository.condominium.CondominiumReposito
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.security.CondominiumAccess;
 import br.com.condominioauditoria.api.service.dashboard.DashboardService;
-import br.com.condominioauditoria.contratos.consulta.v1.ArquivoResumo;
-import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosResponse;
-import br.com.condominioauditoria.contratos.consulta.v1.CondominioResumo;
-import br.com.condominioauditoria.contratos.consulta.v1.Conferencia;
-import br.com.condominioauditoria.contratos.consulta.v1.ConferenciasDoArquivoRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ConferenciasDoArquivoResponse;
-import br.com.condominioauditoria.contratos.consulta.v1.FundoNoPeriodo;
-import br.com.condominioauditoria.contratos.consulta.v1.Lancamento;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarArquivosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarArquivosResponse;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarCondominiosResponse;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarLancamentosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ResumoFundosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ResumoFundosResponse;
+import br.com.condominioauditoria.contracts.query.v2.FileSummary;
+import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsRequest;
+import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsResponse;
+import br.com.condominioauditoria.contracts.query.v2.CondominiumSummary;
+import br.com.condominioauditoria.contracts.query.v2.FileCheck;
+import br.com.condominioauditoria.contracts.query.v2.FileChecksRequest;
+import br.com.condominioauditoria.contracts.query.v2.FileChecksResponse;
+import br.com.condominioauditoria.contracts.query.v2.FundInPeriod;
+import br.com.condominioauditoria.contracts.query.v2.Entry;
+import br.com.condominioauditoria.contracts.query.v2.ListFilesRequest;
+import br.com.condominioauditoria.contracts.query.v2.ListFilesResponse;
+import br.com.condominioauditoria.contracts.query.v2.ListCondominiumsResponse;
+import br.com.condominioauditoria.contracts.query.v2.ListEntriesRequest;
+import br.com.condominioauditoria.contracts.query.v2.FundSummaryRequest;
+import br.com.condominioauditoria.contracts.query.v2.FundSummaryResponse;
 import io.grpc.Status;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -39,7 +39,7 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 
 /**
- * Read-only queries of contracts/grpc/consulta/v1/consulta.proto, called by the mcp and by the rag with the user's
+ * Read-only queries of contracts/grpc/query/v2/query.proto, called by the mcp and by the rag with the user's
  * token. Uses the same services and repositories as the REST API, so the numbers match the screen. Every query that
  * names a condominium checks the user's access to it first; an invalid argument is an {@link IllegalArgumentException}.
  */
@@ -72,64 +72,64 @@ public class QueryService {
     }
 
     /** The condominiums the user can access. */
-    public ListarCondominiosResponse condominiums() {
-        return ListarCondominiosResponse.newBuilder()
-                .addAllCondominios(condominiums.findAll().stream()
+    public ListCondominiumsResponse condominiums() {
+        return ListCondominiumsResponse.newBuilder()
+                .addAllCondominiums(condominiums.findAll().stream()
                         .filter(c -> access.canAccess(c.getId()))
-                        .map(c -> CondominioResumo.newBuilder().setId(c.getId().toString()).setNome(c.getName())
+                        .map(c -> CondominiumSummary.newBuilder().setId(c.getId().toString()).setName(c.getName())
                                 .build())
                         .toList())
                 .build();
     }
 
     /** The latest dashboard numbers, per fund; temDados false when no file was processed yet. */
-    public ResumoFundosResponse fundSummary(ResumoFundosRequest request) {
-        UUID condominiumId = condominium(request.getCondominioId());
-        return dashboard.latest(condominiumId).map(p -> ResumoFundosResponse.newBuilder()
-                .setTemDados(true)
-                .setArquivoId(p.fileId().toString())
-                .setArquivoNome(p.fileName())
-                .setPeriodoInicio(text(p.periodStart()))
-                .setPeriodoFim(text(p.periodEnd()))
-                .setSaldoAnterior(money(p.openingBalance()))
-                .setEntradas(money(p.inflows()))
-                .setSaidas(money(p.outflows()))
-                .setSaldoAtual(money(p.closingBalance()))
-                .setConferenciasComFalha((int) p.failedChecks())
-                .addAllFundos(p.funds().stream().map(f -> FundoNoPeriodo.newBuilder()
-                        .setFundo(f.fund())
-                        .setSaldoAnterior(money(f.openingBalance()))
-                        .setEntradas(money(f.inflows()))
-                        .setSaidas(money(f.outflows()))
-                        .setSaldoAtual(money(f.closingBalance()))
+    public FundSummaryResponse fundSummary(FundSummaryRequest request) {
+        UUID condominiumId = condominium(request.getCondominiumId());
+        return dashboard.latest(condominiumId).map(p -> FundSummaryResponse.newBuilder()
+                .setHasData(true)
+                .setFileId(p.fileId().toString())
+                .setFileName(p.fileName())
+                .setPeriodStart(text(p.periodStart()))
+                .setPeriodEnd(text(p.periodEnd()))
+                .setOpeningBalance(money(p.openingBalance()))
+                .setInflows(money(p.inflows()))
+                .setOutflows(money(p.outflows()))
+                .setClosingBalance(money(p.closingBalance()))
+                .setFailedChecks((int) p.failedChecks())
+                .addAllFunds(p.funds().stream().map(f -> FundInPeriod.newBuilder()
+                        .setFund(f.fund())
+                        .setOpeningBalance(money(f.openingBalance()))
+                        .setInflows(money(f.inflows()))
+                        .setOutflows(money(f.outflows()))
+                        .setClosingBalance(money(f.closingBalance()))
                         .build()).toList())
                 .build())
-                .orElse(ResumoFundosResponse.newBuilder().setTemDados(false).build());
+                .orElse(FundSummaryResponse.newBuilder().setHasData(false).build());
     }
 
     /** The condominium's files, newest first, optionally of one category. */
-    public ListarArquivosResponse files(ListarArquivosRequest request) {
-        UUID condominiumId = condominium(request.getCondominioId());
-        int limit = limit(request.getLimite(), 50, 500);
-        List<SourceFile> list = request.getCategoria().isBlank()
+    public ListFilesResponse files(ListFilesRequest request) {
+        UUID condominiumId = condominium(request.getCondominiumId());
+        int limit = limit(request.getLimit(), 50, 500);
+        List<SourceFile> list = request.getCategory().isBlank()
                 ? files.findByCondominiumIdOrderByUploadedAtDesc(condominiumId)
                 : files.findByCondominiumIdAndCategoryOrderByUploadedAtDesc(condominiumId,
-                        category(request.getCategoria()));
-        return ListarArquivosResponse.newBuilder()
-                .addAllArquivos(list.stream().limit(limit).map(QueryService::summary).toList())
+                        category(request.getCategory()));
+        return ListFilesResponse.newBuilder()
+                .addAllFiles(list.stream().limit(limit).map(QueryService::summary).toList())
                 .build();
     }
 
     /** The totals checks of one file of the condominium. */
-    public ConferenciasDoArquivoResponse fileChecks(ConferenciasDoArquivoRequest request) {
-        UUID condominiumId = condominium(request.getCondominioId());
-        UUID fileId = uuid(request.getArquivoId(), "arquivo_id");
+    public FileChecksResponse fileChecks(FileChecksRequest request) {
+        UUID condominiumId = condominium(request.getCondominiumId());
+        UUID fileId = uuid(request.getFileId(), "arquivo_id");
         files.findByIdAndCondominiumId(fileId, condominiumId)
                 .orElseThrow(() -> Status.NOT_FOUND.withDescription("Arquivo não encontrado").asRuntimeException());
-        return ConferenciasDoArquivoResponse.newBuilder()
-                .addAllConferencias(totalsChecks.findByFileIdOrderBySequence(fileId).stream()
-                        .map(c -> Conferencia.newBuilder().setCodigo(c.getCode()).setDescricao(c.getDescription())
-                                .setOk(c.isOk()).setDetalhe(Objects.toString(c.getDetail(), "")).build())
+        return FileChecksResponse.newBuilder()
+                .addAllChecks(totalsChecks.findByFileIdOrderBySequence(fileId).stream()
+                        .map(c -> FileCheck.newBuilder().setCode(c.getCode()).setDescription(c.getDescription())
+                                .setOk(c.isOk()).setDetail(Objects.toString(c.getDetail(), "")).build())
                         .toList())
                 .build();
     }
@@ -138,39 +138,39 @@ public class QueryService {
      * Ledger entries matching the filters. The stream converts each entry only when it is read, so the caller can send
      * each one as soon as it is ready, without building the whole list of messages.
      */
-    public Stream<Lancamento> ledgerEntries(ListarLancamentosRequest request) {
-        UUID condominiumId = condominium(request.getCondominioId());
+    public Stream<Entry> ledgerEntries(ListEntriesRequest request) {
+        UUID condominiumId = condominium(request.getCondominiumId());
         Map<UUID, String> names = funds.findByCondominiumId(condominiumId).stream()
                 .collect(Collectors.toMap(Fund::getId, Fund::getName));
-        String fundFilter = request.getFundo().trim().toLowerCase();
+        String fundFilter = request.getFund().trim().toLowerCase();
         List<UUID> filteredFunds = fundFilter.isEmpty() ? List.of(UUID.randomUUID())
                 : names.entrySet().stream().filter(e -> e.getValue().toLowerCase().contains(fundFilter))
                         .map(Map.Entry::getKey).toList();
         if (!fundFilter.isEmpty() && filteredFunds.isEmpty()) {
             return Stream.empty();
         }
-        String text = request.getTexto().isBlank() ? "" : "%" + request.getTexto().trim().toLowerCase() + "%";
+        String text = request.getText().isBlank() ? "" : "%" + request.getText().trim().toLowerCase() + "%";
         var list = ledgerEntries.search(condominiumId,
-                date(request.getDataInicio(), LocalDate.of(1900, 1, 1)),
-                date(request.getDataFim(), LocalDate.of(9999, 12, 31)),
-                fundFilter.isEmpty(), filteredFunds, text, request.getSomenteSaidas(),
-                Limit.of(limit(request.getLimite(), DEFAULT_LIMIT, MAX_LIMIT)));
-        return list.stream().map(l -> Lancamento.newBuilder()
-                .setData(text(l.getDate()))
-                .setFundo(Objects.toString(names.get(l.getFundId()), ""))
-                .setContaCodigo(Objects.toString(l.getAccountCode(), ""))
-                .setContaNome(Objects.toString(l.getAccountName(), ""))
-                .setDocumento(Objects.toString(l.getDocument(), ""))
-                .setHistorico(l.getMemo())
-                .setCredito(money(l.getCredit()))
-                .setDebito(money(l.getDebit()))
-                .setSaldo(money(l.getBalance()))
-                .setFornecedor(Objects.toString(l.getSupplier(), ""))
-                .setNotaFiscal(Objects.toString(l.getInvoiceNumber(), ""))
-                .setMeioPagamento(Objects.toString(l.getPaymentMethod(), ""))
-                .setTransferenciaEntreFundos(l.isInterFundTransfer())
-                .setArquivoId(l.getFileId().toString())
-                .setPagina(l.getPage())
+                date(request.getDateFrom(), LocalDate.of(1900, 1, 1)),
+                date(request.getDateTo(), LocalDate.of(9999, 12, 31)),
+                fundFilter.isEmpty(), filteredFunds, text, request.getOutflowsOnly(),
+                Limit.of(limit(request.getLimit(), DEFAULT_LIMIT, MAX_LIMIT)));
+        return list.stream().map(l -> Entry.newBuilder()
+                .setDate(text(l.getDate()))
+                .setFund(Objects.toString(names.get(l.getFundId()), ""))
+                .setAccountCode(Objects.toString(l.getAccountCode(), ""))
+                .setAccountName(Objects.toString(l.getAccountName(), ""))
+                .setDocument(Objects.toString(l.getDocument(), ""))
+                .setMemo(l.getMemo())
+                .setCredit(money(l.getCredit()))
+                .setDebit(money(l.getDebit()))
+                .setBalance(money(l.getBalance()))
+                .setSupplier(Objects.toString(l.getSupplier(), ""))
+                .setInvoiceNumber(Objects.toString(l.getInvoiceNumber(), ""))
+                .setPaymentMethod(Objects.toString(l.getPaymentMethod(), ""))
+                .setInterFundTransfer(l.isInterFundTransfer())
+                .setFileId(l.getFileId().toString())
+                .setPage(l.getPage())
                 .build());
     }
 
@@ -179,8 +179,8 @@ public class QueryService {
      * condominium checks as the other queries; the rag also filters by condominium, and on the way back the api drops
      * chunks of files that are not the condominium's.
      */
-    public BuscarDocumentosResponse searchDocuments(BuscarDocumentosRequest request) {
-        return documentSearch.search(condominium(request.getCondominioId()), request);
+    public SearchDocumentsResponse searchDocuments(SearchDocumentsRequest request) {
+        return documentSearch.search(condominium(request.getCondominiumId()), request);
     }
 
     private UUID condominium(String id) {
@@ -228,18 +228,18 @@ public class QueryService {
         return value == null ? "" : value.toString();
     }
 
-    private static ArquivoResumo summary(SourceFile file) {
-        return ArquivoResumo.newBuilder()
+    private static FileSummary summary(SourceFile file) {
+        return FileSummary.newBuilder()
                 .setId(file.getId().toString())
-                .setCategoria(file.getCategory().name())
-                .setNome(file.getOriginalName())
+                .setCategory(file.getCategory().name())
+                .setName(file.getOriginalName())
                 .setStatus(file.getStatus().name())
-                .setMensagem(Objects.toString(file.getMessage(), ""))
-                .setPeriodoInicio(text(file.getPeriodStart()))
-                .setPeriodoFim(text(file.getPeriodEnd()))
-                .setTotalLancamentos(file.getEntryCount() == null ? 0 : file.getEntryCount())
-                .setEnviadoPor(file.getUploadedBy())
-                .setEnviadoEm(text(file.getUploadedAt()))
+                .setMessage(Objects.toString(file.getMessage(), ""))
+                .setPeriodStart(text(file.getPeriodStart()))
+                .setPeriodEnd(text(file.getPeriodEnd()))
+                .setEntryCount(file.getEntryCount() == null ? 0 : file.getEntryCount())
+                .setUploadedBy(file.getUploadedBy())
+                .setUploadedAt(text(file.getUploadedAt()))
                 .build();
     }
 }

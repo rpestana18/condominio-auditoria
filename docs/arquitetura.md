@@ -58,9 +58,8 @@ condominio-auditoria/
 ├── contracts/
 │   ├── openapi.yaml            # frontend ↔ backend
 │   ├── leitor/v1/              # rag ↔ leitor (JSON Schema)
-│   ├── mensagens/v1/           # backend ↔ rag pela fila (JSON Schema + exemplos testados dos dois lados)
-│   ├── mensagens/v2/           # ADR 0004: resultado-processamento v2, com a PO lida e o recebimento de cota
-│   └── grpc/consulta/v1/       # mcp → backend (.proto)
+│   ├── mensagens/v3/           # api ↔ rag pela fila (JSON Schema + exemplos testados dos dois lados; v1 e v2 são histórico)
+│   └── grpc/query/v2/       # mcp → backend (.proto)
 ├── infra/
 │   ├── docker-compose.yml      # PostgreSQL, RabbitMQ, Keycloak, leitor, backend, rag, mcp, frontend
 │   ├── java.Dockerfile         # imagem dos serviços Java (o serviço vem por argumento)
@@ -81,8 +80,8 @@ Regras: um serviço **nunca importa classe de outro** nem lê o schema de banco 
 - Os trechos e vetores do RAG também são dados processados; se o banco se perder, tudo é reprocessável a partir de `dados/`.
 
 ### 2.2 Processamento em segundo plano (fila RabbitMQ)
-- Upload: o backend grava o original, cria o registro com status **Pendente** e responde na hora. Depois do commit, publica o pedido de leitura na fila `rag.arquivos-recebidos`.
-- O rag lê o original, chama o leitor, interpreta, confere e publica em `backend.resultados`: **INICIADO**, depois **CONCLUIDO** (com os dados) ou **FALHOU** (com o motivo). Só confirma o pedido depois de publicar o resultado.
+- Upload: o backend grava o original, cria o registro com status **Pendente** e responde na hora. Depois do commit, publica o pedido de leitura na fila `rag.files-received`.
+- O rag lê o original, chama o leitor, interpreta, confere e publica em `api.processing-results`: **INICIADO**, depois **CONCLUIDO** (com os dados) ou **FALHOU** (com o motivo). Só confirma o pedido depois de publicar o resultado.
 - O backend grava o resultado em **uma transação** (apaga a extração anterior do arquivo e insere a nova). Falha = rollback e retentativa; depois de 3 vezes, a mensagem vai para a fila `.erro`.
 - Cada leitura tem um `processamentoId`; reprocessar gera outro, e resultado com id antigo é descartado.
 - Filas duráveis: serviço reiniciado encontra o trabalho esperando. Uma varredura reenvia o que ficou parado há mais de 15 minutos (até 3 tentativas).
@@ -119,7 +118,7 @@ Idempotente: reenviar o mesmo arquivo não duplica nada.
 - Busca **híbrida** (palavra-chave + vetorial) com filtro por categoria/período/permissão.
 - Geração com **citações obrigatórias**. Perguntas numéricas são roteadas para **ferramentas** que consultam o banco (*text-to-query* controlado ou endpoints prontos), nunca respondidas só pelo texto.
 - Também alimenta o backend: extrai cláusulas de contratos (valor, índice de reajuste, data-base, vigência) e regras da convenção (rateio, multas, fundo de reserva) para parâmetros que o admin confirma.
-- **Assistente (módulo contratável, RF-04 e RF-10). ADR 0003, aprovada pelo usuário em 03/10/2026:** índice no schema `rag` (trechos cortados por página, aba e linha, ou seção e parágrafo; vetores `vector(1024)` com pgvector; busca por palavra em português sem acento); busca híbrida com fusão de posições e filtro de condomínio antes da busca; embeddings locais (`bge-m3` no contêiner Ollama) em todos os modos; indexação pela fila `rag.indexacao`, só para condomínio com o módulo ligado; chat recebido do backend por gRPC (`contracts/grpc/assistente/v1`: `Buscar`, `Perguntar` em fluxo e `ListarProvedores`), com os números buscados no backend pelo `Consulta` com o token do usuário.
+- **Assistente (módulo contratável, RF-04 e RF-10). ADR 0003, aprovada pelo usuário em 03/10/2026:** índice no schema `rag` (trechos cortados por página, aba e linha, ou seção e parágrafo; vetores `vector(1024)` com pgvector; busca por palavra em português sem acento); busca híbrida com fusão de posições e filtro de condomínio antes da busca; embeddings locais (`bge-m3` no contêiner Ollama) em todos os modos; indexação pela fila `rag.indexing`, só para condomínio com o módulo ligado; chat recebido do backend por gRPC (`contracts/grpc/assistant/v2`: `Search`, `Ask` em fluxo e `ListProviders`), com os números buscados no backend pelo `Consulta` com o token do usuário.
 
 ### 3.3 Backend (serviço `backend`)
 - **Auth e perfis** (Usuário/Gestor/Admin) aplicados em todos os endpoints.
@@ -140,19 +139,19 @@ ADR 0004: telas "Previsto × realizado" (todos os perfis), "De-para" e confirma�
 ADR 0005 (aprovada em 07/10/2026): menu "Análise da PO" com filtro de exercício, telas "Comparar exercícios" e "Indicadores" (Recharts, sem cálculo no frontend) e tela de rubricas para o Admin.
 
 ### 3.5 MCP (serviço `mcp`, Spring AI)
-- Expõe o sistema como **ferramentas MCP** (transporte HTTP sem sessão). Já existem: `listar_condominios`, `resumo_fundos`, `listar_arquivos`, `conferencias_do_arquivo`, `buscar_lancamentos`. Depois: `listar_achados`, `previsto_realizado` (requisito próprio, RF-08.1; fora da ADR 0004), `buscar_documentos` (RAG), `gerar_relatorio`.
-- Não tem banco nem regra: cada ferramenta é uma chamada **gRPC** ao backend (`contracts/grpc/consulta/v1`), com o token do usuário. Listas grandes chegam em fluxo (stream).
+- Expõe o sistema como **ferramentas MCP** (transporte HTTP sem sessão). Já existem: `list_condominiums`, `fund_summary`, `list_files`, `file_checks`, `find_entries`. Depois: `listar_achados`, `previsto_realizado` (requisito próprio, RF-08.1; fora da ADR 0004), `search_documents` (RAG), `gerar_relatorio`.
+- Não tem banco nem regra: cada ferramenta é uma chamada **gRPC** ao backend (`contracts/grpc/query/v2`), com o token do usuário. Listas grandes chegam em fluxo (stream).
 - Serve para: uso do sistema pelo Claude Desktop/Code; e testes de integração ponta a ponta conduzidos pelo agente MCP.
 - **Papel de integração**: o agente MCP é acionado sempre que um serviço muda um contrato (OpenAPI, fila, gRPC, ferramenta), para verificar que todos os consumidores continuam funcionando.
 
 ### 3.6 AI Gateway (no serviço `rag`, onde ficam as chamadas a modelos)
 Camada única para modelos de IA. **Modo por condomínio (RF-09)**: MCP_EXTERNO (piloto, o Claude do usuário via MCP), API_KEY (chave própria do condomínio, criptografada) ou DESLIGADO. Troca de provedor/modelo por configuração, cache de respostas por hash do insumo, registro de custo/tokens, *prompts* versionados, saídas estruturadas validadas por esquema. Ponto onde entra o **mascaramento LGPD** na fase de nuvem.
 
-**ADR 0003 (aprovada pelo usuário em 03/10/2026):** modo de IA também **por módulo e por função** (RF-09.6: respostas e embeddings do Assistente; sem configuração própria, herda o modo geral), com `LOCAL` previsto. O **catálogo de provedores** fica na configuração do `rag` e o backend o lê por gRPC (`ListarProvedores`). O `rag` não guarda configuração: cada pedido do backend traz modo, provedor, modelo e a chave já resolvidos; a chave vem cifrada com a chave pública do `rag` e só ele a decifra. O uso (tokens, buscas, chamadas MCP, páginas indexadas) volta ao backend em cada resposta e é gravado lá (RF-09.7).
+**ADR 0003 (aprovada pelo usuário em 03/10/2026):** modo de IA também **por módulo e por função** (RF-09.6: respostas e embeddings do Assistente; sem configuração própria, herda o modo geral), com `LOCAL` previsto. O **catálogo de provedores** fica na configuração do `rag` e o backend o lê por gRPC (`ListProviders`). O `rag` não guarda configuração: cada pedido do backend traz modo, provedor, modelo e a chave já resolvidos; a chave vem cifrada com a chave pública do `rag` e só ele a decifra. O uso (tokens, buscas, chamadas MCP, páginas indexadas) volta ao backend em cada resposta e é gravado lá (RF-09.7).
 
 ### 3.7 Módulos contratáveis por condomínio (RF-10; ADR 0003)
 - O **backend é o dono**: catálogo de módulos (configuração versionada), estado por condomínio, trilha de ativação só de inserção (períodos ativos calculados dela), configuração de IA e registro de uso. Hoje o catálogo tem só o `ASSISTENTE`, desligado por padrão em condomínio novo.
-- Nenhum outro serviço consulta o estado: o frontend lê `GET /condominios/{id}/contexto`; o `mcp` recebe a recusa do backend; o `rag` só age quando recebe um pedido (indexar, buscar, perguntar). Ligar ou desligar vale no pedido seguinte, sem reinício.
+- Nenhum outro serviço consulta o estado: o frontend lê `GET /api/condominiums/{condominiumId}/context`; o `mcp` recebe a recusa do backend; o `rag` só age quando recebe um pedido (indexar, buscar, perguntar). Ligar ou desligar vale no pedido seguinte, sem reinício.
 - Desligar não apaga nada: o backend para de pedir indexação e recusa buscas; o índice fica guardado. Religar reindexa só o que é novo ou mudou.
 
 ---

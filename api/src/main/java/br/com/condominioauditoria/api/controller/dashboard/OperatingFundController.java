@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** The Manager or the Admin confirms which fund is the condominium's operating fund (RF-05.1b). */
 @RestController
-@RequestMapping("/api/condominios/{condominiumId}/fundo-ordinario")
+@RequestMapping("/api/condominiums/{condominiumId}/operating-fund")
 class OperatingFundController {
 
     private final CondominiumAccess access;
@@ -27,7 +27,7 @@ class OperatingFundController {
     }
 
     @PutMapping
-    @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     ResponseEntity<Void> confirm(@PathVariable UUID condominiumId,
             @Valid @RequestBody ConfirmOperatingFundRequest request) {
         access.require(condominiumId);

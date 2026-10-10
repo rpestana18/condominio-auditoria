@@ -48,7 +48,7 @@ class BudgetVsActualGoldenTest {
 
         BudgetVsActualResponse r = g.september().result();
 
-        assertThat(r.status()).isEqualTo(BudgetVsActualStatus.CALCULADO);
+        assertThat(r.status()).isEqualTo(BudgetVsActualStatus.CALCULATED);
         assertThat(r.calculationVersion()).isEqualTo(BudgetVsActualCalculator.VERSION);
         // RF-03.1.6
         assertThat(r.cashFlowCheck().fundDebits()).isEqualByComparingTo("449455.13");
@@ -174,7 +174,7 @@ class BudgetVsActualGoldenTest {
         List<FundResultResponse> funds = g.september().result().funds();
 
         FundResultResponse reserve = fund(funds, "FUNDO DE RESERVA");
-        assertThat(reserve.status()).isEqualTo(FundComparisonStatus.COMPARADO);
+        assertThat(reserve.status()).isEqualTo(FundComparisonStatus.COMPARED);
         assertThat(reserve.lineCode()).isEqualTo("1.9.1");
         assertThat(List.of(reserve.planned(), reserve.collected(), reserve.difference(), reserve.execution()))
                 .usingElementComparator(BigDecimal::compareTo)
@@ -185,10 +185,10 @@ class BudgetVsActualGoldenTest {
                 .usingElementComparator(BigDecimal::compareTo)
                 .containsExactly(dec("9032.40"), dec("9705.06"), dec("672.66"), dec("107.4"));
         FundResultResponse power = fund(funds, "ENERGIA ELETRICA");
-        assertThat(power.status()).isEqualTo(FundComparisonStatus.SEM_PREVISTO_NA_PO);
+        assertThat(power.status()).isEqualTo(FundComparisonStatus.NOT_PLANNED_IN_BUDGET);
         assertThat(power.difference()).isNull();
         FundResultResponse worksOnly = fund(funds, "OBRAS");
-        assertThat(worksOnly.status()).isEqualTo(FundComparisonStatus.SEM_PREVISTO_NA_PO);
+        assertThat(worksOnly.status()).isEqualTo(FundComparisonStatus.NOT_PLANNED_IN_BUDGET);
         assertThat(worksOnly.debits()).isEqualByComparingTo("25.13");
     }
 
@@ -201,7 +201,7 @@ class BudgetVsActualGoldenTest {
                 List.of(g.septemberCashFlow()),
                 List.of())).result();
 
-        assertThat(r.status()).isEqualTo(BudgetVsActualStatus.CALCULADO);
+        assertThat(r.status()).isEqualTo(BudgetVsActualStatus.CALCULATED);
         assertThat(r.totals().planned()).isEqualByComparingTo("451620.13");
         assertThat(r.totals().actualExpense()).isEqualByComparingTo("446176.89");
         assertThat(r.totals().fiscalYearPlanned()).isEqualByComparingTo("5419441.56");
@@ -210,7 +210,7 @@ class BudgetVsActualGoldenTest {
         assertThat(r.warnings()).extracting(BudgetVsActualWarningResponse::text)
                 .contains("mai, jun, jul e ago/2026 sem fluxo carregado");
         assertThat(r.months()).hasSize(12);
-        assertThat(r.months().get(4).status()).isEqualTo(MonthStatus.COM_FLUXO);
+        assertThat(r.months().get(4).status()).isEqualTo(MonthStatus.WITH_CASH_FLOW);
         assertThat(r.months().get(4).overrun()).isEqualByComparingTo("38880.19");
         assertThat(r.months().get(0).planned()).isNull();
         assertThat(r.rule20()).isNull();
@@ -297,12 +297,12 @@ class BudgetVsActualGoldenTest {
         BudgetVsActualResponse cumulative = BudgetVsActualCalculator.calculate(g.input(new Cumulative(),
                 List.of(g.septemberCashFlow(), copy), List.of())).result();
 
-        assertThat(month.status()).isEqualTo(BudgetVsActualStatus.DOIS_FLUXOS);
+        assertThat(month.status()).isEqualTo(BudgetVsActualStatus.TWO_CASH_FLOWS);
         assertThat(month.message()).isEqualTo("Dois fluxos para 09/2026: substitua, reclassifique ou exclua um");
         assertThat(month.totals()).isNull();
         assertThat(month.groups()).isEmpty();
         assertThat(month.months().getFirst().cashFlows()).hasSize(2);
-        assertThat(cumulative.status()).isEqualTo(BudgetVsActualStatus.DOIS_FLUXOS);
+        assertThat(cumulative.status()).isEqualTo(BudgetVsActualStatus.TWO_CASH_FLOWS);
         assertThat(cumulative.monthsWithTwoCashFlows()).containsExactly("2026-09");
     }
 

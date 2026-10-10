@@ -154,7 +154,7 @@ class FeatureControllerPermissionTest {
 
     @Test
     void userAndManagerSeeContextAndFeaturesOfTheirCondominium() {
-        for (String role : List.of("USUARIO", "GESTOR")) {
+        for (String role : List.of("USER", "MANAGER")) {
             logIn(role);
             assertThat(controller.context(PILOT).enabledFeatures()).containsExactly(FeatureService.ASSISTANT);
             assertThat(controller.list(PILOT)).extracting(FeatureResponse::code)
@@ -164,14 +164,14 @@ class FeatureControllerPermissionTest {
 
     @Test
     void withoutCondominiumAccessCannotSeeEvenTheContext() {
-        logIn("GESTOR");
+        logIn("MANAGER");
         assertThatThrownBy(() -> controller.context(OTHER)).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> controller.list(OTHER)).isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
     void userAndManagerCannotEnableOrDisable() {
-        for (String role : List.of("USUARIO", "GESTOR")) {
+        for (String role : List.of("USER", "MANAGER")) {
             logIn(role);
             var request = new ChangeFeatureRequest(true, "x");
             assertThatThrownBy(() -> controller.change(PILOT, FeatureService.ASSISTANT, request))
@@ -182,7 +182,7 @@ class FeatureControllerPermissionTest {
 
     @Test
     void userAndManagerCannotSeeTrailPeriodsOrUsage() {
-        for (String role : List.of("USUARIO", "GESTOR")) {
+        for (String role : List.of("USER", "MANAGER")) {
             logIn(role);
             assertThatThrownBy(() -> controller.events(PILOT, FeatureService.ASSISTANT))
                     .isInstanceOf(AccessDeniedException.class);
@@ -220,7 +220,7 @@ class FeatureControllerPermissionTest {
     /** Token like Keycloak's: role in the realm and list of condominiums (the Admin sees all). */
     private static void logIn(String role) {
         Jwt jwt = new Jwt("t", Instant.now(), Instant.now().plusSeconds(300), Map.of("alg", "none"),
-                Map.of("preferred_username", "pessoa." + role.toLowerCase(), "condominios",
+                Map.of("preferred_username", "pessoa." + role.toLowerCase(), "condominiums",
                         List.of(PILOT.toString())));
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role)), "pessoa." + role.toLowerCase()));

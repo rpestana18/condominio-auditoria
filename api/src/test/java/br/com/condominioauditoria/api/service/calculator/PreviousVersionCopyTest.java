@@ -69,7 +69,7 @@ class PreviousVersionCopyTest {
 
     @Test
     void specialTargetCarriesOverAsSame() {
-        var r = PreviousVersionCopy.copy(confirmed("1324", MappingTarget.special(MappingTargetType.AJUSTE, "estorno")),
+        var r = PreviousVersionCopy.copy(confirmed("1324", MappingTarget.special(MappingTargetType.ADJUSTMENT, "estorno")),
                 previousLines, newLines);
 
         var c = (PreviousVersionCopy.Copied) r;
@@ -78,13 +78,13 @@ class PreviousVersionCopyTest {
     }
 
     private AccountMapping confirmed(String account, MappingTarget target) {
-        return new AccountMapping(v1, account, null, target, AccountMappingStatus.CONFIRMADO,
+        return new AccountMapping(v1, account, null, target, AccountMappingStatus.CONFIRMED,
                 AccountMappingSource.ADMIN, null, false, "admin",
                 Instant.EPOCH);
     }
 
     private static BudgetLine line(Budget budget, String code, String account, String description, String amount) {
-        return new BudgetLine(budget, 1, 1, BudgetLineType.LINHA, code, account, null, null, description,
+        return new BudgetLine(budget, 1, 1, BudgetLineType.LINE, code, account, null, null, description,
                 new BigDecimal(amount),
                 new BigDecimal(amount), null, null);
     }

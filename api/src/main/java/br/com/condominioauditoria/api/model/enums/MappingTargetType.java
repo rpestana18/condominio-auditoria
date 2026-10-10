@@ -5,5 +5,5 @@ package br.com.condominioauditoria.api.model.enums;
  * pagamento (a realocar, RF-02B)"; or "Transferência entre fundos".
  */
 public enum MappingTargetType {
-    LINHA_PO, AJUSTE, A_REALOCAR, TRANSFERENCIA
+    BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER
 }

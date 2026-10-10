@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 /**
  * Receives the reading progress and results from the rag. A single consumer, so that "started" and "completed" of the
  * same file are applied in the order they arrived. If saving fails, the message goes back to the queue (retry) and, if
- * it keeps failing, goes to backend.resultados.erro.
+ * it keeps failing, goes to api.processing-results.error.
  */
 @Component
 class ProcessingResultListener {
@@ -30,9 +30,9 @@ class ProcessingResultListener {
     void onMessage(Message message) {
         ProcessingResultMessage result = contract.readProcessingResult(message.getBody());
         switch (result.status()) {
-            case INICIADO -> fileStatus.processing(result.fileId(), result.processingId());
-            case FALHOU -> fileStatus.failed(result.fileId(), result.processingId(), result.reason());
-            case CONCLUIDO -> processingResults.save(result);
+            case STARTED -> fileStatus.processing(result.fileId(), result.processingId());
+            case FAILED -> fileStatus.failed(result.fileId(), result.processingId(), result.reason());
+            case COMPLETED -> processingResults.save(result);
         }
     }
 }

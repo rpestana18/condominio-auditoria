@@ -12,9 +12,9 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 
 /**
- * ADR 0004, Decision 2 (v1 cut): a v1 result is rejected without touching the database. The exception makes the queue
+ * ADR 0006, phase 2 (v2 cut): a v2 result is rejected without touching the database. The exception makes the queue
  * container reject the message without requeueing it (default-requeue-rejected: false), and RabbitMQ sends it to
- * backend.resultados.erro (dead letter declared in QueueConfig).
+ * api.processing-results.error (dead letter declared in QueueConfig).
  */
 class ProcessingResultListenerTest {
 
@@ -23,8 +23,8 @@ class ProcessingResultListenerTest {
     private final ProcessingResultListener listener = new ProcessingResultListener(new MessageContract(), fileStatus, processingResults);
 
     @Test
-    void v1ResultIsRejectedAndSavesNothing() throws Exception {
-        var message = new Message(MessageContractTest.example("v1", "resultado-concluido.json"),
+    void v2ResultIsRejectedAndSavesNothing() throws Exception {
+        var message = new Message(MessageContractTest.example("v2", "resultado-concluido-fluxo.json"),
                 new MessageProperties());
 
         assertThatThrownBy(() -> listener.onMessage(message)).hasMessageContaining("fora do contrato");
@@ -32,18 +32,18 @@ class ProcessingResultListenerTest {
     }
 
     @Test
-    void v2CashFlowResultGoesToTheWriter() throws Exception {
-        var message = new Message(MessageContractTest.example("v2", "resultado-concluido-fluxo.json"),
+    void v3CashFlowResultGoesToTheWriter() throws Exception {
+        var message = new Message(MessageContractTest.example("v3", "processing-result-cash-flow.json"),
                 new MessageProperties());
 
         listener.onMessage(message);
 
-        verify(processingResults).save(org.mockito.ArgumentMatchers.argThat(r -> r.version() == 2));
+        verify(processingResults).save(org.mockito.ArgumentMatchers.argThat(r -> r.version() == 3));
     }
 
     @Test
-    void v2BudgetResultIsAccepted() throws Exception {
-        var message = new Message(MessageContractTest.example("v2", "resultado-concluido-po.json"),
+    void v3BudgetResultIsAccepted() throws Exception {
+        var message = new Message(MessageContractTest.example("v3", "processing-result-budget.json"),
                 new MessageProperties());
 
         listener.onMessage(message);

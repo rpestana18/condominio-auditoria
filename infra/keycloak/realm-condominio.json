@@ -16,11 +16,11 @@
   "roles": {
     "realm": [
       {
-        "name": "USUARIO",
+        "name": "USER",
         "description": "Consulta e exporta relatórios"
       },
       {
-        "name": "GESTOR",
+        "name": "MANAGER",
         "description": "Consulta, envia e atualiza arquivos e exporta relatórios"
       },
       {
@@ -50,12 +50,12 @@
       },
       "protocolMappers": [
         {
-          "name": "condominios",
+          "name": "condominiums",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usermodel-attribute-mapper",
           "config": {
-            "user.attribute": "condominios",
-            "claim.name": "condominios",
+            "user.attribute": "condominiums",
+            "claim.name": "condominiums",
             "jsonType.label": "String",
             "multivalued": "true",
             "access.token.claim": "true",
@@ -73,12 +73,12 @@
       "directAccessGrantsEnabled": true,
       "protocolMappers": [
         {
-          "name": "condominios",
+          "name": "condominiums",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usermodel-attribute-mapper",
           "config": {
-            "user.attribute": "condominios",
-            "claim.name": "condominios",
+            "user.attribute": "condominiums",
+            "claim.name": "condominiums",
             "jsonType.label": "String",
             "multivalued": "true",
             "access.token.claim": "true",
@@ -96,12 +96,12 @@
       "directAccessGrantsEnabled": true,
       "protocolMappers": [
         {
-          "name": "condominios",
+          "name": "condominiums",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usermodel-attribute-mapper",
           "config": {
-            "user.attribute": "condominios",
-            "claim.name": "condominios",
+            "user.attribute": "condominiums",
+            "claim.name": "condominiums",
             "jsonType.label": "String",
             "multivalued": "true",
             "access.token.claim": "true",
@@ -124,7 +124,7 @@
       "emailVerified": true,
       "enabled": true,
       "attributes": {
-        "condominios": [
+        "condominiums": [
           "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001"
         ]
       },
@@ -136,7 +136,7 @@
         }
       ],
       "realmRoles": [
-        "USUARIO"
+        "USER"
       ]
     },
     {
@@ -147,7 +147,7 @@
       "emailVerified": true,
       "enabled": true,
       "attributes": {
-        "condominios": [
+        "condominiums": [
           "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001"
         ]
       },
@@ -159,7 +159,7 @@
         }
       ],
       "realmRoles": [
-        "GESTOR"
+        "MANAGER"
       ]
     },
     {

@@ -10,7 +10,7 @@ interface Props {
 /** Filtro de fundo usado no previsto × realizado e em "Comparar exercícios". */
 export function SeletorFundo({ fundos, fundoId, aoTrocar }: Props) {
   // O fundo ordinário (fundo Condomínio) vem primeiro; os demais, na ordem de nome da API
-  const ordenados = [...fundos.filter((f) => f.ordinario), ...fundos.filter((f) => !f.ordinario)];
+  const ordenados = [...fundos.filter((f) => f.operating), ...fundos.filter((f) => !f.operating)];
   return (
     <label>
       Fundo
@@ -18,7 +18,7 @@ export function SeletorFundo({ fundos, fundoId, aoTrocar }: Props) {
         <option value="">Todos os fundos</option>
         {ordenados.map((f) => (
           <option key={f.id} value={f.id}>
-            {f.ordinario ? `Fundo Condomínio (${f.nome})` : f.nome}
+            {f.operating ? `Fundo Condomínio (${f.name})` : f.name}
           </option>
         ))}
       </select>

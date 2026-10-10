@@ -129,7 +129,7 @@ class ResponseValidatorTest {
     }
 
     private static FoundChunk chunk(String id, String text) {
-        return new FoundChunk(UUID.fromString(id), UUID.randomUUID(), "contrato.pdf", "CONTRATO",
+        return new FoundChunk(UUID.fromString(id), UUID.randomUUID(), "contrato.pdf", "CONTRACT",
                 new Location.Page(3), text, 1.0, "a".repeat(64));
     }
 }

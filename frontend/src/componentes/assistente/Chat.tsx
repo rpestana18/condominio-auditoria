@@ -36,7 +36,7 @@ export function Chat() {
         )}
         {trocas.map((troca) => (
           <article key={troca.id} className="troca">
-            <p className="pergunta">
+            <p className="question">
               <span className="sr-only">Você perguntou: </span>
               {troca.pergunta}
             </p>

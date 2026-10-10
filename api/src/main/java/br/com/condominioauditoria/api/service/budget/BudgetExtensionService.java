@@ -68,7 +68,7 @@ public class BudgetExtensionService {
                     + " do exercício (" + budget.getFiscalYearEnd() + "): informe " + first + " ou depois");
         }
         List<Budget> others = budgets.findByCondominiumIdAndStatusIn(condominiumId,
-                        EnumSet.of(BudgetStatus.CONFIRMADA, BudgetStatus.SUBSTITUIDA)).stream()
+                        EnumSet.of(BudgetStatus.CONFIRMED, BudgetStatus.SUPERSEDED)).stream()
                 .filter(p -> !p.getId().equals(budget.getId())).toList();
         for (YearMonth month : BudgetVsActualCalculator.months(first, until)) {
             Optional<BudgetValidity.BudgetOfMonth> ofMonth = BudgetValidity.ofMonth(others, month);
@@ -117,8 +117,8 @@ public class BudgetExtensionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
         Budget budget = budgets.findByIdAndCondominiumId(budgetId, condominiumId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada"));
-        if (budget.getStatus() != BudgetStatus.CONFIRMADA) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, budget.getStatus() == BudgetStatus.SUBSTITUIDA
+        if (budget.getStatus() != BudgetStatus.CONFIRMED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, budget.getStatus() == BudgetStatus.SUPERSEDED
                     ? "PO substituída por outra versão: prorrogue a versão que vale"
                     : "Confirme a PO antes de prorrogar");
         }

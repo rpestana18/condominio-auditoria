@@ -1,10 +1,8 @@
 package br.com.condominioauditoria.api.model.feature;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
@@ -12,16 +10,12 @@ import java.util.UUID;
 
 /** Current state of a feature in a condominium. No row = the catalog default applies. History lives in FeatureEvent. */
 @Entity
-@Table(name = "modulo_condominio")
 public class CondominiumFeature {
 
     @EmbeddedId
     private Key key;
-    @Column(name = "ligado")
     private boolean enabled;
-    @Column(name = "desde")
     private Instant since;
-    @Column(name = "alterado_por")
     private String changedBy;
 
     protected CondominiumFeature() {
@@ -63,9 +57,7 @@ public class CondominiumFeature {
     @Embeddable
     public static class Key implements Serializable {
 
-        @Column(name = "condominio_id")
         private UUID condominiumId;
-        @Column(name = "modulo")
         private String feature;
 
         protected Key() {

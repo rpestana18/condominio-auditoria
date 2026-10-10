@@ -28,9 +28,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.ResourceAccessException;
 
 /**
- * Consumes the rag.indexacao queue (ADR 0003, Decision 5.1). INDEXAR: reports that it started, reads the original,
+ * Consumes the rag.indexing queue (ADR 0003, Decision 5.1). INDEX: reports that it started, reads the original,
  * calls the reader, cuts it into chunks by location, generates the vectors in Ollama and stores everything in one
- * transaction, replacing the file's previous index. RETIRAR: logical deletion (nothing is deleted).
+ * transaction, replacing the file's previous index. WITHDRAW: logical deletion (nothing is deleted).
  *
  * Own queue, with its own parallelism: slow indexing or Ollama being down do not delay the accounting read. Ack only
  * after publishing the result; if the rag goes down midway, RabbitMQ delivers again and the api discards results of an
@@ -61,7 +61,7 @@ public class FileIndexingService {
     @RabbitListener(queues = QueueConfig.INDEXING, concurrency = "${rag.indexacao.paralelismo:1}")
     public void onReceive(Message message) {
         IndexFileMessage request = contract.readIndexFile(message.getBody());
-        if (request.operation() == IndexFileMessage.Operation.RETIRAR) {
+        if (request.operation() == IndexFileMessage.Operation.WITHDRAW) {
             boolean existed = repository.withdraw(request.fileId(), request.indexingId());
             log.info("Arquivo {} retirado do índice{}", request.originalName(),
                     existed ? "" : " (não estava indexado)");
@@ -103,11 +103,11 @@ public class FileIndexingService {
             return Optional.empty();
         }
         IndexedDocument doc = current.get();
-        if ("sem_texto".equals(doc.state())) { // sem texto não tem vetores: o modelo não importa
+        if ("no_text".equals(doc.state())) { // sem texto não tem vetores: o modelo não importa
             return Optional.of(IndexingResultMessage.noText(request, doc.reason(), doc.pages(),
                     doc.indexerVersion()));
         }
-        if ("indexado".equals(doc.state()) && Objects.equals(requestedModel(request), doc.embeddingModel())) {
+        if ("indexed".equals(doc.state()) && Objects.equals(requestedModel(request), doc.embeddingModel())) {
             return Optional.of(IndexingResultMessage.indexed(request, doc.pages(), doc.chunks(),
                     doc.embeddingModel(), doc.indexerVersion()));
         }

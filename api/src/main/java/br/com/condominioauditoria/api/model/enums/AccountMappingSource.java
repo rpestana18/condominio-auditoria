@@ -5,5 +5,5 @@ package br.com.condominioauditoria.api.model.enums;
  * Admin, name comparison (without AI) or the Admin's choice in the line list.
  */
 public enum AccountMappingSource {
-    VERSAO_ANTERIOR, PLANILHA, NOME, ADMIN
+    PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN
 }

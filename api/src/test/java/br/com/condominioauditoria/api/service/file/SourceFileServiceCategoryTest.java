@@ -42,9 +42,9 @@ class SourceFileServiceCategoryTest {
 
     @BeforeEach
     void setUp() {
-        file = new SourceFile(UUID.randomUUID(), FileCategory.CONTRATO, "fluxo-setembro.pdf",
-                "c/CONTRATO/2026/abc-fluxo-setembro.pdf", "a".repeat(64), 100, "application/pdf", "gestor");
-        file.complete(FileStatus.CONCLUIDO, "ok", null, null, null, null);
+        file = new SourceFile(UUID.randomUUID(), FileCategory.CONTRACT, "fluxo-setembro.pdf",
+                "c/CONTRACT/2026/abc-fluxo-setembro.pdf", "a".repeat(64), 100, "application/pdf", "gestor");
+        file.complete(FileStatus.COMPLETED, "ok", null, null, null, null);
         when(files.save(any(SourceFile.class))).thenAnswer(i -> i.getArgument(0));
         when(files.findByIdAndCondominiumId(file.getId(), file.getCondominiumId())).thenReturn(Optional.of(file));
     }
@@ -58,18 +58,18 @@ class SourceFileServiceCategoryTest {
         UUID processingIdBefore = file.getProcessingId();
         String pathBefore = file.getPath();
 
-        SourceFileResponse saved = changeCategory(FileCategory.BALANCETE, "gestor@condominio");
+        SourceFileResponse saved = changeCategory(FileCategory.TRIAL_BALANCE, "gestor@condominio");
 
-        assertThat(saved.category()).isEqualTo(FileCategory.BALANCETE);
-        assertThat(saved.status()).isEqualTo(FileStatus.PENDENTE);
+        assertThat(saved.category()).isEqualTo(FileCategory.TRIAL_BALANCE);
+        assertThat(saved.status()).isEqualTo(FileStatus.PENDING);
         assertThat(file.getProcessingId()).isNotEqualTo(processingIdBefore);
         assertThat(file.getPath()).isEqualTo(pathBefore);
         verify(events).publishEvent(new FileReadRequested(file.getId()));
 
         var registry = ArgumentCaptor.forClass(CategoryChange.class);
         verify(categoryChanges).save(registry.capture());
-        assertThat(registry.getValue().getPreviousCategory()).isEqualTo(FileCategory.CONTRATO);
-        assertThat(registry.getValue().getNewCategory()).isEqualTo(FileCategory.BALANCETE);
+        assertThat(registry.getValue().getPreviousCategory()).isEqualTo(FileCategory.CONTRACT);
+        assertThat(registry.getValue().getNewCategory()).isEqualTo(FileCategory.TRIAL_BALANCE);
         assertThat(registry.getValue().getChangedBy()).isEqualTo("gestor@condominio");
         assertThat(registry.getValue().getChangedAt()).isNotNull();
     }
@@ -78,7 +78,7 @@ class SourceFileServiceCategoryTest {
     void sameCategoryDoesNotReprocess() {
         UUID processingIdBefore = file.getProcessingId();
 
-        changeCategory(FileCategory.CONTRATO, "gestor");
+        changeCategory(FileCategory.CONTRACT, "gestor");
 
         assertThat(file.getProcessingId()).isEqualTo(processingIdBefore);
         verify(categoryChanges, never()).save(any());
@@ -89,10 +89,10 @@ class SourceFileServiceCategoryTest {
     void fileBeingProcessedRejectsChange() {
         file.startProcessing();
 
-        assertThatThrownBy(() -> changeCategory(FileCategory.BALANCETE, "gestor"))
+        assertThatThrownBy(() -> changeCategory(FileCategory.TRIAL_BALANCE, "gestor"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("O arquivo já está sendo processado");
-        assertThat(file.getCategory()).isEqualTo(FileCategory.CONTRATO);
+        assertThat(file.getCategory()).isEqualTo(FileCategory.CONTRACT);
         verify(categoryChanges, never()).save(any());
     }
 }

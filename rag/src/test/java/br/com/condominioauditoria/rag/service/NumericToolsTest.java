@@ -51,7 +51,7 @@ class NumericToolsTest {
     @Test
     void theFourToolsAreOfferedToModel() {
         assertThat(tools.definitions()).extracting("name").containsExactly(
-                "resumo_fundos", "buscar_lancamentos", "listar_arquivos", "conferencias_do_arquivo");
+                "fund_summary", "find_entries", "list_files", "file_checks");
         assertThat(tools.definitions()).allSatisfy(d -> {
             assertThat(d.description()).isNotBlank();
             assertThat(d.inputSchema()).containsKeys("properties", "required");
@@ -60,11 +60,11 @@ class NumericToolsTest {
 
     @Test
     void fundSummaryComesInReaisWithExactCents() {
-        QueriedData dataItem = tools.execute("c1", "resumo_fundos", Map.of(), CONDOMINIUM,
+        QueriedData dataItem = tools.execute("c1", "fund_summary", Map.of(), CONDOMINIUM,
                 client.withToken("Bearer token-do-usuario"));
 
         assertThat(dataItem.callId()).isEqualTo("c1");
-        assertThat(dataItem.query()).isEqualTo("resumo_fundos");
+        assertThat(dataItem.query()).isEqualTo("fund_summary");
         assertThat(dataItem.rows()).contains(
                 new Row("Arquivo", "fluxo-setembro.pdf"),
                 new Row("Período", "2026-09-01 a 2026-09-30"),
@@ -80,15 +80,15 @@ class NumericToolsTest {
 
     @Test
     void entryTotalsAreSummedWithBigDecimal() {
-        QueriedData dataItem = tools.execute("c2", "buscar_lancamentos",
-                Map.of("dataInicio", "2026-09-01", "dataFim", "2026-09-30", "somenteSaidas", true, "limite", 10),
+        QueriedData dataItem = tools.execute("c2", "find_entries",
+                Map.of("dateFrom", "2026-09-01", "dateTo", "2026-09-30", "outflowsOnly", true, "limit", 10),
                 CONDOMINIUM, client.withToken("Bearer t"));
 
         assertThat(dataItem.params()).containsExactly(
-                new QueriedData.Param("dataInicio", "2026-09-01"),
-                new QueriedData.Param("dataFim", "2026-09-30"),
-                new QueriedData.Param("somenteSaidas", "sim"),
-                new QueriedData.Param("limite", "10"));
+                new QueriedData.Param("dateFrom", "2026-09-01"),
+                new QueriedData.Param("dateTo", "2026-09-30"),
+                new QueriedData.Param("outflowsOnly", "sim"),
+                new QueriedData.Param("limit", "10"));
         // 1234,56 + 0,45 = 1.235,01 exact (no floating point rounding)
         assertThat(dataItem.rows()).startsWith(
                 new Row("Lançamentos encontrados", "3"),
@@ -102,18 +102,18 @@ class NumericToolsTest {
 
     @Test
     void fileListBringsIdForNextTool() {
-        QueriedData dataItem = tools.execute("c3", "listar_arquivos", Map.of("categoria", "BALANCETE"),
+        QueriedData dataItem = tools.execute("c3", "list_files", Map.of("category", "TRIAL_BALANCE"),
                 CONDOMINIUM, client.withToken("Bearer t"));
 
         assertThat(dataItem.rows()).containsExactly(
                 new Row("Arquivos encontrados", "1"),
                 new Row("fluxo-setembro.pdf",
-                        "BALANCETE; CONCLUIDO; período 2026-09-01 a 2026-09-30; arquivoId arq-1"));
+                        "TRIAL_BALANCE; COMPLETED; período 2026-09-01 a 2026-09-30; fileId arq-1"));
     }
 
     @Test
     void checksSayWhatDidNotAddUp() {
-        QueriedData dataItem = tools.execute("c4", "conferencias_do_arquivo", Map.of("arquivoId", "arq-1"),
+        QueriedData dataItem = tools.execute("c4", "file_checks", Map.of("fileId", "arq-1"),
                 CONDOMINIUM, client.withToken("Bearer t"));
 
         assertThat(dataItem.rows()).containsExactly(
@@ -124,7 +124,7 @@ class NumericToolsTest {
 
     @Test
     void resultSentToModelCarriesCallIdAndForbidsCopyingNumbers() {
-        QueriedData dataItem = tools.execute("c1", "resumo_fundos", Map.of(), CONDOMINIUM,
+        QueriedData dataItem = tools.execute("c1", "fund_summary", Map.of(), CONDOMINIUM,
                 client.withToken("Bearer t"));
 
         String text = NumericTools.forModel(dataItem);

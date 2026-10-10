@@ -133,7 +133,7 @@ public class SourceFileService {
         if (file.getCategory() == newCategory) {
             return SourceFileMapper.toResponse(file);
         }
-        if (file.getStatus() == FileStatus.PROCESSANDO) {
+        if (file.getStatus() == FileStatus.PROCESSING) {
             throw new IllegalStateException("O arquivo já está sendo processado");
         }
         categoryChanges.save(new CategoryChange(file.getId(), file.getCategory(), newCategory, username));
@@ -176,7 +176,7 @@ public class SourceFileService {
     }
 
     private SourceFile reprocess(SourceFile file) {
-        if (file.getStatus() == FileStatus.PROCESSANDO) {
+        if (file.getStatus() == FileStatus.PROCESSING) {
             throw new IllegalStateException("O arquivo já está sendo processado");
         }
         file.requestProcessing();

@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 /**
  * ProcessingResultMessage v2 messages of the private golden (September/2026 cash flow and 2026/2027 budget), in the
  * form the rag publishes them. They are the input of the api golden (ADR 0004, steps 6 and 7): the api never imports a
- * rag class, it only reads the message through the contract (contracts/mensagens/v2). The ids are fixed so the output
+ * rag class, it only reads the message through the contract (contracts/mensagens/v3). The ids are fixed so the output
  * is always the same.
  *
  * Without the message file, the test writes it; with it, it checks that the rag's current output is identical (did
@@ -35,7 +35,7 @@ public class ProcessingResultGoldenTest {
 
     @Test
     public void septemberCashFlow() throws Exception {
-        checkOrWrite("fluxo-caixa-2026-09", CASH_FLOW_FILE, "BALANCETE");
+        checkOrWrite("fluxo-caixa-2026-09", CASH_FLOW_FILE, "TRIAL_BALANCE");
     }
 
     @Test
@@ -48,12 +48,12 @@ public class ProcessingResultGoldenTest {
         Path read = privateDir.resolve(name + ".documento-lido.json");
         assumeTrue(Files.exists(read), "golden privado ausente");
         String sha = "0".repeat(64);
-        var file = new FileReceivedMessage(1, fileId, fileId, CONDOMINIUM, category, name + ".pdf",
+        var file = new FileReceivedMessage(3, fileId, fileId, CONDOMINIUM, category, name + ".pdf",
                 "golden/" + name + ".pdf", sha);
         var result = service.parse(file, new ReaderContract().convert(Files.readString(read)));
         String json = new String(new MessageContract().write(result), StandardCharsets.UTF_8);
 
-        Path message = privateDir.resolve(name + ".resultado-v2.json");
+        Path message = privateDir.resolve(name + ".resultado-v3.json");
         if (!Files.exists(message)) {
             Files.writeString(message, json);
         }

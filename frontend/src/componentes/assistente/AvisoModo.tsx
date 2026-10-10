@@ -3,7 +3,7 @@ import type { ContextoAssistente } from "../../api/tipos";
 import { config } from "../../config";
 import { useSessao } from "../../contexto";
 
-/** Modo MCP_EXTERNO (RF-04.16): o chat é o Claude do usuário, conectado ao MCP do sistema. */
+/** Modo EXTERNAL_MCP (RF-04.16): o chat é o Claude do usuário, conectado ao MCP do sistema. */
 export function AvisoMcp() {
   const { condominioNome } = useSessao();
   return (
@@ -25,13 +25,13 @@ export function AvisoMcp() {
   );
 }
 
-/** Por que não há chat (DESLIGADO, API_KEY sem chave ou LOCAL ainda sem provedor). Para ADMIN, link para a configuração. */
+/** Por que não há chat (OFF, API_KEY sem chave ou LOCAL ainda sem provedor). Para ADMIN, link para a configuração. */
 export function MotivoSemChat({ assistente }: { assistente: ContextoAssistente }) {
   const { pode } = useSessao();
   const motivo =
-    assistente.modoRespostas === "DESLIGADO"
+    assistente.answersMode === "OFF"
       ? "A IA de respostas está desligada neste condomínio; a busca por palavra continua disponível."
-      : assistente.modoRespostas === "API_KEY"
+      : assistente.answersMode === "API_KEY"
         ? "O chat usa a chave de IA do condomínio, que ainda não foi cadastrada. Enquanto isso, a busca por palavra está disponível."
         : "O chat não está disponível no modo de IA atual deste condomínio. A busca por palavra está disponível.";
   return (

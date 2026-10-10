@@ -36,12 +36,12 @@ import java.util.stream.Collectors;
 public record MonthFindings(YearMonth month, Set<String> rules, List<AssessedFinding> assessed) {
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    public static final String OPERATING_FUND_TARGET = "fundo-condominio";
+    public static final String OPERATING_FUND_TARGET = "operating-fund";
 
     /** Empty (no rule assessed) when the month has no numbers: no cash flow, two cash flows, no budget etc. */
     public static MonthFindings assess(YearMonth month, Calculation calculation) {
         BudgetVsActualResponse r = calculation.result();
-        if (r.status() != BudgetVsActualStatus.CALCULADO) {
+        if (r.status() != BudgetVsActualStatus.CALCULATED) {
             return new MonthFindings(month, Set.of(), List.of());
         }
         Set<String> rules = new LinkedHashSet<>();

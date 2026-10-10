@@ -3,12 +3,10 @@ package br.com.condominioauditoria.api.model.budget;
 import br.com.condominioauditoria.api.model.enums.AccountMappingSource;
 import br.com.condominioauditoria.api.model.enums.AccountMappingStatus;
 import br.com.condominioauditoria.api.model.enums.MappingTargetType;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -17,39 +15,25 @@ import java.util.UUID;
  * and account). Every change writes an {@link AccountMappingEvent} to the trail, which is insert-only.
  */
 @Entity
-@Table(name = "depara_conta")
 public class AccountMapping {
 
     @Id
     private UUID id;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "previsao_id")
     private UUID budgetId;
-    @Column(name = "conta_codigo")
     private String accountCode;
-    @Column(name = "conta_nome")
     private String accountName;
-    @Column(name = "tipo_destino")
     @Enumerated(EnumType.STRING)
     private MappingTargetType targetType;
-    @Column(name = "linha_po_id")
     private UUID budgetLineId;
-    @Column(name = "detalhe_destino")
     private String targetDetail;
-    @Column(name = "estado")
     @Enumerated(EnumType.STRING)
     private AccountMappingStatus status;
-    @Column(name = "origem")
     @Enumerated(EnumType.STRING)
     private AccountMappingSource source;
-    @Column(name = "motivo")
     private String reason;
-    @Column(name = "igual_versao_anterior")
     private boolean sameAsPreviousVersion;
-    @Column(name = "atualizado_por")
     private String updatedBy;
-    @Column(name = "atualizado_em")
     private Instant updatedAt;
 
     protected AccountMapping() {

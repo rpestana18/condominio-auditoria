@@ -26,16 +26,16 @@ export function GraficoRegra20({ pontos, limitePercentual, contexto }: Props) {
     colunaRotulo: "Mês",
     colunas: ["Excesso (R$)", "Excesso (%)", "Limite (%)", "Cenário máximo (R$)", "Cenário máximo (%)", "Marcas"],
     linhas: pontos.map((p, i) => {
-      const acima = p.acimaDoLimite === true;
+      const acima = p.aboveLimit === true;
       return {
-        chave: p.mes,
-        rotulo: formatarMes(p.mes),
+        chave: p.month,
+        rotulo: formatarMes(p.month),
         celulas: [
-          { texto: moedaDoMes(p.excesso, p.situacao), aoAbrir: acoes[i] },
-          { texto: percentualDoMes(p.percentual, p.situacao), aoAbrir: acoes[i], alerta: acima },
-          { texto: percentualDoMes(p.limitePercentual, p.situacao) },
-          { texto: moedaDoMes(p.cenarioMaximo, p.situacao) },
-          { texto: percentualDoMes(p.percentualCenarioMaximo, p.situacao) },
+          { texto: moedaDoMes(p.overrun, p.status), aoAbrir: acoes[i] },
+          { texto: percentualDoMes(p.percentage, p.status), aoAbrir: acoes[i], alerta: acima },
+          { texto: percentualDoMes(p.limitPercentage, p.status) },
+          { texto: moedaDoMes(p.maxScenario, p.status) },
+          { texto: percentualDoMes(p.maxScenarioPercentage, p.status) },
           { texto: marcas(p), alerta: acima },
         ],
       };
@@ -43,10 +43,10 @@ export function GraficoRegra20({ pontos, limitePercentual, contexto }: Props) {
   };
   const dados = pontos.map((p, indice) => ({
     indice,
-    eixo: rotuloEixoMes(p.mes, p.situacao, p.provisorio ? "provisório" : null),
-    percentual: p.percentual ?? null,
-    cenario: p.percentualCenarioMaximo ?? null,
-    acima: p.acimaDoLimite === true,
+    eixo: rotuloEixoMes(p.month, p.status, p.provisional ? "provisório" : null),
+    percentual: p.percentage ?? null,
+    cenario: p.maxScenarioPercentage ?? null,
+    acima: p.aboveLimit === true,
   }));
   const textoLimite = limitePercentual === null || limitePercentual === undefined ? null : formatarPercentual(limitePercentual);
 
@@ -110,7 +110,7 @@ export function GraficoRegra20({ pontos, limitePercentual, contexto }: Props) {
 
 /** Marcas do mês, só com o que veio da API: "acima do limite", "provisório" ou a situação do mês. */
 function marcas(p: PontoRegra20): string {
-  if (p.situacao !== "COM_FLUXO") return textoSituacao[p.situacao];
-  const lista = [p.acimaDoLimite ? "acima do limite" : null, p.provisorio ? "provisório" : null].filter(Boolean);
+  if (p.status !== "WITH_CASH_FLOW") return textoSituacao[p.status];
+  const lista = [p.aboveLimit ? "acima do limite" : null, p.provisional ? "provisório" : null].filter(Boolean);
   return lista.length ? lista.join(" · ") : "—";
 }

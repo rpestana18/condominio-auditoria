@@ -24,7 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 /** Read and confirmed budget (RF-03.1.1 to RF-03.1.3). Reading: every role of the condominium. Confirming: Admin. */
 @RestController
-@RequestMapping("/api/condominios/{condominiumId}/previsoes")
+@RequestMapping("/api/condominiums/{condominiumId}/budgets")
 public class BudgetController {
 
     private final CondominiumAccess access;
@@ -41,7 +41,7 @@ public class BudgetController {
     }
 
     /** RF-03.1.9: only the Admin changes the link of the 1.9 lines after confirmation; Gestor and Usuário get 403. */
-    @PutMapping("/{budgetId}/fundos")
+    @PutMapping("/{budgetId}/funds")
     @PreAuthorize("hasRole('ADMIN')")
     public BudgetDetailResponse changeFunds(@PathVariable UUID condominiumId, @PathVariable UUID budgetId,
             @RequestBody BudgetFundsRequest request) {
@@ -50,29 +50,29 @@ public class BudgetController {
     }
 
     /** The budget's audit trail (every role): confirmation, supersession and fund link changes. */
-    @GetMapping("/{budgetId}/eventos")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @GetMapping("/{budgetId}/events")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public List<BudgetEventResponse> events(@PathVariable UUID condominiumId, @PathVariable UUID budgetId) {
         access.require(condominiumId);
         return query.events(condominiumId, budgetId).orElseThrow(BudgetController::notFound);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public List<BudgetSummaryResponse> list(@PathVariable UUID condominiumId) {
         access.require(condominiumId);
         return query.list(condominiumId);
     }
 
     @GetMapping("/{budgetId}")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public BudgetDetailResponse detail(@PathVariable UUID condominiumId, @PathVariable UUID budgetId) {
         access.require(condominiumId);
         return query.detail(condominiumId, budgetId).orElseThrow(BudgetController::notFound);
     }
 
     /** RF-03.1.3: only the Admin confirms; Gestor and Usuário get 403. */
-    @PostMapping("/{budgetId}/confirmacao")
+    @PostMapping("/{budgetId}/confirmation")
     @PreAuthorize("hasRole('ADMIN')")
     public BudgetDetailResponse confirm(@PathVariable UUID condominiumId, @PathVariable UUID budgetId,
             @RequestBody BudgetConfirmationRequest request) {

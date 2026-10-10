@@ -32,7 +32,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Asks the rag to index a file for the document search, through the rag.indexacao queue (ADR 0003, Decision 5.1). Same
+ * Asks the rag to index a file for the document search, through the rag.indexing queue (ADR 0003, Decision 5.1). Same
  * pattern as {@link FilePublisher}: the message only goes out after the commit; the sweep (every minute) resends what
  * has been queued or indexing for longer than the limit and, after too many attempts, marks it as an error with the
  * reason. Resending is safe: the api only applies the result of the current indexingId, and the rag does not redo an
@@ -46,8 +46,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class IndexingPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(IndexingPublisher.class);
-    private static final List<IndexingStatus> IN_PROGRESS = List.of(IndexingStatus.NA_FILA,
-            IndexingStatus.INDEXANDO);
+    private static final List<IndexingStatus> IN_PROGRESS = List.of(IndexingStatus.QUEUED,
+            IndexingStatus.INDEXING);
 
     private final RabbitTemplate rabbit;
     private final MessageContract contract;

@@ -29,7 +29,7 @@ class IndicatorServiceTest {
 
         assertThat(r.budgetId()).isEqualTo(budget.getId());
         assertThat(r.start()).isEqualTo("2026-05");
-        assertThat(r.monthlyExecution()).hasSize(12).allMatch(p -> p.status() == MonthStatus.SEM_FLUXO
+        assertThat(r.monthlyExecution()).hasSize(12).allMatch(p -> p.status() == MonthStatus.NO_CASH_FLOW
                 && p.execution() == null && p.planned() == null && p.target() == null);
         assertThat(r.rule20()).allMatch(p -> p.percentage() == null);
         assertThat(r.cumulative()).allMatch(p -> p.cumulativeActual() == null);
@@ -49,7 +49,7 @@ class IndicatorServiceTest {
 
         IndicatorsResponse r = scenario.indicators.indicators(scenario.condominiumId, budget.getId(), null);
 
-        assertThat(r.monthlyExecution().get(4).status()).isEqualTo(MonthStatus.COM_FLUXO);
+        assertThat(r.monthlyExecution().get(4).status()).isEqualTo(MonthStatus.WITH_CASH_FLOW);
         assertThat(r.monthlyExecution().get(4).planned()).isEqualByComparingTo("451620.13");
         assertThat(r.monthlyExecution().get(4).actual()).isEqualByComparingTo("0.00");
         assertThat(r.cumulative().get(4).cumulativePlanned()).isEqualByComparingTo("451620.13");
@@ -64,7 +64,7 @@ class IndicatorServiceTest {
                 .containsExactly(budget.getId(), null);
         assertThat(r.comparison().groups()).allSatisfy(gr -> assertThat(gr.targets()).hasSize(2).last().isNull());
         assertThat(r.comparison().groups()).filteredOn(gr -> gr.code().equals("1.3")).singleElement()
-                .satisfies(gr -> assertThat(gr.targets().getFirst()).startsWith("grupo:"));
+                .satisfies(gr -> assertThat(gr.targets().getFirst()).startsWith("group:"));
         assertThat(r.warnings()).containsExactly(
                 "11 meses do exercício sem números (sem fluxo carregado ou com dois fluxos)");
     }

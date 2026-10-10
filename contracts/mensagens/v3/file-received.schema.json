@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://condominio-auditoria/contracts/mensagens/v3/file-received.schema.json",
+  "title": "FileReceived v3",
+  "description": "v3 (ADR 0006, fase 2): igual à versão anterior, com nomes e códigos em inglês. api → rag (fila rag.files-received). Um arquivo foi guardado e precisa ser lido. O conteúdo não vai na mensagem: o rag abre o original pelo caminho, na mesma pasta (ou S3).",
+  "type": "object",
+  "required": ["version", "processingId", "fileId", "condominiumId", "category", "originalName", "path", "sha256"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {"const": 3},
+    "processingId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Muda a cada envio ou reprocesso. Resultado com outro processingId é descartado pelo api."
+    },
+    "fileId": {"type": "string", "format": "uuid"},
+    "condominiumId": {"type": "string", "format": "uuid"},
+    "category": {"type": "string"},
+    "originalName": {"type": "string"},
+    "path": {"type": "string", "description": "Caminho relativo dentro do armazenamento"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

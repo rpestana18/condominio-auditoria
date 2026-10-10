@@ -43,12 +43,12 @@ function Eventos({ codigo }: { codigo: string }) {
           <tbody>
             {recentesPrimeiro.map((e) => (
               <tr key={e.id}>
-                <td>{formatarDataHora(e.quando)}</td>
+                <td>{formatarDataHora(e.occurredAt)}</td>
                 <td>
-                  {estado(e.ligadoAntes)} → <strong>{estado(e.ligadoDepois)}</strong>
+                  {estado(e.enabledBefore)} → <strong>{estado(e.enabledAfter)}</strong>
                 </td>
-                <td>{e.usuario}</td>
-                <td>{e.motivo || <span className="discreto">—</span>}</td>
+                <td>{e.username}</td>
+                <td>{e.reason || <span className="discreto">—</span>}</td>
               </tr>
             ))}
           </tbody>
@@ -83,7 +83,7 @@ function Periodos({ codigo }: { codigo: string }) {
           </thead>
           <tbody>
             {periodos.map((p, i) => (
-              <LinhaPeriodo key={`${p.inicio ?? "padrao"}-${i}`} periodo={p} />
+              <LinhaPeriodo key={`${p.start ?? "padrao"}-${i}`} periodo={p} />
             ))}
           </tbody>
         </table>
@@ -95,13 +95,13 @@ function Periodos({ codigo }: { codigo: string }) {
 function LinhaPeriodo({ periodo: p }: { periodo: PeriodoAtivo }) {
   return (
     <tr>
-      <td>{p.inicio ? formatarDataHora(p.inicio) : <span className="discreto">Ligado por padrão</span>}</td>
-      <td>{p.fim ? formatarDataHora(p.fim) : <strong className="positivo">Ainda ligado</strong>}</td>
+      <td>{p.start ? formatarDataHora(p.start) : <span className="discreto">Ligado por padrão</span>}</td>
+      <td>{p.end ? formatarDataHora(p.end) : <strong className="positivo">Ainda ligado</strong>}</td>
       <td>
-        <QuemEMotivo quem={p.ligadoPor} motivo={p.motivoLigar} />
+        <QuemEMotivo quem={p.enabledBy} motivo={p.enableReason} />
       </td>
       <td>
-        <QuemEMotivo quem={p.desligadoPor} motivo={p.motivoDesligar} />
+        <QuemEMotivo quem={p.disabledBy} motivo={p.disableReason} />
       </td>
     </tr>
   );

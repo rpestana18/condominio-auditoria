@@ -35,8 +35,8 @@ public class ProtestBudgetParserTest {
         assertThat(budget.lines()).extracting(BudgetLine::printedCode).containsExactly("1", "1.1", "1.1.5", "1.4.3",
                 "1.8.2");
         assertThat(budget.lines()).extracting(BudgetLine::type)
-                .containsExactly(BudgetLineType.TOTAL, BudgetLineType.GRUPO, BudgetLineType.LINHA,
-                        BudgetLineType.LINHA, BudgetLineType.LINHA);
+                .containsExactly(BudgetLineType.TOTAL, BudgetLineType.GROUP, BudgetLineType.LINE,
+                        BudgetLineType.LINE, BudgetLineType.LINE);
 
         BudgetLine vacation = budget.lines().get(2);
         assertThat(vacation.account()).isEqualTo("1553 - Férias");
@@ -49,7 +49,7 @@ public class ProtestBudgetParserTest {
         BudgetLine gas = budget.lines().get(3);
         assertThat(gas.account()).isNull();
         assertThat(gas.accountText()).isEqualTo("Débito em receitas eventuais");
-        assertThat(gas.mark()).isEqualTo(BudgetLineMark.RATEIO_A_PARTE);
+        assertThat(gas.mark()).isEqualTo(BudgetLineMark.SEPARATE_APPORTIONMENT);
         assertThat(gas.percentageText()).isNull();
         assertThat(gas.notes()).isEqualTo("Rateio à parte");
 
@@ -81,9 +81,9 @@ public class ProtestBudgetParserTest {
 
         Budget budget = parser.parse(document(new Page(1, 595, 842, "texto", words)));
 
-        assertThat(budget.lines()).extracting(BudgetLine::mark).containsExactly(null, BudgetLineMark.SEM_VALOR,
-                BudgetLineMark.NEGOCIADA_ISENCAO, BudgetLineMark.RATEIO_A_PARTE,
-                        BudgetLineMark.VALOR_FIXO_SEM_REFERENCIA);
+        assertThat(budget.lines()).extracting(BudgetLine::mark).containsExactly(null, BudgetLineMark.NO_AMOUNT,
+                BudgetLineMark.NEGOTIATED_EXEMPTION, BudgetLineMark.SEPARATE_APPORTIONMENT,
+                        BudgetLineMark.FIXED_AMOUNT_NO_REFERENCE);
         assertThat(budget.lines().subList(1, 5)).allSatisfy(l -> {
             assertThat(l.account()).isNull();
             assertThat(l.accountText()).isNull();

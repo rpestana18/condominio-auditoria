@@ -16,20 +16,20 @@ export function ConfirmarAlteracaoModulo({ modulo, aoFechar }: Props) {
   const { condominioId, condominioNome } = useSessao();
   const alterar = useAlterarModulo(condominioId);
   const [motivo, setMotivo] = useState("");
-  const ligar = !modulo.ligado;
-  const idTitulo = `confirmar-${modulo.codigo}`;
+  const ligar = !modulo.enabled;
+  const idTitulo = `confirmar-${modulo.code}`;
 
   function confirmar(evento: FormEvent) {
     evento.preventDefault();
     // Motivo é opcional: em branco vai como null
-    alterar.mutate({ codigo: modulo.codigo, alteracao: { ligado: ligar, motivo: motivo.trim() || null } }, { onSuccess: aoFechar });
+    alterar.mutate({ codigo: modulo.code, alteracao: { enabled: ligar, reason: motivo.trim() || null } }, { onSuccess: aoFechar });
   }
 
   return (
     <form className="confirmacao" onSubmit={confirmar} aria-labelledby={idTitulo}>
       <p id={idTitulo}>
         <strong>
-          {ligar ? "Ligar" : "Desligar"} o módulo {modulo.nome} em {condominioNome}?
+          {ligar ? "Ligar" : "Desligar"} o módulo {modulo.name} em {condominioNome}?
         </strong>
       </p>
       <p className="discreto">

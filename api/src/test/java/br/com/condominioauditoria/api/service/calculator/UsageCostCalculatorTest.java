@@ -29,32 +29,32 @@ class UsageCostCalculatorTest {
     @Test
     void roundsOnlyTheTotalNotEachRecord() {
         // Each question costs US$ 0.004 (rounded alone it would be 0.00); three add up to 0.012 = US$ 0.01
-        var question = new ModelTokens("2026-10", FeatureService.ASSISTANT, UsageFunction.PERGUNTA, "anthropic",
+        var question = new ModelTokens("2026-10", FeatureService.ASSISTANT, UsageFunction.QUESTION, "anthropic",
                 "claude-sonnet-5-5", 2000, 0);
         var rows = List.of(question, question, question);
 
         PeriodCost cost = UsageCostCalculator.calculate(rows, PRICES);
 
         assertThat(cost.total()).isEqualTo(new BigDecimal("0.01"));
-        assertThat(cost.byMonth()).containsEntry("2026-10|ASSISTENTE|pergunta", new BigDecimal("0.01"));
+        assertThat(cost.byMonth()).containsEntry("2026-10|ASSISTANT|question", new BigDecimal("0.01"));
         assertThat(cost.modelsWithoutPrice()).isEmpty();
     }
 
     @Test
     void sumsDifferentModelsAndSeparateMonths() {
         var rows = List.of(
-                new ModelTokens("2026-10", FeatureService.ASSISTANT, UsageFunction.PERGUNTA, "anthropic",
+                new ModelTokens("2026-10", FeatureService.ASSISTANT, UsageFunction.QUESTION, "anthropic",
                         "claude-sonnet-5-5", 1_000_000, 100_000), // 2,00 + 1,00
-                new ModelTokens("2026-10", FeatureService.ASSISTANT, UsageFunction.PERGUNTA, "anthropic",
+                new ModelTokens("2026-10", FeatureService.ASSISTANT, UsageFunction.QUESTION, "anthropic",
                         "claude-haiku-4-5", 500_000, 0), // 0,50
-                new ModelTokens("2026-11", FeatureService.ASSISTANT, UsageFunction.PERGUNTA, "anthropic",
+                new ModelTokens("2026-11", FeatureService.ASSISTANT, UsageFunction.QUESTION, "anthropic",
                         "claude-haiku-4-5", 3, 3)); // 0,000018
 
         PeriodCost cost = UsageCostCalculator.calculate(rows, PRICES);
 
-        assertThat(cost.byMonth()).containsEntry("2026-10|ASSISTENTE|pergunta", new BigDecimal("3.50"))
-                .containsEntry("2026-11|ASSISTENTE|pergunta", new BigDecimal("0.00"));
-        assertThat(cost.byFunction()).containsEntry("ASSISTENTE|pergunta", new BigDecimal("3.50"));
+        assertThat(cost.byMonth()).containsEntry("2026-10|ASSISTANT|question", new BigDecimal("3.50"))
+                .containsEntry("2026-11|ASSISTANT|question", new BigDecimal("0.00"));
+        assertThat(cost.byFunction()).containsEntry("ASSISTANT|question", new BigDecimal("3.50"));
         assertThat(cost.total()).isEqualTo(new BigDecimal("3.50"));
         assertThat(UsageCostCalculator.calculate(rows, PRICES)).isEqualTo(cost); // mesmo insumo, mesmo resultado
     }
@@ -62,15 +62,15 @@ class UsageCostCalculatorTest {
     @Test
     void modelWithoutPriceLeavesTheGroupAndTotalWithoutValue() {
         var rows = List.of(
-                new ModelTokens("2026-10", FeatureService.ASSISTANT, UsageFunction.PERGUNTA, "anthropic",
+                new ModelTokens("2026-10", FeatureService.ASSISTANT, UsageFunction.QUESTION, "anthropic",
                         "claude-sonnet-5-5", 1000, 0),
-                new ModelTokens("2026-10", FeatureService.ASSISTANT, UsageFunction.PERGUNTA, "anthropic",
+                new ModelTokens("2026-10", FeatureService.ASSISTANT, UsageFunction.QUESTION, "anthropic",
                         "modelo-antigo", 1000, 0));
 
         PeriodCost cost = UsageCostCalculator.calculate(rows, PRICES);
 
-        assertThat(cost.byMonth().get("2026-10|ASSISTENTE|pergunta")).isNull();
-        assertThat(cost.byMonth()).containsKey("2026-10|ASSISTENTE|pergunta");
+        assertThat(cost.byMonth().get("2026-10|ASSISTANT|question")).isNull();
+        assertThat(cost.byMonth()).containsKey("2026-10|ASSISTANT|question");
         assertThat(cost.total()).isNull();
         assertThat(cost.modelsWithoutPrice()).containsExactly("anthropic/modelo-antigo");
     }
@@ -78,7 +78,7 @@ class UsageCostCalculatorTest {
     @Test
     void withoutTokensThereIsNoCost() {
         PeriodCost cost = UsageCostCalculator.calculate(List.of(new ModelTokens("2026-10", FeatureService.ASSISTANT,
-                UsageFunction.BUSCA_DOCUMENTOS, null, null, 0, 0)), PRICES);
+                UsageFunction.DOCUMENT_SEARCH, null, null, 0, 0)), PRICES);
 
         assertThat(cost.byMonth()).isEmpty();
         assertThat(cost.total()).isEqualTo(new BigDecimal("0.00"));

@@ -1,30 +1,21 @@
 package br.com.condominioauditoria.api.model.audit;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.util.UUID;
 
 /** Where the indication is: file, hash, page and the excerpt (e.g. the budget line). */
 @Entity
-@Table(name = "achado_evidencia")
 public class FindingEvidence {
 
     @Id
     private UUID id;
-    @Column(name = "achado_id")
     private UUID findingId;
-    @Column(name = "ordem")
     private int position;
-    @Column(name = "arquivo_id")
     private UUID fileId;
     private String sha256;
-    @Column(name = "pagina")
     private Integer page;
-    @Column(name = "referencia")
     private String reference;
-    @Column(name = "linha_po_id")
     private UUID budgetLineId;
 
     protected FindingEvidence() {

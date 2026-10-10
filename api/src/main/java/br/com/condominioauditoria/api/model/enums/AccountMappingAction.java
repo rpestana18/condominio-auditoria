@@ -2,5 +2,5 @@ package br.com.condominioauditoria.api.model.enums;
 
 /** Recorded action: suggestion created, confirmation, rejection or target change. */
 public enum AccountMappingAction {
-    SUGERIDO, CONFIRMADO, RECUSADO, ALTERADO
+    SUGGESTED, CONFIRMED, REJECTED, CHANGED
 }

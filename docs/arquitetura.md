@@ -58,8 +58,7 @@ condominio-auditoria/
 ├── contracts/
 │   ├── openapi.yaml            # frontend ↔ backend
 │   ├── leitor/v1/              # rag ↔ leitor (JSON Schema)
-│   ├── mensagens/v1/           # backend ↔ rag pela fila (JSON Schema + exemplos testados dos dois lados)
-│   ├── mensagens/v2/           # ADR 0004: resultado-processamento v2, com a PO lida e o recebimento de cota
+│   ├── mensagens/v3/           # api ↔ rag pela fila (JSON Schema + exemplos testados dos dois lados; v1 e v2 são histórico)
 │   └── grpc/query/v2/       # mcp → backend (.proto)
 ├── infra/
 │   ├── docker-compose.yml      # PostgreSQL, RabbitMQ, Keycloak, leitor, backend, rag, mcp, frontend
@@ -152,7 +151,7 @@ Camada única para modelos de IA. **Modo por condomínio (RF-09)**: MCP_EXTERNO 
 
 ### 3.7 Módulos contratáveis por condomínio (RF-10; ADR 0003)
 - O **backend é o dono**: catálogo de módulos (configuração versionada), estado por condomínio, trilha de ativação só de inserção (períodos ativos calculados dela), configuração de IA e registro de uso. Hoje o catálogo tem só o `ASSISTENTE`, desligado por padrão em condomínio novo.
-- Nenhum outro serviço consulta o estado: o frontend lê `GET /condominios/{id}/contexto`; o `mcp` recebe a recusa do backend; o `rag` só age quando recebe um pedido (indexar, buscar, perguntar). Ligar ou desligar vale no pedido seguinte, sem reinício.
+- Nenhum outro serviço consulta o estado: o frontend lê `GET /api/condominiums/{condominiumId}/context`; o `mcp` recebe a recusa do backend; o `rag` só age quando recebe um pedido (indexar, buscar, perguntar). Ligar ou desligar vale no pedido seguinte, sem reinício.
 - Desligar não apaga nada: o backend para de pedir indexação e recusa buscas; o índice fica guardado. Religar reindexa só o que é novo ou mudou.
 
 ---

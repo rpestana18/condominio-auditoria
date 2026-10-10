@@ -33,7 +33,7 @@ docker compose up --build
 
 A primeira vez leva de 10 a 15 minutos, porque baixa as imagens, as dependências do Gradle e do pnpm e compila os três serviços Java. Nas próximas vezes leva segundos.
 
-O sistema está pronto quando o log mostrar `Started BackendApplication`, `Started RagApplication` e `Started McpApplication`. Deixe esse terminal aberto. Para rodar em segundo plano, use `docker compose up --build -d` e acompanhe com `docker compose logs -f backend rag`.
+O sistema está pronto quando o log mostrar `Started ApiApplication`, `Started RagApplication` e `Started McpApplication`. Deixe esse terminal aberto. Para rodar em segundo plano, use `docker compose up --build -d` e acompanhe com `docker compose logs -f api rag`.
 
 ### 4. Entre no sistema
 
@@ -69,9 +69,9 @@ Já rodava a versão anterior (antes dos serviços separados)? O backend passou 
 
 A busca nos documentos usa embeddings locais gerados pelo **Ollama** com o modelo **bge-m3** (nada sai da sua máquina). Na **primeira** subida, o passo `ollama-modelo` baixa o modelo (cerca de **1,2 GB**) para o volume `ollama`, e o `rag` só sobe depois que o download termina: conte alguns minutos a mais. Acompanhe com `docker compose logs -f ollama-modelo`. Nas próximas subidas o modelo já está no volume e nada é baixado (`docker compose down -v` apaga o volume e o modelo é baixado de novo).
 
-Cada arquivo enviado entra no índice em segundo plano, separado da leitura contábil. A situação da indexação (`NA_FILA`, `INDEXANDO`, `INDEXADO`, `SEM_TEXTO`, `ERRO`) vem no campo `indexacao` de cada arquivo na API (`GET /api/condominios/{id}/arquivos`). Arquivos enviados **antes desta versão** não estão no índice: use **Reprocessar** em cada um para que entrem na busca.
+Cada arquivo enviado entra no índice em segundo plano, separado da leitura contábil. A situação da indexação (`QUEUED`, `INDEXING`, `INDEXED`, `NO_TEXT`, `WITHDRAWN`, `ERROR`) vem no campo `indexing` de cada arquivo na API (`GET /api/condominiums/{condominiumId}/files`). Arquivos enviados **antes desta versão** não estão no índice: use **Reprocessar** em cada um para que entrem na busca.
 
-Sem o Ollama, a busca continua funcionando só por palavra para o que já foi indexado; arquivos novos ficam com a indexação em `ERRO` até o Ollama voltar e o arquivo ser reprocessado.
+Sem o Ollama, a busca continua funcionando só por palavra para o que já foi indexado; arquivos novos ficam com a indexação em `ERROR` até o Ollama voltar e o arquivo ser reprocessado.
 
 ### Endereços úteis
 
@@ -82,7 +82,7 @@ Sem o Ollama, a busca continua funcionando só por palavra para o que já foi in
 | API (direto) | http://localhost:8081/api | token Bearer do Keycloak |
 | Fila (painel do RabbitMQ) | http://localhost:15672 | `condominio` / `condominio` |
 | MCP (para o Claude) | http://localhost:8083/mcp | token Bearer do Keycloak |
-| Saúde dos serviços | http://localhost:8081/actuator/health (backend), :8082 (rag), :8083 (mcp) | livre |
+| Saúde dos serviços | http://localhost:8081/actuator/health (api), :8082 (rag), :8083 (mcp) | livre |
 | Leitor de documentos | http://localhost:8090/saude | livre |
 
 ### Se algo der errado
@@ -93,9 +93,9 @@ Sem o Ollama, a busca continua funcionando só por palavra para o que já foi in
 | A tela de login não abre logo após subir | O Keycloak leva cerca de 30 s para iniciar. Aguarde e recarregue |
 | O arquivo fica em "Falhou" com "O leitor de documentos não respondeu" | Confira com `docker compose ps` se o contêiner `leitor` está de pé e use **Reprocessar** |
 | O arquivo fica em "Na fila" | O serviço `rag` está parado. Suba com `docker compose start rag`: o pedido esperou na fila e é lido na hora |
-| Mensagens na fila `.error` (painel do RabbitMQ) | Uma leitura ou gravação falhou três vezes. O log do `rag` ou do `backend` diz o motivo |
+| Mensagens na fila `.error` (painel do RabbitMQ) | Uma leitura ou gravação falhou três vezes. O log do `rag` ou do `api` diz o motivo |
 | "Arquivo já enviado" | O sistema reconhece o mesmo conteúdo pelo hash. É proteção contra duplicidade |
-| Quer ver os logs | `docker compose logs -f backend` (ou `rag`, `mcp`, `leitor`, `fila`, `keycloak`, `banco`) |
+| Quer ver os logs | `docker compose logs -f api` (ou `rag`, `mcp`, `leitor`, `fila`, `keycloak`, `banco`) |
 | Linux: erro de permissão ao gravar ou ler em `/dados` | Backend e rag rodam com o usuário 1001. Libere a pasta: `chmod 777 dados` na raiz do projeto |
 | Build para em `./gradlew ... bootJar` com `exit code: 127` (comum no Windows) | O `gradlew` foi baixado com final de linha do Windows (CRLF). Rode `git pull` e suba de novo: o Dockerfile e o `.gitattributes` já corrigem isso. Se ainda falhar, clone o projeto de novo |
 | A subida para em `ollama-modelo` (`service "ollama-modelo" didn't complete successfully`) | O modelo bge-m3 não foi baixado: sem internet ou acesso bloqueado a `registry.ollama.ai`. Veja o motivo em `docker compose logs ollama-modelo`, libere o acesso e rode `docker compose up` de novo (o download continua de onde parou). O `rag` não sobe sem o modelo |
@@ -107,7 +107,7 @@ Sem o Ollama, a busca continua funcionando só por palavra para o que já foi in
 
 1. Entre em http://localhost:8180 com `admin` / `admin` e escolha o realm **condominio**.
 2. Em **Users → Add user**, crie o usuário. Na aba **Credentials**, defina a senha.
-3. Na aba **Role mapping**, atribua `USUARIO`, `GESTOR` ou `ADMIN`.
+3. Na aba **Role mapping**, atribua `USER`, `MANAGER` ou `ADMIN`.
 4. Na aba **Attributes**, preencha `condominios` com o id do condomínio. O do piloto é `6f1d2c1e-3b4a-4c8e-9a51-2815a0000001`.
 
 Os usuários de exemplo e as regras de sessão (token de 5 min, sessão que cai após 30 min sem uso) estão em `infra/keycloak/realm-condominio.json`. Esse arquivo só é importado quando o Keycloak sobe com o banco dele vazio.
@@ -204,7 +204,7 @@ libs/
   storage/          interface Storage (pasta local; S3 depois), usada por backend e rag
   grpc-contract/    código gerado de contracts/grpc (usado por backend, rag e mcp)
 frontend/           React + TypeScript + Vite
-contracts/          openapi.yaml, leitor/v1, mensagens/v1 e v2 (fila) e grpc/ (.proto)
+contracts/          openapi.yaml, leitor/v1, mensagens/v3 (fila; v1 e v2 são histórico) e grpc/ (.proto, v2)
 infra/              docker-compose, Dockerfile dos serviços Java e realm do Keycloak
 docs/               requisitos, arquitetura, tecnologias e ADRs
 ```
@@ -234,4 +234,4 @@ cd leitor && python -m venv .venv && .venv/bin/pip install -r requirements-dev.t
 cd frontend && pnpm build                               # checagem de tipos
 ```
 
-Mudou um contrato? `contracts/openapi.yaml`: rode `pnpm gerar-api` dentro de `frontend/`. `contracts/grpc/`: o Gradle gera o código de novo no build. `contracts/mensagens/`: crie uma nova versão e ajuste backend e rag no mesmo PR; os exemplos em `contracts/mensagens/v2/exemplos/` (resultado) são testados pelos dois lados. O pedido de leitura (`ArquivoRecebido`) continua na v1; o resultado (`ResultadoProcessamento`) é v2 desde a ADR 0004, e a v1 do resultado vai para a fila de erro.
+Mudou um contrato? `contracts/openapi.yaml`: rode `pnpm gerar-api` dentro de `frontend/`. `contracts/grpc/`: o Gradle gera o código de novo no build. `contracts/mensagens/`: crie uma nova versão e ajuste api e rag no mesmo PR; os exemplos em `contracts/mensagens/v3/examples/` são testados pelos dois lados. Desde a fase 2 da ADR 0006, todas as mensagens são v3 (nomes em inglês) e as versões antigas ficam só como histórico.

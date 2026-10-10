@@ -120,7 +120,7 @@ class AccountMappingControllerPermissionTest {
                         new MappingTargetRequest(MappingTargetType.ADJUSTMENT, null, null, null)),
                 () -> controller.batch(CONDOMINIUM, BUDGET,
                         new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRM, List.of("1621"))),
-                () -> controller.uploadSheet(CONDOMINIUM, BUDGET, new MockMultipartFile("arquivo", "mapa.csv",
+                () -> controller.uploadSheet(CONDOMINIUM, BUDGET, new MockMultipartFile("file", "mapa.csv",
                         "text/csv",
                         "1621;1.7.8\n".getBytes(java.nio.charset.StandardCharsets.UTF_8))));
     }

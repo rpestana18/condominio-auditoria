@@ -20,8 +20,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * GET /uso (contracts/openapi.yaml, UsoDoPeriodo and TotalUso): custoEstimadoUsd absent without tokens, null with a
- * model without price, text with 2 decimals otherwise; custoDisponivel = false without catalog, with no cost value.
+ * GET /uso (contracts/openapi.yaml, UsoDoPeriodo and TotalUso): estimatedCostUsd absent without tokens, null with a
+ * model without price, text with 2 decimals otherwise; costAvailable = false without catalog, with no cost value.
  */
 class UsageJsonTest {
 
@@ -41,12 +41,12 @@ class UsageJsonTest {
 
         JsonNode usage = JSON.readTree(JSON.writeValueAsString(UsageMapper.toResponse(SUMMARY, cost)));
 
-        assertThat(usage.get("custoDisponivel").asBoolean()).isTrue();
-        assertThat(usage.get("custoEstimadoTotalUsd").asText()).isEqualTo("3.00");
-        assertThat(usage.get("modelosSemPreco")).isEmpty();
-        assertThat(usage.get("porMes").get(0).has("custoEstimadoUsd")).isFalse(); // search: no tokens
-        assertThat(usage.get("porMes").get(1).get("custoEstimadoUsd").asText()).isEqualTo("3.00");
-        assertThat(usage.get("porFuncao").get(1).get("custoEstimadoUsd").asText()).isEqualTo("3.00");
+        assertThat(usage.get("costAvailable").asBoolean()).isTrue();
+        assertThat(usage.get("estimatedTotalCostUsd").asText()).isEqualTo("3.00");
+        assertThat(usage.get("modelsWithoutPrice")).isEmpty();
+        assertThat(usage.get("byMonth").get(0).has("estimatedCostUsd")).isFalse(); // search: no tokens
+        assertThat(usage.get("byMonth").get(1).get("estimatedCostUsd").asText()).isEqualTo("3.00");
+        assertThat(usage.get("byFunction").get(1).get("estimatedCostUsd").asText()).isEqualTo("3.00");
     }
 
     @Test
@@ -56,20 +56,20 @@ class UsageJsonTest {
 
         JsonNode usage = JSON.readTree(JSON.writeValueAsString(UsageMapper.toResponse(SUMMARY, cost)));
 
-        assertThat(usage.get("custoDisponivel").asBoolean()).isTrue();
-        assertThat(usage.has("custoEstimadoTotalUsd")).isTrue();
-        assertThat(usage.get("custoEstimadoTotalUsd").isNull()).isTrue();
-        assertThat(usage.get("porMes").get(1).get("custoEstimadoUsd").isNull()).isTrue();
-        assertThat(usage.get("modelosSemPreco").get(0).asText()).isEqualTo("anthropic/modelo-antigo");
+        assertThat(usage.get("costAvailable").asBoolean()).isTrue();
+        assertThat(usage.has("estimatedTotalCostUsd")).isTrue();
+        assertThat(usage.get("estimatedTotalCostUsd").isNull()).isTrue();
+        assertThat(usage.get("byMonth").get(1).get("estimatedCostUsd").isNull()).isTrue();
+        assertThat(usage.get("modelsWithoutPrice").get(0).asText()).isEqualTo("anthropic/modelo-antigo");
     }
 
     @Test
     void withoutCatalogUsageHasNoCostValue() throws Exception {
         JsonNode usage = JSON.readTree(JSON.writeValueAsString(UsageMapper.toResponse(SUMMARY, null)));
 
-        assertThat(usage.get("custoDisponivel").asBoolean()).isFalse();
-        assertThat(usage.has("custoEstimadoTotalUsd")).isFalse();
-        assertThat(usage.get("porMes").get(1).has("custoEstimadoUsd")).isFalse();
-        assertThat(usage.get("porMes").get(1).get("tokensEntrada").asLong()).isEqualTo(1_000_000);
+        assertThat(usage.get("costAvailable").asBoolean()).isFalse();
+        assertThat(usage.has("estimatedTotalCostUsd")).isFalse();
+        assertThat(usage.get("byMonth").get(1).has("estimatedCostUsd")).isFalse();
+        assertThat(usage.get("byMonth").get(1).get("inputTokens").asLong()).isEqualTo(1_000_000);
     }
 }

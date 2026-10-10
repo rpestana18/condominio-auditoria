@@ -1,7 +1,6 @@
 package br.com.condominioauditoria.api.dto.response.budget;
 
 import br.com.condominioauditoria.api.model.enums.BudgetVsActualStatus;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /**
@@ -13,24 +12,24 @@ import java.util.List;
  * shows zero in place of a number that was not assessed (RF-03.1.10).
  */
 public record BudgetVsActualResponse(
-        @JsonProperty("versaoCalculo") String calculationVersion,
-        @JsonProperty("periodo") String period,
-        @JsonProperty("situacao") BudgetVsActualStatus status,
-        @JsonProperty("mensagem") String message,
-        @JsonProperty("po") BudgetBriefResponse budget,
-        @JsonProperty("meses") List<FiscalYearMonthResponse> months,
-        @JsonProperty("mesesSomados") List<String> summedMonths,
-        @JsonProperty("mesesSemFluxo") List<String> monthsWithoutCashFlow,
-        @JsonProperty("mesesComDoisFluxos") List<String> monthsWithTwoCashFlows,
-        @JsonProperty("depara") PeriodMappingSummaryResponse mapping,
-        @JsonProperty("provisorio") boolean provisional,
-        @JsonProperty("totais") BudgetVsActualTotalsResponse totals,
-        @JsonProperty("grupos") List<BudgetVsActualGroupResponse> groups,
-        @JsonProperty("ajustes") EntryBlockResponse adjustments,
-        @JsonProperty("aRealocar") EntryBlockResponse toReallocate,
-        @JsonProperty("semLinhaPo") EntryBlockResponse withoutBudgetLine,
-        @JsonProperty("conferencia") CashFlowCheckResponse cashFlowCheck,
-        @JsonProperty("regra20") Rule20Response rule20,
-        @JsonProperty("fundos") List<FundResultResponse> funds,
-        @JsonProperty("avisos") List<BudgetVsActualWarningResponse> warnings) {
+        String calculationVersion,
+        String period,
+        BudgetVsActualStatus status,
+        String message,
+        BudgetBriefResponse budget,
+        List<FiscalYearMonthResponse> months,
+        List<String> summedMonths,
+        List<String> monthsWithoutCashFlow,
+        List<String> monthsWithTwoCashFlows,
+        PeriodMappingSummaryResponse mapping,
+        boolean provisional,
+        BudgetVsActualTotalsResponse totals,
+        List<BudgetVsActualGroupResponse> groups,
+        EntryBlockResponse adjustments,
+        EntryBlockResponse toReallocate,
+        EntryBlockResponse withoutBudgetLine,
+        CashFlowCheckResponse cashFlowCheck,
+        Rule20Response rule20,
+        List<FundResultResponse> funds,
+        List<BudgetVsActualWarningResponse> warnings) {
 }

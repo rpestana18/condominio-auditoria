@@ -38,7 +38,7 @@ import org.springframework.web.server.ResponseStatusException;
  * and Usuário get 403).
  */
 @RestController
-@RequestMapping("/api/condominios/{condominiumId}/previsoes/{budgetId}/depara")
+@RequestMapping("/api/condominiums/{condominiumId}/budgets/{budgetId}/account-mappings")
 public class AccountMappingController {
 
     /** The pilot's sheet is 3 KB; 1 MB leaves room for thousands of accounts. */
@@ -55,12 +55,12 @@ public class AccountMappingController {
     @GetMapping
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     public AccountMappingsResponse list(@PathVariable UUID condominiumId, @PathVariable UUID budgetId,
-            @RequestParam(name = "filtro", required = false) AccountMappingFilter filter) {
+            @RequestParam(name = "filter", required = false) AccountMappingFilter filter) {
         access.require(condominiumId);
         return service.list(condominiumId, budgetId, filter);
     }
 
-    @GetMapping("/eventos")
+    @GetMapping("/events")
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
     public List<AccountMappingEventResponse> events(@PathVariable UUID condominiumId, @PathVariable UUID budgetId) {
         access.require(condominiumId);
@@ -76,7 +76,7 @@ public class AccountMappingController {
         return service.setTarget(condominiumId, budgetId, account, request, access.username());
     }
 
-    @PostMapping("/lote")
+    @PostMapping("/batch")
     @PreAuthorize("hasRole('ADMIN')")
     public AccountMappingBatchResponse batch(@PathVariable UUID condominiumId, @PathVariable UUID budgetId,
             @RequestBody AccountMappingBatchRequest request) {
@@ -84,17 +84,17 @@ public class AccountMappingController {
         return service.batch(condominiumId, budgetId, request, access.username());
     }
 
-    @PostMapping("/sugestoes")
+    @PostMapping("/suggestions")
     @PreAuthorize("hasRole('ADMIN')")
     public AccountMappingSuggestionsResponse suggest(@PathVariable UUID condominiumId, @PathVariable UUID budgetId) {
         access.require(condominiumId);
         return service.suggest(condominiumId, budgetId, access.username());
     }
 
-    @PostMapping(path = "/planilha", consumes = "multipart/form-data")
+    @PostMapping(path = "/sheet", consumes = "multipart/form-data")
     @PreAuthorize("hasRole('ADMIN')")
     public AccountMappingSheetResponse uploadSheet(@PathVariable UUID condominiumId, @PathVariable UUID budgetId,
-            @RequestPart("arquivo") MultipartFile file) throws IOException {
+            @RequestPart("file") MultipartFile file) throws IOException {
         access.require(condominiumId);
         if (file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "A planilha está vazia");

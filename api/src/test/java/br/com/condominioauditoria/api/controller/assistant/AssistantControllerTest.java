@@ -176,8 +176,8 @@ class AssistantControllerTest {
     @Test
     void limitOutsideOneToFiftyIs400() throws Exception {
         AssistantQuestionServiceTest.logIn("USUARIO", A);
-        mvc.perform(post("/api/condominios/{id}/assistente/busca", A).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"texto\":\"portão\",\"limite\":51}"))
+        mvc.perform(post("/api/condominiums/{id}/assistant/search", A).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"portão\",\"limit\":51}"))
                 .andExpect(status().isBadRequest());
         assertThat(rag.searches).isEmpty();
     }
@@ -188,13 +188,13 @@ class AssistantControllerTest {
         doThrow(new FeatureNotEnabledException(FeatureService.ASSISTANT, "Assistente")).when(features)
                 .require(A, FeatureService.ASSISTANT);
 
-        mvc.perform(post("/api/condominios/{id}/assistente/perguntas", A).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"pergunta\":\"o portão foi aprovado?\"}"))
+        mvc.perform(post("/api/condominiums/{id}/assistant/questions", A).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\":\"o portão foi aprovado?\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.detail").value("Módulo Assistente não contratado para este condomínio."))
-                .andExpect(jsonPath("$.modulo").value("ASSISTANT"));
-        mvc.perform(post("/api/condominios/{id}/assistente/busca", A).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"texto\":\"portão\"}"))
+                .andExpect(jsonPath("$.feature").value("ASSISTANT"));
+        mvc.perform(post("/api/condominiums/{id}/assistant/search", A).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"portão\"}"))
                 .andExpect(status().isForbidden());
         assertThat(rag.questions).isEmpty();
         assertThat(rag.searches).isEmpty();
@@ -205,11 +205,11 @@ class AssistantControllerTest {
     void externalMcpIs409WithAiModeWithoutCallingRag() throws Exception {
         AssistantQuestionServiceTest.logIn("USUARIO", A);
 
-        mvc.perform(post("/api/condominios/{id}/assistente/perguntas", A).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"pergunta\":\"o portão foi aprovado?\"}"))
+        mvc.perform(post("/api/condominiums/{id}/assistant/questions", A).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\":\"o portão foi aprovado?\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("O assistente deste condomínio é o seu Claude, conectado ao MCP."))
-                .andExpect(jsonPath("$.modoIa").value("EXTERNAL_MCP"));
+                .andExpect(jsonPath("$.aiMode").value("EXTERNAL_MCP"));
         assertThat(rag.questions).isEmpty();
         verify(usage, org.mockito.Mockito.never()).recordQuestion(any(), any(), any(), any(),
                 org.mockito.ArgumentMatchers.anyLong(),
@@ -223,8 +223,8 @@ class AssistantControllerTest {
                 new Embeddings(AiMode.OFF, null, null), null, null));
         AssistantQuestionServiceTest.logIn("USUARIO", A);
 
-        mvc.perform(post("/api/condominios/{id}/assistente/busca", A).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"texto\":\"portão\",\"filtros\":{\"categorias\":[\"PO\"]}}"))
+        mvc.perform(post("/api/condominiums/{id}/assistant/search", A).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"portão\",\"filters\":{\"categories\":[\"PO\"]}}"))
                 .andExpect(status().isOk());
         assertThat(rag.searches).singleElement()
                 .satisfies(b -> assertThat(b.getFilters().getCategoriesList()).containsExactly("PO"));

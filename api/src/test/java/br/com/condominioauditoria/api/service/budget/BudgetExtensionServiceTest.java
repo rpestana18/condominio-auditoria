@@ -137,7 +137,7 @@ class BudgetExtensionServiceTest {
         debit(march, "100.00", LocalDate.of(2026, 3, 10));
         debit(april, "250.00", LocalDate.of(2026, 4, 10));
 
-        BudgetVsActualResponse r = scenario.budgetVsActual.get(scenario.condominiumId, "acumulado",
+        BudgetVsActualResponse r = scenario.budgetVsActual.get(scenario.condominiumId, "cumulative",
                 previous.getId());
 
         assertThat(r.months()).hasSize(13);

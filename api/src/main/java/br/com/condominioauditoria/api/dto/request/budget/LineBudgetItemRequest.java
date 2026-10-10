@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.api.dto.request.budget;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.UUID;
 
 /**
@@ -8,7 +7,7 @@ import java.util.UUID;
  * ({@code newBudgetItem}, with the name). Null {@code confirm} = true.
  */
 public record LineBudgetItemRequest(
-        @JsonProperty("rubricaId") UUID budgetItemId,
-        @JsonProperty("novaRubrica") String newBudgetItem,
-        @JsonProperty("confirmar") Boolean confirm) {
+        UUID budgetItemId,
+        String newBudgetItem,
+        Boolean confirm) {
 }

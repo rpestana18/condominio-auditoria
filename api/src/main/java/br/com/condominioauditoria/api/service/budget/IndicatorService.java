@@ -62,7 +62,7 @@ public class IndicatorService {
                 .filter(p -> p.getStatus() == BudgetStatus.CONFIRMED && p.getFiscalYearStart() != null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO confirmada não encontrada"));
 
-        BudgetVsActualResponse cumulative = budgetVsActual.calculate(condominiumId, "acumulado",
+        BudgetVsActualResponse cumulative = budgetVsActual.calculate(condominiumId, "cumulative",
                 budget.getId()).result();
         List<CashFlowFile> cashFlows = budgetVsActual.cashFlows(condominiumId);
         List<CalculatedMonth> months = new ArrayList<>();

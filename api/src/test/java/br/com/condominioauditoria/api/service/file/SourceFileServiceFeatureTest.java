@@ -91,7 +91,7 @@ class SourceFileServiceFeatureTest {
     }
 
     private static MockMultipartFile upload() {
-        return new MockMultipartFile("arquivo", "ata.pdf", "application/pdf",
+        return new MockMultipartFile("file", "ata.pdf", "application/pdf",
                 ("conteudo " + UUID.randomUUID()).getBytes());
     }
 }

@@ -208,14 +208,14 @@ public class BudgetVsActualQueryService {
 
     public static Period period(String text) {
         String t = text == null ? "" : text.trim();
-        if (t.equalsIgnoreCase("acumulado")) {
+        if (t.equalsIgnoreCase("cumulative")) {
             return new Cumulative();
         }
         try {
             return new Month(YearMonth.parse(t));
         } catch (DateTimeParseException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Período deve ser AAAA-MM (ex.: 2026-09) ou \"acumulado\": " + text);
+                    "Período deve ser AAAA-MM (ex.: 2026-09) ou \"cumulative\": " + text);
         }
     }
 }

@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.api.dto.response.budget;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -12,16 +11,16 @@ import java.util.UUID;
  */
 public record PrintedColumnCheckResponse(
         String id,
-        @JsonProperty("rotulo") String label,
-        @JsonProperty("poId") UUID budgetId,
-        @JsonProperty("substituida") boolean superseded,
-        @JsonProperty("poAnteriorId") UUID previousBudgetId,
-        @JsonProperty("poAnteriorRotulo") String previousBudgetLabel,
-        @JsonProperty("totalImpresso") BigDecimal printedTotal,
-        @JsonProperty("totalIncluiFundos") boolean totalIncludesFunds,
-        @JsonProperty("fundos") BigDecimal funds,
-        @JsonProperty("previstoMes") BigDecimal monthlyPlanned,
-        @JsonProperty("grupos") List<PrintedColumnGroupResponse> groups,
-        @JsonProperty("diferencas") List<GroupDifferenceResponse> differences,
-        @JsonProperty("avisos") List<String> warnings) {
+        String label,
+        UUID budgetId,
+        boolean superseded,
+        UUID previousBudgetId,
+        String previousBudgetLabel,
+        BigDecimal printedTotal,
+        boolean totalIncludesFunds,
+        BigDecimal funds,
+        BigDecimal monthlyPlanned,
+        List<PrintedColumnGroupResponse> groups,
+        List<GroupDifferenceResponse> differences,
+        List<String> warnings) {
 }

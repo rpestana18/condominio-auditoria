@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
  * condomínio." without it).
  */
 @RestController
-@RequestMapping("/api/condominios/{condominiumId}/assistente")
+@RequestMapping("/api/condominiums/{condominiumId}/assistant")
 @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
 public class AssistantController {
 
@@ -40,14 +40,14 @@ public class AssistantController {
         this.condominiums = condominiums;
     }
 
-    @PostMapping("/perguntas")
+    @PostMapping("/questions")
     public AssistantAnswerResponse ask(@PathVariable UUID condominiumId,
             @RequestBody(required = false) QuestionRequest request) {
         requireCondominium(condominiumId);
         return questions.ask(condominiumId, request);
     }
 
-    @PostMapping("/busca")
+    @PostMapping("/search")
     public List<DocumentChunkResponse> search(@PathVariable UUID condominiumId,
             @RequestBody(required = false) DocumentSearchRequest request) {
         requireCondominium(condominiumId);

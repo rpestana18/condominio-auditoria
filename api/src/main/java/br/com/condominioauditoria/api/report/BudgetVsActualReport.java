@@ -92,7 +92,7 @@ public record BudgetVsActualReport(String condominium, String period, String fun
     }
 
     private static String period(BudgetVsActualResponse r) {
-        if (!"acumulado".equals(r.period())) {
+        if (!"cumulative".equals(r.period())) {
             return BudgetVsActualCalculator.mmyyyy(YearMonth.parse(r.period()));
         }
         String summed = r.summedMonths().isEmpty() ? "nenhum"

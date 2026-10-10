@@ -123,7 +123,7 @@ class BudgetVsActualControllerPermissionTest {
     void invalidPeriodIsRejected() {
         assertThat(BudgetVsActualQueryService.period("2026-09")).isEqualTo(new BudgetVsActualCalculator.Month(
                 java.time.YearMonth.of(2026, 9)));
-        assertThat(BudgetVsActualQueryService.period("ACUMULADO")).isInstanceOf(BudgetVsActualCalculator.Cumulative.class);
+        assertThat(BudgetVsActualQueryService.period("CUMULATIVE")).isInstanceOf(BudgetVsActualCalculator.Cumulative.class);
         assertThatThrownBy(() -> BudgetVsActualQueryService.period("09/2026")).isInstanceOf(ResponseStatusException.class);
     }
 

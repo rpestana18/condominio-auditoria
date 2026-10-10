@@ -135,8 +135,8 @@ class AiConfigurationControllerTest {
                     .doesNotContain(Base64.getEncoder().encodeToString(rows.stream()
                             .filter(AiConfiguration::hasKey).findFirst().orElseThrow().getEncryptedKey())
                             .substring(0, 20))
-                    .contains("\"chaveCadastrada\":true").contains("\"chaveFinal\":\"x9Qa\"")
-                    .contains("\"modoEfetivo\":\"API_KEY\"").contains("\"atualizadoPor\":\"pessoa.admin\"");
+                    .contains("\"keyRegistered\":true").contains("\"keySuffix\":\"x9Qa\"")
+                    .contains("\"effectiveMode\":\"API_KEY\"").contains("\"updatedBy\":\"pessoa.admin\"");
         }
     }
 
@@ -146,8 +146,8 @@ class AiConfigurationControllerTest {
 
         String text = JsonMapper.builder().build().writeValueAsString(controller.providers());
 
-        assertThat(text).contains("\"codigo\":\"anthropic\"").contains("\"precoEntradaMilhaoUsd\":\"2.00\"")
-                .contains("\"uso\":\"EMBEDDINGS\"").doesNotContain("BEGIN PUBLIC KEY").doesNotContain("chavePublica");
+        assertThat(text).contains("\"code\":\"anthropic\"").contains("\"inputPricePerMillionUsd\":\"2.00\"")
+                .contains("\"function\":\"EMBEDDINGS\"").doesNotContain("BEGIN PUBLIC KEY").doesNotContain("publicKey");
     }
 
     private static AiConfigurationRequest request(String key) {

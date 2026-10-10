@@ -397,8 +397,8 @@ public final class FiscalYearComparison {
 
     private static String evidencePeriod(Input e) {
         return e.periodMonths().size() == 1 && e.period().size() == 1
-                && !e.period().getFirst().period().equalsIgnoreCase("acumulado") ? e.periodMonths().getFirst()
-                : "acumulado";
+                && !e.period().getFirst().period().equalsIgnoreCase("cumulative") ? e.periodMonths().getFirst()
+                : "cumulative";
     }
 
     private static BigDecimal lineValue(Input e, BudgetLine l) {

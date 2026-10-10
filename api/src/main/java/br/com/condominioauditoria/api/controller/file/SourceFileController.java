@@ -45,34 +45,34 @@ class SourceFileController {
         this.access = access;
     }
 
-    @GetMapping("/categorias")
+    @GetMapping("/categories")
     List<FileCategoryResponse> categories() {
         return Arrays.stream(FileCategory.values()).map(c -> new FileCategoryResponse(c, c.label())).toList();
     }
 
     /** Newest first, optionally filtered by category. */
-    @GetMapping("/condominios/{condominiumId}/arquivos")
+    @GetMapping("/condominiums/{condominiumId}/files")
     List<SourceFileResponse> list(@PathVariable UUID condominiumId,
-            @RequestParam(name = "categoria", required = false) FileCategory category) {
+            @RequestParam(name = "category", required = false) FileCategory category) {
         access.require(condominiumId);
         return service.list(condominiumId, category);
     }
 
     /** For the discreet "latest file" indicator in the corner of the screen. */
-    @GetMapping("/condominios/{condominiumId}/arquivos/ultimo")
+    @GetMapping("/condominiums/{condominiumId}/files/latest")
     ResponseEntity<SourceFileResponse> latest(@PathVariable UUID condominiumId) {
         access.require(condominiumId);
         return service.latest(condominiumId).map(ResponseEntity::ok).orElse(ResponseEntity.noContent().build());
     }
 
-    @GetMapping("/condominios/{condominiumId}/arquivos/{id}")
+    @GetMapping("/condominiums/{condominiumId}/files/{id}")
     SourceFileDetailResponse detail(@PathVariable UUID condominiumId, @PathVariable UUID id) {
         access.require(condominiumId);
         return service.detail(condominiumId, id);
     }
 
     /** Downloads the original, exactly as it was uploaded. */
-    @GetMapping("/condominios/{condominiumId}/arquivos/{id}/conteudo")
+    @GetMapping("/condominiums/{condominiumId}/files/{id}/content")
     ResponseEntity<InputStreamResource> content(@PathVariable UUID condominiumId, @PathVariable UUID id)
             throws IOException {
         access.require(condominiumId);
@@ -86,11 +86,11 @@ class SourceFileController {
                 .body(new InputStreamResource(file.content()));
     }
 
-    @PostMapping(path = "/condominios/{condominiumId}/arquivos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(path = "/condominiums/{condominiumId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    SourceFileResponse upload(@PathVariable UUID condominiumId, @RequestParam("categoria") FileCategory category,
-            @RequestPart("arquivo") MultipartFile file) throws IOException {
+    SourceFileResponse upload(@PathVariable UUID condominiumId, @RequestParam("category") FileCategory category,
+            @RequestPart("file") MultipartFile file) throws IOException {
         access.require(condominiumId);
         if (file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Arquivo vazio");
@@ -98,7 +98,7 @@ class SourceFileController {
         return service.upload(condominiumId, category, file, access.username());
     }
 
-    @PostMapping("/condominios/{condominiumId}/arquivos/{id}/reprocessar")
+    @PostMapping("/condominiums/{condominiumId}/files/{id}/reprocess")
     @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
     @ResponseStatus(HttpStatus.ACCEPTED)
     SourceFileResponse reprocess(@PathVariable UUID condominiumId, @PathVariable UUID id) {
@@ -107,7 +107,7 @@ class SourceFileController {
     }
 
     /** Changes the category of a file already uploaded and reprocesses it with the new one (RF-01.7). */
-    @PutMapping("/condominios/{condominiumId}/arquivos/{id}/categoria")
+    @PutMapping("/condominiums/{condominiumId}/files/{id}/category")
     @PreAuthorize("hasAnyRole('GESTOR', 'ADMIN')")
     SourceFileResponse changeCategory(@PathVariable UUID condominiumId, @PathVariable UUID id,
             @RequestBody ChangeCategoryRequest request) {

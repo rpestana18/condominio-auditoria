@@ -206,7 +206,7 @@ public final class BudgetVsActualCalculator {
     }
 
     public static Calculation calculate(Input e) {
-        String period = e.period() instanceof Month m ? m.month().toString() : "acumulado";
+        String period = e.period() instanceof Month m ? m.month().toString() : "cumulative";
         Budget budget = e.budget();
         if (budget == null) {
             return empty(period, BudgetVsActualStatus.NO_BUDGET, e.period() instanceof Month m

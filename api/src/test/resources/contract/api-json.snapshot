@@ -1,1996 +1,1996 @@
-DELETE /api/condominios/{}/previsoes/{}/prorrogacao
+DELETE /api/condominiums/{}/budgets/{}/extension
   path: UUID
   path: UUID
   returns: {
-    achados: [{
-      competencia: string
-      descricao: string
-      estado: string
+    budget: {
+      confirmedAt: Instant
+      confirmedBy: string
+      extension: {
+        at: Instant
+        by: string
+        from: string
+        justification: string
+        until: string
+      }
+      fileId: UUID
+      fileName: string
+      fiscalYearEnd: string
+      fiscalYearStart: string
       id: UUID
-      regra: string
-      severidade: string
-      versaoRegra: string
-    }]
-    avisos: [{
-      codigo: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
-      texto: string
-    }]
-    codigosRepetidos: [{
-      codigoImpresso: string
-      linhas: [{
-        codigoEfetivo: string
-        descricao: string
-        linhaId: UUID
-        ordem: integer
-      }]
-      resolvido: boolean
-    }]
-    colunaOrcado: string
-    colunaOrcadoAnterior: string
-    conferencias: [{
-      classificacao: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
-      codigo: string
-      descricao: string
-      detalhe: string
-      explicacao: string
+      monthlyPlanned: number
+      printedFiscalYear: string
+      printedTotal: number
+      readAt: Instant
+      sha256: string
+      status: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+      title: string
+      version: integer
+    }
+    budgetedColumn: string
+    checks: [{
+      classification: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
+      code: string
+      description: string
+      detail: string
+      explanation: string
       ok: boolean
     }]
-    confirmacao: {
-      ataArquivoId: UUID
-      cienteDivergencia: boolean
-      dataAprovacao: LocalDate
-      justificativaDivergencia: string
-      semAta: boolean
+    confirmation: {
+      approvalDate: LocalDate
+      discrepancyAcknowledged: boolean
+      discrepancyJustification: string
+      minutesFileId: UUID
+      withoutMinutes: boolean
     }
-    fundos: [{
-      codigoEfetivo: string
-      descricao: string
-      fundo: string
-      fundoId: UUID
-      linhaId: UUID
-      orcado: number
-    }]
-    linhas: [{
-      arquivoId: UUID
-      codigoEfetivo: string
-      codigoImpresso: string
-      conta: string
-      contaTexto: string
-      descricao: string
+    findings: [{
+      description: string
       id: UUID
-      linhaDeFundo: boolean
-      marca: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
-      observacoes: string
-      orcado: number
-      orcadoAnterior: number
-      ordem: integer
-      pagina: integer
-      percentualTexto: string
-      sha256: string
-      tipo: enum[TOTAL, GROUP, LINE]
+      referenceMonth: string
+      rule: string
+      ruleVersion: string
+      severity: string
+      status: string
     }]
-    previsao: {
-      arquivoId: UUID
-      arquivoNome: string
-      confirmadaEm: Instant
-      confirmadaPor: string
-      estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
-      exercicioFim: string
-      exercicioImpresso: string
-      exercicioInicio: string
+    funds: [{
+      budgeted: number
+      description: string
+      effectiveCode: string
+      fund: string
+      fundId: UUID
+      lineId: UUID
+    }]
+    lines: [{
+      account: string
+      accountText: string
+      budgeted: number
+      description: string
+      effectiveCode: string
+      fileId: UUID
+      fundLine: boolean
       id: UUID
-      lidaEm: Instant
-      previstoMes: number
-      prorrogacao: {
-        ate: string
-        de: string
-        em: Instant
-        justificativa: string
-        por: string
-      }
+      mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+      notes: string
+      page: integer
+      percentageText: string
+      position: integer
+      previousBudgeted: number
+      printedCode: string
       sha256: string
-      titulo: string
-      totalImpresso: number
-      versao: integer
-    }
-    previstoMesImpresso: number
-    substituidaDesde: string
-    toleranciaArredondamento: number
+      type: enum[TOTAL, GROUP, LINE]
+    }]
+    previousBudgetedColumn: string
+    printedMonthlyPlanned: number
+    repeatedCodes: [{
+      lines: [{
+        description: string
+        effectiveCode: string
+        lineId: UUID
+        position: integer
+      }]
+      printedCode: string
+      resolved: boolean
+    }]
+    roundingTolerance: number
+    supersededFrom: string
+    warnings: [{
+      code: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
+      text: string
+    }]
   }
 
-DELETE /api/condominios/{}/realocacoes/{}
+DELETE /api/condominiums/{}/reallocations/{}
   path: UUID
   path: UUID
   returns: {
-    arquivoId: UUID
-    ativa: boolean
-    conta: string
-    contaNome: string
-    data: LocalDate
-    desfeitaEm: Instant
-    desfeitaPor: string
-    documento: string
-    historico: string
+    account: string
+    accountName: string
+    active: boolean
+    amount: number
+    budgetId: UUID
+    date: LocalDate
+    document: string
+    fileId: UUID
     id: UUID
-    linhaCodigo: string
-    linhaDescricao: string
-    linhaId: UUID
-    ordem: integer
-    pagina: integer
-    previsaoId: UUID
-    realocadaEm: Instant
-    realocadaPor: string
+    lineCode: string
+    lineDescription: string
+    lineId: UUID
+    memo: string
+    page: integer
+    position: integer
+    reallocatedAt: Instant
+    reallocatedBy: string
     sha256: string
-    valor: number
+    undoneAt: Instant
+    undoneBy: string
   }
 
-GET /api/categorias
+GET /api/ai/providers
   returns: [{
-    codigo: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
-    rotulo: string
+    code: string
+    dimension: integer
+    function: enum[ANSWERS, EMBEDDINGS]
+    local: boolean
+    models: [{
+      id: string
+      inputPricePerMillionUsd: string
+      isDefault: boolean
+      name: string
+      outputPricePerMillionUsd: string
+    }]
+    name: string
+    requiresKey: boolean
+    type: string
   }]
 
-GET /api/condominios/{}/achados
-  path: UUID
-  query competencia?: string
+GET /api/categories
   returns: [{
-    alvo: string
-    competencia: string
-    condicaoPresente: boolean
-    criadoEm: Instant
-    descricao: string
-    estado: enum[OPEN, NO_LONGER_APPLIES, JUSTIFIED, RESOLVED, FALSE_POSITIVE]
-    estadoEm: Instant
-    estadoMotivo: string
-    evidencias: [{
-      arquivoId: UUID
-      linhaPoId: UUID
-      ordem: integer
-      pagina: integer
-      referencia: string
+    code: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+    label: string
+  }]
+
+GET /api/condominiums/{}/ai
+  path: UUID
+  returns: {
+    assistant: {
+      answers: {
+        effectiveMode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+        keyRegistered: boolean
+        keySuffix: string
+        mode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+        model: string
+        provider: string
+      }
+      embeddings: {
+        mode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+        model: string
+        provider: string
+      }
+    }
+    generalMode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+    updatedAt: Instant
+    updatedBy: string
+  }
+
+GET /api/condominiums/{}/budget-items
+  path: UUID
+  returns: [{
+    createdAt: Instant
+    createdBy: string
+    group: string
+    id: UUID
+    name: string
+    sourceLineId: UUID
+  }]
+
+GET /api/condominiums/{}/budget-vs-actual
+  path: UUID
+  query period: string
+  query budget?: UUID
+  query fund?: UUID
+  returns: {
+    adjustments: {
+      accounts: [{
+        account: string
+        amount: number
+        detail: string
+        entries: integer
+        name: string
+      }]
+      entries: integer
+      total: number
+    }
+    budget: {
+      fileId: UUID
+      fileName: string
+      fiscalYearEnd: string
+      fiscalYearStart: string
+      id: UUID
       sha256: string
-    }]
-    historico: [{
-      condicaoPresente: boolean
-      em: Instant
-      estadoAnterior: enum[OPEN, NO_LONGER_APPLIES, JUSTIFIED, RESOLVED, FALSE_POSITIVE]
-      estadoNovo: enum[OPEN, NO_LONGER_APPLIES, JUSTIFIED, RESOLVED, FALSE_POSITIVE]
-      motivo: string
-      usuario: string
-    }]
-    id: UUID
-    regra: string
-    severidade: enum[INFO, WARNING, CRITICAL]
-    versaoRegra: string
-  }]
-
-GET /api/condominios/{}/arquivos
-  path: UUID
-  query categoria?: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
-  returns: [{
-    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
-    categoriaRotulo: string
-    enviadoEm: Instant
-    enviadoPor: string
-    id: UUID
-    indexing: {
-      motivo: string
-      paginas: integer
-      situacao: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
-      trechos: integer
+      status: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+      version: integer
     }
-    mensagem: string
-    nome: string
-    periodoFim: LocalDate
-    periodoInicio: LocalDate
-    processadoEm: Instant
-    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
-    tamanhoBytes: integer
-    totalLancamentos: integer
-  }]
-
-GET /api/condominios/{}/arquivos/ultimo
-  path: UUID
-  returns: {
-    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
-    categoriaRotulo: string
-    enviadoEm: Instant
-    enviadoPor: string
-    id: UUID
-    indexing: {
-      motivo: string
-      paginas: integer
-      situacao: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
-      trechos: integer
+    calculationVersion: string
+    cashFlowCheck: {
+      actualExpense: number
+      adjustments: number
+      entries: integer
+      fundDebits: number
+      matches: boolean
+      transfers: number
     }
-    mensagem: string
-    nome: string
-    periodoFim: LocalDate
-    periodoInicio: LocalDate
-    processadoEm: Instant
-    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
-    tamanhoBytes: integer
-    totalLancamentos: integer
+    funds: [{
+      collected: number
+      credits: number
+      debits: number
+      difference: number
+      execution: number
+      fund: string
+      fundId: UUID
+      lineCode: string
+      lineId: UUID
+      planned: number
+      status: enum[COMPARED, NOT_PLANNED_IN_BUDGET, LINE_WITHOUT_FUND, REPROCESS_CASH_FLOW]
+    }]
+    groups: [{
+      actual: number
+      code: string
+      description: string
+      difference: number
+      execution: number
+      lineId: UUID
+      lines: [{
+        account: string
+        actual: number
+        cashFlowAccounts: [string]
+        code: string
+        description: string
+        difference: number
+        entries: integer
+        execution: number
+        lineId: UUID
+        mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+        notes: string
+        page: integer
+        planned: number
+      }]
+      planned: number
+    }]
+    mapping: {
+      accounts: integer
+      confirmed: integer
+      withoutConfirmedMapping: integer
+    }
+    message: string
+    months: [{
+      aboveLimit: boolean
+      actualExpense: number
+      cashFlows: [{
+        fileId: UUID
+        name: string
+        periodEnd: LocalDate
+        periodStart: LocalDate
+        sha256: string
+        uploadedAt: Instant
+        uploadedBy: string
+      }]
+      extended: boolean
+      month: string
+      overrun: number
+      overrunPercentage: number
+      planned: number
+      status: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+    }]
+    monthsWithTwoCashFlows: [string]
+    monthsWithoutCashFlow: [string]
+    period: string
+    provisional: boolean
+    rule20: {
+      aboveLimit: boolean
+      limit: number
+      limitPercentage: number
+      lines: [{
+        code: string
+        description: string
+        lineId: UUID
+        overrun: number
+      }]
+      linesAbove: integer
+      maxScenario: number
+      maxScenarioPercentage: number
+      monthlyPlanned: number
+      overrun: number
+      percentage: number
+      provisional: boolean
+      rule: string
+      ruleVersion: string
+      toReallocate: number
+      withoutBudgetLine: number
+    }
+    status: enum[CALCULATED, NO_BUDGET, BUDGET_NOT_CONFIRMED, NO_OPERATING_FUND, NO_CASH_FLOW, TWO_CASH_FLOWS]
+    summedMonths: [string]
+    toReallocate: {
+      accounts: [{
+        account: string
+        amount: number
+        detail: string
+        entries: integer
+        name: string
+      }]
+      entries: integer
+      total: number
+    }
+    totals: {
+      actualExpense: number
+      difference: number
+      execution: number
+      fiscalYearPlanned: number
+      inLines: number
+      monthlyPlanned: number
+      planned: number
+    }
+    warnings: [{
+      code: string
+      text: string
+    }]
+    withoutBudgetLine: {
+      accounts: [{
+        account: string
+        amount: number
+        detail: string
+        entries: integer
+        name: string
+      }]
+      entries: integer
+      total: number
+    }
   }
 
-GET /api/condominios/{}/arquivos/{}
+GET /api/condominiums/{}/budget-vs-actual/evidence
+  path: UUID
+  query period: string
+  query budget?: UUID
+  query target: string
+  returns: [{
+    account: string
+    accountName: string
+    amount: number
+    date: LocalDate
+    document: string
+    entryId: UUID
+    fileId: UUID
+    fileName: string
+    fund: string
+    memo: string
+    page: integer
+    position: integer
+    reallocation: string
+    reallocationId: UUID
+    sha256: string
+    supplier: string
+  }]
+
+GET /api/condominiums/{}/budget-vs-actual/export
+  path: UUID
+  query format: string
+  query period: string
+  query budget?: UUID
+  query fund?: UUID
+  returns: bytes
+
+GET /api/condominiums/{}/budgets
+  path: UUID
+  returns: [{
+    confirmedAt: Instant
+    confirmedBy: string
+    extension: {
+      at: Instant
+      by: string
+      from: string
+      justification: string
+      until: string
+    }
+    fileId: UUID
+    fileName: string
+    fiscalYearEnd: string
+    fiscalYearStart: string
+    id: UUID
+    monthlyPlanned: number
+    printedFiscalYear: string
+    printedTotal: number
+    readAt: Instant
+    sha256: string
+    status: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+    title: string
+    version: integer
+  }]
+
+GET /api/condominiums/{}/budgets/{}
   path: UUID
   path: UUID
   returns: {
-    arquivo: {
-      categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
-      categoriaRotulo: string
-      enviadoEm: Instant
-      enviadoPor: string
+    budget: {
+      confirmedAt: Instant
+      confirmedBy: string
+      extension: {
+        at: Instant
+        by: string
+        from: string
+        justification: string
+        until: string
+      }
+      fileId: UUID
+      fileName: string
+      fiscalYearEnd: string
+      fiscalYearStart: string
+      id: UUID
+      monthlyPlanned: number
+      printedFiscalYear: string
+      printedTotal: number
+      readAt: Instant
+      sha256: string
+      status: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+      title: string
+      version: integer
+    }
+    budgetedColumn: string
+    checks: [{
+      classification: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
+      code: string
+      description: string
+      detail: string
+      explanation: string
+      ok: boolean
+    }]
+    confirmation: {
+      approvalDate: LocalDate
+      discrepancyAcknowledged: boolean
+      discrepancyJustification: string
+      minutesFileId: UUID
+      withoutMinutes: boolean
+    }
+    findings: [{
+      description: string
+      id: UUID
+      referenceMonth: string
+      rule: string
+      ruleVersion: string
+      severity: string
+      status: string
+    }]
+    funds: [{
+      budgeted: number
+      description: string
+      effectiveCode: string
+      fund: string
+      fundId: UUID
+      lineId: UUID
+    }]
+    lines: [{
+      account: string
+      accountText: string
+      budgeted: number
+      description: string
+      effectiveCode: string
+      fileId: UUID
+      fundLine: boolean
+      id: UUID
+      mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+      notes: string
+      page: integer
+      percentageText: string
+      position: integer
+      previousBudgeted: number
+      printedCode: string
+      sha256: string
+      type: enum[TOTAL, GROUP, LINE]
+    }]
+    previousBudgetedColumn: string
+    printedMonthlyPlanned: number
+    repeatedCodes: [{
+      lines: [{
+        description: string
+        effectiveCode: string
+        lineId: UUID
+        position: integer
+      }]
+      printedCode: string
+      resolved: boolean
+    }]
+    roundingTolerance: number
+    supersededFrom: string
+    warnings: [{
+      code: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
+      text: string
+    }]
+  }
+
+GET /api/condominiums/{}/budgets/{}/account-mappings
+  path: UUID
+  path: UUID
+  query filter?: enum[ALL, PENDING, SUGGESTED, CONFIRMED, REJECTED, UNMAPPED, SAME_AS_PREVIOUS_VERSION]
+  returns: {
+    accounts: [{
+      account: string
+      debits: number
+      ledgerEntries: integer
+      name: string
+      reason: string
+      sameAsPreviousVersion: boolean
+      source: enum[PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
+      status: enum[SUGGESTED, CONFIRMED, REJECTED]
+      target: {
+        code: string
+        description: string
+        detail: string
+        lineId: UUID
+        text: string
+        type: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
+      }
+      updatedAt: Instant
+      updatedBy: string
+    }]
+    budgetId: UUID
+    summary: {
+      accounts: integer
+      confirmed: integer
+      rejected: integer
+      suggested: integer
+      withoutMapping: integer
+    }
+    version: integer
+  }
+
+GET /api/condominiums/{}/budgets/{}/account-mappings/events
+  path: UUID
+  path: UUID
+  returns: [{
+    account: string
+    action: enum[SUGGESTED, CONFIRMED, REJECTED, CHANGED]
+    at: Instant
+    id: UUID
+    name: string
+    newStatus: enum[SUGGESTED, CONFIRMED, REJECTED]
+    newTarget: string
+    previousStatus: enum[SUGGESTED, CONFIRMED, REJECTED]
+    previousTarget: string
+    reason: string
+    source: enum[PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
+    username: string
+  }]
+
+GET /api/condominiums/{}/budgets/{}/budget-items
+  path: UUID
+  path: UUID
+  query filter?: enum[ALL, PENDING, SUGGESTED, CONFIRMED, REJECTED, NO_ITEM]
+  returns: {
+    budgetId: UUID
+    lines: [{
+      account: string
+      budgetItem: {
+        createdAt: Instant
+        createdBy: string
+        group: string
+        id: UUID
+        name: string
+        sourceLineId: UUID
+      }
+      budgeted: number
+      code: string
+      description: string
+      group: string
+      lineId: UUID
+      reason: string
+      source: enum[FIRST_BUDGET, BUDGET_ACCOUNT, PREVIOUS_VERSION, MANUAL]
+      status: enum[SUGGESTED, CONFIRMED, REJECTED]
+      updatedAt: Instant
+      updatedBy: string
+    }]
+    summary: {
+      confirmed: integer
+      lines: integer
+      rejected: integer
+      suggested: integer
+      withoutItem: integer
+    }
+    version: integer
+  }
+
+GET /api/condominiums/{}/budgets/{}/budget-items/events
+  path: UUID
+  path: UUID
+  returns: [{
+    action: enum[CREATED, RENAMED, SUGGESTED, CONFIRMED, REJECTED, CHANGED]
+    at: Instant
+    code: string
+    description: string
+    id: UUID
+    lineId: UUID
+    newItem: string
+    newStatus: enum[SUGGESTED, CONFIRMED, REJECTED]
+    previousItem: string
+    previousStatus: enum[SUGGESTED, CONFIRMED, REJECTED]
+    reason: string
+    source: enum[FIRST_BUDGET, BUDGET_ACCOUNT, PREVIOUS_VERSION, MANUAL]
+    username: string
+  }]
+
+GET /api/condominiums/{}/budgets/{}/events
+  path: UUID
+  path: UUID
+  returns: [{
+    at: Instant
+    detail: string
+    justification: string
+    type: string
+    username: string
+  }]
+
+GET /api/condominiums/{}/budgets/{}/printed-column
+  path: UUID
+  path: UUID
+  returns: {
+    budgetId: UUID
+    differences: [{
+      code: string
+      description: string
+      printedColumn: number
+      uploadedBudget: number
+    }]
+    funds: number
+    groups: [{
+      amount: number
+      code: string
+      description: string
+      difference: number
+      funds: boolean
+      lineId: UUID
+      lines: [{
+        account: string
+        amount: number
+        code: string
+        description: string
+        lineId: UUID
+        percentageText: string
+      }]
+      matches: boolean
+      printed: number
+    }]
+    id: string
+    label: string
+    monthlyPlanned: number
+    previousBudgetId: UUID
+    previousBudgetLabel: string
+    printedTotal: number
+    superseded: boolean
+    totalIncludesFunds: boolean
+    warnings: [string]
+  }
+
+GET /api/condominiums/{}/context
+  path: UUID
+  returns: {
+    assistant: {
+      answersMode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+      chatAvailable: boolean
+      embeddingsMode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+    }
+    condominiumId: UUID
+    enabledFeatures: [string]
+    name: string
+  }
+
+GET /api/condominiums/{}/dashboard
+  path: UUID
+  returns: {
+    closingBalance: number
+    failedChecks: integer
+    fileId: UUID
+    fileName: string
+    funds: [{
+      closingBalance: number
+      fund: string
+      fundId: UUID
+      inflows: number
+      openingBalance: number
+      outflows: number
+      result: number
+    }]
+    inflows: number
+    largestExpenses: [{
+      account: string
+      amount: number
+      date: LocalDate
+      fund: string
+      memo: string
+      page: integer
+    }]
+    openingBalance: number
+    operatingFund: {
+      closingBalance: number
+      confirmed: boolean
+      fund: string
+      fundId: UUID
+    }
+    outflows: number
+    periodEnd: LocalDate
+    periodStart: LocalDate
+  }
+
+GET /api/condominiums/{}/features
+  path: UUID
+  returns: [{
+    catalogVersion: integer
+    code: string
+    dependsOn: [string]
+    description: string
+    enabled: boolean
+    enabledByDefault: boolean
+    includes: [string]
+    name: string
+    since: Instant
+  }]
+
+GET /api/condominiums/{}/features/{}/events
+  path: UUID
+  path: string
+  returns: [{
+    enabledAfter: boolean
+    enabledBefore: boolean
+    feature: string
+    id: UUID
+    occurredAt: Instant
+    reason: string
+    username: string
+  }]
+
+GET /api/condominiums/{}/features/{}/periods
+  path: UUID
+  path: string
+  returns: [{
+    disableReason: string
+    disabledBy: string
+    enableReason: string
+    enabledBy: string
+    end: Instant
+    feature: string
+    start: Instant
+  }]
+
+GET /api/condominiums/{}/files
+  path: UUID
+  query category?: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+  returns: [{
+    category: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+    categoryLabel: string
+    entryCount: integer
+    id: UUID
+    indexing: {
+      chunks: integer
+      pages: integer
+      reason: string
+      status: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
+    }
+    message: string
+    name: string
+    periodEnd: LocalDate
+    periodStart: LocalDate
+    processedAt: Instant
+    sizeBytes: integer
+    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
+    uploadedAt: Instant
+    uploadedBy: string
+  }]
+
+GET /api/condominiums/{}/files/latest
+  path: UUID
+  returns: {
+    category: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+    categoryLabel: string
+    entryCount: integer
+    id: UUID
+    indexing: {
+      chunks: integer
+      pages: integer
+      reason: string
+      status: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
+    }
+    message: string
+    name: string
+    periodEnd: LocalDate
+    periodStart: LocalDate
+    processedAt: Instant
+    sizeBytes: integer
+    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
+    uploadedAt: Instant
+    uploadedBy: string
+  }
+
+GET /api/condominiums/{}/files/{}
+  path: UUID
+  path: UUID
+  returns: {
+    file: {
+      category: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+      categoryLabel: string
+      entryCount: integer
       id: UUID
       indexing: {
-        motivo: string
-        paginas: integer
-        situacao: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
-        trechos: integer
+        chunks: integer
+        pages: integer
+        reason: string
+        status: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
       }
-      mensagem: string
-      nome: string
-      periodoFim: LocalDate
-      periodoInicio: LocalDate
-      processadoEm: Instant
+      message: string
+      name: string
+      periodEnd: LocalDate
+      periodStart: LocalDate
+      processedAt: Instant
+      sizeBytes: integer
       status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
-      tamanhoBytes: integer
-      totalLancamentos: integer
+      uploadedAt: Instant
+      uploadedBy: string
     }
-    conferencias: [{
-      codigo: string
-      descricao: string
-      detalhe: string
-      ok: boolean
-    }]
-    fundos: [{
-      creditos: number
-      debitos: number
-      fundo: string
-      saldoAnterior: number
-      saldoAtual: number
+    funds: [{
+      closingBalance: number
+      credits: number
+      debits: number
+      fund: string
+      openingBalance: number
     }]
     sha256: string
+    totalsChecks: [{
+      code: string
+      description: string
+      detail: string
+      ok: boolean
+    }]
   }
 
-GET /api/condominios/{}/arquivos/{}/conteudo
+GET /api/condominiums/{}/files/{}/content
   path: UUID
   path: UUID
   returns: InputStreamResource
 
-GET /api/condominios/{}/comparacao-exercicios
+GET /api/condominiums/{}/findings
   path: UUID
-  query exercicios?: [string]
-  query fundo?: UUID
-  query mesmosMeses: boolean
-  returns: {
-    avisos: [string]
-    comparando: string
-    exercicios: [{
-      fim: string
-      id: string
-      inicio: string
-      meses: [string]
-      periodo: string
-      poId: UUID
-      rotulo: string
-      tipo: enum[PO, PRINTED_COLUMN]
-      versao: integer
-    }]
-    fundoId: UUID
-    grupos: [{
-      codigo: string
-      descricao: string
-      fundos: boolean
-      valores: [{
-        alvo: string
-        exercicioId: string
-        linhas: [{
-          alvo: string
-          codigo: string
-          descricao: string
-          linhaId: UUID
-        }]
-        previsto: number
-        previstoMes: number
-        realizado: number
-        variacaoPrevistoMes: {
-          novaNoExercicio: boolean
-          percentual: number
-          valor: number
-        }
-        variacaoRealizado: {
-          novaNoExercicio: boolean
-          percentual: number
-          valor: number
-        }
-      }]
-    }]
-    linhas: [{
-      grupo: string
-      nome: string
-      rubricaId: UUID
-      valores: [{
-        alvo: string
-        exercicioId: string
-        linhas: [{
-          alvo: string
-          codigo: string
-          descricao: string
-          linhaId: UUID
-        }]
-        previsto: number
-        previstoMes: number
-        realizado: number
-        variacaoPrevistoMes: {
-          novaNoExercicio: boolean
-          percentual: number
-          valor: number
-        }
-        variacaoRealizado: {
-          novaNoExercicio: boolean
-          percentual: number
-          valor: number
-        }
-      }]
-    }]
-    mesmosMeses: boolean
-    resumo: [{
-      achadosAbertos: integer
-      alvo: string
-      execucao: number
-      exercicioId: string
-      maiorExcesso: {
-        mes: string
-        percentual: number
-        valor: number
-      }
-      mesesAcimaDoLimite: integer
-      mesesComFluxo: integer
-      previsto: number
-      previstoExercicio: number
-      previstoMes: number
-      provisorio: boolean
-      realizado: number
-      variacaoPrevistoMes: {
-        novaNoExercicio: boolean
-        percentual: number
-        valor: number
-      }
-      variacaoRealizado: {
-        novaNoExercicio: boolean
-        percentual: number
-        valor: number
-      }
-    }]
-    semCorrespondencia: [{
-      alvo: string
-      codigo: string
-      conta: string
-      descricao: string
-      exercicioId: string
-      grupo: string
-      linhaId: UUID
-      previsto: number
-      previstoMes: number
-      realizado: number
-    }]
-  }
-
-GET /api/condominios/{}/contexto
-  path: UUID
-  returns: {
-    assistente: {
-      chatDisponivel: boolean
-      modoEmbeddings: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-      modoRespostas: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-    }
-    condominioId: UUID
-    modulosLigados: [string]
-    nome: string
-  }
-
-GET /api/condominios/{}/exercicios
-  path: UUID
+  query referenceMonth?: string
   returns: [{
-    avisos: [string]
-    colunaImpressa: string
-    depara: {
-      confirmadas: integer
-      contas: integer
-      recusadas: integer
-      semDepara: integer
-      sugeridas: integer
-    }
-    fim: string
-    id: string
-    inicio: string
-    meses: [{
-      mes: string
-      prorrogado: boolean
-      situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+    conditionPresent: boolean
+    createdAt: Instant
+    description: string
+    evidence: [{
+      budgetLineId: UUID
+      fileId: UUID
+      page: integer
+      position: integer
+      reference: string
+      sha256: string
     }]
-    poId: UUID
-    previstoMes: number
-    prorrogacao: {
-      ate: string
-      de: string
-      em: Instant
-      justificativa: string
-      por: string
-    }
-    rotulo: string
-    rubricas: {
-      confirmadas: integer
-      linhas: integer
-      recusadas: integer
-      semRubrica: integer
-      sugeridas: integer
-    }
-    tipo: enum[PO, PRINTED_COLUMN]
-    versao: integer
+    history: [{
+      conditionPresent: boolean
+      newStatus: enum[OPEN, NO_LONGER_APPLIES, JUSTIFIED, RESOLVED, FALSE_POSITIVE]
+      occurredAt: Instant
+      previousStatus: enum[OPEN, NO_LONGER_APPLIES, JUSTIFIED, RESOLVED, FALSE_POSITIVE]
+      reason: string
+      username: string
+    }]
+    id: UUID
+    referenceMonth: string
+    rule: string
+    ruleVersion: string
+    severity: enum[INFO, WARNING, CRITICAL]
+    status: enum[OPEN, NO_LONGER_APPLIES, JUSTIFIED, RESOLVED, FALSE_POSITIVE]
+    statusChangedAt: Instant
+    statusReason: string
+    target: string
   }]
 
-GET /api/condominios/{}/fundos
+GET /api/condominiums/{}/fiscal-year-comparison
+  path: UUID
+  query fiscalYears?: [string]
+  query fund?: UUID
+  query sameMonths: boolean
+  returns: {
+    comparing: string
+    fiscalYears: [{
+      budgetId: UUID
+      end: string
+      id: string
+      label: string
+      months: [string]
+      period: string
+      start: string
+      type: enum[PO, PRINTED_COLUMN]
+      version: integer
+    }]
+    fundId: UUID
+    groups: [{
+      code: string
+      description: string
+      funds: boolean
+      values: [{
+        actual: number
+        actualVariation: {
+          amount: number
+          newInFiscalYear: boolean
+          percentage: number
+        }
+        fiscalYearId: string
+        lines: [{
+          code: string
+          description: string
+          lineId: UUID
+          target: string
+        }]
+        monthlyPlanned: number
+        monthlyPlannedVariation: {
+          amount: number
+          newInFiscalYear: boolean
+          percentage: number
+        }
+        planned: number
+        target: string
+      }]
+    }]
+    lines: [{
+      budgetItemId: UUID
+      group: string
+      name: string
+      values: [{
+        actual: number
+        actualVariation: {
+          amount: number
+          newInFiscalYear: boolean
+          percentage: number
+        }
+        fiscalYearId: string
+        lines: [{
+          code: string
+          description: string
+          lineId: UUID
+          target: string
+        }]
+        monthlyPlanned: number
+        monthlyPlannedVariation: {
+          amount: number
+          newInFiscalYear: boolean
+          percentage: number
+        }
+        planned: number
+        target: string
+      }]
+    }]
+    sameMonths: boolean
+    summary: [{
+      actual: number
+      actualVariation: {
+        amount: number
+        newInFiscalYear: boolean
+        percentage: number
+      }
+      execution: number
+      fiscalYearId: string
+      fiscalYearPlanned: number
+      largestOverrun: {
+        amount: number
+        month: string
+        percentage: number
+      }
+      monthlyPlanned: number
+      monthlyPlannedVariation: {
+        amount: number
+        newInFiscalYear: boolean
+        percentage: number
+      }
+      monthsAboveLimit: integer
+      monthsWithCashFlow: integer
+      openFindings: integer
+      planned: number
+      provisional: boolean
+      target: string
+    }]
+    unmatched: [{
+      account: string
+      actual: number
+      code: string
+      description: string
+      fiscalYearId: string
+      group: string
+      lineId: UUID
+      monthlyPlanned: number
+      planned: number
+      target: string
+    }]
+    warnings: [string]
+  }
+
+GET /api/condominiums/{}/fiscal-years
+  path: UUID
+  returns: [{
+    budgetId: UUID
+    budgetItems: {
+      confirmed: integer
+      lines: integer
+      rejected: integer
+      suggested: integer
+      withoutItem: integer
+    }
+    end: string
+    extension: {
+      at: Instant
+      by: string
+      from: string
+      justification: string
+      until: string
+    }
+    id: string
+    label: string
+    mapping: {
+      accounts: integer
+      confirmed: integer
+      rejected: integer
+      suggested: integer
+      withoutMapping: integer
+    }
+    monthlyPlanned: number
+    months: [{
+      extended: boolean
+      month: string
+      status: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+    }]
+    printedColumn: string
+    start: string
+    type: enum[PO, PRINTED_COLUMN]
+    version: integer
+    warnings: [string]
+  }]
+
+GET /api/condominiums/{}/funds
   path: UUID
   returns: [{
     id: UUID
-    nome: string
-    ordinario: boolean
+    name: string
+    operating: boolean
   }]
 
-GET /api/condominios/{}/ia
+GET /api/condominiums/{}/indicators
   path: UUID
+  query budget?: UUID
+  query fund?: UUID
   returns: {
-    assistente: {
-      embeddings: {
-        modelo: string
-        modo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-        provedor: string
-      }
-      respostas: {
-        chaveCadastrada: boolean
-        chaveFinal: string
-        modelo: string
-        modo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-        modoEfetivo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-        provedor: string
-      }
-    }
-    atualizadoEm: Instant
-    atualizadoPor: string
-    modoGeral: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-  }
-
-GET /api/condominios/{}/indicadores
-  path: UUID
-  query po?: UUID
-  query fundo?: UUID
-  returns: {
-    acumulado: [{
-      alvo: string
-      mes: string
-      previstoAcumulado: number
-      realizadoAcumulado: number
-      situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+    actualByGroup: [{
+      code: string
+      description: string
+      points: [{
+        amount: number
+        month: string
+        status: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+        target: string
+      }]
     }]
-    avisos: [string]
-    comparacao: {
-      exercicios: [{
-        execucao: number
+    budgetId: UUID
+    comparison: {
+      fiscalYears: [{
+        budgetId: UUID
+        execution: number
         id: string
-        periodo: string
-        poId: UUID
-        rotulo: string
+        label: string
+        period: string
       }]
-      grupos: [{
-        alvos: [string]
-        codigo: string
-        descricao: string
-        previstoMes: [number]
-      }]
-    }
-    dadosDe: Instant
-    execucaoMensal: [{
-      alvo: string
-      execucao: number
-      mes: string
-      previsto: number
-      realizado: number
-      situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
-    }]
-    fim: string
-    fundoId: UUID
-    fundos: [{
-      fundo: string
-      fundoId: UUID
-      linhaCodigo: string
-      pontos: [{
-        alvo: string
-        arrecadado: number
-        mes: string
-        previsto: number
-        situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
-      }]
-    }]
-    inicio: string
-    limitePercentual: number
-    maioresDiferencas: {
-      abaixo: [{
-        alvo: string
-        codigo: string
-        descricao: string
-        diferenca: number
-        linhaId: UUID
-        previsto: number
-        realizado: number
-      }]
-      acima: [{
-        alvo: string
-        codigo: string
-        descricao: string
-        diferenca: number
-        linhaId: UUID
-        previsto: number
-        realizado: number
+      groups: [{
+        code: string
+        description: string
+        monthlyPlanned: [number]
+        targets: [string]
       }]
     }
-    poId: UUID
-    realizadoPorGrupo: [{
-      codigo: string
-      descricao: string
-      pontos: [{
-        alvo: string
-        mes: string
-        situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
-        valor: number
+    cumulative: [{
+      cumulativeActual: number
+      cumulativePlanned: number
+      month: string
+      status: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+      target: string
+    }]
+    dataAsOf: Instant
+    end: string
+    fundId: UUID
+    funds: [{
+      fund: string
+      fundId: UUID
+      lineCode: string
+      points: [{
+        collected: number
+        month: string
+        planned: number
+        status: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+        target: string
       }]
     }]
-    regra20: [{
-      acimaDoLimite: boolean
-      alvo: string
-      cenarioMaximo: number
-      excesso: number
-      limitePercentual: number
-      mes: string
-      percentual: number
-      percentualCenarioMaximo: number
-      provisorio: boolean
-      situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+    label: string
+    largestDifferences: {
+      above: [{
+        actual: number
+        code: string
+        description: string
+        difference: number
+        lineId: UUID
+        planned: number
+        target: string
+      }]
+      below: [{
+        actual: number
+        code: string
+        description: string
+        difference: number
+        lineId: UUID
+        planned: number
+        target: string
+      }]
+    }
+    limitPercentage: number
+    monthlyExecution: [{
+      actual: number
+      execution: number
+      month: string
+      planned: number
+      status: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+      target: string
     }]
-    rotulo: string
+    rule20: [{
+      aboveLimit: boolean
+      limitPercentage: number
+      maxScenario: number
+      maxScenarioPercentage: number
+      month: string
+      overrun: number
+      percentage: number
+      provisional: boolean
+      status: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+      target: string
+    }]
+    start: string
+    warnings: [string]
   }
 
-GET /api/condominios/{}/modulos
+GET /api/condominiums/{}/reallocations
   path: UUID
+  query budget: UUID
   returns: [{
-    codigo: string
-    dependeDe: [string]
-    descricao: string
-    desde: Instant
-    inclui: [string]
-    ligado: boolean
-    ligadoPorPadrao: boolean
-    nome: string
-    versaoCatalogo: integer
-  }]
-
-GET /api/condominios/{}/modulos/{}/eventos
-  path: UUID
-  path: string
-  returns: [{
+    account: string
+    accountName: string
+    active: boolean
+    amount: number
+    budgetId: UUID
+    date: LocalDate
+    document: string
+    fileId: UUID
     id: UUID
-    ligadoAntes: boolean
-    ligadoDepois: boolean
-    modulo: string
-    motivo: string
-    quando: Instant
-    usuario: string
-  }]
-
-GET /api/condominios/{}/modulos/{}/periodos
-  path: UUID
-  path: string
-  returns: [{
-    desligadoPor: string
-    fim: Instant
-    inicio: Instant
-    ligadoPor: string
-    modulo: string
-    motivoDesligar: string
-    motivoLigar: string
-  }]
-
-GET /api/condominios/{}/painel
-  path: UUID
-  returns: {
-    arquivoId: UUID
-    arquivoNome: string
-    conferenciasComFalha: integer
-    entradas: number
-    fundoOrdinario: {
-      confirmado: boolean
-      fundo: string
-      fundoId: UUID
-      saldoAtual: number
-    }
-    fundos: [{
-      entradas: number
-      fundo: string
-      fundoId: UUID
-      resultado: number
-      saidas: number
-      saldoAnterior: number
-      saldoAtual: number
-    }]
-    maioresDespesas: [{
-      conta: string
-      data: LocalDate
-      fundo: string
-      historico: string
-      pagina: integer
-      valor: number
-    }]
-    periodoFim: LocalDate
-    periodoInicio: LocalDate
-    saidas: number
-    saldoAnterior: number
-    saldoAtual: number
-  }
-
-GET /api/condominios/{}/previsoes
-  path: UUID
-  returns: [{
-    arquivoId: UUID
-    arquivoNome: string
-    confirmadaEm: Instant
-    confirmadaPor: string
-    estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
-    exercicioFim: string
-    exercicioImpresso: string
-    exercicioInicio: string
-    id: UUID
-    lidaEm: Instant
-    previstoMes: number
-    prorrogacao: {
-      ate: string
-      de: string
-      em: Instant
-      justificativa: string
-      por: string
-    }
+    lineCode: string
+    lineDescription: string
+    lineId: UUID
+    memo: string
+    page: integer
+    position: integer
+    reallocatedAt: Instant
+    reallocatedBy: string
     sha256: string
-    titulo: string
-    totalImpresso: number
-    versao: integer
+    undoneAt: Instant
+    undoneBy: string
   }]
 
-GET /api/condominios/{}/previsoes/{}
+GET /api/condominiums/{}/usage
   path: UUID
-  path: UUID
+  query start: LocalDate
+  query end: LocalDate
   returns: {
-    achados: [{
-      competencia: string
-      descricao: string
-      estado: string
-      id: UUID
-      regra: string
-      severidade: string
-      versaoRegra: string
+    byFunction: [{
+      count: integer
+      estimatedCostUsd: string
+      feature: string
+      files: integer
+      function: string
+      inputTokens: integer
+      month: string
+      outputTokens: integer
+      pages: integer
     }]
-    avisos: [{
-      codigo: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
-      texto: string
+    byMonth: [{
+      count: integer
+      estimatedCostUsd: string
+      feature: string
+      files: integer
+      function: string
+      inputTokens: integer
+      month: string
+      outputTokens: integer
+      pages: integer
     }]
-    codigosRepetidos: [{
-      codigoImpresso: string
-      linhas: [{
-        codigoEfetivo: string
-        descricao: string
-        linhaId: UUID
-        ordem: integer
-      }]
-      resolvido: boolean
-    }]
-    colunaOrcado: string
-    colunaOrcadoAnterior: string
-    conferencias: [{
-      classificacao: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
-      codigo: string
-      descricao: string
-      detalhe: string
-      explicacao: string
-      ok: boolean
-    }]
-    confirmacao: {
-      ataArquivoId: UUID
-      cienteDivergencia: boolean
-      dataAprovacao: LocalDate
-      justificativaDivergencia: string
-      semAta: boolean
-    }
-    fundos: [{
-      codigoEfetivo: string
-      descricao: string
-      fundo: string
-      fundoId: UUID
-      linhaId: UUID
-      orcado: number
-    }]
-    linhas: [{
-      arquivoId: UUID
-      codigoEfetivo: string
-      codigoImpresso: string
-      conta: string
-      contaTexto: string
-      descricao: string
-      id: UUID
-      linhaDeFundo: boolean
-      marca: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
-      observacoes: string
-      orcado: number
-      orcadoAnterior: number
-      ordem: integer
-      pagina: integer
-      percentualTexto: string
-      sha256: string
-      tipo: enum[TOTAL, GROUP, LINE]
-    }]
-    previsao: {
-      arquivoId: UUID
-      arquivoNome: string
-      confirmadaEm: Instant
-      confirmadaPor: string
-      estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
-      exercicioFim: string
-      exercicioImpresso: string
-      exercicioInicio: string
-      id: UUID
-      lidaEm: Instant
-      previstoMes: number
-      prorrogacao: {
-        ate: string
-        de: string
-        em: Instant
-        justificativa: string
-        por: string
-      }
-      sha256: string
-      titulo: string
-      totalImpresso: number
-      versao: integer
-    }
-    previstoMesImpresso: number
-    substituidaDesde: string
-    toleranciaArredondamento: number
+    condominiumId: UUID
+    costAvailable: boolean
+    end: LocalDate
+    estimatedTotalCostUsd: string
+    modelsWithoutPrice: [string]
+    start: LocalDate
   }
 
-GET /api/condominios/{}/previsoes/{}/coluna-impressa
+GET /api/condominiums/{}/usage/export
   path: UUID
-  path: UUID
-  returns: {
-    avisos: [string]
-    diferencas: [{
-      codigo: string
-      colunaImpressa: number
-      descricao: string
-      poEnviada: number
-    }]
-    fundos: number
-    grupos: [{
-      codigo: string
-      confere: boolean
-      descricao: string
-      diferenca: number
-      fundos: boolean
-      impresso: number
-      linhaId: UUID
-      linhas: [{
-        codigo: string
-        conta: string
-        descricao: string
-        linhaId: UUID
-        percentualTexto: string
-        valor: number
-      }]
-      valor: number
-    }]
-    id: string
-    poAnteriorId: UUID
-    poAnteriorRotulo: string
-    poId: UUID
-    previstoMes: number
-    rotulo: string
-    substituida: boolean
-    totalImpresso: number
-    totalIncluiFundos: boolean
-  }
-
-GET /api/condominios/{}/previsoes/{}/depara
-  path: UUID
-  path: UUID
-  query filtro?: enum[ALL, PENDING, SUGGESTED, CONFIRMED, REJECTED, UNMAPPED, SAME_AS_PREVIOUS_VERSION]
-  returns: {
-    contas: [{
-      atualizadoEm: Instant
-      atualizadoPor: string
-      conta: string
-      debitos: number
-      destino: {
-        codigo: string
-        descricao: string
-        detalhe: string
-        linhaId: UUID
-        texto: string
-        tipo: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
-      }
-      estado: enum[SUGGESTED, CONFIRMED, REJECTED]
-      igualVersaoAnterior: boolean
-      lancamentos: integer
-      motivo: string
-      nome: string
-      origem: enum[PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
-    }]
-    previsaoId: UUID
-    resumo: {
-      confirmadas: integer
-      contas: integer
-      recusadas: integer
-      semDepara: integer
-      sugeridas: integer
-    }
-    versao: integer
-  }
-
-GET /api/condominios/{}/previsoes/{}/depara/eventos
-  path: UUID
-  path: UUID
-  returns: [{
-    acao: enum[SUGGESTED, CONFIRMED, REJECTED, CHANGED]
-    conta: string
-    destinoAnterior: string
-    destinoNovo: string
-    em: Instant
-    estadoAnterior: enum[SUGGESTED, CONFIRMED, REJECTED]
-    estadoNovo: enum[SUGGESTED, CONFIRMED, REJECTED]
-    id: UUID
-    motivo: string
-    nome: string
-    origem: enum[PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
-    usuario: string
-  }]
-
-GET /api/condominios/{}/previsoes/{}/eventos
-  path: UUID
-  path: UUID
-  returns: [{
-    detalhe: string
-    em: Instant
-    justificativa: string
-    tipo: string
-    usuario: string
-  }]
-
-GET /api/condominios/{}/previsoes/{}/rubricas
-  path: UUID
-  path: UUID
-  query filtro?: enum[ALL, PENDING, SUGGESTED, CONFIRMED, REJECTED, NO_ITEM]
-  returns: {
-    linhas: [{
-      atualizadoEm: Instant
-      atualizadoPor: string
-      codigo: string
-      conta: string
-      descricao: string
-      estado: enum[SUGGESTED, CONFIRMED, REJECTED]
-      grupo: string
-      linhaId: UUID
-      motivo: string
-      orcado: number
-      origem: enum[FIRST_BUDGET, BUDGET_ACCOUNT, PREVIOUS_VERSION, MANUAL]
-      rubrica: {
-        criadaEm: Instant
-        criadaPor: string
-        grupo: string
-        id: UUID
-        linhaOrigemId: UUID
-        nome: string
-      }
-    }]
-    previsaoId: UUID
-    resumo: {
-      confirmadas: integer
-      linhas: integer
-      recusadas: integer
-      semRubrica: integer
-      sugeridas: integer
-    }
-    versao: integer
-  }
-
-GET /api/condominios/{}/previsoes/{}/rubricas/eventos
-  path: UUID
-  path: UUID
-  returns: [{
-    acao: enum[CREATED, RENAMED, SUGGESTED, CONFIRMED, REJECTED, CHANGED]
-    codigo: string
-    descricao: string
-    em: Instant
-    estadoAnterior: enum[SUGGESTED, CONFIRMED, REJECTED]
-    estadoNovo: enum[SUGGESTED, CONFIRMED, REJECTED]
-    id: UUID
-    linhaId: UUID
-    motivo: string
-    origem: enum[FIRST_BUDGET, BUDGET_ACCOUNT, PREVIOUS_VERSION, MANUAL]
-    rubricaAnterior: string
-    rubricaNova: string
-    usuario: string
-  }]
-
-GET /api/condominios/{}/previsto-realizado
-  path: UUID
-  query periodo: string
-  query po?: UUID
-  query fundo?: UUID
-  returns: {
-    aRealocar: {
-      contas: [{
-        conta: string
-        detalhe: string
-        lancamentos: integer
-        nome: string
-        valor: number
-      }]
-      lancamentos: integer
-      total: number
-    }
-    ajustes: {
-      contas: [{
-        conta: string
-        detalhe: string
-        lancamentos: integer
-        nome: string
-        valor: number
-      }]
-      lancamentos: integer
-      total: number
-    }
-    avisos: [{
-      codigo: string
-      texto: string
-    }]
-    conferencia: {
-      ajustes: number
-      confere: boolean
-      debitosDoFundo: number
-      despesaRealizada: number
-      lancamentos: integer
-      transferencias: number
-    }
-    depara: {
-      confirmadas: integer
-      contas: integer
-      semDeparaConfirmado: integer
-    }
-    fundos: [{
-      arrecadado: number
-      creditos: number
-      debitos: number
-      diferenca: number
-      execucao: number
-      fundo: string
-      fundoId: UUID
-      linhaCodigo: string
-      linhaId: UUID
-      previsto: number
-      situacao: enum[COMPARED, NOT_PLANNED_IN_BUDGET, LINE_WITHOUT_FUND, REPROCESS_CASH_FLOW]
-    }]
-    grupos: [{
-      codigo: string
-      descricao: string
-      diferenca: number
-      execucao: number
-      linhaId: UUID
-      linhas: [{
-        codigo: string
-        conta: string
-        contasFluxo: [string]
-        descricao: string
-        diferenca: number
-        execucao: number
-        lancamentos: integer
-        linhaId: UUID
-        marca: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
-        observacoes: string
-        pagina: integer
-        previsto: number
-        realizado: number
-      }]
-      previsto: number
-      realizado: number
-    }]
-    mensagem: string
-    meses: [{
-      acimaDoLimite: boolean
-      despesaRealizada: number
-      excesso: number
-      fluxos: [{
-        arquivoId: UUID
-        enviadoEm: Instant
-        enviadoPor: string
-        nome: string
-        periodoFim: LocalDate
-        periodoInicio: LocalDate
-        sha256: string
-      }]
-      mes: string
-      percentualExcesso: number
-      previsto: number
-      prorrogado: boolean
-      situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
-    }]
-    mesesComDoisFluxos: [string]
-    mesesSemFluxo: [string]
-    mesesSomados: [string]
-    periodo: string
-    po: {
-      arquivoId: UUID
-      arquivoNome: string
-      estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
-      exercicioFim: string
-      exercicioInicio: string
-      id: UUID
-      sha256: string
-      versao: integer
-    }
-    provisorio: boolean
-    regra20: {
-      aRealocar: number
-      acimaDoLimite: boolean
-      cenarioMaximo: number
-      excesso: number
-      limite: number
-      limitePercentual: number
-      linhas: [{
-        codigo: string
-        descricao: string
-        excesso: number
-        linhaId: UUID
-      }]
-      linhasAcima: integer
-      percentual: number
-      percentualCenarioMaximo: number
-      previstoMes: number
-      provisorio: boolean
-      regra: string
-      semLinhaPo: number
-      versaoRegra: string
-    }
-    semLinhaPo: {
-      contas: [{
-        conta: string
-        detalhe: string
-        lancamentos: integer
-        nome: string
-        valor: number
-      }]
-      lancamentos: integer
-      total: number
-    }
-    situacao: enum[CALCULATED, NO_BUDGET, BUDGET_NOT_CONFIRMED, NO_OPERATING_FUND, NO_CASH_FLOW, TWO_CASH_FLOWS]
-    totais: {
-      despesaRealizada: number
-      diferenca: number
-      emLinhas: number
-      execucao: number
-      previsto: number
-      previstoExercicio: number
-      previstoMes: number
-    }
-    versaoCalculo: string
-  }
-
-GET /api/condominios/{}/previsto-realizado/evidencia
-  path: UUID
-  query periodo: string
-  query po?: UUID
-  query alvo: string
-  returns: [{
-    arquivoId: UUID
-    arquivoNome: string
-    conta: string
-    contaNome: string
-    data: LocalDate
-    documento: string
-    fornecedor: string
-    fundo: string
-    historico: string
-    lancamentoId: UUID
-    ordem: integer
-    pagina: integer
-    realocacao: string
-    realocacaoId: UUID
-    sha256: string
-    valor: number
-  }]
-
-GET /api/condominios/{}/previsto-realizado/exportacao
-  path: UUID
-  query formato: string
-  query periodo: string
-  query po?: UUID
-  query fundo?: UUID
+  query start: LocalDate
+  query end: LocalDate
   returns: bytes
 
-GET /api/condominios/{}/realocacoes
-  path: UUID
-  query po: UUID
-  returns: [{
-    arquivoId: UUID
-    ativa: boolean
-    conta: string
-    contaNome: string
-    data: LocalDate
-    desfeitaEm: Instant
-    desfeitaPor: string
-    documento: string
-    historico: string
-    id: UUID
-    linhaCodigo: string
-    linhaDescricao: string
-    linhaId: UUID
-    ordem: integer
-    pagina: integer
-    previsaoId: UUID
-    realocadaEm: Instant
-    realocadaPor: string
-    sha256: string
-    valor: number
-  }]
-
-GET /api/condominios/{}/rubricas
-  path: UUID
-  returns: [{
-    criadaEm: Instant
-    criadaPor: string
-    grupo: string
-    id: UUID
-    linhaOrigemId: UUID
-    nome: string
-  }]
-
-GET /api/condominios/{}/uso
-  path: UUID
-  query inicio: LocalDate
-  query fim: LocalDate
+GET /api/me
   returns: {
-    condominioId: UUID
-    custoDisponivel: boolean
-    custoEstimadoTotalUsd: string
-    fim: LocalDate
-    inicio: LocalDate
-    modelosSemPreco: [string]
-    porFuncao: [{
-      arquivos: integer
-      custoEstimadoUsd: string
-      funcao: string
-      mes: string
-      modulo: string
-      paginas: integer
-      quantidade: integer
-      tokensEntrada: integer
-      tokensSaida: integer
-    }]
-    porMes: [{
-      arquivos: integer
-      custoEstimadoUsd: string
-      funcao: string
-      mes: string
-      modulo: string
-      paginas: integer
-      quantidade: integer
-      tokensEntrada: integer
-      tokensSaida: integer
-    }]
-  }
-
-GET /api/condominios/{}/uso/exportacao
-  path: UUID
-  query inicio: LocalDate
-  query fim: LocalDate
-  returns: bytes
-
-GET /api/eu
-  returns: {
-    condominios: [{
+    condominiums: [{
       id: UUID
-      nome: string
+      name: string
     }]
-    nome: string
-    perfis: [string]
-    usuario: string
+    name: string
+    roles: [string]
+    username: string
   }
 
-GET /api/ia/provedores
-  returns: [{
-    codigo: string
-    dimensao: integer
-    local: boolean
-    modelos: [{
-      id: string
-      nome: string
-      padrao: boolean
-      precoEntradaMilhaoUsd: string
-      precoSaidaMilhaoUsd: string
-    }]
-    nome: string
-    precisaChave: boolean
-    tipo: string
-    uso: enum[ANSWERS, EMBEDDINGS]
-  }]
-
-POST /api/condominios/{}/arquivos
-  consumes: multipart/form-data
-  path: UUID
-  query categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
-  part arquivo
-  returns: {
-    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
-    categoriaRotulo: string
-    enviadoEm: Instant
-    enviadoPor: string
-    id: UUID
-    indexing: {
-      motivo: string
-      paginas: integer
-      situacao: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
-      trechos: integer
-    }
-    mensagem: string
-    nome: string
-    periodoFim: LocalDate
-    periodoInicio: LocalDate
-    processadoEm: Instant
-    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
-    tamanhoBytes: integer
-    totalLancamentos: integer
-  }
-
-POST /api/condominios/{}/arquivos/{}/reprocessar
-  path: UUID
-  path: UUID
-  returns: {
-    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
-    categoriaRotulo: string
-    enviadoEm: Instant
-    enviadoPor: string
-    id: UUID
-    indexing: {
-      motivo: string
-      paginas: integer
-      situacao: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
-      trechos: integer
-    }
-    mensagem: string
-    nome: string
-    periodoFim: LocalDate
-    periodoInicio: LocalDate
-    processadoEm: Instant
-    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
-    tamanhoBytes: integer
-    totalLancamentos: integer
-  }
-
-POST /api/condominios/{}/assistente/busca
+POST /api/condominiums/{}/assistant/questions
   path: UUID
   body: {
-    filtros: {
-      arquivoIds: [UUID]
-      categorias: [enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]]
-      dataFim: LocalDate
-      dataInicio: LocalDate
+    filters: {
+      categories: [enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]]
+      endDate: LocalDate
+      fileIds: [UUID]
+      startDate: LocalDate
     }
-    limite: integer
-    texto: string
-  }
-  returns: [{
-    arquivoId: UUID
-    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
-    localizacao: {
-      aba: string
-      descricao: string
-      linhaFim: integer
-      linhaInicio: integer
-      pagina: integer
-      paragrafoFim: integer
-      paragrafoInicio: integer
-      secao: string
-      tipo: string
-    }
-    nomeArquivo: string
-    sha256: string
-    texto: string
-    trechoId: string
-  }]
-
-POST /api/condominios/{}/assistente/perguntas
-  path: UUID
-  body: {
-    filtros: {
-      arquivoIds: [UUID]
-      categorias: [enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]]
-      dataFim: LocalDate
-      dataInicio: LocalDate
-    }
-    historico: [{
+    history: [{
+      answer: string
       question: string
-      resposta: string
     }]
     question: string
   }
   returns: {
-    aviso: string
-    citacoes: [{
-      arquivoId: UUID
-      categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
-      localizacao: {
-        aba: string
-        descricao: string
-        linhaFim: integer
-        linhaInicio: integer
-        pagina: integer
-        paragrafoFim: integer
-        paragrafoInicio: integer
-        secao: string
-        tipo: string
+    citations: [{
+      category: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+      chunkId: string
+      fileId: UUID
+      fileName: string
+      location: {
+        description: string
+        endParagraph: integer
+        endRow: integer
+        page: integer
+        section: string
+        sheet: string
+        startParagraph: integer
+        startRow: integer
+        type: string
       }
-      nomeArquivo: string
-      numero: integer
+      number: integer
       sha256: string
-      texto: string
-      trechoId: string
+      text: string
     }]
-    modelo: string
-    nosDadosGravados: [{
-      comentario: string
-      consulta: string
-      linhas: [{
-        rotulo: string
-        valor: string
+    fromDocuments: [{
+      citations: [integer]
+      text: string
+    }]
+    fromStoredData: [{
+      comment: string
+      parameters: [{
+        name: string
+        value: string
       }]
-      parametros: [{
-        nome: string
-        valor: string
+      query: string
+      rows: [{
+        label: string
+        value: string
       }]
     }]
-    nosDocumentos: [{
-      citacoes: [integer]
-      texto: string
-    }]
-    situacao: enum[ANSWERED, NOT_FOUND]
-    sugestao: string
+    model: string
+    status: enum[ANSWERED, NOT_FOUND]
+    suggestion: string
+    warning: string
   }
 
-POST /api/condominios/{}/previsoes/{}/confirmacao
+POST /api/condominiums/{}/assistant/search
+  path: UUID
+  body: {
+    filters: {
+      categories: [enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]]
+      endDate: LocalDate
+      fileIds: [UUID]
+      startDate: LocalDate
+    }
+    limit: integer
+    text: string
+  }
+  returns: [{
+    category: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+    chunkId: string
+    fileId: UUID
+    fileName: string
+    location: {
+      description: string
+      endParagraph: integer
+      endRow: integer
+      page: integer
+      section: string
+      sheet: string
+      startParagraph: integer
+      startRow: integer
+      type: string
+    }
+    sha256: string
+    text: string
+  }]
+
+POST /api/condominiums/{}/budget-items
+  path: UUID
+  body: {
+    group: string
+    name: string
+  }
+  returns: {
+    createdAt: Instant
+    createdBy: string
+    group: string
+    id: UUID
+    name: string
+    sourceLineId: UUID
+  }
+
+POST /api/condominiums/{}/budgets/{}/account-mappings/batch
   path: UUID
   path: UUID
   body: {
-    ataArquivoId: UUID
-    cienteDivergencia: boolean
-    codigosEfetivos: [{
-      codigo: string
-      linhaId: UUID
-    }]
-    dataAprovacao: LocalDate
-    exercicioFim: string
-    exercicioInicio: string
-    fundos: [{
-      fundoId: UUID
-      linhaId: UUID
-    }]
-    justificativa: string
-    reaprovacao: boolean
-    semAta: boolean
+    accounts: [string]
+    action: enum[CONFIRM, REJECT]
   }
   returns: {
-    achados: [{
-      competencia: string
-      descricao: string
-      estado: string
-      id: UUID
-      regra: string
-      severidade: string
-      versaoRegra: string
-    }]
-    avisos: [{
-      codigo: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
-      texto: string
-    }]
-    codigosRepetidos: [{
-      codigoImpresso: string
-      linhas: [{
-        codigoEfetivo: string
-        descricao: string
-        linhaId: UUID
-        ordem: integer
-      }]
-      resolvido: boolean
-    }]
-    colunaOrcado: string
-    colunaOrcadoAnterior: string
-    conferencias: [{
-      classificacao: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
-      codigo: string
-      descricao: string
-      detalhe: string
-      explicacao: string
-      ok: boolean
-    }]
-    confirmacao: {
-      ataArquivoId: UUID
-      cienteDivergencia: boolean
-      dataAprovacao: LocalDate
-      justificativaDivergencia: string
-      semAta: boolean
-    }
-    fundos: [{
-      codigoEfetivo: string
-      descricao: string
-      fundo: string
-      fundoId: UUID
-      linhaId: UUID
-      orcado: number
-    }]
-    linhas: [{
-      arquivoId: UUID
-      codigoEfetivo: string
-      codigoImpresso: string
-      conta: string
-      contaTexto: string
-      descricao: string
-      id: UUID
-      linhaDeFundo: boolean
-      marca: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
-      observacoes: string
-      orcado: number
-      orcadoAnterior: number
-      ordem: integer
-      pagina: integer
-      percentualTexto: string
-      sha256: string
-      tipo: enum[TOTAL, GROUP, LINE]
-    }]
-    previsao: {
-      arquivoId: UUID
-      arquivoNome: string
-      confirmadaEm: Instant
-      confirmadaPor: string
-      estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
-      exercicioFim: string
-      exercicioImpresso: string
-      exercicioInicio: string
-      id: UUID
-      lidaEm: Instant
-      previstoMes: number
-      prorrogacao: {
-        ate: string
-        de: string
-        em: Instant
-        justificativa: string
-        por: string
-      }
-      sha256: string
-      titulo: string
-      totalImpresso: number
-      versao: integer
-    }
-    previstoMesImpresso: number
-    substituidaDesde: string
-    toleranciaArredondamento: number
-  }
-
-POST /api/condominios/{}/previsoes/{}/depara/lote
-  path: UUID
-  path: UUID
-  body: {
-    acao: enum[CONFIRM, REJECT]
-    contas: [string]
-  }
-  returns: {
-    alteradas: integer
-    ignoradas: [{
-      conta: string
-      motivo: string
+    changed: integer
+    skipped: [{
+      account: string
+      reason: string
     }]
   }
 
-POST /api/condominios/{}/previsoes/{}/depara/planilha
+POST /api/condominiums/{}/budgets/{}/account-mappings/sheet
   consumes: multipart/form-data
   path: UUID
   path: UUID
-  part arquivo
+  part file
   returns: {
-    aceitas: integer
-    ignoradas: [{
-      conta: string
-      motivo: string
+    accepted: integer
+    rejected: [{
+      content: string
+      line: integer
+      reason: string
     }]
-    recusadas: [{
-      conteudo: string
-      linha: integer
-      motivo: string
+    skipped: [{
+      account: string
+      reason: string
     }]
   }
 
-POST /api/condominios/{}/previsoes/{}/depara/sugestoes
+POST /api/condominiums/{}/budgets/{}/account-mappings/suggestions
   path: UUID
   path: UUID
   returns: {
-    criadas: integer
-    daVersaoAnterior: integer
-    peloNome: integer
-    semSugestao: [{
-      conta: string
-      motivo: string
-      nome: string
+    byName: integer
+    created: integer
+    fromPreviousVersion: integer
+    withoutSuggestion: [{
+      account: string
+      name: string
+      reason: string
     }]
   }
 
-POST /api/condominios/{}/previsoes/{}/rubricas/lote
+POST /api/condominiums/{}/budgets/{}/budget-items/batch
   path: UUID
   path: UUID
   body: {
-    acao: enum[CONFIRM, REJECT]
-    linhas: [UUID]
+    action: enum[CONFIRM, REJECT]
+    lines: [UUID]
   }
   returns: {
-    alteradas: integer
-    ignoradas: [{
-      linhaId: UUID
-      motivo: string
+    changed: integer
+    skipped: [{
+      lineId: UUID
+      reason: string
     }]
   }
 
-POST /api/condominios/{}/previsoes/{}/rubricas/sugestoes
+POST /api/condominiums/{}/budgets/{}/budget-items/suggestions
   path: UUID
   path: UUID
   returns: {
-    daVersaoAnterior: integer
-    pelaConta: integer
-    primeiraPo: boolean
-    rubricasCriadas: integer
-    semSugestao: [{
-      codigo: string
-      conta: string
-      linhaId: UUID
-      motivo: string
+    byAccount: integer
+    createdItems: integer
+    firstBudget: boolean
+    fromPreviousVersion: integer
+    suggested: integer
+    withoutSuggestion: [{
+      account: string
+      code: string
+      lineId: UUID
+      reason: string
     }]
-    sugeridas: integer
   }
 
-POST /api/condominios/{}/realocacoes
-  path: UUID
-  body: {
-    lancamentoId: UUID
-    linhaId: UUID
-  }
-  returns: {
-    arquivoId: UUID
-    ativa: boolean
-    conta: string
-    contaNome: string
-    data: LocalDate
-    desfeitaEm: Instant
-    desfeitaPor: string
-    documento: string
-    historico: string
-    id: UUID
-    linhaCodigo: string
-    linhaDescricao: string
-    linhaId: UUID
-    ordem: integer
-    pagina: integer
-    previsaoId: UUID
-    realocadaEm: Instant
-    realocadaPor: string
-    sha256: string
-    valor: number
-  }
-
-POST /api/condominios/{}/rubricas
-  path: UUID
-  body: {
-    grupo: string
-    nome: string
-  }
-  returns: {
-    criadaEm: Instant
-    criadaPor: string
-    grupo: string
-    id: UUID
-    linhaOrigemId: UUID
-    nome: string
-  }
-
-PUT /api/condominios/{}/arquivos/{}/categoria
+POST /api/condominiums/{}/budgets/{}/confirmation
   path: UUID
   path: UUID
   body: {
-    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+    approvalDate: LocalDate
+    discrepancyAcknowledged: boolean
+    effectiveCodes: [{
+      code: string
+      lineId: UUID
+    }]
+    fiscalYearEnd: string
+    fiscalYearStart: string
+    funds: [{
+      fundId: UUID
+      lineId: UUID
+    }]
+    justification: string
+    minutesFileId: UUID
+    reapproval: boolean
+    withoutMinutes: boolean
   }
   returns: {
-    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
-    categoriaRotulo: string
-    enviadoEm: Instant
-    enviadoPor: string
+    budget: {
+      confirmedAt: Instant
+      confirmedBy: string
+      extension: {
+        at: Instant
+        by: string
+        from: string
+        justification: string
+        until: string
+      }
+      fileId: UUID
+      fileName: string
+      fiscalYearEnd: string
+      fiscalYearStart: string
+      id: UUID
+      monthlyPlanned: number
+      printedFiscalYear: string
+      printedTotal: number
+      readAt: Instant
+      sha256: string
+      status: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+      title: string
+      version: integer
+    }
+    budgetedColumn: string
+    checks: [{
+      classification: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
+      code: string
+      description: string
+      detail: string
+      explanation: string
+      ok: boolean
+    }]
+    confirmation: {
+      approvalDate: LocalDate
+      discrepancyAcknowledged: boolean
+      discrepancyJustification: string
+      minutesFileId: UUID
+      withoutMinutes: boolean
+    }
+    findings: [{
+      description: string
+      id: UUID
+      referenceMonth: string
+      rule: string
+      ruleVersion: string
+      severity: string
+      status: string
+    }]
+    funds: [{
+      budgeted: number
+      description: string
+      effectiveCode: string
+      fund: string
+      fundId: UUID
+      lineId: UUID
+    }]
+    lines: [{
+      account: string
+      accountText: string
+      budgeted: number
+      description: string
+      effectiveCode: string
+      fileId: UUID
+      fundLine: boolean
+      id: UUID
+      mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+      notes: string
+      page: integer
+      percentageText: string
+      position: integer
+      previousBudgeted: number
+      printedCode: string
+      sha256: string
+      type: enum[TOTAL, GROUP, LINE]
+    }]
+    previousBudgetedColumn: string
+    printedMonthlyPlanned: number
+    repeatedCodes: [{
+      lines: [{
+        description: string
+        effectiveCode: string
+        lineId: UUID
+        position: integer
+      }]
+      printedCode: string
+      resolved: boolean
+    }]
+    roundingTolerance: number
+    supersededFrom: string
+    warnings: [{
+      code: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
+      text: string
+    }]
+  }
+
+POST /api/condominiums/{}/files
+  consumes: multipart/form-data
+  path: UUID
+  query category: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+  part file
+  returns: {
+    category: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+    categoryLabel: string
+    entryCount: integer
     id: UUID
     indexing: {
-      motivo: string
-      paginas: integer
-      situacao: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
-      trechos: integer
+      chunks: integer
+      pages: integer
+      reason: string
+      status: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
     }
-    mensagem: string
-    nome: string
-    periodoFim: LocalDate
-    periodoInicio: LocalDate
-    processadoEm: Instant
+    message: string
+    name: string
+    periodEnd: LocalDate
+    periodStart: LocalDate
+    processedAt: Instant
+    sizeBytes: integer
     status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
-    tamanhoBytes: integer
-    totalLancamentos: integer
+    uploadedAt: Instant
+    uploadedBy: string
   }
 
-PUT /api/condominios/{}/fundo-ordinario
+POST /api/condominiums/{}/files/{}/reprocess
+  path: UUID
+  path: UUID
+  returns: {
+    category: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+    categoryLabel: string
+    entryCount: integer
+    id: UUID
+    indexing: {
+      chunks: integer
+      pages: integer
+      reason: string
+      status: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
+    }
+    message: string
+    name: string
+    periodEnd: LocalDate
+    periodStart: LocalDate
+    processedAt: Instant
+    sizeBytes: integer
+    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
+    uploadedAt: Instant
+    uploadedBy: string
+  }
+
+POST /api/condominiums/{}/reallocations
   path: UUID
   body: {
-    fundoId: UUID
+    entryId: UUID
+    lineId: UUID
+  }
+  returns: {
+    account: string
+    accountName: string
+    active: boolean
+    amount: number
+    budgetId: UUID
+    date: LocalDate
+    document: string
+    fileId: UUID
+    id: UUID
+    lineCode: string
+    lineDescription: string
+    lineId: UUID
+    memo: string
+    page: integer
+    position: integer
+    reallocatedAt: Instant
+    reallocatedBy: string
+    sha256: string
+    undoneAt: Instant
+    undoneBy: string
+  }
+
+PUT /api/condominiums/{}/ai
+  path: UUID
+  body: {
+    assistant: {
+      answers: {
+        key: string
+        mode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+        model: string
+        provider: string
+        removeKey: boolean
+      }
+      embeddings: {
+        mode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+        model: string
+        provider: string
+      }
+    }
+    generalMode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+  }
+  returns: {
+    assistant: {
+      answers: {
+        effectiveMode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+        keyRegistered: boolean
+        keySuffix: string
+        mode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+        model: string
+        provider: string
+      }
+      embeddings: {
+        mode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+        model: string
+        provider: string
+      }
+    }
+    generalMode: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+    updatedAt: Instant
+    updatedBy: string
+  }
+
+PUT /api/condominiums/{}/budget-items/{}
+  path: UUID
+  path: UUID
+  body: {
+    name: string
+  }
+  returns: {
+    createdAt: Instant
+    createdBy: string
+    group: string
+    id: UUID
+    name: string
+    sourceLineId: UUID
+  }
+
+PUT /api/condominiums/{}/budgets/{}/account-mappings/{}
+  path: UUID
+  path: UUID
+  path: string
+  body: {
+    confirm: boolean
+    detail: string
+    lineId: UUID
+    type: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
+  }
+  returns: {
+    account: string
+    debits: number
+    ledgerEntries: integer
+    name: string
+    reason: string
+    sameAsPreviousVersion: boolean
+    source: enum[PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
+    status: enum[SUGGESTED, CONFIRMED, REJECTED]
+    target: {
+      code: string
+      description: string
+      detail: string
+      lineId: UUID
+      text: string
+      type: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
+    }
+    updatedAt: Instant
+    updatedBy: string
+  }
+
+PUT /api/condominiums/{}/budgets/{}/budget-items/{}
+  path: UUID
+  path: UUID
+  path: UUID
+  body: {
+    budgetItemId: UUID
+    confirm: boolean
+    newBudgetItem: string
+  }
+  returns: {
+    account: string
+    budgetItem: {
+      createdAt: Instant
+      createdBy: string
+      group: string
+      id: UUID
+      name: string
+      sourceLineId: UUID
+    }
+    budgeted: number
+    code: string
+    description: string
+    group: string
+    lineId: UUID
+    reason: string
+    source: enum[FIRST_BUDGET, BUDGET_ACCOUNT, PREVIOUS_VERSION, MANUAL]
+    status: enum[SUGGESTED, CONFIRMED, REJECTED]
+    updatedAt: Instant
+    updatedBy: string
+  }
+
+PUT /api/condominiums/{}/budgets/{}/extension
+  path: UUID
+  path: UUID
+  body: {
+    justification: string
+    until: string
+  }
+  returns: {
+    budget: {
+      confirmedAt: Instant
+      confirmedBy: string
+      extension: {
+        at: Instant
+        by: string
+        from: string
+        justification: string
+        until: string
+      }
+      fileId: UUID
+      fileName: string
+      fiscalYearEnd: string
+      fiscalYearStart: string
+      id: UUID
+      monthlyPlanned: number
+      printedFiscalYear: string
+      printedTotal: number
+      readAt: Instant
+      sha256: string
+      status: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+      title: string
+      version: integer
+    }
+    budgetedColumn: string
+    checks: [{
+      classification: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
+      code: string
+      description: string
+      detail: string
+      explanation: string
+      ok: boolean
+    }]
+    confirmation: {
+      approvalDate: LocalDate
+      discrepancyAcknowledged: boolean
+      discrepancyJustification: string
+      minutesFileId: UUID
+      withoutMinutes: boolean
+    }
+    findings: [{
+      description: string
+      id: UUID
+      referenceMonth: string
+      rule: string
+      ruleVersion: string
+      severity: string
+      status: string
+    }]
+    funds: [{
+      budgeted: number
+      description: string
+      effectiveCode: string
+      fund: string
+      fundId: UUID
+      lineId: UUID
+    }]
+    lines: [{
+      account: string
+      accountText: string
+      budgeted: number
+      description: string
+      effectiveCode: string
+      fileId: UUID
+      fundLine: boolean
+      id: UUID
+      mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+      notes: string
+      page: integer
+      percentageText: string
+      position: integer
+      previousBudgeted: number
+      printedCode: string
+      sha256: string
+      type: enum[TOTAL, GROUP, LINE]
+    }]
+    previousBudgetedColumn: string
+    printedMonthlyPlanned: number
+    repeatedCodes: [{
+      lines: [{
+        description: string
+        effectiveCode: string
+        lineId: UUID
+        position: integer
+      }]
+      printedCode: string
+      resolved: boolean
+    }]
+    roundingTolerance: number
+    supersededFrom: string
+    warnings: [{
+      code: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
+      text: string
+    }]
+  }
+
+PUT /api/condominiums/{}/budgets/{}/funds
+  path: UUID
+  path: UUID
+  body: {
+    funds: [{
+      fundId: UUID
+      lineId: UUID
+    }]
+  }
+  returns: {
+    budget: {
+      confirmedAt: Instant
+      confirmedBy: string
+      extension: {
+        at: Instant
+        by: string
+        from: string
+        justification: string
+        until: string
+      }
+      fileId: UUID
+      fileName: string
+      fiscalYearEnd: string
+      fiscalYearStart: string
+      id: UUID
+      monthlyPlanned: number
+      printedFiscalYear: string
+      printedTotal: number
+      readAt: Instant
+      sha256: string
+      status: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+      title: string
+      version: integer
+    }
+    budgetedColumn: string
+    checks: [{
+      classification: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
+      code: string
+      description: string
+      detail: string
+      explanation: string
+      ok: boolean
+    }]
+    confirmation: {
+      approvalDate: LocalDate
+      discrepancyAcknowledged: boolean
+      discrepancyJustification: string
+      minutesFileId: UUID
+      withoutMinutes: boolean
+    }
+    findings: [{
+      description: string
+      id: UUID
+      referenceMonth: string
+      rule: string
+      ruleVersion: string
+      severity: string
+      status: string
+    }]
+    funds: [{
+      budgeted: number
+      description: string
+      effectiveCode: string
+      fund: string
+      fundId: UUID
+      lineId: UUID
+    }]
+    lines: [{
+      account: string
+      accountText: string
+      budgeted: number
+      description: string
+      effectiveCode: string
+      fileId: UUID
+      fundLine: boolean
+      id: UUID
+      mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+      notes: string
+      page: integer
+      percentageText: string
+      position: integer
+      previousBudgeted: number
+      printedCode: string
+      sha256: string
+      type: enum[TOTAL, GROUP, LINE]
+    }]
+    previousBudgetedColumn: string
+    printedMonthlyPlanned: number
+    repeatedCodes: [{
+      lines: [{
+        description: string
+        effectiveCode: string
+        lineId: UUID
+        position: integer
+      }]
+      printedCode: string
+      resolved: boolean
+    }]
+    roundingTolerance: number
+    supersededFrom: string
+    warnings: [{
+      code: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
+      text: string
+    }]
+  }
+
+PUT /api/condominiums/{}/features/{}
+  path: UUID
+  path: string
+  body: {
+    enabled: boolean
+    reason: string
+  }
+  returns: {
+    catalogVersion: integer
+    code: string
+    dependsOn: [string]
+    description: string
+    enabled: boolean
+    enabledByDefault: boolean
+    includes: [string]
+    name: string
+    since: Instant
+  }
+
+PUT /api/condominiums/{}/files/{}/category
+  path: UUID
+  path: UUID
+  body: {
+    category: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+  }
+  returns: {
+    category: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
+    categoryLabel: string
+    entryCount: integer
+    id: UUID
+    indexing: {
+      chunks: integer
+      pages: integer
+      reason: string
+      status: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
+    }
+    message: string
+    name: string
+    periodEnd: LocalDate
+    periodStart: LocalDate
+    processedAt: Instant
+    sizeBytes: integer
+    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
+    uploadedAt: Instant
+    uploadedBy: string
+  }
+
+PUT /api/condominiums/{}/operating-fund
+  path: UUID
+  body: {
+    fundId: UUID
   }
   returns: Void
-
-PUT /api/condominios/{}/ia
-  path: UUID
-  body: {
-    assistente: {
-      embeddings: {
-        modelo: string
-        modo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-        provedor: string
-      }
-      respostas: {
-        chave: string
-        modelo: string
-        modo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-        provedor: string
-        removerChave: boolean
-      }
-    }
-    modoGeral: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-  }
-  returns: {
-    assistente: {
-      embeddings: {
-        modelo: string
-        modo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-        provedor: string
-      }
-      respostas: {
-        chaveCadastrada: boolean
-        chaveFinal: string
-        modelo: string
-        modo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-        modoEfetivo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-        provedor: string
-      }
-    }
-    atualizadoEm: Instant
-    atualizadoPor: string
-    modoGeral: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
-  }
-
-PUT /api/condominios/{}/modulos/{}
-  path: UUID
-  path: string
-  body: {
-    ligado: boolean
-    motivo: string
-  }
-  returns: {
-    codigo: string
-    dependeDe: [string]
-    descricao: string
-    desde: Instant
-    inclui: [string]
-    ligado: boolean
-    ligadoPorPadrao: boolean
-    nome: string
-    versaoCatalogo: integer
-  }
-
-PUT /api/condominios/{}/previsoes/{}/depara/{}
-  path: UUID
-  path: UUID
-  path: string
-  body: {
-    confirmar: boolean
-    detalhe: string
-    linhaId: UUID
-    tipo: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
-  }
-  returns: {
-    atualizadoEm: Instant
-    atualizadoPor: string
-    conta: string
-    debitos: number
-    destino: {
-      codigo: string
-      descricao: string
-      detalhe: string
-      linhaId: UUID
-      texto: string
-      tipo: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
-    }
-    estado: enum[SUGGESTED, CONFIRMED, REJECTED]
-    igualVersaoAnterior: boolean
-    lancamentos: integer
-    motivo: string
-    nome: string
-    origem: enum[PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
-  }
-
-PUT /api/condominios/{}/previsoes/{}/fundos
-  path: UUID
-  path: UUID
-  body: {
-    fundos: [{
-      fundoId: UUID
-      linhaId: UUID
-    }]
-  }
-  returns: {
-    achados: [{
-      competencia: string
-      descricao: string
-      estado: string
-      id: UUID
-      regra: string
-      severidade: string
-      versaoRegra: string
-    }]
-    avisos: [{
-      codigo: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
-      texto: string
-    }]
-    codigosRepetidos: [{
-      codigoImpresso: string
-      linhas: [{
-        codigoEfetivo: string
-        descricao: string
-        linhaId: UUID
-        ordem: integer
-      }]
-      resolvido: boolean
-    }]
-    colunaOrcado: string
-    colunaOrcadoAnterior: string
-    conferencias: [{
-      classificacao: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
-      codigo: string
-      descricao: string
-      detalhe: string
-      explicacao: string
-      ok: boolean
-    }]
-    confirmacao: {
-      ataArquivoId: UUID
-      cienteDivergencia: boolean
-      dataAprovacao: LocalDate
-      justificativaDivergencia: string
-      semAta: boolean
-    }
-    fundos: [{
-      codigoEfetivo: string
-      descricao: string
-      fundo: string
-      fundoId: UUID
-      linhaId: UUID
-      orcado: number
-    }]
-    linhas: [{
-      arquivoId: UUID
-      codigoEfetivo: string
-      codigoImpresso: string
-      conta: string
-      contaTexto: string
-      descricao: string
-      id: UUID
-      linhaDeFundo: boolean
-      marca: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
-      observacoes: string
-      orcado: number
-      orcadoAnterior: number
-      ordem: integer
-      pagina: integer
-      percentualTexto: string
-      sha256: string
-      tipo: enum[TOTAL, GROUP, LINE]
-    }]
-    previsao: {
-      arquivoId: UUID
-      arquivoNome: string
-      confirmadaEm: Instant
-      confirmadaPor: string
-      estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
-      exercicioFim: string
-      exercicioImpresso: string
-      exercicioInicio: string
-      id: UUID
-      lidaEm: Instant
-      previstoMes: number
-      prorrogacao: {
-        ate: string
-        de: string
-        em: Instant
-        justificativa: string
-        por: string
-      }
-      sha256: string
-      titulo: string
-      totalImpresso: number
-      versao: integer
-    }
-    previstoMesImpresso: number
-    substituidaDesde: string
-    toleranciaArredondamento: number
-  }
-
-PUT /api/condominios/{}/previsoes/{}/prorrogacao
-  path: UUID
-  path: UUID
-  body: {
-    ate: string
-    justificativa: string
-  }
-  returns: {
-    achados: [{
-      competencia: string
-      descricao: string
-      estado: string
-      id: UUID
-      regra: string
-      severidade: string
-      versaoRegra: string
-    }]
-    avisos: [{
-      codigo: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
-      texto: string
-    }]
-    codigosRepetidos: [{
-      codigoImpresso: string
-      linhas: [{
-        codigoEfetivo: string
-        descricao: string
-        linhaId: UUID
-        ordem: integer
-      }]
-      resolvido: boolean
-    }]
-    colunaOrcado: string
-    colunaOrcadoAnterior: string
-    conferencias: [{
-      classificacao: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
-      codigo: string
-      descricao: string
-      detalhe: string
-      explicacao: string
-      ok: boolean
-    }]
-    confirmacao: {
-      ataArquivoId: UUID
-      cienteDivergencia: boolean
-      dataAprovacao: LocalDate
-      justificativaDivergencia: string
-      semAta: boolean
-    }
-    fundos: [{
-      codigoEfetivo: string
-      descricao: string
-      fundo: string
-      fundoId: UUID
-      linhaId: UUID
-      orcado: number
-    }]
-    linhas: [{
-      arquivoId: UUID
-      codigoEfetivo: string
-      codigoImpresso: string
-      conta: string
-      contaTexto: string
-      descricao: string
-      id: UUID
-      linhaDeFundo: boolean
-      marca: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
-      observacoes: string
-      orcado: number
-      orcadoAnterior: number
-      ordem: integer
-      pagina: integer
-      percentualTexto: string
-      sha256: string
-      tipo: enum[TOTAL, GROUP, LINE]
-    }]
-    previsao: {
-      arquivoId: UUID
-      arquivoNome: string
-      confirmadaEm: Instant
-      confirmadaPor: string
-      estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
-      exercicioFim: string
-      exercicioImpresso: string
-      exercicioInicio: string
-      id: UUID
-      lidaEm: Instant
-      previstoMes: number
-      prorrogacao: {
-        ate: string
-        de: string
-        em: Instant
-        justificativa: string
-        por: string
-      }
-      sha256: string
-      titulo: string
-      totalImpresso: number
-      versao: integer
-    }
-    previstoMesImpresso: number
-    substituidaDesde: string
-    toleranciaArredondamento: number
-  }
-
-PUT /api/condominios/{}/previsoes/{}/rubricas/{}
-  path: UUID
-  path: UUID
-  path: UUID
-  body: {
-    confirmar: boolean
-    novaRubrica: string
-    rubricaId: UUID
-  }
-  returns: {
-    atualizadoEm: Instant
-    atualizadoPor: string
-    codigo: string
-    conta: string
-    descricao: string
-    estado: enum[SUGGESTED, CONFIRMED, REJECTED]
-    grupo: string
-    linhaId: UUID
-    motivo: string
-    orcado: number
-    origem: enum[FIRST_BUDGET, BUDGET_ACCOUNT, PREVIOUS_VERSION, MANUAL]
-    rubrica: {
-      criadaEm: Instant
-      criadaPor: string
-      grupo: string
-      id: UUID
-      linhaOrigemId: UUID
-      nome: string
-    }
-  }
-
-PUT /api/condominios/{}/rubricas/{}
-  path: UUID
-  path: UUID
-  body: {
-    nome: string
-  }
-  returns: {
-    criadaEm: Instant
-    criadaPor: string
-    grupo: string
-    id: UUID
-    linhaOrigemId: UUID
-    nome: string
-  }
 

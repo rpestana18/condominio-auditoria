@@ -1,6 +1,5 @@
 package br.com.condominioauditoria.api.dto.response.budget;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -9,19 +8,19 @@ import java.util.List;
  * {@code maxScenario} = overrun + to reallocate + without budget line (Q26).
  */
 public record Rule20Response(
-        @JsonProperty("regra") String rule,
-        @JsonProperty("versaoRegra") String ruleVersion,
-        @JsonProperty("limitePercentual") BigDecimal limitPercentage,
-        @JsonProperty("previstoMes") BigDecimal monthlyPlanned,
-        @JsonProperty("excesso") BigDecimal overrun,
-        @JsonProperty("percentual") BigDecimal percentage,
-        @JsonProperty("limite") BigDecimal limit,
-        @JsonProperty("linhasAcima") int linesAbove,
-        @JsonProperty("linhas") List<OverrunLineResponse> lines,
-        @JsonProperty("aRealocar") BigDecimal toReallocate,
-        @JsonProperty("semLinhaPo") BigDecimal withoutBudgetLine,
-        @JsonProperty("cenarioMaximo") BigDecimal maxScenario,
-        @JsonProperty("percentualCenarioMaximo") BigDecimal maxScenarioPercentage,
-        @JsonProperty("provisorio") boolean provisional,
-        @JsonProperty("acimaDoLimite") boolean aboveLimit) {
+        String rule,
+        String ruleVersion,
+        BigDecimal limitPercentage,
+        BigDecimal monthlyPlanned,
+        BigDecimal overrun,
+        BigDecimal percentage,
+        BigDecimal limit,
+        int linesAbove,
+        List<OverrunLineResponse> lines,
+        BigDecimal toReallocate,
+        BigDecimal withoutBudgetLine,
+        BigDecimal maxScenario,
+        BigDecimal maxScenarioPercentage,
+        boolean provisional,
+        boolean aboveLimit) {
 }

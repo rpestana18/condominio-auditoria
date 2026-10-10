@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
  * the pure function {@link BudgetVsActualCalculator}; nothing is stored.
  */
 @RestController
-@RequestMapping("/api/condominios/{condominiumId}/previsto-realizado")
+@RequestMapping("/api/condominiums/{condominiumId}/budget-vs-actual")
 public class BudgetVsActualController {
 
     private final CondominiumAccess access;
@@ -38,11 +38,11 @@ public class BudgetVsActualController {
     }
 
     /** PDF or Excel of the same view (RF-03.1.14): every role of the condominium exports it. */
-    @GetMapping("/exportacao")
+    @GetMapping("/export")
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
-    public ResponseEntity<byte[]> export(@PathVariable UUID condominiumId, @RequestParam("formato") String format,
-            @RequestParam("periodo") String period, @RequestParam(name = "po", required = false) UUID budgetId,
-            @RequestParam(name = "fundo", required = false) UUID fundId) {
+    public ResponseEntity<byte[]> export(@PathVariable UUID condominiumId, @RequestParam("format") String format,
+            @RequestParam("period") String period, @RequestParam(name = "budget", required = false) UUID budgetId,
+            @RequestParam(name = "fund", required = false) UUID fundId) {
         access.require(condominiumId);
         String who = access.fullName().equals(access.username()) ? access.username()
                 : access.fullName() + " (" + access.username() + ")";
@@ -55,24 +55,24 @@ public class BudgetVsActualController {
     }
 
     /**
-     * {@code periodo}: YYYY-MM or "acumulado". {@code po}: budget version; without it, the one valid in the month.
-     * {@code fundo}: the operating fund (only the Condomínio fund) or another fund (only its panel); without it,
+     * {@code period}: YYYY-MM or "cumulative". {@code budget}: budget version; without it, the one valid in the month.
+     * {@code fund}: the operating fund (only the Condomínio fund) or another fund (only its panel); without it,
      * everything.
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
-    public BudgetVsActualResponse get(@PathVariable UUID condominiumId, @RequestParam("periodo") String period,
-            @RequestParam(name = "po", required = false) UUID budgetId,
-            @RequestParam(name = "fundo", required = false) UUID fundId) {
+    public BudgetVsActualResponse get(@PathVariable UUID condominiumId, @RequestParam("period") String period,
+            @RequestParam(name = "budget", required = false) UUID budgetId,
+            @RequestParam(name = "fund", required = false) UUID fundId) {
         access.require(condominiumId);
         return fundId == null ? query.get(condominiumId, period, budgetId)
                 : query.get(condominiumId, period, budgetId, fundId);
     }
 
-    @GetMapping("/evidencia")
+    @GetMapping("/evidence")
     @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
-    public List<EvidenceResponse> evidence(@PathVariable UUID condominiumId, @RequestParam("periodo") String period,
-            @RequestParam(name = "po", required = false) UUID budgetId, @RequestParam("alvo") String target) {
+    public List<EvidenceResponse> evidence(@PathVariable UUID condominiumId, @RequestParam("period") String period,
+            @RequestParam(name = "budget", required = false) UUID budgetId, @RequestParam("target") String target) {
         access.require(condominiumId);
         return query.evidence(condominiumId, period, budgetId, target);
     }

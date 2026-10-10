@@ -112,7 +112,7 @@ public class FiscalYearComparisonService {
         Map<String, BudgetVsActualResponse> cumulatives = new java.util.HashMap<>();
         for (Chosen x : chosen) {
             if (!x.column()) {
-                cumulatives.put(x.id(), budgetVsActual.calculate(condominiumId, "acumulado",
+                cumulatives.put(x.id(), budgetVsActual.calculate(condominiumId, "cumulative",
                         x.budget().getId()).result());
             }
         }

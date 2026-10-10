@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Who is logged in, with which roles and in which condominiums. */
 @RestController
-@RequestMapping("/api/eu")
+@RequestMapping("/api/me")
 class CurrentUserController {
 
     private final CurrentUserService currentUser;

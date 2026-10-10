@@ -73,7 +73,7 @@ class ProcessingResultServiceBudgetTest {
         assertThat(budget.getFileId()).isEqualTo(file.getId());
         assertThat(budget.getCondominiumId()).isEqualTo(file.getCondominiumId());
         assertThat(budget.getSha256()).isEqualTo(file.getSha256());
-        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.LIDA);
+        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.READ);
         assertThat(budget.getParser()).isEqualTo("po-protest");
         assertThat(budget.getTitle()).isEqualTo("PROPOSTA ORÇAMENTÁRIA 2026 / 2027");
         assertThat(budget.getPreviousBudgetedColumn()).isEqualTo("2025/2026");
@@ -102,7 +102,7 @@ class ProcessingResultServiceBudgetTest {
 
         verify(totalsChecks, times(PilotBudget.defaults().totalsChecks().size())).save(any(TotalsCheck.class));
         verify(entries, never()).saveAll(any());
-        assertThat(file.getStatus()).isEqualTo(FileStatus.CONCLUIDO);
+        assertThat(file.getStatus()).isEqualTo(FileStatus.COMPLETED);
         assertThat(file.getMessage()).isEqualTo("PO lida: aguarda a confirmação do Admin");
     }
 
@@ -110,21 +110,21 @@ class ProcessingResultServiceBudgetTest {
     void failedCheckLeavesTheBudgetReadWithDivergence() {
         service.save(result(PilotBudget.defaults().withStaffSubtotal("69193.00")));
 
-        assertThat(saved.getFirst().getStatus()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
-        assertThat(file.getStatus()).isEqualTo(FileStatus.PRECISA_REVISAO);
+        assertThat(saved.getFirst().getStatus()).isEqualTo(BudgetStatus.READ_WITH_DISCREPANCY);
+        assertThat(file.getStatus()).isEqualTo(FileStatus.NEEDS_REVIEW);
         assertThat(file.getMessage()).contains("divergência");
     }
 
     @Test
     void budgetInAnotherCategoryIsNotSaved() {
-        file = newFile(FileCategory.OUTROS);
+        file = newFile(FileCategory.OTHER);
 
         service.save(result(PilotBudget.defaults()));
 
         verify(budgets, never()).save(any());
         verify(lines, never()).saveAll(any());
         verify(totalsChecks, never()).save(any());
-        assertThat(file.getStatus()).isEqualTo(FileStatus.CONCLUIDO);
+        assertThat(file.getStatus()).isEqualTo(FileStatus.COMPLETED);
         assertThat(file.getMessage()).contains("Previsão orçamentária");
     }
 
@@ -132,9 +132,9 @@ class ProcessingResultServiceBudgetTest {
     void movingTheBudgetToAnotherCategoryRemovesTheUnconfirmedBudget() {
         Budget previous = new Budget(file.getCondominiumId(), file.getId(),
                 file.getSha256());
-        previous.recordReading("po-protest", "t", "e", "a", "b", BudgetStatus.LIDA, BigDecimal.ONE, BigDecimal.ONE,
+        previous.recordReading("po-protest", "t", "e", "a", "b", BudgetStatus.READ, BigDecimal.ONE, BigDecimal.ONE,
                 BigDecimal.ONE, new BigDecimal("0.01"), java.time.Instant.now());
-        file = newFile(FileCategory.CONTRATO);
+        file = newFile(FileCategory.CONTRACT);
         when(budgets.findByFileId(file.getId())).thenReturn(Optional.of(previous));
 
         service.save(result(PilotBudget.defaults()));
@@ -164,7 +164,7 @@ class ProcessingResultServiceBudgetTest {
     void confirmedBudgetDoesNotChangeOnReprocess() {
         Budget confirmed = new Budget(file.getCondominiumId(), file.getId(),
                 file.getSha256());
-        confirmed.recordReading("po-protest", "t", "e", "a", "b", BudgetStatus.LIDA, BigDecimal.ONE,
+        confirmed.recordReading("po-protest", "t", "e", "a", "b", BudgetStatus.READ, BigDecimal.ONE,
                 BigDecimal.ONE, BigDecimal.ONE, new BigDecimal("0.01"), java.time.Instant.now());
         confirmed.confirm(1, YearMonth.of(2026, 5), YearMonth.of(2027, 4), null, true, LocalDate.of(2026, 5, 20),
                 false, null, "admin", java.time.Instant.now());
@@ -175,7 +175,7 @@ class ProcessingResultServiceBudgetTest {
         verify(totalsChecks, never()).deleteByFileId(any());
         verify(lines, never()).deleteByBudgetId(any());
         verify(budgets, never()).save(any());
-        assertThat(confirmed.getStatus()).isEqualTo(BudgetStatus.CONFIRMADA);
+        assertThat(confirmed.getStatus()).isEqualTo(BudgetStatus.CONFIRMED);
         assertThat(file.getMessage()).contains("já foi confirmada");
     }
 
@@ -187,8 +187,8 @@ class ProcessingResultServiceBudgetTest {
     }
 
     private ProcessingResultMessage result(PilotBudget budget) {
-        return new ProcessingResultMessage(2, file.getProcessingId(), file.getId(), file.getCondominiumId(),
-                Status.CONCLUIDO, null, "po-protest", 1, null, budget.budget(), budget.totalsChecks());
+        return new ProcessingResultMessage(3, file.getProcessingId(), file.getId(), file.getCondominiumId(),
+                Status.COMPLETED, null, "po-protest", 1, null, budget.budget(), budget.totalsChecks());
     }
 
     private SourceFile newFile(FileCategory category) {

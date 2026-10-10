@@ -34,7 +34,7 @@ spring:
     password: ${RABBITMQ_SENHA:condominio}
     listener:
       simple:
-        # Gravação que falha volta para a fila, tenta de novo e depois vai para backend.resultados.erro
+        # Gravação que falha volta para a fila, tenta de novo e depois vai para api.processing-results.error
         default-requeue-rejected: false
         retry:
           enabled: true

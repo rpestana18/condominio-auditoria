@@ -71,16 +71,16 @@ public class IndexRepository {
                 insert into indexed_document (file_id, condominium_id, category, original_name, path, sha256,
                     period_start, period_end, file_version, status, indexing_id)
                 values (:fileId, :condominiumId, :category, :name, :path, :sha256, :start, :end, :fileVersion,
-                    'indexando', :indexingId)
+                    'indexing', :indexingId)
                 on conflict (file_id) do update
-                   set status = 'indexando', reason = null, indexing_id = excluded.indexing_id, updated_at = now()""")
+                   set status = 'indexing', reason = null, indexing_id = excluded.indexing_id, updated_at = now()""")
                 .params(requestParams(p))
                 .update();
     }
 
     public void markError(UUID fileId, UUID indexingId, String reason) {
         jdbc.sql("""
-                update indexed_document set status = 'erro', reason = :reason, indexing_id = :indexingId,
+                update indexed_document set status = 'error', reason = :reason, indexing_id = :indexingId,
                        updated_at = now()
                  where file_id = :fileId""")
                 .param("fileId", fileId).param("indexingId", indexingId).param("reason", reason)
@@ -110,7 +110,7 @@ public class IndexRepository {
 
     /**
      * Replaces, in a single transaction, the file's chunks and vectors with the new ones and stores the document data.
-     * No chunks = state sem_texto. {@code vectors} null = embeddings off (keyword search only).
+     * No chunks = status no_text. {@code vectors} null = embeddings off (keyword search only).
      */
     public void replace(IndexFileMessage p, ChunkedDocument chunked, List<float[]> vectors, String model) {
         replace(p, chunked, vectors, model, null);
@@ -125,7 +125,7 @@ public class IndexRepository {
         }
         transaction.executeWithoutResult(status -> {
             Map<String, Object> data = requestParams(p);
-            data.put("status", chunked.noText() ? "sem_texto" : "indexado");
+            data.put("status", chunked.noText() ? "no_text" : "indexed");
             data.put("reason", chunked.noText() ? chunked.noTextReason() : warning);
             data.put("pages", chunked.pages());
             data.put("chunks", chunked.chunks().size());

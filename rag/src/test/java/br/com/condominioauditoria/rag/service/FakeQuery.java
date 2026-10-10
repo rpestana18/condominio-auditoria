@@ -74,8 +74,8 @@ public class FakeQuery extends ConsultaGrpc.ConsultaImplBase {
     public void listarArquivos(ListarArquivosRequest request, StreamObserver<ListarArquivosResponse> response) {
         calls.add("listarArquivos:" + request.getCategoria());
         response.onNext(ListarArquivosResponse.newBuilder()
-                .addArquivos(ArquivoResumo.newBuilder().setId("arq-1").setCategoria("BALANCETE")
-                        .setNome("fluxo-setembro.pdf").setStatus("CONCLUIDO").setPeriodoInicio("2026-09-01")
+                .addArquivos(ArquivoResumo.newBuilder().setId("arq-1").setCategoria("TRIAL_BALANCE")
+                        .setNome("fluxo-setembro.pdf").setStatus("COMPLETED").setPeriodoInicio("2026-09-01")
                         .setPeriodoFim("2026-09-30"))
                 .build());
         response.onCompleted();

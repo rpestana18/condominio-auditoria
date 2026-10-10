@@ -55,8 +55,8 @@ public class IndexRepositoryDatabaseTest {
     @Test
     public void indexesSearchesByUnaccentedKeywordAndByVectorWithFilters() {
         UUID condominium = UUID.randomUUID();
-        IndexFileMessage minutes = request(condominium, "ATA", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
-        IndexFileMessage contract = request(condominium, "CONTRATO", null, null);
+        IndexFileMessage minutes = request(condominium, "MINUTES", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+        IndexFileMessage contract = request(condominium, "CONTRACT", null, null);
         save(minutes, List.of(
                 chunk(1, new Location.Page(1), "A assembleia aprovou a manutenção do elevador."),
                 chunk(2, new Location.Page(2), "Multa de 2% por atraso no pagamento da cota.")), 0);
@@ -78,7 +78,7 @@ public class IndexRepositoryDatabaseTest {
 
         // Filters in the WHERE: category, period (document without reference period is left out), files, other
         // condominium
-        assertThat(repository.findByKeyword(new SearchFilters(condominium, List.of("CONTRATO"), null, null, null),
+        assertThat(repository.findByKeyword(new SearchFilters(condominium, List.of("CONTRACT"), null, null, null),
                 "manutencao", 10)).hasSize(1);
         assertThat(repository.findByKeyword(new SearchFilters(condominium, null, LocalDate.of(2026, 9, 15), null,
                 null), "manutencao", 10)).hasSize(1);
@@ -95,7 +95,7 @@ public class IndexRepositoryDatabaseTest {
         List<FoundChunk> loaded = repository.load(byVector);
         assertThat(loaded.getFirst().location()).isEqualTo(new Location.Sheet("Valores", 2, 31));
         assertThat(loaded.getFirst().sha256()).isEqualTo(contract.sha256());
-        assertThat(repository.findByVector(new SearchFilters(condominium, List.of("ATA"), null, null, null),
+        assertThat(repository.findByVector(new SearchFilters(condominium, List.of("MINUTES"), null, null, null),
                 axis(2), "bge-m3", 10)).hasSize(2);
 
         // Logical deletion: disappears from both searches, but stays in the database
@@ -108,7 +108,7 @@ public class IndexRepositoryDatabaseTest {
     @Test
     public void reindexReplacesChunksAndNoTextLeavesNothing() {
         UUID condominium = UUID.randomUUID();
-        IndexFileMessage minutes = request(condominium, "ATA", null, null);
+        IndexFileMessage minutes = request(condominium, "MINUTES", null, null);
         save(minutes, List.of(chunk(1, new Location.Page(1), "primeira versão"),
                 chunk(2, new Location.Page(2), "segunda página")), 0);
         var all = new SearchFilters(condominium, null, null, null, null);
@@ -121,7 +121,7 @@ public class IndexRepositoryDatabaseTest {
 
         repository.replace(minutes, new ChunkedDocument(3, List.of(), "PDF sem texto extraível"), null, null);
         var doc = repository.find(minutes.fileId()).orElseThrow();
-        assertThat(doc.state()).isEqualTo("sem_texto");
+        assertThat(doc.state()).isEqualTo("no_text");
         assertThat(doc.reason()).isEqualTo("PDF sem texto extraível");
         assertThat(doc.embeddingModel()).isNull();
         assertThat(jdbc.sql("select count(*) from chunk where file_id = :a").param("a", minutes.fileId())
@@ -131,14 +131,14 @@ public class IndexRepositoryDatabaseTest {
     @Test
     public void errorKeepsReasonWithoutTouchingOldChunks() {
         UUID condominium = UUID.randomUUID();
-        IndexFileMessage minutes = request(condominium, "ATA", null, null);
+        IndexFileMessage minutes = request(condominium, "MINUTES", null, null);
         save(minutes, List.of(chunk(1, new Location.Page(1), "conteúdo antigo")), 0);
 
         repository.markIndexing(minutes);
         repository.markError(minutes.fileId(), minutes.indexingId(), "Ollama fora do ar");
 
         var doc = repository.find(minutes.fileId()).orElseThrow();
-        assertThat(doc.state()).isEqualTo("erro");
+        assertThat(doc.state()).isEqualTo("error");
         assertThat(doc.reason()).isEqualTo("Ollama fora do ar");
         assertThat(repository.findByKeyword(new SearchFilters(condominium, null, null, null, null), "antigo", 10))
                 .hasSize(1);
@@ -147,7 +147,7 @@ public class IndexRepositoryDatabaseTest {
     @Test
     public void slashCountsAsSpaceAndExclusionAndPhraseApplyOnVectorSide() {
         UUID condominium = UUID.randomUUID();
-        IndexFileMessage payroll = request(condominium, "FOLHA", null, null);
+        IndexFileMessage payroll = request(condominium, "PAYROLL", null, null);
         save(payroll, List.of(
                 chunk(1, new Location.Page(1), "Salário base do zelador"),
                 chunk(2, new Location.Page(2), "Salário e Vale Transporte"),
@@ -178,13 +178,13 @@ public class IndexRepositoryDatabaseTest {
     @Test
     public void indexedWithoutVectorEntersKeywordSearchWithWarning() {
         UUID condominium = UUID.randomUUID();
-        IndexFileMessage minutes = request(condominium, "ATA", null, null);
+        IndexFileMessage minutes = request(condominium, "MINUTES", null, null);
         repository.markIndexing(minutes);
         repository.replace(minutes, new ChunkedDocument(1, List.of(chunk(1, new Location.Page(1),
                 "Multa por atraso")), null), null, null, "Indexado só para a busca por palavra: Ollama fora");
 
         var doc = repository.find(minutes.fileId()).orElseThrow();
-        assertThat(doc.state()).isEqualTo("indexado");
+        assertThat(doc.state()).isEqualTo("indexed");
         assertThat(doc.embeddingModel()).isNull();
         assertThat(doc.reason()).contains("Ollama fora");
         var all = new SearchFilters(condominium, null, null, null, null);
@@ -214,7 +214,7 @@ public class IndexRepositoryDatabaseTest {
 
     private static IndexFileMessage request(UUID condominium, String category, LocalDate start, LocalDate end) {
         UUID file = UUID.randomUUID();
-        return new IndexFileMessage(1, IndexFileMessage.Operation.INDEXAR, UUID.randomUUID(), file, condominium,
+        return new IndexFileMessage(3, IndexFileMessage.Operation.INDEX, UUID.randomUUID(), file, condominium,
                 category, category.toLowerCase() + ".pdf", "c/" + file + ".pdf",
                 UUID.randomUUID().toString().replace("-", "").repeat(2), start, end, 1, null, null);
     }

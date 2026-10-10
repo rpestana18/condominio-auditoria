@@ -82,7 +82,7 @@ class ReallocationAndFindingsGoldenTest {
                     assertThat(ev.memo()).isNotBlank();
                 });
         assertThat(c.reallocationEvents).hasSize(toReallocate.size())
-                .allMatch(e -> e.getAction().equals(ReallocationEvent.REALOCADA) && e.getUsername().equals("gestor"));
+                .allMatch(e -> e.getAction().equals(ReallocationEvent.REALLOCATED) && e.getUsername().equals("gestor"));
         // Reallocating the same entry again is refused (one active reallocation per entry)
         assertThatThrownBy(() -> c.reallocation.reallocate(c.condominiumId, new ReallocationRequest(
                 toReallocate.getFirst().entryId(), line179), "gestor")).isInstanceOf(ResponseStatusException.class)
@@ -101,7 +101,7 @@ class ReallocationAndFindingsGoldenTest {
                     assertThat(r.active()).isFalse();
                     assertThat(r.undoneBy()).isEqualTo("admin");
                 });
-        assertThat(c.reallocationEvents).filteredOn(e -> e.getAction().equals(ReallocationEvent.DESFEITA))
+        assertThat(c.reallocationEvents).filteredOn(e -> e.getAction().equals(ReallocationEvent.UNDONE))
                 .hasSize(done.size());
         assertThat(c.published).filteredOn(BudgetChanged.class::isInstance).hasSizeGreaterThanOrEqualTo(
                 2 * done.size());
@@ -143,8 +143,8 @@ class ReallocationAndFindingsGoldenTest {
         assertThat(c.ledgerEntries).noneMatch(l -> idsBefore.contains(l.getId()));
         assertThat(line(r, "1.7.9").actual()).isEqualByComparingTo("5522.25");
         assertThat(r.toReallocate().total()).isEqualByComparingTo("0.00");
-        assertThat(r.warnings()).extracting(BudgetVsActualWarningResponse::code).doesNotContain("REALOCACAO_SEM_LANCAMENTO",
-                "REALOCACAO_SEM_EFEITO");
+        assertThat(r.warnings()).extracting(BudgetVsActualWarningResponse::code).doesNotContain("REALLOCATION_WITHOUT_ENTRY",
+                "REALLOCATION_WITHOUT_EFFECT");
         assertThat(evidence(g, BudgetVsActualCalculator.lineTarget(line179)))
                 .filteredOn(ev -> "1064".equals(ev.account())).hasSize(toReallocate.size())
                 .allMatch(ev -> !idsBefore.contains(ev.entryId()) && ev.reallocation() != null);
@@ -164,7 +164,7 @@ class ReallocationAndFindingsGoldenTest {
         assertThat(line(r, "1.7.9").actual()).isEqualByComparingTo(line(g.september().result(), "1.7.9")
                 .actual());
         assertThat(r.toReallocate().total()).isEqualByComparingTo("1050.93");
-        assertThat(r.warnings()).filteredOn(a -> a.code().equals("REALOCACAO_SEM_LANCAMENTO")).singleElement()
+        assertThat(r.warnings()).filteredOn(a -> a.code().equals("REALLOCATION_WITHOUT_ENTRY")).singleElement()
                 .satisfies(a -> assertThat(a.text()).contains("15/09/2026", "conta 1064", "R$ 99,90", "página 7"));
     }
 
@@ -183,9 +183,9 @@ class ReallocationAndFindingsGoldenTest {
         assertThat(september).singleElement().satisfies(a -> {
             assertThat(a.getRule()).isEqualTo(UnmappedAccountRule.CODE);
             assertThat(a.getRuleVersion()).isEqualTo(UnmappedAccountRule.VERSION);
-            assertThat(a.getSeverity()).isEqualTo(Severity.ATENCAO);
-            assertThat(a.getTarget()).isEqualTo("conta:8888");
-            assertThat(a.getStatus()).isEqualTo(FindingStatus.ABERTO);
+            assertThat(a.getSeverity()).isEqualTo(Severity.WARNING);
+            assertThat(a.getTarget()).isEqualTo("account:8888");
+            assertThat(a.getStatus()).isEqualTo(FindingStatus.OPEN);
             assertThat(a.getDescription()).contains("Conta 8888 CONTA DE TESTE", "09/2026", "R$ 500,00",
                     "1 lançamento", "sem linha da PO", "verificar o de-para");
         });
@@ -213,26 +213,26 @@ class ReallocationAndFindingsGoldenTest {
 
         // Q27: the Admin confirms the account mapping; the finding becomes "não se aplica mais", with the reason
         c.accountMapping.setTarget(c.condominiumId, g.budget.getId(), "8888",
-                new MappingTargetRequest(MappingTargetType.LINHA_PO,
+                new MappingTargetRequest(MappingTargetType.BUDGET_LINE,
                 g.line("1.7.8").getId(), null, true), "admin");
         c.afterCommit();
 
         String today = DATE.format(Instant.now());
-        assertThat(finding.getStatus()).isEqualTo(FindingStatus.NAO_SE_APLICA_MAIS);
+        assertThat(finding.getStatus()).isEqualTo(FindingStatus.NO_LONGER_APPLIES);
         assertThat(finding.getStatusReason()).isEqualTo("de-para da conta 8888 confirmado por admin em " + today);
         assertThat(finding.isConditionPresent()).isFalse();
         assertThat(c.evidence).filteredOn(e -> e.getFindingId().equals(finding.getId())).hasSize(1);
 
         // The Admin undoes the account mapping: the condition comes back, and the SAME finding goes back to "aberto"
         c.accountMapping.batch(c.condominiumId, g.budget.getId(),
-                new AccountMappingBatchRequest(AccountMappingBatchAction.RECUSAR,
+                new AccountMappingBatchRequest(AccountMappingBatchAction.REJECT,
                 List.of("8888")), "admin");
         c.afterCommit();
 
         assertThat(findingsOf(c, YearMonth.of(2026, 9))).singleElement().isSameAs(finding);
-        assertThat(finding.getStatus()).isEqualTo(FindingStatus.ABERTO);
-        assertThat(events(c, finding)).extracting(FindingEvent::getNewStatus).containsExactly(FindingStatus.ABERTO,
-                FindingStatus.NAO_SE_APLICA_MAIS, FindingStatus.ABERTO);
+        assertThat(finding.getStatus()).isEqualTo(FindingStatus.OPEN);
+        assertThat(events(c, finding)).extracting(FindingEvent::getNewStatus).containsExactly(FindingStatus.OPEN,
+                FindingStatus.NO_LONGER_APPLIES, FindingStatus.OPEN);
         assertThat(events(c, finding).get(2).getReason()).isEqualTo("a condição voltou: de-para da conta 8888"
                 + " recusado por admin em " + today);
     }
@@ -248,7 +248,7 @@ class ReallocationAndFindingsGoldenTest {
 
         Finding critical = c.findings.stream().filter(a -> a.getRule().equals(MonthlyOverrunRule.CODE)).findFirst()
                 .orElseThrow();
-        assertThat(critical.getSeverity()).isEqualTo(Severity.CRITICO);
+        assertThat(critical.getSeverity()).isEqualTo(Severity.CRITICAL);
         assertThat(critical.getReferenceMonth()).isEqualTo(YearMonth.of(2026, 9));
         assertThat(critical.getDescription()).startsWith("excesso de 21,9% do previsto do mês; a Conv. 16.2 exige"
                 + " aprovação em AGE para o excedente; verificar ata.").contains("R$ 98.880,19", "R$ 90.324,03");
@@ -259,12 +259,12 @@ class ReallocationAndFindingsGoldenTest {
         // Account 1442 becomes an adjustment in the mapping: the overrun drops below 20% and the finding no longer
         // applies
         c.accountMapping.setTarget(c.condominiumId, g.budget.getId(), "1442",
-                new MappingTargetRequest(MappingTargetType.AJUSTE,
+                new MappingTargetRequest(MappingTargetType.ADJUSTMENT,
                 null,
                 "teste", true), "admin");
         c.afterCommit();
 
-        assertThat(critical.getStatus()).isEqualTo(FindingStatus.NAO_SE_APLICA_MAIS);
+        assertThat(critical.getStatus()).isEqualTo(FindingStatus.NO_LONGER_APPLIES);
         assertThat(critical.getStatusReason()).startsWith("de-para da conta 1442 confirmado por admin em ");
         assertThat(c.findings).filteredOn(a -> a.getRule().equals(MonthlyOverrunRule.CODE)).hasSize(1);
     }
@@ -280,11 +280,11 @@ class ReallocationAndFindingsGoldenTest {
 
         c.cashFlow("fluxo-corrigido-2026-09.pdf", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30), 0);
         c.accountMapping.setTarget(c.condominiumId, g.budget.getId(), "8888",
-                new MappingTargetRequest(MappingTargetType.LINHA_PO,
+                new MappingTargetRequest(MappingTargetType.BUDGET_LINE,
                 g.line("1.7.8").getId(), null, true), "admin");
         c.afterCommit();
 
-        assertThat(finding.getStatus()).isEqualTo(FindingStatus.ABERTO);
+        assertThat(finding.getStatus()).isEqualTo(FindingStatus.OPEN);
         assertThat(events(c, finding)).hasSize(1);
     }
 

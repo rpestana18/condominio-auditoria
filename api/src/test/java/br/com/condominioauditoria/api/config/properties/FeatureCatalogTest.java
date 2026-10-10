@@ -38,7 +38,7 @@ public class FeatureCatalogTest {
 
     @Test
     void codeOutsideTheCatalogIsUnknown() {
-        var catalog = new FeatureCatalog(1, List.of(feature("ASSISTENTE", List.of())));
+        var catalog = new FeatureCatalog(1, List.of(feature("ASSISTANT", List.of())));
 
         assertThat(catalog.find("RELATORIOS")).isEmpty();
         assertThatThrownBy(() -> catalog.require("RELATORIOS")).isInstanceOf(UnknownFeatureException.class);
@@ -56,10 +56,10 @@ public class FeatureCatalogTest {
 
     @Test
     void newFeatureIsJustACatalogEntry() {
-        var catalog = new FeatureCatalog(2, List.of(feature("ASSISTENTE", List.of()),
-                feature("RELATORIOS", List.of("ASSISTENTE"))));
+        var catalog = new FeatureCatalog(2, List.of(feature("ASSISTANT", List.of()),
+                feature("RELATORIOS", List.of("ASSISTANT"))));
 
-        assertThat(catalog.require("RELATORIOS").dependsOn()).containsExactly("ASSISTENTE");
+        assertThat(catalog.require("RELATORIOS").dependsOn()).containsExactly("ASSISTANT");
     }
 
     public static FeatureCatalog load() throws Exception {

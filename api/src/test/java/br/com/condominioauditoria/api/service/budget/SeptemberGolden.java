@@ -99,7 +99,7 @@ public final class SeptemberGolden {
         scenario.accountMapping.loadSheet(scenario.condominiumId, budget.getId(), "mapa-contas-fluxo-para-PO.csv", map,
                 "admin");
         scenario.accountMapping.batch(scenario.condominiumId, budget.getId(),
-                new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRMAR,
+                new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRM,
                 scenario.mappings.stream().map(AccountMapping::getAccountCode).toList()), "admin");
     }
 

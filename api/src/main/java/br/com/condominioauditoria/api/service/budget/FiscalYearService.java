@@ -83,15 +83,15 @@ public class FiscalYearService {
                             .map(GroupDifferenceResponse::text).toList();
                 }
             }
-            list.add(new FiscalYearResponse("po:" + budget.getId(), FiscalYearType.PO,
+            list.add(new FiscalYearResponse("budget:" + budget.getId(), FiscalYearType.PO,
                     label(budget.getFiscalYearStart(),
                     budget.getFiscalYearEnd()), budget.getId(), budget.getVersion(),
                             budget.getFiscalYearStart().toString(),
                     budget.getFiscalYearEnd().toString(), BudgetMapper.toExtensionResponse(budget),
                             BudgetStructure.of(ofBudget).monthlyPlannedFromLines()
                             .setScale(2), months(budget, cashFlows),
-                    accountMappings.list(condominiumId, budget.getId(), AccountMappingFilter.TODAS).summary(),
-                    budgetItems.list(condominiumId, budget.getId(), BudgetItemFilter.TODAS).summary(), supersededColumn,
+                    accountMappings.list(condominiumId, budget.getId(), AccountMappingFilter.ALL).summary(),
+                    budgetItems.list(condominiumId, budget.getId(), BudgetItemFilter.ALL).summary(), supersededColumn,
                     warnings));
             if (previous(confirmed, budget).isEmpty()) {
                 PrintedColumn.of(budget, ofBudget).ifPresent(c -> list.add(columnAsFiscalYear(budget, c)));
@@ -100,13 +100,13 @@ public class FiscalYearService {
         return List.copyOf(list);
     }
 
-    /** Fiscal year ids ("po:" and "coluna:"), in list order, without building the summaries. */
+    /** Fiscal year ids ("budget:" and "column:"), in list order, without building the summaries. */
     @Transactional(readOnly = true)
     public List<String> ids(UUID condominiumId) {
         List<Budget> confirmed = confirmed(condominiumId);
         List<String> ids = new ArrayList<>();
         for (Budget budget : confirmed) {
-            ids.add("po:" + budget.getId());
+            ids.add("budget:" + budget.getId());
             if (previous(confirmed, budget).isEmpty()
                     && PrintedColumn.of(budget, lines.findByBudgetIdOrderByPosition(budget.getId())).isPresent()) {
                 ids.add(columnId(budget));
@@ -121,7 +121,7 @@ public class FiscalYearService {
     @Transactional(readOnly = true)
     public PrintedColumnCheckResponse printedColumn(UUID condominiumId, UUID budgetId) {
         Budget budget = budgets.findByIdAndCondominiumId(budgetId, condominiumId)
-                .filter(p -> p.getStatus() == BudgetStatus.CONFIRMADA)
+                .filter(p -> p.getStatus() == BudgetStatus.CONFIRMED)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO confirmada não encontrada"));
         PrintedColumn column = PrintedColumn.of(budget, lines.findByBudgetIdOrderByPosition(budget.getId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
@@ -155,7 +155,7 @@ public class FiscalYearService {
     }
 
     private List<Budget> confirmed(UUID condominiumId) {
-        return budgets.findByCondominiumIdAndStatusIn(condominiumId, EnumSet.of(BudgetStatus.CONFIRMADA)).stream()
+        return budgets.findByCondominiumIdAndStatusIn(condominiumId, EnumSet.of(BudgetStatus.CONFIRMED)).stream()
                 .filter(p -> p.getFiscalYearStart() != null && p.getFiscalYearEnd() != null)
                 .sorted(Comparator.comparing(Budget::getFiscalYearStart).reversed()).toList();
     }
@@ -163,7 +163,7 @@ public class FiscalYearService {
     private static FiscalYearResponse columnAsFiscalYear(Budget budget, PrintedColumn c) {
         YearMonth start = budget.getFiscalYearStart().minusMonths(12);
         YearMonth end = budget.getFiscalYearStart().minusMonths(1);
-        return new FiscalYearResponse(columnId(budget), FiscalYearType.COLUNA_IMPRESSA, c.label(), budget.getId(),
+        return new FiscalYearResponse(columnId(budget), FiscalYearType.PRINTED_COLUMN, c.label(), budget.getId(),
                 budget.getVersion(),
                 start.toString(), end.toString(), null, c.monthlyPlanned(), List.of(), null, null, null, c.warnings());
     }
@@ -184,7 +184,7 @@ public class FiscalYearService {
 
     public static MonthStatus status(YearMonth month, List<CashFlowFile> cashFlows) {
         long n = cashFlows.stream().filter(f -> f.covers(month)).count();
-        return n == 0 ? MonthStatus.SEM_FLUXO : n == 1 ? MonthStatus.COM_FLUXO : MonthStatus.DOIS_FLUXOS;
+        return n == 0 ? MonthStatus.NO_CASH_FLOW : n == 1 ? MonthStatus.WITH_CASH_FLOW : MonthStatus.TWO_CASH_FLOWS;
     }
 
     private static BigDecimal tolerance(Budget budget) {
@@ -192,6 +192,6 @@ public class FiscalYearService {
     }
 
     public static String columnId(Budget budget) {
-        return "coluna:" + budget.getId();
+        return "column:" + budget.getId();
     }
 }

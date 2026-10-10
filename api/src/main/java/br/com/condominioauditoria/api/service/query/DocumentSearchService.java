@@ -46,11 +46,11 @@ import org.springframework.stereotype.Component;
  *
  * Belongs to the Assistant feature (RF-10.3): with it disabled in the condominium, rejects with FAILED_PRECONDITION
  * "Módulo Assistente não contratado para este condomínio." without calling the rag. Each answered search creates a
- * "chamada_mcp" usage record (RF-09.7; this rpc's caller is the mcp).
+ * "mcp_call" usage record (RF-09.7; this rpc's caller is the mcp).
  *
- * Search mode by the condominium's AI configuration (delivery 3, Q16): embeddings DESLIGADO = PALAVRA; LOCAL = HIBRIDA
+ * Search mode by the condominium's AI configuration (delivery 3, Q16): embeddings OFF = PALAVRA; LOCAL = HIBRIDA
  * with the configured model (the rag falls back to PALAVRA if embeddings are down). Works in any answers mode,
- * including DESLIGADO.
+ * including OFF.
  */
 @Component
 public class DocumentSearchService {
@@ -84,7 +84,7 @@ public class DocumentSearchService {
         features.require(condominiumId, FeatureService.ASSISTANT);
         var embeddings = aiConfiguration.read(condominiumId).embeddings();
         BuscarRequest ragRequest = toRagRequest(condominiumId, request).toBuilder()
-                .setModo(embeddings.mode() == AiMode.DESLIGADO ? ModoBusca.MODO_BUSCA_PALAVRA
+                .setModo(embeddings.mode() == AiMode.OFF ? ModoBusca.MODO_BUSCA_PALAVRA
                         : ModoBusca.MODO_BUSCA_HIBRIDA)
                 .setModeloEmbeddings(embeddings.mode() == AiMode.LOCAL && embeddings.model() != null
                         ? embeddings.model() : "")

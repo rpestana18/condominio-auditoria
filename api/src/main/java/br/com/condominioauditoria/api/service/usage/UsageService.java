@@ -34,44 +34,44 @@ public class UsageService {
         this.usages = usages;
     }
 
-    /** One file indexed by the rag (files = 1). With an embedding model = LOCAL; without vectors = DESLIGADO. */
+    /** One file indexed by the rag (files = 1). With an embedding model = LOCAL; without vectors = OFF. */
     @Transactional
     public void recordIndexing(UUID condominiumId, Integer pages, String embeddingModel) {
-        AiMode mode = embeddingModel == null || embeddingModel.isBlank() ? AiMode.DESLIGADO : AiMode.LOCAL;
-        usages.save(new FeatureUsage(condominiumId, FeatureService.ASSISTANT, UsageFunction.INDEXACAO, null,
+        AiMode mode = embeddingModel == null || embeddingModel.isBlank() ? AiMode.OFF : AiMode.LOCAL;
+        usages.save(new FeatureUsage(condominiumId, FeatureService.ASSISTANT, UsageFunction.INDEXING, null,
                 Instant.now(), mode, null, mode == AiMode.LOCAL ? embeddingModel : null, null, null, 1, pages, null));
     }
 
     /**
      * One call to buscar_documentos through the MCP. hybridSearch = the rag used the local embeddings (LOCAL); keyword
-     * only = DESLIGADO. The search model does not come in the rag's answer, so it stays null.
+     * only = OFF. The search model does not come in the rag's answer, so it stays null.
      */
     @Transactional
     public void recordMcpCall(UUID condominiumId, String username, boolean hybridSearch) {
-        usages.save(new FeatureUsage(condominiumId, FeatureService.ASSISTANT, UsageFunction.CHAMADA_MCP,
-                Objects.requireNonNull(username), Instant.now(), hybridSearch ? AiMode.LOCAL : AiMode.DESLIGADO, null,
+        usages.save(new FeatureUsage(condominiumId, FeatureService.ASSISTANT, UsageFunction.MCP_CALL,
+                Objects.requireNonNull(username), Instant.now(), hybridSearch ? AiMode.LOCAL : AiMode.OFF, null,
                 null, null, null, null, null, null));
     }
 
     /**
-     * One question answered by the chat (RESPONDIDA or NAO_ENCONTRADA), in API_KEY mode, with the tokens added up over
+     * One question answered by the chat (ANSWERED or NOT_FOUND), in API_KEY mode, with the tokens added up over
      * every attempt, the provider, the model and the version of the instructions (prompt) the rag used. Never the
      * question.
      */
     @Transactional
     public void recordQuestion(UUID condominiumId, String username, String provider, String model, long inputTokens,
             long outputTokens, String promptVersion) {
-        usages.save(new FeatureUsage(condominiumId, FeatureService.ASSISTANT, UsageFunction.PERGUNTA,
+        usages.save(new FeatureUsage(condominiumId, FeatureService.ASSISTANT, UsageFunction.QUESTION,
                 Objects.requireNonNull(username),
                 Instant.now(), AiMode.API_KEY, truncate(provider, 60), truncate(model, 120),
                 Math.max(0, inputTokens), Math.max(0, outputTokens), null, null, truncate(promptVersion, 40)));
     }
 
-    /** One keyword search made from the screen (RF-04.18): no AI (DESLIGADO), no tokens. Never the searched text. */
+    /** One keyword search made from the screen (RF-04.18): no AI (OFF), no tokens. Never the searched text. */
     @Transactional
     public void recordDocumentSearch(UUID condominiumId, String username) {
-        usages.save(new FeatureUsage(condominiumId, FeatureService.ASSISTANT, UsageFunction.BUSCA_DOCUMENTOS,
-                Objects.requireNonNull(username), Instant.now(), AiMode.DESLIGADO, null, null, null, null, null, null,
+        usages.save(new FeatureUsage(condominiumId, FeatureService.ASSISTANT, UsageFunction.DOCUMENT_SEARCH,
+                Objects.requireNonNull(username), Instant.now(), AiMode.OFF, null, null, null, null, null, null,
                 null));
     }
 

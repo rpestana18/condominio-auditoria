@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 /**
- * ResultadoProcessamento v2 messages from the private golden set (data/golden/privado, outside git), written by the rag
+ * ProcessingResult v3 messages from the private golden set (data/golden/privado, outside git), written by the rag
  * in {@code ResultadoGoldenTest}. The api reads them as it reads from the queue: through the contract, validating the
  * JSON Schema. No rag class is used (CLAUDE.md, ADR 0002).
  */
@@ -25,7 +25,7 @@ public final class GoldenMessages {
 
     /** Empty when the private golden set is not on the machine (the test is skipped). */
     public static Optional<ProcessingResultMessage> read(String name) {
-        Path file = privateFolder().resolve(name + ".resultado-v2.json");
+        Path file = privateFolder().resolve(name + ".resultado-v3.json");
         if (!Files.exists(file)) {
             return Optional.empty();
         }

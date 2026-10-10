@@ -5,7 +5,7 @@ import java.util.List;
 
 /** A question to the Assistant chat (contracts/openapi.yaml, PedidoPergunta). */
 public record QuestionRequest(
-        @JsonProperty("pergunta") String question,
+        @JsonProperty("question") String question,
         @JsonProperty("historico") List<ConversationTurnRequest> history,
         @JsonProperty("filtros") DocumentFiltersRequest filters) {
 }

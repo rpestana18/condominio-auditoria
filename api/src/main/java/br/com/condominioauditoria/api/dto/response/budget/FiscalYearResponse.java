@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * A fiscal year of the list. {@code id}: "po:&lt;uuid&gt;" or "coluna:&lt;uuid&gt;" (the uuid of the budget that
+ * A fiscal year of the list. {@code id}: "budget:&lt;uuid&gt;" or "column:&lt;uuid&gt;" (the uuid of the budget that
  * printed the column), used in the comparison. For the printed column, {@code start} and {@code end} are the 12 months
  * before the budget that printed it, {@code months} is empty (no actual) and mapping, budget items and extension are
  * null. {@code printedColumn}: id of the column this fiscal year superseded, kept only as a check (RF-11.5).

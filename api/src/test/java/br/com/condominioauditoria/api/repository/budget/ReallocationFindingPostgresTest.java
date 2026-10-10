@@ -72,7 +72,7 @@ class ReallocationFindingPostgresTest {
             UUID event = UUID.randomUUID();
             s.executeUpdate("insert into reallocation_event (id, reallocation_id, condominium_id, action, username, "
                     + "occurred_at, detail)"
-                    + " values ('" + event + "', '" + first + "', '" + CONDOMINIUM + "', 'REALOCADA', 'gestor', now(),"
+                    + " values ('" + event + "', '" + first + "', '" + CONDOMINIUM + "', 'REALLOCATED', 'gestor', now(),"
                     + " 'teste')");
             assertThatThrownBy(() -> s.executeUpdate("update reallocation_event set username = 'outro'"))
                     .isInstanceOf(SQLException.class).hasMessageContaining("só de inserção");
@@ -89,22 +89,22 @@ class ReallocationFindingPostgresTest {
             s.executeUpdate("insert into finding (id, condominium_id, rule, rule_version, severity, "
                     + "reference_month, target,"
                     + " description, status, created_at) values ('" + finding + "', '" + CONDOMINIUM + "',"
-                    + " 'CONTA_SEM_LINHA_PO', '1', 'ATENCAO', date '2026-09-01', 'conta:8888', 'teste', 'ABERTO', "
+                    + " 'ACCOUNT_WITHOUT_BUDGET_LINE', '1', 'WARNING', date '2026-09-01', 'account:8888', 'teste', 'OPEN', "
                     + "now())");
 
-            assertThat(s.executeUpdate("update finding set status = 'NAO_SE_APLICA_MAIS', condition_present = false,"
+            assertThat(s.executeUpdate("update finding set status = 'NO_LONGER_APPLIES', condition_present = false,"
                     + " status_reason = 'de-para da conta 8888 confirmado por admin em 04/10/2026' where id = "
                     + "'" + finding
                     + "'")).isEqualTo(1);
             assertThatThrownBy(() -> s.executeUpdate("update finding set status = 'APAGADO'"))
-                    .isInstanceOf(SQLException.class).hasMessageContaining("ck_achado_estado");
+                    .isInstanceOf(SQLException.class).hasMessageContaining("ck_finding_status");
             assertThatThrownBy(() -> s.executeUpdate("delete from finding")).isInstanceOf(SQLException.class)
                     .hasMessageContaining("Nada é apagado");
 
             s.executeUpdate("insert into finding_event (id, finding_id, condominium_id, previous_status, new_status,"
                     + " condition_present, reason, username, occurred_at) values ('" + UUID.randomUUID() + "', "
                     + "'" + finding + "', '"
-                    + CONDOMINIUM + "', 'ABERTO', 'NAO_SE_APLICA_MAIS', false, 'teste', 'admin', now())");
+                    + CONDOMINIUM + "', 'OPEN', 'NO_LONGER_APPLIES', false, 'teste', 'admin', now())");
             assertThatThrownBy(() -> s.executeUpdate("update finding_event set reason = 'outro'"))
                     .isInstanceOf(SQLException.class).hasMessageContaining("só de inserção");
             assertThatThrownBy(() -> s.executeUpdate("delete from finding_event"))
@@ -122,14 +122,14 @@ class ReallocationFindingPostgresTest {
         s.executeUpdate("insert into source_file (id, condominium_id, category, original_name, path, sha256, "
                 + "size_bytes,"
                 + " status, uploaded_by, uploaded_at, processing_id) values ('" + file + "', '" + CONDOMINIUM
-                + "', 'PO', 'po.pdf', 'c/po.pdf', '" + "a".repeat(64) + "', 1, 'CONCLUIDO', 'admin', now(), '"
+                + "', 'PO', 'po.pdf', 'c/po.pdf', '" + "a".repeat(64) + "', 1, 'COMPLETED', 'admin', now(), '"
                 + UUID.randomUUID() + "')");
         s.executeUpdate("insert into budget (id, condominium_id, file_id, sha256, status,"
                 + " rounding_tolerance, read_at) values ('" + budget + "', '" + CONDOMINIUM + "', '" + file
-                + "', '" + "a".repeat(64) + "', 'CONFIRMADA', 0.01, now())");
+                + "', '" + "a".repeat(64) + "', 'CONFIRMED', 0.01, now())");
         s.executeUpdate("insert into budget_line (id, budget_id, condominium_id, file_id, sha256, position, page, type,"
                 + " printed_code, effective_code, description, previous_budgeted, budgeted) values ('" + line + "', '"
-                + budget + "', '" + CONDOMINIUM + "', '" + file + "', '" + "a".repeat(64) + "', 1, 1, 'LINHA',"
+                + budget + "', '" + CONDOMINIUM + "', '" + file + "', '" + "a".repeat(64) + "', 1, 1, 'LINE',"
                 + " '1.7.9', '1.7.9', 'Material de pintura', 0, 2300.00)");
         return new BaseRows(file, budget, line);
     }

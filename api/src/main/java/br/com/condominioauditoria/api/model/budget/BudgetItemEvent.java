@@ -71,7 +71,7 @@ public class BudgetItemEvent {
 
     /** Item created (without a line, or from a budget line). */
     public static BudgetItemEvent created(BudgetItem item, BudgetLine source, String username, Instant at) {
-        BudgetItemEvent e = new BudgetItemEvent(item.getCondominiumId(), BudgetItemAction.CRIADA, item, username, at);
+        BudgetItemEvent e = new BudgetItemEvent(item.getCondominiumId(), BudgetItemAction.CREATED, item, username, at);
         if (source != null) {
             e.budgetId = source.getBudgetId();
             e.budgetLineId = source.getId();
@@ -82,7 +82,7 @@ public class BudgetItemEvent {
     }
 
     public static BudgetItemEvent renamed(BudgetItem item, String previousName, String username, Instant at) {
-        BudgetItemEvent e = new BudgetItemEvent(item.getCondominiumId(), BudgetItemAction.RENOMEADA, item, username,
+        BudgetItemEvent e = new BudgetItemEvent(item.getCondominiumId(), BudgetItemAction.RENAMED, item, username,
                 at);
         e.previousItemId = item.getId();
         e.previousItem = previousName;

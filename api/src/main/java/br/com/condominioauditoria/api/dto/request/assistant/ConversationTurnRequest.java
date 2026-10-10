@@ -4,6 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** One previous question and answer of the conversation. */
 public record ConversationTurnRequest(
-        @JsonProperty("pergunta") String question,
+        @JsonProperty("question") String question,
         @JsonProperty("resposta") String answer) {
 }

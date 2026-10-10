@@ -21,5 +21,5 @@ public record SourceFileResponse(
         @JsonProperty("enviadoPor") String uploadedBy,
         @JsonProperty("enviadoEm") Instant uploadedAt,
         @JsonProperty("processadoEm") Instant processedAt,
-        @JsonProperty("indexacao") IndexingResponse indexing) {
+        @JsonProperty("indexing") IndexingResponse indexing) {
 }

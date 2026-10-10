@@ -83,14 +83,14 @@ class DocumentSearchGrpcTest {
     private final FeatureService features = mock(FeatureService.class);
     private final UsageService usage = mock(UsageService.class);
     private final AiConfigurationService aiConfiguration = mock(AiConfigurationService.class);
-    private final SourceFile minutesOfA = new SourceFile(CONDOMINIUM_A, FileCategory.ATA, "ata.pdf",
-            "a/ATA/2026/x-ata.pdf",
+    private final SourceFile minutesOfA = new SourceFile(CONDOMINIUM_A, FileCategory.MINUTES, "ata.pdf",
+            "a/MINUTES/2026/x-ata.pdf",
             "a".repeat(64), 10, "application/pdf", "gestor");
     private final SourceFile budgetOfA = new SourceFile(CONDOMINIUM_A, FileCategory.PO, "po.xlsx",
             "a/PO/2026/x-po.xlsx",
             "c".repeat(64), 10, "application/vnd.ms-excel", "gestor");
-    private final SourceFile minutesOfB = new SourceFile(CONDOMINIUM_B, FileCategory.ATA, "ata-b.pdf",
-            "b/ATA/2026/x-ata-b.pdf",
+    private final SourceFile minutesOfB = new SourceFile(CONDOMINIUM_B, FileCategory.MINUTES, "ata-b.pdf",
+            "b/MINUTES/2026/x-ata-b.pdf",
             "b".repeat(64), 10, "application/pdf", "gestor");
 
     /** What the fake rag received and what it will return. */
@@ -175,7 +175,7 @@ class DocumentSearchGrpcTest {
                 .setAba("Previsto").setLinhaInicio(10).setLinhaFim(14)).build(), 0.5));
 
         BuscarDocumentosResponse response = stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "  multa  ")
-                .setFiltros(FiltrosDocumentos.newBuilder().addCategorias("ata").setDataInicio("2026-01-01"))
+                .setFiltros(FiltrosDocumentos.newBuilder().addCategorias("minutes").setDataInicio("2026-01-01"))
                 .build());
 
         assertThat(tokenReceivedByRag.get()).isEqualTo("Bearer usuario-a");
@@ -184,7 +184,7 @@ class DocumentSearchGrpcTest {
         assertThat(inRag.getTexto()).isEqualTo("multa");
         assertThat(inRag.getModo()).isEqualTo(ModoBusca.MODO_BUSCA_HIBRIDA);
         assertThat(inRag.getLimite()).isEqualTo(10);
-        assertThat(inRag.getFiltros().getCategoriasList()).containsExactly("ATA");
+        assertThat(inRag.getFiltros().getCategoriasList()).containsExactly("MINUTES");
         assertThat(inRag.getFiltros().getDataInicio()).isEqualTo("2026-01-01");
 
         assertThat(response.getModoUsado()).isEqualTo(ModoBuscaDocumentos.MODO_BUSCA_DOCUMENTOS_HIBRIDA);
@@ -303,7 +303,7 @@ class DocumentSearchGrpcTest {
 
     @Test
     void embeddingsOffSearchByWordOnlyWithoutModel() {
-        embeddings(AiMode.DESLIGADO, null);
+        embeddings(AiMode.OFF, null);
 
         stub("usuario-a").buscarDocumentos(request(CONDOMINIUM_A, "multa").build());
 
@@ -320,8 +320,8 @@ class DocumentSearchGrpcTest {
     }
 
     private void embeddings(AiMode mode, String model) {
-        var answers = new AiConfigurationService.Answers(null, AiMode.MCP_EXTERNO, null, null, null, null);
-        when(aiConfiguration.read(any())).thenReturn(new AiConfigurationService.Effective(AiMode.MCP_EXTERNO, answers,
+        var answers = new AiConfigurationService.Answers(null, AiMode.EXTERNAL_MCP, null, null, null, null);
+        when(aiConfiguration.read(any())).thenReturn(new AiConfigurationService.Effective(AiMode.EXTERNAL_MCP, answers,
                 new AiConfigurationService.Embeddings(mode, mode == AiMode.LOCAL ? "ollama-local" : null, model), null,
                 null));
     }

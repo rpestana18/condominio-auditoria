@@ -65,20 +65,20 @@ class AiConfigurationServicePostgresTest {
     @Test
     void defaultsWithoutRowsAndSaveEncryptsAndKeepsTrailWithoutKey() throws Exception {
         UUID created = newCondominium();
-        assertThat(service.read(created).generalMode()).isEqualTo(AiMode.MCP_EXTERNO);
+        assertThat(service.read(created).generalMode()).isEqualTo(AiMode.EXTERNAL_MCP);
         assertThat(jdbc.queryForObject("select count(*) from ai_configuration where condominium_id = ?", Long.class,
                 created)).isZero();
 
-        service.save(created, new Change(AiMode.DESLIGADO, new AnswersChange(AiMode.API_KEY, "anthropic", null, KEY,
-                false), new EmbeddingsChange(AiMode.DESLIGADO, null, null)), "admin", "Bearer t");
+        service.save(created, new Change(AiMode.OFF, new AnswersChange(AiMode.API_KEY, "anthropic", null, KEY,
+                false), new EmbeddingsChange(AiMode.OFF, null, null)), "admin", "Bearer t");
 
         var e = service.read(created);
-        assertThat(e.generalMode()).isEqualTo(AiMode.DESLIGADO);
+        assertThat(e.generalMode()).isEqualTo(AiMode.OFF);
         assertThat(e.answers().effectiveMode()).isEqualTo(AiMode.API_KEY);
         assertThat(e.answers().keySuffix()).isEqualTo("x9Qa");
         assertThat(TestKeyPair.decrypt(e.answers().encryptedKey(), TestKeyPair.pair().getPrivate()))
                 .isEqualTo(KEY);
-        assertThat(e.embeddings().mode()).isEqualTo(AiMode.DESLIGADO);
+        assertThat(e.embeddings().mode()).isEqualTo(AiMode.OFF);
 
         List<Map<String, Object>> trail = jdbc.queryForList(
                 "select * from ai_configuration_event where condominium_id = ? order by function, feature nulls first",
@@ -87,7 +87,7 @@ class AiConfigurationServicePostgresTest {
         assertThat(trail).allSatisfy(row -> assertThat(row.values()).noneMatch(
                 v -> v != null && v.toString().contains("sk-ant")));
         assertThat(trail).anySatisfy(row -> {
-            assertThat(row.get("function")).isEqualTo("RESPOSTAS");
+            assertThat(row.get("function")).isEqualTo("ANSWERS");
             assertThat(row.get("feature")).isEqualTo(FeatureService.ASSISTANT);
             assertThat(row.get("key_replaced")).isEqualTo(true);
             assertThat(row.get("key_suffix")).isEqualTo("x9Qa");
@@ -95,8 +95,8 @@ class AiConfigurationServicePostgresTest {
         });
 
         // Same request again (without resending the key): nothing changes, no event
-        service.save(created, new Change(AiMode.DESLIGADO, new AnswersChange(AiMode.API_KEY, "anthropic", null, null,
-                false), new EmbeddingsChange(AiMode.DESLIGADO, null, null)), "admin", "Bearer t");
+        service.save(created, new Change(AiMode.OFF, new AnswersChange(AiMode.API_KEY, "anthropic", null, null,
+                false), new EmbeddingsChange(AiMode.OFF, null, null)), "admin", "Bearer t");
         assertThat(jdbc.queryForObject("select count(*) from ai_configuration_event where condominium_id = ?",
                 Long.class, created)).isEqualTo(3);
     }
@@ -104,7 +104,7 @@ class AiConfigurationServicePostgresTest {
     @Test
     void trailRejectsUpdateDeleteAndTruncate() {
         UUID created = newCondominium();
-        service.save(created, new Change(AiMode.DESLIGADO, new AnswersChange(null, null, null, null, false),
+        service.save(created, new Change(AiMode.OFF, new AnswersChange(null, null, null, null, false),
                 new EmbeddingsChange(AiMode.LOCAL, "ollama-local", null)), "admin", "Bearer t");
 
         assertThatThrownBy(() -> jdbc.update("update ai_configuration_event set username = 'x' where condominium_id "
@@ -120,7 +120,7 @@ class AiConfigurationServicePostgresTest {
     void oneRowPerCondominiumFeatureAndFunctionEvenWithNullFeature() {
         UUID created = newCondominium();
         String general = "insert into ai_configuration (id, condominium_id, feature, function, mode, updated_by,"
-                + " updated_at) values (gen_random_uuid(), ?, null, 'RESPOSTAS', 'DESLIGADO', 'admin', now())";
+                + " updated_at) values (gen_random_uuid(), ?, null, 'ANSWERS', 'OFF', 'admin', now())";
         jdbc.update(general, created);
         assertThatThrownBy(() -> jdbc.update(general, created)).isInstanceOf(DataAccessException.class);
     }
@@ -130,16 +130,16 @@ class AiConfigurationServicePostgresTest {
         UUID created = newCondominium();
         assertThatThrownBy(() -> jdbc.update("insert into ai_configuration (id, condominium_id, feature, function, "
                 + "mode,"
-                + " provider, updated_by, updated_at) values (gen_random_uuid(), ?, null, 'RESPOSTAS',"
+                + " provider, updated_by, updated_at) values (gen_random_uuid(), ?, null, 'ANSWERS',"
                 + " 'API_KEY', 'anthropic', 'admin', now())", created)).isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> jdbc.update("insert into ai_configuration (id, condominium_id, feature, function, "
                 + "mode,"
-                + " encrypted_key, updated_by, updated_at) values (gen_random_uuid(), ?, 'ASSISTENTE',"
-                + " 'RESPOSTAS', 'API_KEY', '\\x01'::bytea, 'admin', now())", created))
+                + " encrypted_key, updated_by, updated_at) values (gen_random_uuid(), ?, 'ASSISTANT',"
+                + " 'ANSWERS', 'API_KEY', '\\x01'::bytea, 'admin', now())", created))
                 .isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> jdbc.update("insert into ai_configuration (id, condominium_id, feature, function, "
                 + "mode,"
-                + " updated_by, updated_at) values (gen_random_uuid(), ?, 'ASSISTENTE', 'EMBEDDINGS', null,"
+                + " updated_by, updated_at) values (gen_random_uuid(), ?, 'ASSISTANT', 'EMBEDDINGS', null,"
                 + " 'admin', now())", created)).isInstanceOf(DataAccessException.class);
     }
 

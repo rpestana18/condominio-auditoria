@@ -61,8 +61,8 @@ import java.util.stream.Collectors;
  * <ul>
  * <li>month = month of the entry date; amount = the entry's debit as it is in the cash flow;</li>
  * <li>actual = debits of the Condomínio fund (confirmed operating fund), through the <b>confirmed</b> account mapping:
- * budget line; AJUSTE goes to "ajustes" (not an expense); A_REALOCAR goes to "a realocar" until there is a
- * reallocation; TRANSFERENCIA and entries marked as transfers between funds are left out; an account without a
+ * budget line; ADJUSTMENT goes to "ajustes" (not an expense); TO_REALLOCATE goes to "a realocar" until there is a
+ * reallocation; TRANSFER and entries marked as transfers between funds are left out; an account without a
  * confirmed mapping goes to "sem linha da PO" and is never added to another line;</li>
  * <li>line planned = budgeted (monthly, the same in every month); month planned = sum of the lines of the expense
  * groups (Q30), never the printed total;</li>
@@ -79,10 +79,10 @@ public final class BudgetVsActualCalculator {
      */
     public static final String VERSION = "2";
 
-    public static final String TARGET_ADJUSTMENTS = "AJUSTES";
-    public static final String TARGET_TO_REALLOCATE = "A_REALOCAR";
-    public static final String TARGET_WITHOUT_BUDGET_LINE = "SEM_LINHA_PO";
-    public static final String TARGET_TRANSFERS = "TRANSFERENCIAS";
+    public static final String TARGET_ADJUSTMENTS = "ADJUSTMENTS";
+    public static final String TARGET_TO_REALLOCATE = "TO_REALLOCATE";
+    public static final String TARGET_WITHOUT_BUDGET_LINE = "NO_BUDGET_LINE";
+    public static final String TARGET_TRANSFERS = "TRANSFERS";
     /** Evidence of the whole actual expense: budget lines + to reallocate + without budget line (RF-03.1.12). */
     public static final String TARGET_TOTAL = "total";
 
@@ -156,7 +156,7 @@ public final class BudgetVsActualCalculator {
         }
     }
 
-    /** Result and the entries of each number, by target ("linha:&lt;id&gt;", "fundo:&lt;id&gt;", AJUSTES...). */
+    /** Result and the entries of each number, by target ("line:&lt;id&gt;", "fund:&lt;id&gt;", ADJUSTMENTS...). */
     public record Calculation(BudgetVsActualResponse result, Map<String, List<EvidenceResponse>> evidence) {
     }
 
@@ -164,28 +164,28 @@ public final class BudgetVsActualCalculator {
     }
 
     public static String lineTarget(UUID lineId) {
-        return "linha:" + lineId;
+        return "line:" + lineId;
     }
 
     public static String fundTarget(UUID fundId) {
-        return "fundo:" + fundId;
+        return "fund:" + fundId;
     }
 
     /** Evidence of a budget group: the entries of its lines (by the group line id). */
     public static String groupTarget(UUID groupLineId) {
-        return "grupo:" + groupLineId;
+        return "group:" + groupLineId;
     }
 
     /**
-     * Entries that make up a number (RF-03.1.12): "linha:&lt;id&gt;", "grupo:&lt;id&gt;" (the group lines, in budget
+     * Entries that make up a number (RF-03.1.12): "line:&lt;id&gt;", "group:&lt;id&gt;" (the group lines, in budget
      * order), "total" (actual expense: the lines of all groups, then to reallocate and without budget line),
-     * "fundo:&lt;id&gt;" and the blocks (AJUSTES, A_REALOCAR, SEM_LINHA_PO, TRANSFERENCIAS). Target without entries:
+     * "fund:&lt;id&gt;" and the blocks (ADJUSTMENTS, TO_REALLOCATE, NO_BUDGET_LINE, TRANSFERS). Target without entries:
      * empty list. Only reads what the calculation already assessed.
      */
     public static List<EvidenceResponse> evidence(Calculation c, String target) {
         String a = target == null ? "" : target.trim();
         BudgetVsActualResponse r = c.result();
-        if (a.startsWith("grupo:")) {
+        if (a.startsWith("group:")) {
             return r.groups().stream().filter(g -> groupTarget(g.lineId()).equals(a)).findFirst()
                     .map(g -> ofGroup(c, g)).orElse(List.of());
         }
@@ -209,7 +209,7 @@ public final class BudgetVsActualCalculator {
         String period = e.period() instanceof Month m ? m.month().toString() : "acumulado";
         Budget budget = e.budget();
         if (budget == null) {
-            return empty(period, BudgetVsActualStatus.SEM_PO, e.period() instanceof Month m
+            return empty(period, BudgetVsActualStatus.NO_BUDGET, e.period() instanceof Month m
                     ? "Sem PO aprovada para " + mmyyyy(m.month()) : "Sem PO aprovada", null, List.of(), e);
         }
         BudgetBriefResponse budgetBrief = new BudgetBriefResponse(budget.getId(), budget.getVersion(),
@@ -218,7 +218,7 @@ public final class BudgetVsActualCalculator {
                 BudgetQueryService.month(budget.getFiscalYearEnd()));
         BudgetValidity validity = BudgetValidity.of(budget).orElse(null);
         if (validity == null) {
-            return empty(period, BudgetVsActualStatus.PO_NAO_CONFIRMADA,
+            return empty(period, BudgetVsActualStatus.BUDGET_NOT_CONFIRMED,
                     "PO não confirmada: o Admin confirma a PO antes do"
                     + " previsto × realizado", budgetBrief, List.of(), e);
         }
@@ -227,11 +227,11 @@ public final class BudgetVsActualCalculator {
         boolean extendedMonth = e.period() instanceof Month m && !validity.covers(m.month()) && extension != null
                 && extension.covers(m.month());
         if (e.period() instanceof Month m && !validity.covers(m.month()) && !extendedMonth) {
-            return empty(period, BudgetVsActualStatus.SEM_PO, "Sem PO aprovada para " + mmyyyy(m.month()), budgetBrief,
+            return empty(period, BudgetVsActualStatus.NO_BUDGET, "Sem PO aprovada para " + mmyyyy(m.month()), budgetBrief,
                     List.of(), e);
         }
         if (e.operatingFundId() == null) {
-            return empty(period, BudgetVsActualStatus.SEM_FUNDO_ORDINARIO,
+            return empty(period, BudgetVsActualStatus.NO_OPERATING_FUND,
                     "Confirme o fundo ordinário (fundo Condomínio) do"
                     + " condomínio para calcular o realizado", budgetBrief, List.of(), e);
         }
@@ -241,16 +241,16 @@ public final class BudgetVsActualCalculator {
         if (e.period() instanceof Month m) {
             List<CashFlowFile> ofMonth = base.monthCashFlows(m.month());
             if (ofMonth.isEmpty()) {
-                return empty(period, BudgetVsActualStatus.SEM_FLUXO, "Sem fluxo carregado para " + mmyyyy(m.month()),
+                return empty(period, BudgetVsActualStatus.NO_CASH_FLOW, "Sem fluxo carregado para " + mmyyyy(m.month()),
                         budgetBrief,
-                        List.of(monthWithoutNumbers(m.month(), MonthStatus.SEM_FLUXO,
+                        List.of(monthWithoutNumbers(m.month(), MonthStatus.NO_CASH_FLOW,
                                 ofMonth).withExtended(extendedMonth)),
                         base.input);
             }
             if (ofMonth.size() > 1) {
-                return empty(period, BudgetVsActualStatus.DOIS_FLUXOS, "Dois fluxos para " + mmyyyy(m.month())
+                return empty(period, BudgetVsActualStatus.TWO_CASH_FLOWS, "Dois fluxos para " + mmyyyy(m.month())
                                 + ": substitua, reclassifique ou exclua um", budgetBrief,
-                        List.of(monthWithoutNumbers(m.month(), MonthStatus.DOIS_FLUXOS,
+                        List.of(monthWithoutNumbers(m.month(), MonthStatus.TWO_CASH_FLOWS,
                                 ofMonth).withExtended(extendedMonth)),
                         base.input);
             }
@@ -279,12 +279,12 @@ public final class BudgetVsActualCalculator {
                 summed.add(month.toString());
                 months.add(base.monthSummary(month, f.getFirst(), base.tally(Map.of(month, f.getFirst()))));
             } else if (f.isEmpty()) {
-                months.add(monthWithoutNumbers(month, MonthStatus.SEM_FLUXO, f));
+                months.add(monthWithoutNumbers(month, MonthStatus.NO_CASH_FLOW, f));
                 if (last != null && month.isBefore(last)) {
                     missing.add(month);
                 }
             } else {
-                months.add(monthWithoutNumbers(month, MonthStatus.DOIS_FLUXOS, f));
+                months.add(monthWithoutNumbers(month, MonthStatus.TWO_CASH_FLOWS, f));
                 duplicates.add(month.toString());
             }
         }
@@ -295,12 +295,12 @@ public final class BudgetVsActualCalculator {
                 FiscalYearMonthResponse m = f.size() == 1 ? base.monthSummary(month, f.getFirst(),
                         base.tally(Map.of(month,
                         f.getFirst())))
-                        : monthWithoutNumbers(month, f.isEmpty() ? MonthStatus.SEM_FLUXO : MonthStatus.DOIS_FLUXOS, f);
+                        : monthWithoutNumbers(month, f.isEmpty() ? MonthStatus.NO_CASH_FLOW : MonthStatus.TWO_CASH_FLOWS, f);
                 months.add(m.withExtended(true));
             }
         }
         if (chosen.isEmpty()) {
-            BudgetVsActualStatus s = duplicates.isEmpty() ? BudgetVsActualStatus.SEM_FLUXO : BudgetVsActualStatus.DOIS_FLUXOS;
+            BudgetVsActualStatus s = duplicates.isEmpty() ? BudgetVsActualStatus.NO_CASH_FLOW : BudgetVsActualStatus.TWO_CASH_FLOWS;
             BudgetVsActualResponse r = empty(period, s,
                     duplicates.isEmpty() ? "Nenhum mês do exercício com fluxo carregado"
                     : "Os meses com fluxo têm dois fluxos cada: substitua, reclassifique ou exclua um", budgetBrief,
@@ -398,12 +398,12 @@ public final class BudgetVsActualCalculator {
                 ap.accounts.add(account);
             }
             MappingTarget d = account == null ? null : confirmed.get(account);
-            if (d == null || (d.type() == MappingTargetType.LINHA_PO && !validTargets.containsKey(d.budgetLineId()))) {
+            if (d == null || (d.type() == MappingTargetType.BUDGET_LINE && !validTargets.containsKey(d.budgetLineId()))) {
                 AccountMapping pending = account == null ? null : mappingByAccount.get(account);
                 String detail = account == null ? "lançamento sem conta"
                         : pending == null ? "sem de-para"
-                        : pending.getStatus() == AccountMappingStatus.CONFIRMADO ? "destino inválido"
-                        : "de-para " + pending.getStatus().name().toLowerCase();
+                        : pending.getStatus() == AccountMappingStatus.CONFIRMED ? "destino inválido"
+                        : "de-para " + pending.getStatus().label();
                 ap.withoutLine.add(account, l.getAccountName(), detail, amount);
                 if (account != null) {
                     ap.accountsWithoutMapping.add(account);
@@ -413,16 +413,16 @@ public final class BudgetVsActualCalculator {
             }
             ap.confirmedAccounts.add(account);
             switch (d.type()) {
-                case LINHA_PO -> ap.line(d.budgetLineId(), amount, l, f, name(l.getFundId()), null, null);
-                case AJUSTE -> {
+                case BUDGET_LINE -> ap.line(d.budgetLineId(), amount, l, f, name(l.getFundId()), null, null);
+                case ADJUSTMENT -> {
                     ap.adjustments.add(account, l.getAccountName(), d.text(), amount);
                     ap.addEvidence(TARGET_ADJUSTMENTS, l, f, name(l.getFundId()), null);
                 }
-                case TRANSFERENCIA -> {
+                case TRANSFER -> {
                     ap.transfers.add(account, l.getAccountName(), d.text(), amount);
                     ap.addEvidence(TARGET_TRANSFERS, l, f, name(l.getFundId()), null);
                 }
-                case A_REALOCAR -> {
+                case TO_REALLOCATE -> {
                     ReallocatedEntry r = reallocations.get(LedgerEntryFingerprint.key(l));
                     BudgetLine target = r == null ? null : validTargets.get(r.budgetLineId());
                     if (target != null) {
@@ -462,7 +462,7 @@ public final class BudgetVsActualCalculator {
             BigDecimal overrun = overrun(ap, 1);
             var rule = input.overrunLimitPercentage() == null ? null
                     : MonthlyOverrunRule.assess(overrun, planned, input.overrunLimitPercentage()).orElse(null);
-            return new FiscalYearMonthResponse(month.toString(), MonthStatus.COM_FLUXO, List.of(f.used()), planned,
+            return new FiscalYearMonthResponse(month.toString(), MonthStatus.WITH_CASH_FLOW, List.of(f.used()), planned,
                     expense,
                     overrun,
                     rule == null ? null : oneDecimal(rule.percentage()), rule == null ? null : rule.aboveLimit(),
@@ -490,7 +490,7 @@ public final class BudgetVsActualCalculator {
             List<BudgetVsActualGroupResponse> groups = new ArrayList<>();
             Map<UUID, List<String>> accountsByLine = new HashMap<>();
             confirmed.forEach((account, d) -> {
-                if (d.type() == MappingTargetType.LINHA_PO) {
+                if (d.type() == MappingTargetType.BUDGET_LINE) {
                     accountsByLine.computeIfAbsent(d.budgetLineId(), k -> new ArrayList<>()).add(account);
                 }
             });
@@ -542,32 +542,32 @@ public final class BudgetVsActualCalculator {
             }
             int withoutMapping = ap.accountsWithoutMapping.size();
             if (withoutMapping > 0) {
-                warnings.add(new BudgetVsActualWarningResponse("SEM_DEPARA_CONFIRMADO",
+                warnings.add(new BudgetVsActualWarningResponse("NO_CONFIRMED_MAPPING",
                         withoutMapping + (withoutMapping == 1 ? " conta" : " contas")
                         + " sem de-para confirmado (sem linha da PO): " + MoneyFormatter.format(withoutLine.total())
                         + " fora das linhas da PO"));
             }
             if (withoutLine.accounts().stream().anyMatch(c -> c.account() == null)) {
-                warnings.add(new BudgetVsActualWarningResponse("LANCAMENTO_SEM_CONTA",
+                warnings.add(new BudgetVsActualWarningResponse("ENTRY_WITHOUT_ACCOUNT",
                         "Lançamentos sem conta do fluxo ficam em \"sem linha da"
                         + " PO\""));
             }
             if (toReallocate.entries() > 0) {
-                warnings.add(new BudgetVsActualWarningResponse("A_REALOCAR",
+                warnings.add(new BudgetVsActualWarningResponse("TO_REALLOCATE",
                         MoneyFormatter.format(toReallocate.total()) + " a realocar ("
                         + toReallocate.entries() + " lançamentos): fora das linhas da PO até a realocação"));
             }
             ineffectiveReallocations(ap, summed).forEach(warnings::add);
             if (!missing.isEmpty()) {
-                warnings.add(new BudgetVsActualWarningResponse("MESES_SEM_FLUXO",
+                warnings.add(new BudgetVsActualWarningResponse("MONTHS_WITHOUT_CASH_FLOW",
                         monthList(missing) + " sem fluxo carregado"));
             }
-            duplicates.forEach(m -> warnings.add(new BudgetVsActualWarningResponse("DOIS_FLUXOS",
+            duplicates.forEach(m -> warnings.add(new BudgetVsActualWarningResponse("TWO_CASH_FLOWS",
                     mmyyyy(YearMonth.parse(m)) + " com dois fluxos:"
                     + " substitua, reclassifique ou exclua um")));
             List<FundResultResponse> funds = funds(ap, n, warnings);
             if (!check.matches()) {
-                warnings.add(new BudgetVsActualWarningResponse("CONFERENCIA_FLUXO",
+                warnings.add(new BudgetVsActualWarningResponse("CASH_FLOW_CHECK",
                         "Total de débitos do fundo diferente de despesa + ajustes +"
                         + " transferências"));
             }
@@ -575,7 +575,7 @@ public final class BudgetVsActualCalculator {
             Set<String> accounts = new TreeSet<>(ap.accounts);
             PeriodMappingSummaryResponse mapping = new PeriodMappingSummaryResponse(accounts.size(),
                     (int) accounts.stream().filter(ap.confirmedAccounts::contains).count(), withoutMapping);
-            BudgetVsActualResponse r = new BudgetVsActualResponse(VERSION, period, BudgetVsActualStatus.CALCULADO,
+            BudgetVsActualResponse r = new BudgetVsActualResponse(VERSION, period, BudgetVsActualStatus.CALCULATED,
                     null, budget,
                     List.copyOf(months),
                     List.copyOf(summed), List.copyOf(missing), List.copyOf(duplicates), mapping, provisional, totals,
@@ -602,12 +602,12 @@ public final class BudgetVsActualCalculator {
                                 : ", conta " + r.account()) + ", R$ " + MoneyFormatter.format(r.amount()) + ", página "
                                 + r.page();
                         if (!periodKeys.contains(r.key())) {
-                            warnings.add(new BudgetVsActualWarningResponse("REALOCACAO_SEM_LANCAMENTO",
+                            warnings.add(new BudgetVsActualWarningResponse("REALLOCATION_WITHOUT_ENTRY",
                                     "Realocação sem lançamento"
                                     + " correspondente (" + who + "): o fluxo foi lido de novo com outro conteúdo;"
                                     + " o valor não foi somado a nenhuma linha"));
                         } else {
-                            warnings.add(new BudgetVsActualWarningResponse("REALOCACAO_SEM_EFEITO",
+                            warnings.add(new BudgetVsActualWarningResponse("REALLOCATION_WITHOUT_EFFECT",
                                     "Realocação sem efeito (" + who + "): a"
                                     + " conta não está em \"a realocar\" no de-para confirmado ou a linha de destino"
                                     + " não recebe débitos"));
@@ -620,7 +620,7 @@ public final class BudgetVsActualCalculator {
                 BigDecimal withoutLine,
                 boolean provisional, List<BudgetVsActualWarningResponse> warnings) {
             if (input.overrunLimitPercentage() == null) {
-                warnings.add(new BudgetVsActualWarningResponse("REGRA_NAO_AVALIADA",
+                warnings.add(new BudgetVsActualWarningResponse("RULE_NOT_EVALUATED",
                         "Regra dos 20% (Conv. 16.2) não avaliada: limite não"
                         + " cadastrado para o condomínio"));
                 return null;
@@ -637,7 +637,7 @@ public final class BudgetVsActualCalculator {
             lines.sort(Comparator.comparing(OverrunLineResponse::overrun).reversed().thenComparing(OverrunLineResponse::code));
             var assessment = MonthlyOverrunRule.assess(overrun, planned, input.overrunLimitPercentage()).orElse(null);
             if (assessment == null) {
-                warnings.add(new BudgetVsActualWarningResponse("REGRA_NAO_AVALIADA",
+                warnings.add(new BudgetVsActualWarningResponse("RULE_NOT_EVALUATED",
                         "Regra dos 20% (Conv. 16.2) não avaliada: previsto do mês"
                         + " sem valor"));
                 return null;
@@ -658,29 +658,29 @@ public final class BudgetVsActualCalculator {
                 BigDecimal planned = planned(l, n);
                 if (fund == null) {
                     list.add(new FundResultResponse(null, null, l.getId(), l.getEffectiveCode(),
-                            FundComparisonStatus.LINHA_SEM_FUNDO, null, null, null, null, null, null));
-                    warnings.add(new BudgetVsActualWarningResponse("LINHA_SEM_FUNDO",
+                            FundComparisonStatus.LINE_WITHOUT_FUND, null, null, null, null, null, null));
+                    warnings.add(new BudgetVsActualWarningResponse("LINE_WITHOUT_FUND",
                             "linha " + l.getEffectiveCode() + " sem fundo ligado"));
                     continue;
                 }
                 FundMovement m = ap.funds.getOrDefault(fund, new FundMovement());
                 if (m.needsReprocessing) {
                     list.add(new FundResultResponse(fund, name(fund), l.getId(), l.getEffectiveCode(),
-                            FundComparisonStatus.REPROCESSAR_FLUXO, planned, null, null, null, m.credits, m.debits));
-                    warnings.add(new BudgetVsActualWarningResponse("REPROCESSAR_FLUXO",
+                            FundComparisonStatus.REPROCESS_CASH_FLOW, planned, null, null, null, m.credits, m.debits));
+                    warnings.add(new BudgetVsActualWarningResponse("REPROCESS_CASH_FLOW",
                             "Fundo " + name(fund) + ": reprocesse o fluxo para"
                             + " apurar a arrecadação (recebimento de cota)"));
                     continue;
                 }
                 list.add(new FundResultResponse(fund, name(fund), l.getId(), l.getEffectiveCode(),
-                        FundComparisonStatus.COMPARADO,
+                        FundComparisonStatus.COMPARED,
                         planned, m.collected, m.collected.subtract(planned), percentage(m.collected, planned),
                         m.credits, m.debits));
             }
             ap.funds.entrySet().stream().filter(x -> !lineByFund.containsKey(x.getKey()))
                     .sorted(Comparator.comparing(x -> Objects.requireNonNullElse(name(x.getKey()), "")))
                     .forEach(x -> list.add(new FundResultResponse(x.getKey(), name(x.getKey()), null, null,
-                            FundComparisonStatus.SEM_PREVISTO_NA_PO, null, null, null, null, x.getValue().credits,
+                            FundComparisonStatus.NOT_PLANNED_IN_BUDGET, null, null, null, null, x.getValue().credits,
                             x.getValue().debits)));
             return List.copyOf(list);
         }
@@ -779,7 +779,7 @@ public final class BudgetVsActualCalculator {
         }
         String until = mmyyyy(extension.end());
         if (extendedMonth && period instanceof Month m) {
-            return new BudgetVsActualWarningResponse("PO_PRORROGADA",
+            return new BudgetVsActualWarningResponse("BUDGET_EXTENDED",
                     "PO prorrogada: " + mmyyyy(m.month()) + " usa a PO do exercício "
                     + mmyyyy(validity.start()) + " a " + mmyyyy(validity.end()) + ", prorrogada até " + until + " por "
                     + budget.getExtendedBy() + ". Justificativa: " + budget.getExtensionJustification());
@@ -787,7 +787,7 @@ public final class BudgetVsActualCalculator {
         if (period instanceof Cumulative) {
             List<String> extended = months(extension.start(), extension.end()).stream().map(YearMonth::toString)
                     .toList();
-            return new BudgetVsActualWarningResponse("MESES_PRORROGADOS",
+            return new BudgetVsActualWarningResponse("EXTENDED_MONTHS",
                     "PO prorrogada até " + until + ": " + monthList(extended)
                     + " aparece" + (extended.size() == 1 ? "" : "m") + " depois do exercício, marcado"
                     + (extended.size() == 1 ? "" : "s") + " \"prorrogado\", e não entra" + (extended.size() == 1

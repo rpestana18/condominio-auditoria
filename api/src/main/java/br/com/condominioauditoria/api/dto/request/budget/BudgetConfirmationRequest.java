@@ -8,7 +8,7 @@ import java.util.UUID;
 /**
  * Budget confirmation by the Admin (RF-03.1.3, RF-03.1.2 and Q29). Months in the YYYY-MM format.
  *
- * @param minutesFileId file of the ATA category that approved the budget; null with {@code withoutMinutes}
+ * @param minutesFileId file of the MINUTES category that approved the budget; null with {@code withoutMinutes}
  *
  * @param approvalDate date of the meeting (required with minutes); without it, the fiscal year start applies
  *

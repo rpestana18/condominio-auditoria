@@ -84,7 +84,7 @@ class BudgetVsActualControllerPermissionTest {
         for (String role : List.of("USUARIO", "GESTOR", "ADMIN")) {
             logIn(CONDOMINIUM, "pessoa-" + role, role);
             controller.get(CONDOMINIUM, "2026-09", null, null);
-            controller.evidence(CONDOMINIUM, "2026-09", null, "AJUSTES");
+            controller.evidence(CONDOMINIUM, "2026-09", null, "ADJUSTMENTS");
         }
         verify(query, org.mockito.Mockito.times(3)).get(CONDOMINIUM, "2026-09", null);
     }

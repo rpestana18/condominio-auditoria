@@ -74,7 +74,7 @@ class BudgetVsActualExportGoldenTest {
         }
         assertThat(lines).isGreaterThanOrEqualTo(70);
         for (JsonNode f : json.get("fundos")) {
-            if ("COMPARADO".equals(f.get("situacao").asString())) {
+            if ("COMPARED".equals(f.get("situacao").asString())) {
                 assertThat(text).contains(seq(f, "previsto", "arrecadado",
                         "diferenca") + " " + percent(f.get("execucao")));
             }
@@ -145,7 +145,7 @@ class BudgetVsActualExportGoldenTest {
             calculation.result().funds().stream().filter(f -> f.lineCode() != null && f.fundId() != null)
                     .forEach(f -> linked.add(BudgetVsActualCalculator.fundTarget(f.fundId())));
             int total = calculation.evidence().entrySet().stream()
-                    .filter(x -> !x.getKey().startsWith("fundo:") || linked.contains(x.getKey()))
+                    .filter(x -> !x.getKey().startsWith("fund:") || linked.contains(x.getKey()))
                     .mapToInt(x -> x.getValue().size()).sum();
             assertThat(evidence.getLastRowNum()).isEqualTo(total);
             BigDecimal concierge = BigDecimal.ZERO;

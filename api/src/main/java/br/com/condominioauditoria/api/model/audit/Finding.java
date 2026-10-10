@@ -50,7 +50,7 @@ public class Finding {
         this.referenceMonth = referenceMonth.atDay(1);
         this.target = target;
         this.description = description;
-        this.status = FindingStatus.ABERTO;
+        this.status = FindingStatus.OPEN;
         this.createdAt = createdAt;
         this.conditionPresent = true;
         this.statusChangedAt = createdAt;
@@ -65,8 +65,8 @@ public class Finding {
             return false;
         }
         conditionPresent = false;
-        if (status == FindingStatus.ABERTO) {
-            status = FindingStatus.NAO_SE_APLICA_MAIS;
+        if (status == FindingStatus.OPEN) {
+            status = FindingStatus.NO_LONGER_APPLIES;
             statusReason = reason;
             statusChangedAt = at;
         }
@@ -82,8 +82,8 @@ public class Finding {
             return false;
         }
         conditionPresent = true;
-        if (status == FindingStatus.NAO_SE_APLICA_MAIS) {
-            status = FindingStatus.ABERTO;
+        if (status == FindingStatus.NO_LONGER_APPLIES) {
+            status = FindingStatus.OPEN;
             statusReason = reason;
             statusChangedAt = at;
         }

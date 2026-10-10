@@ -55,7 +55,7 @@ class FundsAndEvidenceGoldenTest {
             assertThat(ev.page()).isPositive();
             assertThat(ev.sha256()).hasSize(64);
         });
-        assertThat(evidence(g, "grupo:" + UUID.randomUUID())).isEmpty();
+        assertThat(evidence(g, "group:" + UUID.randomUUID())).isEmpty();
     }
 
     @Test
@@ -78,7 +78,7 @@ class FundsAndEvidenceGoldenTest {
             assertThat(f.fund()).isEqualTo("FUNDO DE RESERVA");
             assertThat(f.collected()).isEqualByComparingTo("14260.79");
         });
-        assertThat(reserve.warnings()).extracting(BudgetVsActualWarningResponse::code).doesNotContain("A_REALOCAR");
+        assertThat(reserve.warnings()).extracting(BudgetVsActualWarningResponse::code).doesNotContain("TO_REALLOCATE");
         assertThatThrownBy(() -> query(g, UUID.randomUUID())).isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Fundo não encontrado");
     }
@@ -116,11 +116,11 @@ class FundsAndEvidenceGoldenTest {
         BudgetVsActualResponse wrong = query(g, null);
 
         FundResultResponse works = fund(wrong, "OBRAS");
-        assertThat(works.status()).isEqualTo(FundComparisonStatus.COMPARADO);
+        assertThat(works.status()).isEqualTo(FundComparisonStatus.COMPARED);
         assertThat(List.of(works.collected(), works.difference(), works.execution()))
                 .usingElementComparator(BigDecimal::compareTo)
                 .containsExactly(new BigDecimal("25.13"), new BigDecimal("-9007.27"), new BigDecimal("0.3"));
-        assertThat(fund(wrong, "OBRAS / REFORMAS / INFRA").status()).isEqualTo(FundComparisonStatus.SEM_PREVISTO_NA_PO);
+        assertThat(fund(wrong, "OBRAS / REFORMAS / INFRA").status()).isEqualTo(FundComparisonStatus.NOT_PLANNED_IN_BUDGET);
         assertThat(c.published).filteredOn(BudgetChanged.class::isInstance).hasSize(1);
 
         // The Admin fixes it: the numbers come back, and the trail records the previous and the new, with who
@@ -130,7 +130,7 @@ class FundsAndEvidenceGoldenTest {
         BudgetVsActualResponse correct = query(g, null);
 
         assertThat(fund(correct, "OBRAS / REFORMAS / INFRA").collected()).isEqualByComparingTo("9705.06");
-        assertThat(fund(correct, "OBRAS").status()).isEqualTo(FundComparisonStatus.SEM_PREVISTO_NA_PO);
+        assertThat(fund(correct, "OBRAS").status()).isEqualTo(FundComparisonStatus.NOT_PLANNED_IN_BUDGET);
         var changes = c.budgetEvents.stream().filter(e -> e.getType().equals(BudgetEvent.FUNDS_CHANGED)).toList();
         assertThat(changes).hasSize(2).allMatch(e -> e.getUsername().equals("admin"));
         assertThat(changes.get(0).getDetail()).contains("1.9.2", "OBRAS / REFORMAS / INFRA → OBRAS");
@@ -147,7 +147,7 @@ class FundsAndEvidenceGoldenTest {
         c.fundLinkService.change(c.condominiumId, g.budget.getId(), new BudgetFundsRequest(List.of(
                 new FundLinkRequest(l191, c.reserveFund.getId()))), "admin");
         assertThat(query(g, null).funds()).anyMatch(f -> "1.9.2".equals(f.lineCode())
-                && f.status() == FundComparisonStatus.LINHA_SEM_FUNDO);
+                && f.status() == FundComparisonStatus.LINE_WITHOUT_FUND);
     }
 
     @Test

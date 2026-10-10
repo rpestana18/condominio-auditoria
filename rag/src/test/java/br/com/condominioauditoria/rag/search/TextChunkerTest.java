@@ -73,7 +73,7 @@ public class TextChunkerTest {
 
     @Test
     public void pdfSkipsPageWithoutTextAndNumbersInOrder() {
-        var scanned = new Page(1, 595, 842, "sem_texto", List.of());
+        var scanned = new Page(1, 595, 842, "no_text", List.of());
         var withText = page(2, List.of(new Word("Ata", 10, 30, 10, 20)));
 
         ChunkedDocument chunked = TextChunker.chunk(pdf(scanned, withText));
@@ -87,8 +87,8 @@ public class TextChunkerTest {
 
     @Test
     public void pdfWithNoTextHasReason() {
-        var p1 = new Page(1, 595, 842, "sem_texto", List.of());
-        var p2 = new Page(2, 595, 842, "sem_texto", List.of());
+        var p1 = new Page(1, 595, 842, "no_text", List.of());
+        var p2 = new Page(2, 595, 842, "no_text", List.of());
 
         ChunkedDocument chunked = TextChunker.chunk(pdf(p1, p2));
 
@@ -156,7 +156,7 @@ public class TextChunkerTest {
     @Test
     public void wordGroupsParagraphsUpToLimitAndSkipsEmpty() {
         var paragraphs = new ArrayList<Paragraph>();
-        paragraphs.add(new Paragraph(1, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS", null));
+        paragraphs.add(new Paragraph(1, "CONTRACT DE PRESTAÇÃO DE SERVIÇOS", null));
         paragraphs.add(new Paragraph(2, "   ", null));
         for (int i = 3; i <= 12; i++) { // 10 paragraphs of 1000 characters
             paragraphs.add(new Paragraph(i, "p%02d ".formatted(i) + "a".repeat(996), null));
@@ -172,7 +172,7 @@ public class TextChunkerTest {
                 new Location.Paragraphs(12, 12, ""));
         assertThat(chunked.chunks()).allSatisfy(t -> assertThat(t.text().length())
                 .isLessThanOrEqualTo(TextChunker.MAX_CHARS));
-        assertThat(chunked.chunks().getFirst().text()).startsWith("CONTRATO DE PRESTAÇÃO DE SERVIÇOS\np03 ");
+        assertThat(chunked.chunks().getFirst().text()).startsWith("CONTRACT DE PRESTAÇÃO DE SERVIÇOS\np03 ");
     }
 
     @Test

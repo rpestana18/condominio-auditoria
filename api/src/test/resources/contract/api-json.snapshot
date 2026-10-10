@@ -12,7 +12,7 @@ DELETE /api/condominios/{}/previsoes/{}/prorrogacao
       versaoRegra: string
     }]
     avisos: [{
-      codigo: enum[ARREDONDAMENTO, DIVERGENCIA, CODIGO_REPETIDO, CONFIRMADA_COM_DIVERGENCIA, FORA_PRIMEIRO_TRIMESTRE, SEM_ATA, REGRA_NAO_AVALIADA]
+      codigo: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
       texto: string
     }]
     codigosRepetidos: [{
@@ -28,7 +28,7 @@ DELETE /api/condominios/{}/previsoes/{}/prorrogacao
     colunaOrcado: string
     colunaOrcadoAnterior: string
     conferencias: [{
-      classificacao: enum[OK, ARREDONDAMENTO, DIVERGENCIA, CODIGO_REPETIDO]
+      classificacao: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
       codigo: string
       descricao: string
       detalhe: string
@@ -59,7 +59,7 @@ DELETE /api/condominios/{}/previsoes/{}/prorrogacao
       descricao: string
       id: UUID
       linhaDeFundo: boolean
-      marca: enum[RATEIO_A_PARTE, NEGOCIADA_ISENCAO, SEM_VALOR, VALOR_FIXO_SEM_REFERENCIA]
+      marca: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
       observacoes: string
       orcado: number
       orcadoAnterior: number
@@ -67,14 +67,14 @@ DELETE /api/condominios/{}/previsoes/{}/prorrogacao
       pagina: integer
       percentualTexto: string
       sha256: string
-      tipo: enum[TOTAL, GRUPO, LINHA]
+      tipo: enum[TOTAL, GROUP, LINE]
     }]
     previsao: {
       arquivoId: UUID
       arquivoNome: string
       confirmadaEm: Instant
       confirmadaPor: string
-      estado: enum[LIDA, LIDA_COM_DIVERGENCIA, CONFIRMADA, SUBSTITUIDA]
+      estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
       exercicioFim: string
       exercicioImpresso: string
       exercicioInicio: string
@@ -126,7 +126,7 @@ DELETE /api/condominios/{}/realocacoes/{}
 
 GET /api/categorias
   returns: [{
-    codigo: enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+    codigo: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
     rotulo: string
   }]
 
@@ -139,7 +139,7 @@ GET /api/condominios/{}/achados
     condicaoPresente: boolean
     criadoEm: Instant
     descricao: string
-    estado: enum[ABERTO, NAO_SE_APLICA_MAIS, JUSTIFICADO, RESOLVIDO, FALSO_POSITIVO]
+    estado: enum[OPEN, NO_LONGER_APPLIES, JUSTIFIED, RESOLVED, FALSE_POSITIVE]
     estadoEm: Instant
     estadoMotivo: string
     evidencias: [{
@@ -153,30 +153,30 @@ GET /api/condominios/{}/achados
     historico: [{
       condicaoPresente: boolean
       em: Instant
-      estadoAnterior: enum[ABERTO, NAO_SE_APLICA_MAIS, JUSTIFICADO, RESOLVIDO, FALSO_POSITIVO]
-      estadoNovo: enum[ABERTO, NAO_SE_APLICA_MAIS, JUSTIFICADO, RESOLVIDO, FALSO_POSITIVO]
+      estadoAnterior: enum[OPEN, NO_LONGER_APPLIES, JUSTIFIED, RESOLVED, FALSE_POSITIVE]
+      estadoNovo: enum[OPEN, NO_LONGER_APPLIES, JUSTIFIED, RESOLVED, FALSE_POSITIVE]
       motivo: string
       usuario: string
     }]
     id: UUID
     regra: string
-    severidade: enum[INFORMATIVO, ATENCAO, CRITICO]
+    severidade: enum[INFO, WARNING, CRITICAL]
     versaoRegra: string
   }]
 
 GET /api/condominios/{}/arquivos
   path: UUID
-  query categoria?: enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+  query categoria?: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
   returns: [{
-    categoria: enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
     categoriaRotulo: string
     enviadoEm: Instant
     enviadoPor: string
     id: UUID
-    indexacao: {
+    indexing: {
       motivo: string
       paginas: integer
-      situacao: enum[NA_FILA, INDEXANDO, INDEXADO, SEM_TEXTO, RETIRADO, ERRO]
+      situacao: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
       trechos: integer
     }
     mensagem: string
@@ -184,7 +184,7 @@ GET /api/condominios/{}/arquivos
     periodoFim: LocalDate
     periodoInicio: LocalDate
     processadoEm: Instant
-    status: enum[PENDENTE, PROCESSANDO, CONCLUIDO, PRECISA_REVISAO, FALHOU]
+    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
     tamanhoBytes: integer
     totalLancamentos: integer
   }]
@@ -192,15 +192,15 @@ GET /api/condominios/{}/arquivos
 GET /api/condominios/{}/arquivos/ultimo
   path: UUID
   returns: {
-    categoria: enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
     categoriaRotulo: string
     enviadoEm: Instant
     enviadoPor: string
     id: UUID
-    indexacao: {
+    indexing: {
       motivo: string
       paginas: integer
-      situacao: enum[NA_FILA, INDEXANDO, INDEXADO, SEM_TEXTO, RETIRADO, ERRO]
+      situacao: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
       trechos: integer
     }
     mensagem: string
@@ -208,7 +208,7 @@ GET /api/condominios/{}/arquivos/ultimo
     periodoFim: LocalDate
     periodoInicio: LocalDate
     processadoEm: Instant
-    status: enum[PENDENTE, PROCESSANDO, CONCLUIDO, PRECISA_REVISAO, FALHOU]
+    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
     tamanhoBytes: integer
     totalLancamentos: integer
   }
@@ -218,15 +218,15 @@ GET /api/condominios/{}/arquivos/{}
   path: UUID
   returns: {
     arquivo: {
-      categoria: enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+      categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
       categoriaRotulo: string
       enviadoEm: Instant
       enviadoPor: string
       id: UUID
-      indexacao: {
+      indexing: {
         motivo: string
         paginas: integer
-        situacao: enum[NA_FILA, INDEXANDO, INDEXADO, SEM_TEXTO, RETIRADO, ERRO]
+        situacao: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
         trechos: integer
       }
       mensagem: string
@@ -234,7 +234,7 @@ GET /api/condominios/{}/arquivos/{}
       periodoFim: LocalDate
       periodoInicio: LocalDate
       processadoEm: Instant
-      status: enum[PENDENTE, PROCESSANDO, CONCLUIDO, PRECISA_REVISAO, FALHOU]
+      status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
       tamanhoBytes: integer
       totalLancamentos: integer
     }
@@ -275,7 +275,7 @@ GET /api/condominios/{}/comparacao-exercicios
       periodo: string
       poId: UUID
       rotulo: string
-      tipo: enum[PO, COLUNA_IMPRESSA]
+      tipo: enum[PO, PRINTED_COLUMN]
       versao: integer
     }]
     fundoId: UUID
@@ -383,8 +383,8 @@ GET /api/condominios/{}/contexto
   returns: {
     assistente: {
       chatDisponivel: boolean
-      modoEmbeddings: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
-      modoRespostas: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
+      modoEmbeddings: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+      modoRespostas: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
     }
     condominioId: UUID
     modulosLigados: [string]
@@ -409,7 +409,7 @@ GET /api/condominios/{}/exercicios
     meses: [{
       mes: string
       prorrogado: boolean
-      situacao: enum[COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS]
+      situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
     }]
     poId: UUID
     previstoMes: number
@@ -428,7 +428,7 @@ GET /api/condominios/{}/exercicios
       semRubrica: integer
       sugeridas: integer
     }
-    tipo: enum[PO, COLUNA_IMPRESSA]
+    tipo: enum[PO, PRINTED_COLUMN]
     versao: integer
   }]
 
@@ -446,21 +446,21 @@ GET /api/condominios/{}/ia
     assistente: {
       embeddings: {
         modelo: string
-        modo: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
+        modo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
         provedor: string
       }
       respostas: {
         chaveCadastrada: boolean
         chaveFinal: string
         modelo: string
-        modo: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
-        modoEfetivo: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
+        modo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+        modoEfetivo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
         provedor: string
       }
     }
     atualizadoEm: Instant
     atualizadoPor: string
-    modoGeral: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
+    modoGeral: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
   }
 
 GET /api/condominios/{}/indicadores
@@ -473,7 +473,7 @@ GET /api/condominios/{}/indicadores
       mes: string
       previstoAcumulado: number
       realizadoAcumulado: number
-      situacao: enum[COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS]
+      situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
     }]
     avisos: [string]
     comparacao: {
@@ -498,7 +498,7 @@ GET /api/condominios/{}/indicadores
       mes: string
       previsto: number
       realizado: number
-      situacao: enum[COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS]
+      situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
     }]
     fim: string
     fundoId: UUID
@@ -511,7 +511,7 @@ GET /api/condominios/{}/indicadores
         arrecadado: number
         mes: string
         previsto: number
-        situacao: enum[COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS]
+        situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
       }]
     }]
     inicio: string
@@ -543,7 +543,7 @@ GET /api/condominios/{}/indicadores
       pontos: [{
         alvo: string
         mes: string
-        situacao: enum[COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS]
+        situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
         valor: number
       }]
     }]
@@ -557,7 +557,7 @@ GET /api/condominios/{}/indicadores
       percentual: number
       percentualCenarioMaximo: number
       provisorio: boolean
-      situacao: enum[COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS]
+      situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
     }]
     rotulo: string
   }
@@ -646,7 +646,7 @@ GET /api/condominios/{}/previsoes
     arquivoNome: string
     confirmadaEm: Instant
     confirmadaPor: string
-    estado: enum[LIDA, LIDA_COM_DIVERGENCIA, CONFIRMADA, SUBSTITUIDA]
+    estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
     exercicioFim: string
     exercicioImpresso: string
     exercicioInicio: string
@@ -680,7 +680,7 @@ GET /api/condominios/{}/previsoes/{}
       versaoRegra: string
     }]
     avisos: [{
-      codigo: enum[ARREDONDAMENTO, DIVERGENCIA, CODIGO_REPETIDO, CONFIRMADA_COM_DIVERGENCIA, FORA_PRIMEIRO_TRIMESTRE, SEM_ATA, REGRA_NAO_AVALIADA]
+      codigo: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
       texto: string
     }]
     codigosRepetidos: [{
@@ -696,7 +696,7 @@ GET /api/condominios/{}/previsoes/{}
     colunaOrcado: string
     colunaOrcadoAnterior: string
     conferencias: [{
-      classificacao: enum[OK, ARREDONDAMENTO, DIVERGENCIA, CODIGO_REPETIDO]
+      classificacao: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
       codigo: string
       descricao: string
       detalhe: string
@@ -727,7 +727,7 @@ GET /api/condominios/{}/previsoes/{}
       descricao: string
       id: UUID
       linhaDeFundo: boolean
-      marca: enum[RATEIO_A_PARTE, NEGOCIADA_ISENCAO, SEM_VALOR, VALOR_FIXO_SEM_REFERENCIA]
+      marca: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
       observacoes: string
       orcado: number
       orcadoAnterior: number
@@ -735,14 +735,14 @@ GET /api/condominios/{}/previsoes/{}
       pagina: integer
       percentualTexto: string
       sha256: string
-      tipo: enum[TOTAL, GRUPO, LINHA]
+      tipo: enum[TOTAL, GROUP, LINE]
     }]
     previsao: {
       arquivoId: UUID
       arquivoNome: string
       confirmadaEm: Instant
       confirmadaPor: string
-      estado: enum[LIDA, LIDA_COM_DIVERGENCIA, CONFIRMADA, SUBSTITUIDA]
+      estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
       exercicioFim: string
       exercicioImpresso: string
       exercicioInicio: string
@@ -810,7 +810,7 @@ GET /api/condominios/{}/previsoes/{}/coluna-impressa
 GET /api/condominios/{}/previsoes/{}/depara
   path: UUID
   path: UUID
-  query filtro?: enum[TODAS, PENDENTES, SUGERIDO, CONFIRMADO, RECUSADO, SEM_DEPARA, IGUAIS_VERSAO_ANTERIOR]
+  query filtro?: enum[ALL, PENDING, SUGGESTED, CONFIRMED, REJECTED, UNMAPPED, SAME_AS_PREVIOUS_VERSION]
   returns: {
     contas: [{
       atualizadoEm: Instant
@@ -823,14 +823,14 @@ GET /api/condominios/{}/previsoes/{}/depara
         detalhe: string
         linhaId: UUID
         texto: string
-        tipo: enum[LINHA_PO, AJUSTE, A_REALOCAR, TRANSFERENCIA]
+        tipo: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
       }
-      estado: enum[SUGERIDO, CONFIRMADO, RECUSADO]
+      estado: enum[SUGGESTED, CONFIRMED, REJECTED]
       igualVersaoAnterior: boolean
       lancamentos: integer
       motivo: string
       nome: string
-      origem: enum[VERSAO_ANTERIOR, PLANILHA, NOME, ADMIN]
+      origem: enum[PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
     }]
     previsaoId: UUID
     resumo: {
@@ -847,17 +847,17 @@ GET /api/condominios/{}/previsoes/{}/depara/eventos
   path: UUID
   path: UUID
   returns: [{
-    acao: enum[SUGERIDO, CONFIRMADO, RECUSADO, ALTERADO]
+    acao: enum[SUGGESTED, CONFIRMED, REJECTED, CHANGED]
     conta: string
     destinoAnterior: string
     destinoNovo: string
     em: Instant
-    estadoAnterior: enum[SUGERIDO, CONFIRMADO, RECUSADO]
-    estadoNovo: enum[SUGERIDO, CONFIRMADO, RECUSADO]
+    estadoAnterior: enum[SUGGESTED, CONFIRMED, REJECTED]
+    estadoNovo: enum[SUGGESTED, CONFIRMED, REJECTED]
     id: UUID
     motivo: string
     nome: string
-    origem: enum[VERSAO_ANTERIOR, PLANILHA, NOME, ADMIN]
+    origem: enum[PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
     usuario: string
   }]
 
@@ -875,7 +875,7 @@ GET /api/condominios/{}/previsoes/{}/eventos
 GET /api/condominios/{}/previsoes/{}/rubricas
   path: UUID
   path: UUID
-  query filtro?: enum[TODAS, PENDENTES, SUGERIDO, CONFIRMADO, RECUSADO, SEM_RUBRICA]
+  query filtro?: enum[ALL, PENDING, SUGGESTED, CONFIRMED, REJECTED, NO_ITEM]
   returns: {
     linhas: [{
       atualizadoEm: Instant
@@ -883,12 +883,12 @@ GET /api/condominios/{}/previsoes/{}/rubricas
       codigo: string
       conta: string
       descricao: string
-      estado: enum[SUGERIDO, CONFIRMADO, RECUSADO]
+      estado: enum[SUGGESTED, CONFIRMED, REJECTED]
       grupo: string
       linhaId: UUID
       motivo: string
       orcado: number
-      origem: enum[PRIMEIRA_PO, CONTA_PO, VERSAO_ANTERIOR, MANUAL]
+      origem: enum[FIRST_BUDGET, BUDGET_ACCOUNT, PREVIOUS_VERSION, MANUAL]
       rubrica: {
         criadaEm: Instant
         criadaPor: string
@@ -913,16 +913,16 @@ GET /api/condominios/{}/previsoes/{}/rubricas/eventos
   path: UUID
   path: UUID
   returns: [{
-    acao: enum[CRIADA, RENOMEADA, SUGERIDO, CONFIRMADO, RECUSADO, ALTERADO]
+    acao: enum[CREATED, RENAMED, SUGGESTED, CONFIRMED, REJECTED, CHANGED]
     codigo: string
     descricao: string
     em: Instant
-    estadoAnterior: enum[SUGERIDO, CONFIRMADO, RECUSADO]
-    estadoNovo: enum[SUGERIDO, CONFIRMADO, RECUSADO]
+    estadoAnterior: enum[SUGGESTED, CONFIRMED, REJECTED]
+    estadoNovo: enum[SUGGESTED, CONFIRMED, REJECTED]
     id: UUID
     linhaId: UUID
     motivo: string
-    origem: enum[PRIMEIRA_PO, CONTA_PO, VERSAO_ANTERIOR, MANUAL]
+    origem: enum[FIRST_BUDGET, BUDGET_ACCOUNT, PREVIOUS_VERSION, MANUAL]
     rubricaAnterior: string
     rubricaNova: string
     usuario: string
@@ -984,7 +984,7 @@ GET /api/condominios/{}/previsto-realizado
       linhaCodigo: string
       linhaId: UUID
       previsto: number
-      situacao: enum[COMPARADO, SEM_PREVISTO_NA_PO, LINHA_SEM_FUNDO, REPROCESSAR_FLUXO]
+      situacao: enum[COMPARED, NOT_PLANNED_IN_BUDGET, LINE_WITHOUT_FUND, REPROCESS_CASH_FLOW]
     }]
     grupos: [{
       codigo: string
@@ -1001,7 +1001,7 @@ GET /api/condominios/{}/previsto-realizado
         execucao: number
         lancamentos: integer
         linhaId: UUID
-        marca: enum[RATEIO_A_PARTE, NEGOCIADA_ISENCAO, SEM_VALOR, VALOR_FIXO_SEM_REFERENCIA]
+        marca: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
         observacoes: string
         pagina: integer
         previsto: number
@@ -1028,7 +1028,7 @@ GET /api/condominios/{}/previsto-realizado
       percentualExcesso: number
       previsto: number
       prorrogado: boolean
-      situacao: enum[COM_FLUXO, SEM_FLUXO, DOIS_FLUXOS]
+      situacao: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
     }]
     mesesComDoisFluxos: [string]
     mesesSemFluxo: [string]
@@ -1037,7 +1037,7 @@ GET /api/condominios/{}/previsto-realizado
     po: {
       arquivoId: UUID
       arquivoNome: string
-      estado: enum[LIDA, LIDA_COM_DIVERGENCIA, CONFIRMADA, SUBSTITUIDA]
+      estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
       exercicioFim: string
       exercicioInicio: string
       id: UUID
@@ -1078,7 +1078,7 @@ GET /api/condominios/{}/previsto-realizado
       lancamentos: integer
       total: number
     }
-    situacao: enum[CALCULADO, SEM_PO, PO_NAO_CONFIRMADA, SEM_FUNDO_ORDINARIO, SEM_FLUXO, DOIS_FLUXOS]
+    situacao: enum[CALCULATED, NO_BUDGET, BUDGET_NOT_CONFIRMED, NO_OPERATING_FUND, NO_CASH_FLOW, TWO_CASH_FLOWS]
     totais: {
       despesaRealizada: number
       diferenca: number
@@ -1227,24 +1227,24 @@ GET /api/ia/provedores
     nome: string
     precisaChave: boolean
     tipo: string
-    uso: enum[RESPOSTAS, EMBEDDINGS]
+    uso: enum[ANSWERS, EMBEDDINGS]
   }]
 
 POST /api/condominios/{}/arquivos
   consumes: multipart/form-data
   path: UUID
-  query categoria: enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+  query categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
   part arquivo
   returns: {
-    categoria: enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
     categoriaRotulo: string
     enviadoEm: Instant
     enviadoPor: string
     id: UUID
-    indexacao: {
+    indexing: {
       motivo: string
       paginas: integer
-      situacao: enum[NA_FILA, INDEXANDO, INDEXADO, SEM_TEXTO, RETIRADO, ERRO]
+      situacao: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
       trechos: integer
     }
     mensagem: string
@@ -1252,7 +1252,7 @@ POST /api/condominios/{}/arquivos
     periodoFim: LocalDate
     periodoInicio: LocalDate
     processadoEm: Instant
-    status: enum[PENDENTE, PROCESSANDO, CONCLUIDO, PRECISA_REVISAO, FALHOU]
+    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
     tamanhoBytes: integer
     totalLancamentos: integer
   }
@@ -1261,15 +1261,15 @@ POST /api/condominios/{}/arquivos/{}/reprocessar
   path: UUID
   path: UUID
   returns: {
-    categoria: enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
     categoriaRotulo: string
     enviadoEm: Instant
     enviadoPor: string
     id: UUID
-    indexacao: {
+    indexing: {
       motivo: string
       paginas: integer
-      situacao: enum[NA_FILA, INDEXANDO, INDEXADO, SEM_TEXTO, RETIRADO, ERRO]
+      situacao: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
       trechos: integer
     }
     mensagem: string
@@ -1277,7 +1277,7 @@ POST /api/condominios/{}/arquivos/{}/reprocessar
     periodoFim: LocalDate
     periodoInicio: LocalDate
     processadoEm: Instant
-    status: enum[PENDENTE, PROCESSANDO, CONCLUIDO, PRECISA_REVISAO, FALHOU]
+    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
     tamanhoBytes: integer
     totalLancamentos: integer
   }
@@ -1287,7 +1287,7 @@ POST /api/condominios/{}/assistente/busca
   body: {
     filtros: {
       arquivoIds: [UUID]
-      categorias: [enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]]
+      categorias: [enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]]
       dataFim: LocalDate
       dataInicio: LocalDate
     }
@@ -1296,7 +1296,7 @@ POST /api/condominios/{}/assistente/busca
   }
   returns: [{
     arquivoId: UUID
-    categoria: enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
     localizacao: {
       aba: string
       descricao: string
@@ -1319,21 +1319,21 @@ POST /api/condominios/{}/assistente/perguntas
   body: {
     filtros: {
       arquivoIds: [UUID]
-      categorias: [enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]]
+      categorias: [enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]]
       dataFim: LocalDate
       dataInicio: LocalDate
     }
     historico: [{
-      pergunta: string
+      question: string
       resposta: string
     }]
-    pergunta: string
+    question: string
   }
   returns: {
     aviso: string
     citacoes: [{
       arquivoId: UUID
-      categoria: enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+      categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
       localizacao: {
         aba: string
         descricao: string
@@ -1368,7 +1368,7 @@ POST /api/condominios/{}/assistente/perguntas
       citacoes: [integer]
       texto: string
     }]
-    situacao: enum[RESPONDIDA, NAO_ENCONTRADA]
+    situacao: enum[ANSWERED, NOT_FOUND]
     sugestao: string
   }
 
@@ -1404,7 +1404,7 @@ POST /api/condominios/{}/previsoes/{}/confirmacao
       versaoRegra: string
     }]
     avisos: [{
-      codigo: enum[ARREDONDAMENTO, DIVERGENCIA, CODIGO_REPETIDO, CONFIRMADA_COM_DIVERGENCIA, FORA_PRIMEIRO_TRIMESTRE, SEM_ATA, REGRA_NAO_AVALIADA]
+      codigo: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
       texto: string
     }]
     codigosRepetidos: [{
@@ -1420,7 +1420,7 @@ POST /api/condominios/{}/previsoes/{}/confirmacao
     colunaOrcado: string
     colunaOrcadoAnterior: string
     conferencias: [{
-      classificacao: enum[OK, ARREDONDAMENTO, DIVERGENCIA, CODIGO_REPETIDO]
+      classificacao: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
       codigo: string
       descricao: string
       detalhe: string
@@ -1451,7 +1451,7 @@ POST /api/condominios/{}/previsoes/{}/confirmacao
       descricao: string
       id: UUID
       linhaDeFundo: boolean
-      marca: enum[RATEIO_A_PARTE, NEGOCIADA_ISENCAO, SEM_VALOR, VALOR_FIXO_SEM_REFERENCIA]
+      marca: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
       observacoes: string
       orcado: number
       orcadoAnterior: number
@@ -1459,14 +1459,14 @@ POST /api/condominios/{}/previsoes/{}/confirmacao
       pagina: integer
       percentualTexto: string
       sha256: string
-      tipo: enum[TOTAL, GRUPO, LINHA]
+      tipo: enum[TOTAL, GROUP, LINE]
     }]
     previsao: {
       arquivoId: UUID
       arquivoNome: string
       confirmadaEm: Instant
       confirmadaPor: string
-      estado: enum[LIDA, LIDA_COM_DIVERGENCIA, CONFIRMADA, SUBSTITUIDA]
+      estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
       exercicioFim: string
       exercicioImpresso: string
       exercicioInicio: string
@@ -1494,7 +1494,7 @@ POST /api/condominios/{}/previsoes/{}/depara/lote
   path: UUID
   path: UUID
   body: {
-    acao: enum[CONFIRMAR, RECUSAR]
+    acao: enum[CONFIRM, REJECT]
     contas: [string]
   }
   returns: {
@@ -1541,7 +1541,7 @@ POST /api/condominios/{}/previsoes/{}/rubricas/lote
   path: UUID
   path: UUID
   body: {
-    acao: enum[CONFIRMAR, RECUSAR]
+    acao: enum[CONFIRM, REJECT]
     linhas: [UUID]
   }
   returns: {
@@ -1617,18 +1617,18 @@ PUT /api/condominios/{}/arquivos/{}/categoria
   path: UUID
   path: UUID
   body: {
-    categoria: enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
   }
   returns: {
-    categoria: enum[BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS]
+    categoria: enum[TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER]
     categoriaRotulo: string
     enviadoEm: Instant
     enviadoPor: string
     id: UUID
-    indexacao: {
+    indexing: {
       motivo: string
       paginas: integer
-      situacao: enum[NA_FILA, INDEXANDO, INDEXADO, SEM_TEXTO, RETIRADO, ERRO]
+      situacao: enum[QUEUED, INDEXING, INDEXED, NO_TEXT, WITHDRAWN, ERROR]
       trechos: integer
     }
     mensagem: string
@@ -1636,7 +1636,7 @@ PUT /api/condominios/{}/arquivos/{}/categoria
     periodoFim: LocalDate
     periodoInicio: LocalDate
     processadoEm: Instant
-    status: enum[PENDENTE, PROCESSANDO, CONCLUIDO, PRECISA_REVISAO, FALHOU]
+    status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
     tamanhoBytes: integer
     totalLancamentos: integer
   }
@@ -1654,38 +1654,38 @@ PUT /api/condominios/{}/ia
     assistente: {
       embeddings: {
         modelo: string
-        modo: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
+        modo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
         provedor: string
       }
       respostas: {
         chave: string
         modelo: string
-        modo: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
+        modo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
         provedor: string
         removerChave: boolean
       }
     }
-    modoGeral: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
+    modoGeral: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
   }
   returns: {
     assistente: {
       embeddings: {
         modelo: string
-        modo: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
+        modo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
         provedor: string
       }
       respostas: {
         chaveCadastrada: boolean
         chaveFinal: string
         modelo: string
-        modo: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
-        modoEfetivo: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
+        modo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
+        modoEfetivo: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
         provedor: string
       }
     }
     atualizadoEm: Instant
     atualizadoPor: string
-    modoGeral: enum[API_KEY, MCP_EXTERNO, LOCAL, DESLIGADO]
+    modoGeral: enum[API_KEY, EXTERNAL_MCP, LOCAL, OFF]
   }
 
 PUT /api/condominios/{}/modulos/{}
@@ -1715,7 +1715,7 @@ PUT /api/condominios/{}/previsoes/{}/depara/{}
     confirmar: boolean
     detalhe: string
     linhaId: UUID
-    tipo: enum[LINHA_PO, AJUSTE, A_REALOCAR, TRANSFERENCIA]
+    tipo: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
   }
   returns: {
     atualizadoEm: Instant
@@ -1728,14 +1728,14 @@ PUT /api/condominios/{}/previsoes/{}/depara/{}
       detalhe: string
       linhaId: UUID
       texto: string
-      tipo: enum[LINHA_PO, AJUSTE, A_REALOCAR, TRANSFERENCIA]
+      tipo: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
     }
-    estado: enum[SUGERIDO, CONFIRMADO, RECUSADO]
+    estado: enum[SUGGESTED, CONFIRMED, REJECTED]
     igualVersaoAnterior: boolean
     lancamentos: integer
     motivo: string
     nome: string
-    origem: enum[VERSAO_ANTERIOR, PLANILHA, NOME, ADMIN]
+    origem: enum[PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
   }
 
 PUT /api/condominios/{}/previsoes/{}/fundos
@@ -1758,7 +1758,7 @@ PUT /api/condominios/{}/previsoes/{}/fundos
       versaoRegra: string
     }]
     avisos: [{
-      codigo: enum[ARREDONDAMENTO, DIVERGENCIA, CODIGO_REPETIDO, CONFIRMADA_COM_DIVERGENCIA, FORA_PRIMEIRO_TRIMESTRE, SEM_ATA, REGRA_NAO_AVALIADA]
+      codigo: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
       texto: string
     }]
     codigosRepetidos: [{
@@ -1774,7 +1774,7 @@ PUT /api/condominios/{}/previsoes/{}/fundos
     colunaOrcado: string
     colunaOrcadoAnterior: string
     conferencias: [{
-      classificacao: enum[OK, ARREDONDAMENTO, DIVERGENCIA, CODIGO_REPETIDO]
+      classificacao: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
       codigo: string
       descricao: string
       detalhe: string
@@ -1805,7 +1805,7 @@ PUT /api/condominios/{}/previsoes/{}/fundos
       descricao: string
       id: UUID
       linhaDeFundo: boolean
-      marca: enum[RATEIO_A_PARTE, NEGOCIADA_ISENCAO, SEM_VALOR, VALOR_FIXO_SEM_REFERENCIA]
+      marca: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
       observacoes: string
       orcado: number
       orcadoAnterior: number
@@ -1813,14 +1813,14 @@ PUT /api/condominios/{}/previsoes/{}/fundos
       pagina: integer
       percentualTexto: string
       sha256: string
-      tipo: enum[TOTAL, GRUPO, LINHA]
+      tipo: enum[TOTAL, GROUP, LINE]
     }]
     previsao: {
       arquivoId: UUID
       arquivoNome: string
       confirmadaEm: Instant
       confirmadaPor: string
-      estado: enum[LIDA, LIDA_COM_DIVERGENCIA, CONFIRMADA, SUBSTITUIDA]
+      estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
       exercicioFim: string
       exercicioImpresso: string
       exercicioInicio: string
@@ -1862,7 +1862,7 @@ PUT /api/condominios/{}/previsoes/{}/prorrogacao
       versaoRegra: string
     }]
     avisos: [{
-      codigo: enum[ARREDONDAMENTO, DIVERGENCIA, CODIGO_REPETIDO, CONFIRMADA_COM_DIVERGENCIA, FORA_PRIMEIRO_TRIMESTRE, SEM_ATA, REGRA_NAO_AVALIADA]
+      codigo: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
       texto: string
     }]
     codigosRepetidos: [{
@@ -1878,7 +1878,7 @@ PUT /api/condominios/{}/previsoes/{}/prorrogacao
     colunaOrcado: string
     colunaOrcadoAnterior: string
     conferencias: [{
-      classificacao: enum[OK, ARREDONDAMENTO, DIVERGENCIA, CODIGO_REPETIDO]
+      classificacao: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
       codigo: string
       descricao: string
       detalhe: string
@@ -1909,7 +1909,7 @@ PUT /api/condominios/{}/previsoes/{}/prorrogacao
       descricao: string
       id: UUID
       linhaDeFundo: boolean
-      marca: enum[RATEIO_A_PARTE, NEGOCIADA_ISENCAO, SEM_VALOR, VALOR_FIXO_SEM_REFERENCIA]
+      marca: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
       observacoes: string
       orcado: number
       orcadoAnterior: number
@@ -1917,14 +1917,14 @@ PUT /api/condominios/{}/previsoes/{}/prorrogacao
       pagina: integer
       percentualTexto: string
       sha256: string
-      tipo: enum[TOTAL, GRUPO, LINHA]
+      tipo: enum[TOTAL, GROUP, LINE]
     }]
     previsao: {
       arquivoId: UUID
       arquivoNome: string
       confirmadaEm: Instant
       confirmadaPor: string
-      estado: enum[LIDA, LIDA_COM_DIVERGENCIA, CONFIRMADA, SUBSTITUIDA]
+      estado: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
       exercicioFim: string
       exercicioImpresso: string
       exercicioInicio: string
@@ -1963,12 +1963,12 @@ PUT /api/condominios/{}/previsoes/{}/rubricas/{}
     codigo: string
     conta: string
     descricao: string
-    estado: enum[SUGERIDO, CONFIRMADO, RECUSADO]
+    estado: enum[SUGGESTED, CONFIRMED, REJECTED]
     grupo: string
     linhaId: UUID
     motivo: string
     orcado: number
-    origem: enum[PRIMEIRA_PO, CONTA_PO, VERSAO_ANTERIOR, MANUAL]
+    origem: enum[FIRST_BUDGET, BUDGET_ACCOUNT, PREVIOUS_VERSION, MANUAL]
     rubrica: {
       criadaEm: Instant
       criadaPor: string

@@ -34,9 +34,9 @@ class AccountMappingGoldenTest {
         assertThat(r.skipped()).isEmpty();
         assertThat(r.accepted()).isEqualTo(73);
         var list = g.scenario.accountMapping.list(g.scenario.condominiumId, g.budget.getId(),
-                AccountMappingFilter.TODAS);
+                AccountMappingFilter.ALL);
         assertThat(list.summary()).isEqualTo(new AccountMappingSummaryResponse(73, 0, 73, 0, 0));
-        assertThat(g.scenario.mappings).allMatch(d -> d.getStatus() == AccountMappingStatus.SUGERIDO);
+        assertThat(g.scenario.mappings).allMatch(d -> d.getStatus() == AccountMappingStatus.SUGGESTED);
         // Suggested links no account: the numbers only use the confirmed (the month's calculation is in step 7)
         assertThat(EffectiveAccountMapping.confirmed(g.scenario.mappings)).isEmpty();
 
@@ -57,9 +57,9 @@ class AccountMappingGoldenTest {
         AccountMapping plumbing = g.scenario.mappings.stream().filter(d -> d.getAccountCode().equals("1621")).findFirst()
                 .orElseThrow();
         assertThat(plumbing.getBudgetLineId()).isEqualTo(g.line("1.7.8").getId());
-        assertThat(plumbing.getSource()).isEqualTo(AccountMappingSource.NOME);
+        assertThat(plumbing.getSource()).isEqualTo(AccountMappingSource.NAME);
         assertThat(g.scenario.mappings).noneMatch(d -> g.line("1.3.23").getId().equals(d.getBudgetLineId()));
-        assertThat(g.scenario.mappings).allMatch(d -> d.getStatus() == AccountMappingStatus.SUGERIDO);
+        assertThat(g.scenario.mappings).allMatch(d -> d.getStatus() == AccountMappingStatus.SUGGESTED);
         assertThat(r.created() + r.withoutSuggestion().size()).isEqualTo(73);
 
         // Measure of the suggestion by name against the pilot's map: no suggestion disagrees with the map

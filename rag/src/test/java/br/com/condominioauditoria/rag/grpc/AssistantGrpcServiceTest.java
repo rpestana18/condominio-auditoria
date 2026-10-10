@@ -101,7 +101,7 @@ class AssistantGrpcServiceTest {
 
         client.buscar(BuscarRequest.newBuilder().setCondominioId(CONDOMINIUM).setTexto("\"fundo de reserva\"")
                 .setModo(ModoBusca.MODO_BUSCA_PALAVRA).setLimite(5)
-                .setFiltros(FiltrosBusca.newBuilder().addCategorias("ATA").setDataInicio("2026-01-01")
+                .setFiltros(FiltrosBusca.newBuilder().addCategorias("MINUTES").setDataInicio("2026-01-01")
                         .addArquivoIds(file.toString()))
                 .build());
 
@@ -109,7 +109,7 @@ class AssistantGrpcServiceTest {
                 IndexRepository.SearchFilters.class);
         verify(search).search(filters.capture(), eq("\"fundo de reserva\""), eq(DocumentSearch.Mode.KEYWORD), eq(5));
         assertThat(filters.getValue().condominiumId()).isEqualTo(UUID.fromString(CONDOMINIUM));
-        assertThat(filters.getValue().categories()).containsExactly("ATA");
+        assertThat(filters.getValue().categories()).containsExactly("MINUTES");
         assertThat(filters.getValue().dateFrom()).isEqualTo(LocalDate.of(2026, 1, 1));
         assertThat(filters.getValue().dateTo()).isNull();
         assertThat(filters.getValue().fileIds()).containsExactly(file);
@@ -137,6 +137,6 @@ class AssistantGrpcServiceTest {
     }
 
     private static FoundChunk chunk(UUID file, Location local) {
-        return new FoundChunk(UUID.randomUUID(), file, "a.pdf", "ATA", local, "texto", 0.5, "a".repeat(64));
+        return new FoundChunk(UUID.randomUUID(), file, "a.pdf", "MINUTES", local, "texto", 0.5, "a".repeat(64));
     }
 }

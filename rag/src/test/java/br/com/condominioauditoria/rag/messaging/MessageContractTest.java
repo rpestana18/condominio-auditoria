@@ -23,8 +23,8 @@ public class MessageContractTest {
 
     private final MessageContract contract = new MessageContract();
 
-    private static final FileReceivedMessage FILE = new FileReceivedMessage(1, UUID.randomUUID(), UUID.randomUUID(),
-            UUID.randomUUID(), "BALANCETE", "fluxo.pdf", "c/BALANCETE/2026/abc-fluxo.pdf", "a".repeat(64));
+    private static final FileReceivedMessage FILE = new FileReceivedMessage(3, UUID.randomUUID(), UUID.randomUUID(),
+            UUID.randomUUID(), "TRIAL_BALANCE", "fluxo.pdf", "c/TRIAL_BALANCE/2026/abc-fluxo.pdf", "a".repeat(64));
 
     @Test
     public void cashFlowResultFollowsContractWithMoneyAsText() {
@@ -42,9 +42,9 @@ public class MessageContractTest {
                 CashFlowCheck.check(cashFlow)));
 
         String text = new String(json, StandardCharsets.UTF_8);
-        assertThat(text).contains("\"versao\":2").contains("\"debito\":\"1500.10\"")
-                .contains("\"situacao\":\"CONCLUIDO\"").contains("\"recebimentoCota\":false")
-                .contains("\"previsaoOrcamentaria\":null").doesNotContain("totalLancamentos");
+        assertThat(text).contains("\"version\":3").contains("\"debit\":\"1500.10\"")
+                .contains("\"status\":\"COMPLETED\"").contains("\"condoFeeReceipt\":false")
+                .contains("\"budget\":null").doesNotContain("totalLancamentos");
     }
 
     @Test
@@ -56,7 +56,7 @@ public class MessageContractTest {
     @Test
     public void fileReceivedOutsideContractIsRejected() {
         String json = """
-                {"versao":1,"arquivoId":"%s"}""".formatted(UUID.randomUUID());
+                {"version":3,"fileId":"%s"}""".formatted(UUID.randomUUID());
         assertThatThrownBy(() -> contract.readFileReceived(json.getBytes(StandardCharsets.UTF_8)))
                 .hasMessageContaining("fora do contrato");
     }
@@ -64,8 +64,8 @@ public class MessageContractTest {
     @Test
     public void validFileReceived() {
         String json = """
-                {"versao":1,"processamentoId":"%s","arquivoId":"%s","condominioId":"%s","categoria":"BALANCETE",
-                 "nomeOriginal":"fluxo.pdf","caminho":"x/y.pdf","sha256":"%s"}"""
+                {"version":3,"processingId":"%s","fileId":"%s","condominiumId":"%s","category":"TRIAL_BALANCE",
+                 "originalName":"fluxo.pdf","path":"x/y.pdf","sha256":"%s"}"""
                 .formatted(UUID.randomUUID(), FILE.fileId(), UUID.randomUUID(), "b".repeat(64));
         assertThat(contract.readFileReceived(json.getBytes(StandardCharsets.UTF_8)).fileId())
                 .isEqualTo(FILE.fileId());
@@ -77,7 +77,7 @@ public class MessageContractTest {
      */
     @Test
     public void contractCashFlowExampleIsWhatRagProduces() throws Exception {
-        var example = MAPPER.readTree(example("resultado-concluido-fluxo.json"));
+        var example = MAPPER.readTree(example("processing-result-cash-flow.json"));
         var water = new LedgerEntry(1, 1, LocalDate.of(2026, 9, 2), "3101", "ÁGUA", "123", "CONTA DE ÁGUA",
                 new BigDecimal("0.00"), new BigDecimal("1500.10"), new BigDecimal("8499.90"),
                 new LedgerEntry.Enrichment(null, "SABESP", null, false, false));
@@ -97,7 +97,7 @@ public class MessageContractTest {
                 new BigDecimal("1500.10"), new BigDecimal("72760.69"));
         var cashFlow = new CashFlow("EXEMPLO", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30),
                 List.of(operating, reserve), positions, total);
-        var check = new TotalsCheck("SALDO_CORRENTE", "Saldo linha a linha em todos os fundos", true,
+        var check = new TotalsCheck("RUNNING_BALANCE", "Saldo linha a linha em todos os fundos", true,
                 "2 lançamentos conferidos");
 
         byte[] produced = contract.write(ProcessingResultMessage.completed(fileOf(example), "fluxo-caixa-protest",
@@ -113,7 +113,7 @@ public class MessageContractTest {
      */
     @Test
     public void contractBudgetExampleFitsRagTypes() throws Exception {
-        String json = example("resultado-concluido-po.json");
+        String json = example("processing-result-budget.json");
         var example = MAPPER.readTree(json);
         var read = MAPPER.readValue(json, ProcessingResultMessage.class);
 
@@ -135,13 +135,13 @@ public class MessageContractTest {
 
     private static String example(String name) throws Exception {
         return java.nio.file.Files.readString(java.nio.file.Path.of(System.getProperty("contratos.dir"),
-                "mensagens/v2/exemplos", name));
+                "mensagens/v3/examples", name));
     }
 
     private static FileReceivedMessage fileOf(tools.jackson.databind.JsonNode example) {
-        return new FileReceivedMessage(1, UUID.fromString(example.get("processamentoId").asString()),
-                UUID.fromString(example.get("arquivoId").asString()),
-                UUID.fromString(example.get("condominioId").asString()), "BALANCETE", "f.pdf", "x/f.pdf",
+        return new FileReceivedMessage(3, UUID.fromString(example.get("processingId").asString()),
+                UUID.fromString(example.get("fileId").asString()),
+                UUID.fromString(example.get("condominiumId").asString()), "TRIAL_BALANCE", "f.pdf", "x/f.pdf",
                         "a".repeat(64));
     }
 }

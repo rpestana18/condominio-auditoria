@@ -74,11 +74,11 @@ public class AssistantQuestionServiceTest {
     private final FeatureService features = mock(FeatureService.class);
     private final AiConfigurationService aiConfiguration = mock(AiConfigurationService.class);
     private final UsageService usage = mock(UsageService.class);
-    private final SourceFile minutesA = new SourceFile(A, FileCategory.ATA, "ata.pdf", "a/ata.pdf", "a".repeat(64), 1,
+    private final SourceFile minutesA = new SourceFile(A, FileCategory.MINUTES, "ata.pdf", "a/ata.pdf", "a".repeat(64), 1,
             "application/pdf", "gestor");
-    private final SourceFile contractA = new SourceFile(A, FileCategory.CONTRATO, "contrato.pdf", "a/contrato.pdf",
+    private final SourceFile contractA = new SourceFile(A, FileCategory.CONTRACT, "contrato.pdf", "a/contrato.pdf",
             "c".repeat(64), 1, "application/pdf", "gestor");
-    private final SourceFile minutesB = new SourceFile(B, FileCategory.ATA, "ata-b.pdf", "b/ata.pdf", "b".repeat(64), 1,
+    private final SourceFile minutesB = new SourceFile(B, FileCategory.MINUTES, "ata-b.pdf", "b/ata.pdf", "b".repeat(64), 1,
             "application/pdf", "gestor");
     private FakeRag rag;
     private AssistantQuestionService questions;
@@ -105,13 +105,13 @@ public class AssistantQuestionServiceTest {
 
     @Test
     void externalMcpIs409WithRf0416MessageWithoutCallingRag() {
-        configure(AiMode.MCP_EXTERNO, null, AiMode.LOCAL);
+        configure(AiMode.EXTERNAL_MCP, null, AiMode.LOCAL);
 
         assertThatThrownBy(() -> questions.ask(A, request("qual o índice de reajuste?")))
                 .isInstanceOfSatisfying(AssistantRejectedException.class, e -> {
                     assertThat(e.status()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(e.getMessage()).isEqualTo("O assistente deste condomínio é o seu Claude, conectado ao MCP.");
-                    assertThat(e.aiMode()).isEqualTo(AiMode.MCP_EXTERNO);
+                    assertThat(e.aiMode()).isEqualTo(AiMode.EXTERNAL_MCP);
                 });
         assertThat(rag.questions).isEmpty();
         verifyNoInteractions(usage);
@@ -119,11 +119,11 @@ public class AssistantQuestionServiceTest {
 
     @Test
     void offAndWithoutKeyAre409WithoutCallingRag() {
-        configure(AiMode.DESLIGADO, null, AiMode.DESLIGADO);
+        configure(AiMode.OFF, null, AiMode.OFF);
         assertThatThrownBy(() -> questions.ask(A, request("x")))
                 .isInstanceOfSatisfying(AssistantRejectedException.class, e -> {
                     assertThat(e.getMessage()).isEqualTo("A IA está desligada neste condomínio.");
-                    assertThat(e.aiMode()).isEqualTo(AiMode.DESLIGADO);
+                    assertThat(e.aiMode()).isEqualTo(AiMode.OFF);
                 });
 
         configure(AiMode.API_KEY, null, AiMode.LOCAL);
@@ -168,7 +168,7 @@ public class AssistantQuestionServiceTest {
                 .mapToObj(i -> new ConversationTurnRequest("p" + i, "r" + i)).toList();
 
         questions.ask(A, new QuestionRequest("  e o de portaria?  ", history, new DocumentFiltersRequest(
-                List.of(FileCategory.CONTRATO), LocalDate.of(2025, 1, 1), null, List.of(contractA.getId()))));
+                List.of(FileCategory.CONTRACT), LocalDate.of(2025, 1, 1), null, List.of(contractA.getId()))));
 
         assertThat(rag.token.get()).isEqualTo("Bearer token-usuario");
         var request = rag.questions.getFirst();
@@ -181,7 +181,7 @@ public class AssistantQuestionServiceTest {
         assertThat(request.getConfiguracao().getChaveCifrada().toByteArray()).isEqualTo(ENCRYPTED_KEY);
         assertThat(request.getConfiguracao().getModeloEmbeddings()).isEqualTo("bge-m3");
         assertThat(request.getConfiguracao().getModoBusca()).isEqualTo(ModoBusca.MODO_BUSCA_HIBRIDA);
-        assertThat(request.getFiltros().getCategoriasList()).containsExactly("CONTRATO");
+        assertThat(request.getFiltros().getCategoriasList()).containsExactly("CONTRACT");
         assertThat(request.getFiltros().getDataInicio()).isEqualTo("2025-01-01");
         assertThat(request.getFiltros().getDataFim()).isEmpty();
         assertThat(request.getFiltros().getArquivoIdsList()).containsExactly(contractA.getId().toString());
@@ -189,7 +189,7 @@ public class AssistantQuestionServiceTest {
 
     @Test
     void embeddingsOffAskForWordSearch() {
-        configure(AiMode.API_KEY, ENCRYPTED_KEY, AiMode.DESLIGADO);
+        configure(AiMode.API_KEY, ENCRYPTED_KEY, AiMode.OFF);
         respond(RespostaPergunta.newBuilder().setSituacao(
                 br.com.condominioauditoria.contratos.assistente.v1.SituacaoResposta.SITUACAO_RESPOSTA_NAO_ENCONTRADA)
                 .build());
@@ -223,7 +223,7 @@ public class AssistantQuestionServiceTest {
 
         var response = questions.ask(A, request("a troca do portão foi aprovada e quanto foi pago?"));
 
-        assertThat(response.status()).isEqualTo(AnswerStatus.RESPONDIDA);
+        assertThat(response.status()).isEqualTo(AnswerStatus.ANSWERED);
         assertThat(response.fromDocuments()).extracting(p -> p.text())
                 .containsExactly("A ata aprovou.", "O contrato prevê IPCA.");
         assertThat(response.fromDocuments()).extracting(p -> p.citations())
@@ -256,7 +256,7 @@ public class AssistantQuestionServiceTest {
 
         var response = questions.ask(A, request("o portão foi aprovado?"));
 
-        assertThat(response.status()).isEqualTo(AnswerStatus.NAO_ENCONTRADA);
+        assertThat(response.status()).isEqualTo(AnswerStatus.NOT_FOUND);
         assertThat(response.fromDocuments()).isEmpty();
         assertThat(response.citations()).isEmpty();
         assertThat(response.fromStoredData()).isEmpty();
@@ -272,7 +272,7 @@ public class AssistantQuestionServiceTest {
 
         var response = questions.ask(A, request("qual a empresa de jardinagem?"));
 
-        assertThat(response.status()).isEqualTo(AnswerStatus.NAO_ENCONTRADA);
+        assertThat(response.status()).isEqualTo(AnswerStatus.NOT_FOUND);
         assertThat(response.suggestion()).isEqualTo("não há contrato de jardinagem enviado");
         verify(usage).recordQuestion(any(), any(), any(), any(), eq(500L), eq(50L), any());
     }
@@ -319,7 +319,7 @@ public class AssistantQuestionServiceTest {
                 key == null ? null : "claude-sonnet-5-5", key, key == null ? null : "x9Qa");
         var embeddings = embeddingsMode == AiMode.LOCAL ? new Embeddings(AiMode.LOCAL, "ollama-local", "bge-m3")
                 : new Embeddings(embeddingsMode, null, null);
-        when(aiConfiguration.read(A)).thenReturn(new Effective(AiMode.MCP_EXTERNO, answers, embeddings, null, null));
+        when(aiConfiguration.read(A)).thenReturn(new Effective(AiMode.EXTERNAL_MCP, answers, embeddings, null, null));
     }
 
     private void respond(RespostaPergunta response) {

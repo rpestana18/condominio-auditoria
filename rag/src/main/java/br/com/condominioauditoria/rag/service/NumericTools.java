@@ -71,8 +71,8 @@ public class NumericTools {
                                 + "período e estado da leitura. Use para saber o que existe ou o que falta enviar.",
                         Map.of("properties", Map.of(
                                 "categoria", Map.of("type", "string",
-                                        "description", "BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, "
-                                                + "CONVENCAO_RI ou OUTROS. Opcional."),
+                                        "description", "TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, "
+                                                + "BYLAWS ou OTHER. Opcional."),
                                 "limite", Map.of("type", "integer", "description", "Padrão 50.")),
                                 "required", List.of())),
                 new ToolDefinition(FILE_CHECKS,

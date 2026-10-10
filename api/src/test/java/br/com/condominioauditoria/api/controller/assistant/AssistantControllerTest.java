@@ -93,8 +93,8 @@ class AssistantControllerTest {
         rag = new FakeRag();
         when(condominiums.existsById(A)).thenReturn(true);
         when(files.findByCondominiumIdAndIdIn(eq(A), anyCollection())).thenReturn(List.of(workbook));
-        when(aiConfiguration.read(A)).thenReturn(new Effective(AiMode.MCP_EXTERNO,
-                new Answers(null, AiMode.MCP_EXTERNO, null, null, null, null),
+        when(aiConfiguration.read(A)).thenReturn(new Effective(AiMode.EXTERNAL_MCP,
+                new Answers(null, AiMode.EXTERNAL_MCP, null, null, null, null),
                 new Embeddings(AiMode.LOCAL, "ollama-local", "bge-m3"), null, null));
         var access = new CondominiumAccess();
         var barrier = new FileAccessBarrier(files);
@@ -141,7 +141,7 @@ class AssistantControllerTest {
             var chunks = controller.search(A, new DocumentSearchRequest("  portão ", null, null));
             assertThat(chunks).singleElement().satisfies(t -> {
                 assertThat(t.category()).isEqualTo(FileCategory.PO);
-                assertThat(t.location().type()).isEqualTo("PLANILHA");
+                assertThat(t.location().type()).isEqualTo("SHEET");
                 assertThat(t.location().description()).isEqualTo("aba Junho, linhas 10 a 14");
             });
             verify(usage).recordDocumentSearch(A, "pessoa." + role.toLowerCase());
@@ -192,7 +192,7 @@ class AssistantControllerTest {
                 .content("{\"pergunta\":\"o portão foi aprovado?\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.detail").value("Módulo Assistente não contratado para este condomínio."))
-                .andExpect(jsonPath("$.modulo").value("ASSISTENTE"));
+                .andExpect(jsonPath("$.modulo").value("ASSISTANT"));
         mvc.perform(post("/api/condominios/{id}/assistente/busca", A).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"texto\":\"portão\"}"))
                 .andExpect(status().isForbidden());
@@ -209,7 +209,7 @@ class AssistantControllerTest {
                 .content("{\"pergunta\":\"o portão foi aprovado?\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("O assistente deste condomínio é o seu Claude, conectado ao MCP."))
-                .andExpect(jsonPath("$.modoIa").value("MCP_EXTERNO"));
+                .andExpect(jsonPath("$.modoIa").value("EXTERNAL_MCP"));
         assertThat(rag.questions).isEmpty();
         verify(usage, org.mockito.Mockito.never()).recordQuestion(any(), any(), any(), any(),
                 org.mockito.ArgumentMatchers.anyLong(),
@@ -218,9 +218,9 @@ class AssistantControllerTest {
 
     @Test
     void searchWorksWithAiOff() throws Exception {
-        when(aiConfiguration.read(A)).thenReturn(new Effective(AiMode.DESLIGADO,
-                new Answers(null, AiMode.DESLIGADO, null, null, null, null),
-                new Embeddings(AiMode.DESLIGADO, null, null), null, null));
+        when(aiConfiguration.read(A)).thenReturn(new Effective(AiMode.OFF,
+                new Answers(null, AiMode.OFF, null, null, null, null),
+                new Embeddings(AiMode.OFF, null, null), null, null));
         AssistantQuestionServiceTest.logIn("USUARIO", A);
 
         mvc.perform(post("/api/condominios/{id}/assistente/busca", A).contentType(MediaType.APPLICATION_JSON)

@@ -69,7 +69,7 @@ public class Budget {
             throw new IllegalStateException("PO já confirmada: a leitura não pode ser trocada");
         }
         if (status.isLocked()) {
-            throw new IllegalArgumentException("A leitura só gera os estados LIDA e LIDA_COM_DIVERGENCIA");
+            throw new IllegalArgumentException("A leitura só gera os estados READ e READ_WITH_DISCREPANCY");
         }
         this.parser = parser;
         this.title = title;
@@ -101,7 +101,7 @@ public class Budget {
         this.discrepancyJustification = justification;
         this.confirmedBy = username;
         this.confirmedAt = at;
-        this.status = BudgetStatus.CONFIRMADA;
+        this.status = BudgetStatus.CONFIRMED;
     }
 
     /** Reapproval: from {@code month} on, the new version applies; the earlier months keep this one. */
@@ -113,7 +113,7 @@ public class Budget {
         if (supersededFrom == null || day.isBefore(supersededFrom)) {
             supersededFrom = day;
         }
-        status = BudgetStatus.SUBSTITUIDA;
+        status = BudgetStatus.SUPERSEDED;
     }
 
     /**
@@ -121,7 +121,7 @@ public class Budget {
      * The validations (Admin, no month with a confirmed budget) live in the extension service.
      */
     public void extend(YearMonth until, String justification, String username, Instant at) {
-        if (status != BudgetStatus.CONFIRMADA) {
+        if (status != BudgetStatus.CONFIRMED) {
             throw new IllegalStateException("Só PO confirmada (e não substituída) pode ser prorrogada");
         }
         if (!until.isAfter(getFiscalYearEnd())) {

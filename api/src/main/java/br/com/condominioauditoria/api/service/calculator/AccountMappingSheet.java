@@ -97,9 +97,9 @@ public final class AccountMappingSheet {
             Matcher m = SPECIAL.matcher(stripAccents(targetText));
             if (m.matches()) {
                 MappingTargetType type = switch (m.group(1)) {
-                    case "AJUSTE" -> MappingTargetType.AJUSTE;
-                    case "TRANSFERENCIA" -> MappingTargetType.TRANSFERENCIA;
-                    default -> MappingTargetType.A_REALOCAR;
+                    case "AJUSTE" -> MappingTargetType.ADJUSTMENT;
+                    case "TRANSFERENCIA" -> MappingTargetType.TRANSFER;
+                    default -> MappingTargetType.TO_REALLOCATE;
                 };
                 // The detail stays as written (with accents), only without the parentheses
                 int open = targetText.indexOf('(');

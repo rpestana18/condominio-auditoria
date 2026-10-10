@@ -59,7 +59,7 @@ public class DashboardService {
     @Transactional(readOnly = true)
     public Optional<DashboardResponse> latest(UUID condominiumId) {
         return files.findFirstByCondominiumIdAndParserAndStatusInOrderByPeriodEndDescUploadedAtDesc(
-                        condominiumId, CASH_FLOW_PARSER, List.of(FileStatus.CONCLUIDO, FileStatus.PRECISA_REVISAO))
+                        condominiumId, CASH_FLOW_PARSER, List.of(FileStatus.COMPLETED, FileStatus.NEEDS_REVIEW))
                 .map(f -> build(condominiumId, f));
     }
 

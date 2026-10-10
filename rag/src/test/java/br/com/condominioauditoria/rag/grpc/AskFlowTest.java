@@ -98,7 +98,7 @@ public class AskFlowTest {
 
         search = mock(DocumentSearch.class);
         when(search.search(any(), anyString(), any(), anyInt())).thenReturn(new DocumentSearch.Result(
-                List.of(new FoundChunk(CHUNK, UUID.randomUUID(), "contrato.pdf", "CONTRATO",
+                List.of(new FoundChunk(CHUNK, UUID.randomUUID(), "contrato.pdf", "CONTRACT",
                         new Location.Page(3),
                         "A taxa de administração contratada é de R$ 1.234,56 por mês.", 1.0, "a".repeat(64))),
                 DocumentSearch.Mode.HYBRID));

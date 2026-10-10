@@ -144,7 +144,7 @@ public class AiCatalog {
 
     private static AiFunction function(Provedor p) {
         return switch (p.getUso()) {
-            case USO_PROVEDOR_RESPOSTAS -> AiFunction.RESPOSTAS;
+            case USO_PROVEDOR_RESPOSTAS -> AiFunction.ANSWERS;
             case USO_PROVEDOR_EMBEDDINGS -> AiFunction.EMBEDDINGS;
             default -> null;
         };

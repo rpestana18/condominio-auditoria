@@ -83,7 +83,7 @@ public class BudgetQueryService {
     @Transactional(readOnly = true)
     public Optional<Budget> activeInMonth(UUID condominiumId, YearMonth month) {
         return BudgetValidity.activeInMonth(budgets.findByCondominiumIdAndStatusIn(condominiumId,
-                EnumSet.of(BudgetStatus.CONFIRMADA, BudgetStatus.SUBSTITUIDA)), month);
+                EnumSet.of(BudgetStatus.CONFIRMED, BudgetStatus.SUPERSEDED)), month);
     }
 
     @Transactional(readOnly = true)
@@ -160,13 +160,13 @@ public class BudgetQueryService {
         if (p.getStatus().isLocked()) {
             warnings.addAll(confirmationWarnings(p, structure, assessment));
         }
-        assessment.roundings().forEach(t -> warnings.add(new BudgetWarningResponse(BudgetWarningCode.ARREDONDAMENTO,
+        assessment.roundings().forEach(t -> warnings.add(new BudgetWarningResponse(BudgetWarningCode.ROUNDING,
                 t)));
-        if (p.getStatus() == BudgetStatus.LIDA_COM_DIVERGENCIA) {
-            assessment.discrepancies().forEach(t -> warnings.add(new BudgetWarningResponse(BudgetWarningCode.DIVERGENCIA,
+        if (p.getStatus() == BudgetStatus.READ_WITH_DISCREPANCY) {
+            assessment.discrepancies().forEach(t -> warnings.add(new BudgetWarningResponse(BudgetWarningCode.DISCREPANCY,
                     "PO lida com divergência: " + t + ". A PO não é usada no previsto × realizado até a confirmação.")));
         }
-        repeated.stream().filter(r -> !r.resolved()).forEach(r -> warnings.add(new BudgetWarningResponse(BudgetWarningCode.CODIGO_REPETIDO,
+        repeated.stream().filter(r -> !r.resolved()).forEach(r -> warnings.add(new BudgetWarningResponse(BudgetWarningCode.REPEATED_CODE,
                 "Código " + r.printedCode() + " impresso " + r.lines().size()
                         + " vezes: informe um código distinto na confirmação")));
         return warnings;
@@ -180,19 +180,19 @@ public class BudgetQueryService {
             BudgetReadingAssessment.Result assessment) {
         List<BudgetWarningResponse> warnings = new ArrayList<>();
         if (p.isDiscrepancyAcknowledged()) {
-            warnings.add(new BudgetWarningResponse(BudgetWarningCode.CONFIRMADA_COM_DIVERGENCIA,
+            warnings.add(new BudgetWarningResponse(BudgetWarningCode.CONFIRMED_WITH_DISCREPANCY,
                     "PO confirmada com divergência: " + String.join("; ", assessment.discrepancies())));
         }
         if (outsideFirstQuarter(p)) {
-            warnings.add(new BudgetWarningResponse(BudgetWarningCode.FORA_PRIMEIRO_TRIMESTRE,
+            warnings.add(new BudgetWarningResponse(BudgetWarningCode.OUTSIDE_FIRST_QUARTER,
                     OUTSIDE_FIRST_QUARTER_TEXT));
         }
         if (p.isWithoutMinutes()) {
-            warnings.add(new BudgetWarningResponse(BudgetWarningCode.SEM_ATA,
+            warnings.add(new BudgetWarningResponse(BudgetWarningCode.NO_MINUTES,
                     "Exercício informado sem ata: pendência de implantação"));
         }
         if (reserveFund.assess(p, structure) instanceof BudgetReserveFundService.NotAssessed n) {
-            warnings.add(new BudgetWarningResponse(BudgetWarningCode.REGRA_NAO_AVALIADA, n.reason()));
+            warnings.add(new BudgetWarningResponse(BudgetWarningCode.RULE_NOT_EVALUATED, n.reason()));
         }
         return warnings;
     }

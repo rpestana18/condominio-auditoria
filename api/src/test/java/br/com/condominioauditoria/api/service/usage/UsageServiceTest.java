@@ -39,7 +39,7 @@ class UsageServiceTest {
 
         FeatureUsage usage = saved();
         assertThat(usage.getFeature()).isEqualTo(FeatureService.ASSISTANT);
-        assertThat(usage.getFunction()).isEqualTo(UsageFunction.INDEXACAO);
+        assertThat(usage.getFunction()).isEqualTo(UsageFunction.INDEXING);
         assertThat(usage.getMode()).isEqualTo(AiMode.LOCAL);
         assertThat(usage.getModel()).isEqualTo("bge-m3");
         assertThat(usage.getFiles()).isEqualTo(1);
@@ -55,7 +55,7 @@ class UsageServiceTest {
         usage.recordIndexing(CONDOMINIUM, 3, null);
 
         FeatureUsage usage = saved();
-        assertThat(usage.getMode()).isEqualTo(AiMode.DESLIGADO);
+        assertThat(usage.getMode()).isEqualTo(AiMode.OFF);
         assertThat(usage.getModel()).isNull();
     }
 
@@ -64,9 +64,9 @@ class UsageServiceTest {
         usage.recordMcpCall(CONDOMINIUM, "conselheiro", false);
 
         FeatureUsage usage = saved();
-        assertThat(usage.getFunction()).isEqualTo(UsageFunction.CHAMADA_MCP);
+        assertThat(usage.getFunction()).isEqualTo(UsageFunction.MCP_CALL);
         assertThat(usage.getUsername()).isEqualTo("conselheiro");
-        assertThat(usage.getMode()).isEqualTo(AiMode.DESLIGADO);
+        assertThat(usage.getMode()).isEqualTo(AiMode.OFF);
         assertThat(usage.getInputTokens()).isNull();
         assertThat(usage.getFiles()).isNull();
     }
@@ -81,15 +81,15 @@ class UsageServiceTest {
     @Test
     void summaryAddsMonthsByFunctionAndUsesBrasiliaTimeZone() {
         when(usages.monthlyTotals(any(), any(), any())).thenReturn(List.of(
-                row("2026-10", "chamada_mcp", 7, 0, 0), row("2026-10", "indexacao", 40, 40, 380),
-                row("2026-11", "chamada_mcp", 5, 0, 0)));
+                row("2026-10", "mcp_call", 7, 0, 0), row("2026-10", "indexing", 40, 40, 380),
+                row("2026-11", "mcp_call", 5, 0, 0)));
 
         var summary = usage.summary(CONDOMINIUM, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 11, 30));
 
         assertThat(summary.byMonth()).hasSize(3);
         assertThat(summary.byFunction()).containsExactly(
-                new UsageTotal(null, FeatureService.ASSISTANT, UsageFunction.CHAMADA_MCP, 12, 0, 0, 0, 0),
-                new UsageTotal(null, FeatureService.ASSISTANT, UsageFunction.INDEXACAO, 40, 0, 0, 40, 380));
+                new UsageTotal(null, FeatureService.ASSISTANT, UsageFunction.MCP_CALL, 12, 0, 0, 0, 0),
+                new UsageTotal(null, FeatureService.ASSISTANT, UsageFunction.INDEXING, 40, 0, 0, 40, 380));
         var from = ArgumentCaptor.forClass(Instant.class);
         var to = ArgumentCaptor.forClass(Instant.class);
         verify(usages).monthlyTotals(org.mockito.ArgumentMatchers.eq(CONDOMINIUM), from.capture(), to.capture());
@@ -111,7 +111,7 @@ class UsageServiceTest {
         usage.recordQuestion(CONDOMINIUM, "conselheiro", "anthropic", "claude-sonnet-5-5", 1200, 340, "2026-10-05.1");
 
         FeatureUsage usage = saved();
-        assertThat(usage.getFunction()).isEqualTo(UsageFunction.PERGUNTA);
+        assertThat(usage.getFunction()).isEqualTo(UsageFunction.QUESTION);
         assertThat(usage.getMode()).isEqualTo(AiMode.API_KEY);
         assertThat(usage.getUsername()).isEqualTo("conselheiro");
         assertThat(usage.getProvider()).isEqualTo("anthropic");
@@ -126,8 +126,8 @@ class UsageServiceTest {
         usage.recordDocumentSearch(CONDOMINIUM, "conselheiro");
 
         FeatureUsage usage = saved();
-        assertThat(usage.getFunction()).isEqualTo(UsageFunction.BUSCA_DOCUMENTOS);
-        assertThat(usage.getMode()).isEqualTo(AiMode.DESLIGADO);
+        assertThat(usage.getFunction()).isEqualTo(UsageFunction.DOCUMENT_SEARCH);
+        assertThat(usage.getMode()).isEqualTo(AiMode.OFF);
         assertThat(usage.getInputTokens()).isNull();
         assertThat(usage.getModel()).isNull();
     }

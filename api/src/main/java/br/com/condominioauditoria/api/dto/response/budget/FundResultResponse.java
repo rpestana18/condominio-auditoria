@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /**
  * Reserve, works and other funds. {@code planned}, {@code collected}, {@code difference} and {@code execution} only
- * with COMPARADO; {@code credits} and {@code debits} are the movement of the period.
+ * with COMPARED; {@code credits} and {@code debits} are the movement of the period.
  */
 public record FundResultResponse(
         @JsonProperty("fundoId") UUID fundId,

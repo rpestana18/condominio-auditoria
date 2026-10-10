@@ -27,16 +27,16 @@ class UsageJsonTest {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final UsageTotal SEARCH = new UsageTotal("2026-10", FeatureService.ASSISTANT,
-            UsageFunction.BUSCA_DOCUMENTOS, 5, 0, 0, 0, 0);
+            UsageFunction.DOCUMENT_SEARCH, 5, 0, 0, 0, 0);
     private static final UsageTotal QUESTION = new UsageTotal("2026-10", FeatureService.ASSISTANT,
-            UsageFunction.PERGUNTA, 3, 1_000_000, 100_000, 0, 0);
+            UsageFunction.QUESTION, 3, 1_000_000, 100_000, 0, 0);
     private static final UsageSummary SUMMARY = new UsageSummary(UUID.randomUUID(), LocalDate.of(2026, 10, 1),
             LocalDate.of(2026, 10, 31), UsageTotal.sumByFunction(List.of(SEARCH, QUESTION)), List.of(SEARCH, QUESTION));
 
     @Test
     void withCatalogHasCostPerRowAndTotal() throws Exception {
         PeriodCost cost = UsageCostCalculator.calculate(List.of(new ModelTokens("2026-10", FeatureService.ASSISTANT,
-                UsageFunction.PERGUNTA, "anthropic", "claude-sonnet-5-5", 1_000_000, 100_000)),
+                UsageFunction.QUESTION, "anthropic", "claude-sonnet-5-5", 1_000_000, 100_000)),
                 Map.of("anthropic/claude-sonnet-5-5", new ModelPrice(new BigDecimal("2.00"), new BigDecimal("10.00"))));
 
         JsonNode usage = JSON.readTree(JSON.writeValueAsString(UsageMapper.toResponse(SUMMARY, cost)));
@@ -52,7 +52,7 @@ class UsageJsonTest {
     @Test
     void modelWithoutPriceLeavesTheCostNull() throws Exception {
         PeriodCost cost = UsageCostCalculator.calculate(List.of(new ModelTokens("2026-10", FeatureService.ASSISTANT,
-                UsageFunction.PERGUNTA, "anthropic", "modelo-antigo", 1_000_000, 100_000)), Map.of());
+                UsageFunction.QUESTION, "anthropic", "modelo-antigo", 1_000_000, 100_000)), Map.of());
 
         JsonNode usage = JSON.readTree(JSON.writeValueAsString(UsageMapper.toResponse(SUMMARY, cost)));
 

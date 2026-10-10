@@ -81,7 +81,7 @@ public final class FiscalYearComparison {
             Integer openFindings) {
 
         public boolean column() {
-            return type == FiscalYearType.COLUNA_IMPRESSA;
+            return type == FiscalYearType.PRINTED_COLUMN;
         }
     }
 
@@ -118,7 +118,7 @@ public final class FiscalYearComparison {
         Set<Month> common = null;
         for (BudgetVsActualResponse a : cumulatives) {
             Set<Month> ofFiscalYear = a == null ? Set.of() : a.months().stream()
-                    .filter(m -> !m.extended() && m.status() == MonthStatus.COM_FLUXO)
+                    .filter(m -> !m.extended() && m.status() == MonthStatus.WITH_CASH_FLOW)
                     .map(m -> YearMonth.parse(m.month()).getMonth()).collect(Collectors.toCollection(TreeSet::new));
             if (common == null) {
                 common = new TreeSet<>(ofFiscalYear);
@@ -187,7 +187,7 @@ public final class FiscalYearComparison {
                 String target = null;
                 if (withActual && g.funds()) {
                     List<FundResultResponse> frs = periodFunds.getOrDefault(l.getId(), List.of());
-                    if (!frs.isEmpty() && frs.stream().allMatch(fr -> fr.status() == FundComparisonStatus.COMPARADO)) {
+                    if (!frs.isEmpty() && frs.stream().allMatch(fr -> fr.status() == FundComparisonStatus.COMPARED)) {
                         planned = sum(frs.stream().map(FundResultResponse::planned).toList());
                         actual = sum(frs.stream().map(FundResultResponse::collected).toList());
                         target = BudgetVsActualCalculator.fundTarget(frs.getFirst().fundId());
@@ -382,7 +382,7 @@ public final class FiscalYearComparison {
     private static List<String> warnings(List<Input> inputs) {
         List<String> warnings = new ArrayList<>();
         for (Input e : inputs) {
-            long without = e.lines().stream().filter(l -> l.getType() == BudgetLineType.LINHA)
+            long without = e.lines().stream().filter(l -> l.getType() == BudgetLineType.LINE)
                     .filter(l -> !e.items().containsKey(l.getId())).count();
             if (without > 0) {
                 warnings.add(e.label() + ": " + without + (without == 1 ? " linha" : " linhas")

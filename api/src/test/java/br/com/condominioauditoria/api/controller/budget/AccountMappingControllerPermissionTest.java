@@ -117,9 +117,9 @@ class AccountMappingControllerPermissionTest {
         return List.of(
                 () -> controller.suggest(CONDOMINIUM, BUDGET),
                 () -> controller.setTarget(CONDOMINIUM, BUDGET, "1621",
-                        new MappingTargetRequest(MappingTargetType.AJUSTE, null, null, null)),
+                        new MappingTargetRequest(MappingTargetType.ADJUSTMENT, null, null, null)),
                 () -> controller.batch(CONDOMINIUM, BUDGET,
-                        new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRMAR, List.of("1621"))),
+                        new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRM, List.of("1621"))),
                 () -> controller.uploadSheet(CONDOMINIUM, BUDGET, new MockMultipartFile("arquivo", "mapa.csv",
                         "text/csv",
                         "1621;1.7.8\n".getBytes(java.nio.charset.StandardCharsets.UTF_8))));

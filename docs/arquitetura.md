@@ -81,8 +81,8 @@ Regras: um serviço **nunca importa classe de outro** nem lê o schema de banco 
 - Os trechos e vetores do RAG também são dados processados; se o banco se perder, tudo é reprocessável a partir de `dados/`.
 
 ### 2.2 Processamento em segundo plano (fila RabbitMQ)
-- Upload: o backend grava o original, cria o registro com status **Pendente** e responde na hora. Depois do commit, publica o pedido de leitura na fila `rag.arquivos-recebidos`.
-- O rag lê o original, chama o leitor, interpreta, confere e publica em `backend.resultados`: **INICIADO**, depois **CONCLUIDO** (com os dados) ou **FALHOU** (com o motivo). Só confirma o pedido depois de publicar o resultado.
+- Upload: o backend grava o original, cria o registro com status **Pendente** e responde na hora. Depois do commit, publica o pedido de leitura na fila `rag.files-received`.
+- O rag lê o original, chama o leitor, interpreta, confere e publica em `api.processing-results`: **INICIADO**, depois **CONCLUIDO** (com os dados) ou **FALHOU** (com o motivo). Só confirma o pedido depois de publicar o resultado.
 - O backend grava o resultado em **uma transação** (apaga a extração anterior do arquivo e insere a nova). Falha = rollback e retentativa; depois de 3 vezes, a mensagem vai para a fila `.erro`.
 - Cada leitura tem um `processamentoId`; reprocessar gera outro, e resultado com id antigo é descartado.
 - Filas duráveis: serviço reiniciado encontra o trabalho esperando. Uma varredura reenvia o que ficou parado há mais de 15 minutos (até 3 tentativas).
@@ -119,7 +119,7 @@ Idempotente: reenviar o mesmo arquivo não duplica nada.
 - Busca **híbrida** (palavra-chave + vetorial) com filtro por categoria/período/permissão.
 - Geração com **citações obrigatórias**. Perguntas numéricas são roteadas para **ferramentas** que consultam o banco (*text-to-query* controlado ou endpoints prontos), nunca respondidas só pelo texto.
 - Também alimenta o backend: extrai cláusulas de contratos (valor, índice de reajuste, data-base, vigência) e regras da convenção (rateio, multas, fundo de reserva) para parâmetros que o admin confirma.
-- **Assistente (módulo contratável, RF-04 e RF-10). ADR 0003, aprovada pelo usuário em 03/10/2026:** índice no schema `rag` (trechos cortados por página, aba e linha, ou seção e parágrafo; vetores `vector(1024)` com pgvector; busca por palavra em português sem acento); busca híbrida com fusão de posições e filtro de condomínio antes da busca; embeddings locais (`bge-m3` no contêiner Ollama) em todos os modos; indexação pela fila `rag.indexacao`, só para condomínio com o módulo ligado; chat recebido do backend por gRPC (`contracts/grpc/assistente/v1`: `Buscar`, `Perguntar` em fluxo e `ListarProvedores`), com os números buscados no backend pelo `Consulta` com o token do usuário.
+- **Assistente (módulo contratável, RF-04 e RF-10). ADR 0003, aprovada pelo usuário em 03/10/2026:** índice no schema `rag` (trechos cortados por página, aba e linha, ou seção e parágrafo; vetores `vector(1024)` com pgvector; busca por palavra em português sem acento); busca híbrida com fusão de posições e filtro de condomínio antes da busca; embeddings locais (`bge-m3` no contêiner Ollama) em todos os modos; indexação pela fila `rag.indexing`, só para condomínio com o módulo ligado; chat recebido do backend por gRPC (`contracts/grpc/assistente/v1`: `Buscar`, `Perguntar` em fluxo e `ListarProvedores`), com os números buscados no backend pelo `Consulta` com o token do usuário.
 
 ### 3.3 Backend (serviço `backend`)
 - **Auth e perfis** (Usuário/Gestor/Admin) aplicados em todos os endpoints.

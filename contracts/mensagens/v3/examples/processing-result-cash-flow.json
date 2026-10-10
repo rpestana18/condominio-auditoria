@@ -1,0 +1,103 @@
+{
+  "version": 3,
+  "processingId": "0b0e6c2a-7d1f-4f63-9d0e-3a2b1c4d5e70",
+  "fileId": "5a1c9e3b-2f4d-4b8a-8c7e-1d2f3a4b5c6d",
+  "condominiumId": "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001",
+  "status": "COMPLETED",
+  "reason": null,
+  "parser": "fluxo-caixa-protest",
+  "pages": 1,
+  "cashFlow": {
+    "property": "EXEMPLO",
+    "periodStart": "2026-09-01",
+    "periodEnd": "2026-09-30",
+    "sections": [
+      {
+        "fund": "ORDINÁRIO",
+        "openingBalance": "10000.00",
+        "entries": [
+          {
+            "page": 1,
+            "sequence": 1,
+            "date": "2026-09-02",
+            "accountCode": "3101",
+            "accountName": "ÁGUA",
+            "document": "123",
+            "memo": "CONTA DE ÁGUA",
+            "credit": "0.00",
+            "debit": "1500.10",
+            "balance": "8499.90",
+            "enrichment": {
+              "invoiceNumber": null,
+              "supplier": "SABESP",
+              "paymentMethod": null,
+              "interFundTransfer": false,
+              "condoFeeReceipt": false
+            }
+          }
+        ],
+        "reportedCreditTotal": "0.00",
+        "reportedDebitTotal": "1500.10"
+      },
+      {
+        "fund": "FUNDO DE RESERVA",
+        "openingBalance": "50000.00",
+        "entries": [
+          {
+            "page": 1,
+            "sequence": 2,
+            "date": "2026-09-10",
+            "accountCode": null,
+            "accountName": null,
+            "document": null,
+            "memo": "RECIBOS ACUMULADOS",
+            "credit": "14260.79",
+            "debit": "0.00",
+            "balance": "64260.79",
+            "enrichment": {
+              "invoiceNumber": null,
+              "supplier": null,
+              "paymentMethod": null,
+              "interFundTransfer": false,
+              "condoFeeReceipt": true
+            }
+          }
+        ],
+        "reportedCreditTotal": "14260.79",
+        "reportedDebitTotal": "0.00"
+      }
+    ],
+    "financialPosition": [
+      {
+        "fund": "ORDINÁRIO",
+        "openingBalance": "10000.00",
+        "credits": "0.00",
+        "debits": "1500.10",
+        "closingBalance": "8499.90"
+      },
+      {
+        "fund": "FUNDO DE RESERVA",
+        "openingBalance": "50000.00",
+        "credits": "14260.79",
+        "debits": "0.00",
+        "closingBalance": "64260.79"
+      }
+    ],
+    "positionTotal": {
+      "fund": "TOTAL",
+      "openingBalance": "60000.00",
+      "credits": "14260.79",
+      "debits": "1500.10",
+      "closingBalance": "72760.69"
+    }
+  },
+  "budget": null,
+  "totalsChecks": [
+    {
+      "code": "RUNNING_BALANCE",
+      "description": "Saldo linha a linha em todos os fundos",
+      "ok": true,
+      "detail": "2 lançamentos conferidos"
+    }
+  ]
+}

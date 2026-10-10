@@ -27,16 +27,16 @@ public class FileProcessingServiceTest {
     public void scannedBudgetFailsWithReadableReason() {
         ProcessingResultMessage r = service.parse(file("PO"), scanned());
 
-        assertThat(r.status()).isEqualTo(Status.FALHOU);
+        assertThat(r.status()).isEqualTo(Status.FAILED);
         assertThat(r.reason()).isEqualTo("PO sem texto; OCR ainda não disponível");
         assertThat(new MessageContract().write(r)).isNotEmpty();
     }
 
     @Test
     public void otherScannedFileStaysWithoutParser() {
-        ProcessingResultMessage r = service.parse(file("CONTRATO"), scanned());
+        ProcessingResultMessage r = service.parse(file("CONTRACT"), scanned());
 
-        assertThat(r.status()).isEqualTo(Status.CONCLUIDO);
+        assertThat(r.status()).isEqualTo(Status.COMPLETED);
         assertThat(r.parser()).isNull();
         assertThat(r.budget()).isNull();
         assertThat(r.cashFlow()).isNull();
@@ -58,27 +58,27 @@ public class FileProcessingServiceTest {
             assertThat(r.cashFlow()).isNull();
             assertThat(r.totalsChecks()).isNotEmpty();
             assertThat(new String(new MessageContract().write(r), java.nio.charset.StandardCharsets.UTF_8))
-                    .contains("\"versao\":2").contains("\"orcado\":\"1585.14\"");
+                    .contains("\"version\":3").contains("\"budgeted\":\"1585.14\"");
         }
         Path cashFlow = privateDir.resolve("fluxo-caixa-2026-09.documento-lido.json");
         if (Files.exists(cashFlow)) {
-            ProcessingResultMessage r = service.parse(file("BALANCETE"),
+            ProcessingResultMessage r = service.parse(file("TRIAL_BALANCE"),
                     new ReaderContract().convert(Files.readString(cashFlow)));
             assertThat(r.parser()).isEqualTo("fluxo-caixa-protest");
             assertThat(r.budget()).isNull();
             assertThat(r.cashFlow().entryCount()).isEqualTo(423);
             assertThat(new String(new MessageContract().write(r), java.nio.charset.StandardCharsets.UTF_8))
-                    .contains("\"recebimentoCota\":true");
+                    .contains("\"condoFeeReceipt\":true");
         }
     }
 
     private static ReadDocument scanned() {
         return new ReadDocument("1", "leitor-py", new ReadDocument.FileInfo("x.pdf", "a".repeat(64), 10), "pdf",
-                List.of(new Page(1, 595, 842, "sem_texto", List.of())), List.of(), List.of());
+                List.of(new Page(1, 595, 842, "no_text", List.of())), List.of(), List.of());
     }
 
     private static FileReceivedMessage file(String category) {
-        return new FileReceivedMessage(1, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), category, "x.pdf",
+        return new FileReceivedMessage(3, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), category, "x.pdf",
                 "c/x.pdf", "a".repeat(64));
     }
 }

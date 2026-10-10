@@ -69,7 +69,7 @@ class NameSuggestionTest {
 
     @Test
     void separateApportionmentAndFundsAreNotCandidates() {
-        assertThat(candidates).noneMatch(l -> l.getMark() == BudgetLineMark.RATEIO_A_PARTE);
+        assertThat(candidates).noneMatch(l -> l.getMark() == BudgetLineMark.SEPARATE_APPORTIONMENT);
         assertThat(candidates).noneMatch(l -> l.getEffectiveCode().startsWith("1.9"));
         assertThat(suggestion.suggest("FUNDO DE RESERVA", candidates)).isInstanceOf(NameSuggestion.NoSuggestion.class);
     }
@@ -83,7 +83,7 @@ class NameSuggestionTest {
 
     private static BudgetLine extraLine(String code, String account, String description) {
         var budget = new Budget(UUID.randomUUID(), UUID.randomUUID(), "b".repeat(64));
-        return new BudgetLine(budget, 999, 1, BudgetLineType.LINHA, code, account, null, null, description,
+        return new BudgetLine(budget, 999, 1, BudgetLineType.LINE, code, account, null, null, description,
                 java.math.BigDecimal.ZERO.setScale(2), java.math.BigDecimal.ONE.setScale(2), null, null);
     }
 }

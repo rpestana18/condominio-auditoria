@@ -151,7 +151,7 @@ class AiConfigurationControllerTest {
     }
 
     private static AiConfigurationRequest request(String key) {
-        return new AiConfigurationRequest(AiMode.MCP_EXTERNO, new AiAssistantRequest(
+        return new AiConfigurationRequest(AiMode.EXTERNAL_MCP, new AiAssistantRequest(
                 new AiAnswersRequest(AiMode.API_KEY, "anthropic", null, key, null),
                 new AiEmbeddingsRequest(AiMode.LOCAL, "ollama-local", null)));
     }

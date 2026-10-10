@@ -46,7 +46,7 @@ import org.springframework.stereotype.Service;
  * Asks the Assistant chat (RF-04.8 to 04.16; ADR 0003, Decision 5.2). Who checks what:
  * <ol>
  * <li>api: access to the condominium (the role was already checked in the API), feature enabled, effective answers
- * mode API_KEY with a key. MCP_EXTERNO, DESLIGADO, LOCAL or no key = 409 without calling the rag;</li>
+ * mode API_KEY with a key. EXTERNAL_MCP, OFF, LOCAL or no key = 409 without calling the rag;</li>
  * <li>rag: search, model with tools (which call the api's Consulta with the same token) and validation;</li>
  * <li>api: second barrier on the citations, usage record and JSON response.</li>
  * </ol>
@@ -131,8 +131,8 @@ public class AssistantQuestionService {
     static void requireChatAvailable(Effective config) {
         AiMode mode = config.answers().effectiveMode();
         String message = switch (mode) {
-            case MCP_EXTERNO -> EXTERNAL_MCP_MESSAGE;
-            case DESLIGADO -> AI_OFF_MESSAGE;
+            case EXTERNAL_MCP -> EXTERNAL_MCP_MESSAGE;
+            case OFF -> AI_OFF_MESSAGE;
             case LOCAL -> LOCAL_MESSAGE;
             case API_KEY -> config.answers().chatAvailable() ? null : NO_KEY_MESSAGE;
         };
@@ -152,7 +152,7 @@ public class AssistantQuestionService {
                         .setModelo(Objects.requireNonNullElse(r.model(), ""))
                         .setChaveCifrada(ByteString.copyFrom(r.encryptedKey()))
                         .setModeloEmbeddings(e.mode() == AiMode.LOCAL ? Objects.requireNonNullElse(e.model(), "") : "")
-                        .setModoBusca(e.mode() == AiMode.DESLIGADO ? ModoBusca.MODO_BUSCA_PALAVRA
+                        .setModoBusca(e.mode() == AiMode.OFF ? ModoBusca.MODO_BUSCA_PALAVRA
                                 : ModoBusca.MODO_BUSCA_HIBRIDA));
         List<ConversationTurnRequest> history = RagRequests.orEmpty(request.history()).stream().filter(Objects::nonNull).toList();
         for (ConversationTurnRequest t : history.subList(Math.max(0, history.size() - historyTurns), history.size())) {
@@ -170,7 +170,7 @@ public class AssistantQuestionService {
     /**
      * Second barrier: drops chunks of files that are not the condominium's or no longer exist, renumbers the citations
      * (1, 2, ... in the order of the cited chunks), removes a paragraph left without a citation and, if nothing is
-     * left, answers NAO_ENCONTRADA.
+     * left, answers NOT_FOUND.
      */
     AssistantAnswerResponse filter(UUID condominiumId, RespostaPergunta response, Effective config) {
         String model = !response.getUso().getModelo().isBlank() ? response.getUso().getModelo()
@@ -228,12 +228,12 @@ public class AssistantQuestionService {
             // The suggestion was written for the dropped answer; it no longer applies
             return notFound(null, warning, model);
         }
-        return new AssistantAnswerResponse(AnswerStatus.RESPONDIDA, paragraphs, data, citations, suggestion, warning,
+        return new AssistantAnswerResponse(AnswerStatus.ANSWERED, paragraphs, data, citations, suggestion, warning,
                 model);
     }
 
     private static AssistantAnswerResponse notFound(String suggestion, String warning, String model) {
-        return new AssistantAnswerResponse(AnswerStatus.NAO_ENCONTRADA, List.of(), List.of(), List.of(), suggestion,
+        return new AssistantAnswerResponse(AnswerStatus.NOT_FOUND, List.of(), List.of(), List.of(), suggestion,
                 warning,
                 model);
     }

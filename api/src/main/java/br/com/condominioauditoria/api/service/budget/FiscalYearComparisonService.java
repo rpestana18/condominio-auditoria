@@ -87,7 +87,7 @@ public class FiscalYearComparisonService {
     }
 
     /**
-     * {@code ids}: "po:&lt;uuid&gt;" (or just the uuid) and "coluna:&lt;uuid&gt;"; empty = the two most recent fiscal
+     * {@code ids}: "budget:&lt;uuid&gt;" (or just the uuid) and "column:&lt;uuid&gt;"; empty = the two most recent fiscal
      * years. Null {@code fundId} = all.
      */
     @Transactional(readOnly = true)
@@ -130,30 +130,30 @@ public class FiscalYearComparisonService {
             List<String> months = new ArrayList<>();
             if (cumulative != null && sameMonths) {
                 cumulative.months().stream()
-                        .filter(m -> !m.extended() && m.status() == MonthStatus.COM_FLUXO
+                        .filter(m -> !m.extended() && m.status() == MonthStatus.WITH_CASH_FLOW
                                 && common.contains(YearMonth.parse(m.month()).getMonth()))
                         .forEach(m -> {
                             BudgetVsActualResponse r = budgetVsActual.calculate(condominiumId, m.month(),
                                     budgetId).result();
-                            if (r.status() == BudgetVsActualStatus.CALCULADO) {
+                            if (r.status() == BudgetVsActualStatus.CALCULATED) {
                                 period.add(r);
                                 months.add(m.month());
                             }
                         });
-            } else if (cumulative != null && cumulative.status() == BudgetVsActualStatus.CALCULADO) {
+            } else if (cumulative != null && cumulative.status() == BudgetVsActualStatus.CALCULATED) {
                 period.add(cumulative);
                 months.addAll(cumulative.summedMonths());
             }
             Map<UUID, LineItem> ofLine = lineItems.findByBudgetId(budgetId).stream()
-                    .filter(l -> l.getStatus() == BudgetItemStatus.CONFIRMADO && catalog.containsKey(l.getBudgetItemId()))
+                    .filter(l -> l.getStatus() == BudgetItemStatus.CONFIRMED && catalog.containsKey(l.getBudgetItemId()))
                     .collect(Collectors.toMap(BudgetLineItem::getBudgetLineId, l -> catalog.get(l.getBudgetItemId())));
             Integer open = x.column() ? null : (int) allFindings.stream()
-                    .filter(a -> a.getStatus() == FindingStatus.ABERTO && !a.getReferenceMonth().isBefore(x.start())
+                    .filter(a -> a.getStatus() == FindingStatus.OPEN && !a.getReferenceMonth().isBefore(x.start())
                             && !a.getReferenceMonth().isAfter(x.end())).count();
             String label = x.column() ? PrintedColumn.of(x.budget(), lines.findByBudgetIdOrderByPosition(budgetId))
                     .map(PrintedColumn::label).orElseThrow()
                     : FiscalYearService.label(x.start(), x.end());
-            inputs.add(new Input(x.id(), x.column() ? FiscalYearType.COLUNA_IMPRESSA : FiscalYearType.PO, label,
+            inputs.add(new Input(x.id(), x.column() ? FiscalYearType.PRINTED_COLUMN : FiscalYearType.PO, label,
                     budgetId, x.budget().getVersion(), x.start(), x.end(),
                             lines.findByBudgetIdOrderByPosition(budgetId),
                     fundLinks.findByBudgetId(budgetId).stream()
@@ -165,8 +165,9 @@ public class FiscalYearComparisonService {
     }
 
     private Chosen choose(UUID condominiumId, String id) {
-        boolean column = id.startsWith("coluna:");
-        String text = id.startsWith("po:") ? id.substring(3) : column ? id.substring(7) : id;
+        boolean column = id.startsWith("column:");
+        String text = id.startsWith("budget:") ? id.substring("budget:".length())
+                : column ? id.substring("column:".length()) : id;
         UUID budgetId;
         try {
             budgetId = UUID.fromString(text);
@@ -175,12 +176,12 @@ public class FiscalYearComparisonService {
                     "Exercício deve ser po:<id> ou coluna:<id>: " + id);
         }
         Budget budget = budgets.findByIdAndCondominiumId(budgetId, condominiumId)
-                .filter(p -> p.getStatus() == BudgetStatus.CONFIRMADA && p.getFiscalYearStart() != null)
+                .filter(p -> p.getStatus() == BudgetStatus.CONFIRMED && p.getFiscalYearStart() != null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Exercício não encontrado (PO confirmada): " + id));
         if (column && PrintedColumn.of(budget, lines.findByBudgetIdOrderByPosition(budget.getId())).isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "A PO não tem a coluna \"Orçado anterior\": " + id);
         }
-        return new Chosen((column ? "coluna:" : "po:") + budget.getId(), budget, column);
+        return new Chosen((column ? "column:" : "budget:") + budget.getId(), budget, column);
     }
 }

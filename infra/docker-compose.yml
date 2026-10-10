@@ -8,9 +8,9 @@
 #   Claude ──MCP──▶ mcp ─┘ gRPC           └──HTTP──▶ ollama (embeddings bge-m3)
 #
 # Fluxos:
-#   leitura contábil: api ─ArquivoRecebido (rag.arquivos-recebidos)─▶ rag ─resultado (backend.resultados)─▶ api
-#   indexação (ADR 0003): api ─IndexarArquivo (rag.indexacao)─▶ rag ─▶ leitor + ollama ─▶ schema rag no banco
-#                         rag ─ResultadoIndexacao (backend.indexacao)─▶ api (situação da indexação do arquivo na API)
+#   leitura contábil: api ─ArquivoRecebido (rag.files-received)─▶ rag ─resultado (api.processing-results)─▶ api
+#   indexação (ADR 0003): api ─IndexarArquivo (rag.indexing)─▶ rag ─▶ leitor + ollama ─▶ schema rag no banco
+#                         rag ─ResultadoIndexacao (api.indexing-results)─▶ api (situação da indexação do arquivo na API)
 #   busca nos documentos: Claude ─buscar_documentos─▶ mcp ─gRPC Consulta.BuscarDocumentos─▶ api
 #                         api ─gRPC Assistente.Buscar (rag:9091)─▶ rag (híbrida; só por palavra sem Ollama)
 #

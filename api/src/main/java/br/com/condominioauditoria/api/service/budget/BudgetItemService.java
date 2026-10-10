@@ -56,7 +56,7 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * The condominium's budget item catalog and the item of each line of the confirmed budgets (RF-11.7; ADR 0005, Decision
  * 1). The first confirmed budget creates one item per line, already confirmed. In the others, the suggestion ({@link
- * BudgetItemSuggestion}) always comes in as SUGERIDO and only counts in the comparison after the Admin confirms it.
+ * BudgetItemSuggestion}) always comes in as SUGGESTED and only counts in the comparison after the Admin confirms it.
  * Every change writes an event to the trail (insert-only). Items do not change any fiscal year's budget vs. actual: no
  * recalculation is triggered.
  */
@@ -126,10 +126,10 @@ public class BudgetItemService {
         List<BudgetLineItemResponse> all = ctx.lines().stream()
                 .map(l -> lineWithItem(l, ctx.linked().get(l.line().getId()), catalog)).toList();
         BudgetItemSummaryResponse summary = new BudgetItemSummaryResponse(all.size(), count(all,
-                BudgetItemStatus.CONFIRMADO),
-                count(all, BudgetItemStatus.SUGERIDO), count(all, BudgetItemStatus.RECUSADO),
+                BudgetItemStatus.CONFIRMED),
+                count(all, BudgetItemStatus.SUGGESTED), count(all, BudgetItemStatus.REJECTED),
                 (int) all.stream().filter(l -> l.status() == null).count());
-        BudgetItemFilter f = filter == null ? BudgetItemFilter.TODAS : filter;
+        BudgetItemFilter f = filter == null ? BudgetItemFilter.ALL : filter;
         return new BudgetItemsResponse(ctx.budget().getId(), ctx.budget().getVersion(), summary,
                 all.stream().filter(l -> matches(l, f)).toList());
     }
@@ -160,7 +160,7 @@ public class BudgetItemService {
                 BudgetItem r = new BudgetItem(budget.getCondominiumId(), nameOf(l), l.group(), l.line().getId(),
                         username, now);
                 items.save(r);
-                link(l.line(), null, r, BudgetItemStatus.CONFIRMADO, BudgetItemSource.PRIMEIRA_PO,
+                link(l.line(), null, r, BudgetItemStatus.CONFIRMED, BudgetItemSource.FIRST_BUDGET,
                         "primeira PO confirmada do condomínio: a linha vira rubrica", username, now);
             }
             log.info("Rubricas: primeira PO {} do condomínio {}, {} rubricas criadas", budget.getId(),
@@ -175,7 +175,7 @@ public class BudgetItemService {
         List<Confirmed> fromPrevious = new ArrayList<>();
         List<Confirmed> fromOthers = new ArrayList<>();
         Map<UUID, List<BudgetLineItem>> confirmedByBudget = lineItems
-                .findByCondominiumIdAndStatus(budget.getCondominiumId(), BudgetItemStatus.CONFIRMADO).stream()
+                .findByCondominiumIdAndStatus(budget.getCondominiumId(), BudgetItemStatus.CONFIRMED).stream()
                 .filter(lineItem -> !lineItem.getBudgetId().equals(budget.getId()))
                 .collect(Collectors.groupingBy(BudgetLineItem::getBudgetId, LinkedHashMap::new, Collectors.toList()));
         confirmedByBudget.forEach((budgetId, linked) -> {
@@ -203,9 +203,9 @@ public class BudgetItemService {
         for (LineWithGroup l : newLines) {
             var r = results.get(l.line().getId());
             if (r instanceof BudgetItemSuggestion.Suggested s && catalog.containsKey(s.budgetItemId())) {
-                link(l.line(), null, catalog.get(s.budgetItemId()), BudgetItemStatus.SUGERIDO, s.source(), s.reason(),
+                link(l.line(), null, catalog.get(s.budgetItemId()), BudgetItemStatus.SUGGESTED, s.source(), s.reason(),
                         username, now);
-                if (s.source() == BudgetItemSource.VERSAO_ANTERIOR) {
+                if (s.source() == BudgetItemSource.PREVIOUS_VERSION) {
                     previousVersion++;
                 } else {
                     byAccount++;
@@ -250,8 +250,8 @@ public class BudgetItemService {
         } else {
             r = item(condominiumId, request.budgetItemId());
         }
-        BudgetItemStatus status = request.confirm() == null || request.confirm() ? BudgetItemStatus.CONFIRMADO
-                : BudgetItemStatus.SUGERIDO;
+        BudgetItemStatus status = request.confirm() == null || request.confirm() ? BudgetItemStatus.CONFIRMED
+                : BudgetItemStatus.SUGGESTED;
         BudgetLineItem lineItem = link(l.line(), ctx.linked().get(lineId), r, status, BudgetItemSource.MANUAL,
                 "escolhida pelo Admin", username, now);
         return lineWithItem(l, lineItem, Map.of(r.getId(), r));
@@ -265,8 +265,8 @@ public class BudgetItemService {
         if (request == null || request.action() == null || request.lines() == null || request.lines().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "Informe a ação e as linhas");
         }
-        BudgetItemStatus newStatus = request.action() == BudgetItemBatchAction.CONFIRMAR ? BudgetItemStatus.CONFIRMADO
-                : BudgetItemStatus.RECUSADO;
+        BudgetItemStatus newStatus = request.action() == BudgetItemBatchAction.CONFIRM ? BudgetItemStatus.CONFIRMED
+                : BudgetItemStatus.REJECTED;
         Map<UUID, BudgetItem> catalog = items.findByCondominiumIdOrderByName(condominiumId).stream()
                 .collect(Collectors.toMap(BudgetItem::getId, Function.identity()));
         Instant now = Instant.now();
@@ -280,7 +280,7 @@ public class BudgetItemService {
             } else if (lineItem == null) {
                 skipped.add(new SkippedLineResponse(lineId, "linha sem rubrica: escolha a rubrica"));
             } else if (lineItem.getStatus() == newStatus) {
-                skipped.add(new SkippedLineResponse(lineId, "já está " + newStatus.name().toLowerCase()));
+                skipped.add(new SkippedLineResponse(lineId, "já está " + newStatus.label()));
             } else {
                 BudgetItem r = catalog.get(lineItem.getBudgetItemId());
                 BudgetItemStatus before = lineItem.getStatus();
@@ -320,16 +320,16 @@ public class BudgetItemService {
         current.change(item, status, source, reason, username, now);
         lineItems.save(current);
         events.save(BudgetItemEvent.forLine(line, current,
-                itemChanged ? BudgetItemAction.ALTERADO : actionForStatus(status),
+                itemChanged ? BudgetItemAction.CHANGED : actionForStatus(status),
                 before, statusBefore, item, username, now));
         return current;
     }
 
     private static BudgetItemAction actionForStatus(BudgetItemStatus status) {
         return switch (status) {
-            case SUGERIDO -> BudgetItemAction.SUGERIDO;
-            case CONFIRMADO -> BudgetItemAction.CONFIRMADO;
-            case RECUSADO -> BudgetItemAction.RECUSADO;
+            case SUGGESTED -> BudgetItemAction.SUGGESTED;
+            case CONFIRMED -> BudgetItemAction.CONFIRMED;
+            case REJECTED -> BudgetItemAction.REJECTED;
         };
     }
 
@@ -377,7 +377,7 @@ public class BudgetItemService {
             return Optional.empty();
         }
         return budgets.findByCondominiumIdAndStatusIn(budget.getCondominiumId(),
-                        EnumSet.of(BudgetStatus.CONFIRMADA, BudgetStatus.SUBSTITUIDA)).stream()
+                        EnumSet.of(BudgetStatus.CONFIRMED, BudgetStatus.SUPERSEDED)).stream()
                 .filter(p -> !p.getId().equals(budget.getId()) && p.getVersion() != null && p.getVersion() < budget.getVersion())
                 .filter(p -> p.getFiscalYearStart() != null && !p.getFiscalYearStart().isAfter(budget.getFiscalYearEnd())
                         && !p.getFiscalYearEnd().isBefore(budget.getFiscalYearStart()))
@@ -401,12 +401,12 @@ public class BudgetItemService {
 
     private static boolean matches(BudgetLineItemResponse l, BudgetItemFilter f) {
         return switch (f) {
-            case TODAS -> true;
-            case PENDENTES -> l.status() != BudgetItemStatus.CONFIRMADO;
-            case SUGERIDO -> l.status() == BudgetItemStatus.SUGERIDO;
-            case CONFIRMADO -> l.status() == BudgetItemStatus.CONFIRMADO;
-            case RECUSADO -> l.status() == BudgetItemStatus.RECUSADO;
-            case SEM_RUBRICA -> l.status() == null;
+            case ALL -> true;
+            case PENDING -> l.status() != BudgetItemStatus.CONFIRMED;
+            case SUGGESTED -> l.status() == BudgetItemStatus.SUGGESTED;
+            case CONFIRMED -> l.status() == BudgetItemStatus.CONFIRMED;
+            case REJECTED -> l.status() == BudgetItemStatus.REJECTED;
+            case NO_ITEM -> l.status() == null;
         };
     }
 

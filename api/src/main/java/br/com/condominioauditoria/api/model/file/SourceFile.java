@@ -74,7 +74,7 @@ public class SourceFile {
         this.contentType = contentType;
         this.uploadedBy = uploadedBy;
         this.uploadedAt = Instant.now();
-        this.status = FileStatus.PENDENTE;
+        this.status = FileStatus.PENDING;
         this.processingId = UUID.randomUUID();
         this.queuedAt = this.uploadedAt;
         this.attempts = 1;
@@ -83,7 +83,7 @@ public class SourceFile {
 
     /** New read from scratch (reprocess): results of previous reads are ignored from now on. */
     public void requestProcessing() {
-        status = FileStatus.PENDENTE;
+        status = FileStatus.PENDING;
         message = null;
         processingId = UUID.randomUUID();
         queuedAt = Instant.now();
@@ -107,7 +107,7 @@ public class SourceFile {
 
     /** New indexing request (upload, reprocess, reindex): results of previous requests are ignored from now on. */
     public void requestIndexing() {
-        indexingStatus = IndexingStatus.NA_FILA;
+        indexingStatus = IndexingStatus.QUEUED;
         indexingReason = null;
         indexingPages = null;
         indexingChunks = null;
@@ -129,15 +129,15 @@ public class SourceFile {
 
     /** The rag started. Only leaves Queued: a late "indexing" does not undo a result that already arrived. */
     public void startIndexing() {
-        if (indexingStatus == IndexingStatus.NA_FILA) {
-            indexingStatus = IndexingStatus.INDEXANDO;
+        if (indexingStatus == IndexingStatus.QUEUED) {
+            indexingStatus = IndexingStatus.INDEXING;
             indexingUpdatedAt = Instant.now();
         }
     }
 
     /** Final indexing result (Indexed, No text, Withdrawn or Error), with what the rag reported. */
     public void completeIndexing(IndexingStatus status, String reason, Integer pages, Integer chunks) {
-        if (status == IndexingStatus.NA_FILA || status == IndexingStatus.INDEXANDO) {
+        if (status == IndexingStatus.QUEUED || status == IndexingStatus.INDEXING) {
             throw new IllegalArgumentException("Situação não é final: " + status);
         }
         indexingStatus = status;
@@ -148,11 +148,11 @@ public class SourceFile {
     }
 
     public void failIndexing(String reason) {
-        completeIndexing(IndexingStatus.ERRO, reason, null, null);
+        completeIndexing(IndexingStatus.ERROR, reason, null, null);
     }
 
     public void startProcessing() {
-        status = FileStatus.PROCESSANDO;
+        status = FileStatus.PROCESSING;
         message = null;
     }
 
@@ -168,7 +168,7 @@ public class SourceFile {
     }
 
     public void fail(String reason) {
-        status = FileStatus.FALHOU;
+        status = FileStatus.FAILED;
         message = reason;
         processedAt = Instant.now();
     }

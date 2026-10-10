@@ -22,17 +22,17 @@ import java.util.stream.Collectors;
  * not match. Same format as the cash flow checks: code, ok and a readable detail with both sums.
  *
  * <ul>
- *   <li>{@code SUBTOTAL_GRUPO}, one per group: sum of the lines = printed subtotal.</li>
+ *   <li>{@code GROUP_SUBTOTAL}, one per group: sum of the lines = printed subtotal.</li>
  *   <li>{@code TOTAL}: sum of the printed subtotals = printed total.</li>
- *   <li>{@code PREVISTO_MES}: total − funds = sum of the subtotals of the other groups.</li>
- *   <li>{@code FUNDO_TAXA}: each fund = rate of the "%" column over the monthly planned (RF-03.1.3).</li>
- *   <li>{@code CODIGO_REPETIDO}: line code printed more than once.</li>
+ *   <li>{@code MONTHLY_PLANNED}: total − funds = sum of the subtotals of the other groups.</li>
+ *   <li>{@code FUND_RATE}: each fund = rate of the "%" column over the monthly planned (RF-03.1.3).</li>
+ *   <li>{@code REPEATED_CODE}: line code printed more than once.</li>
  * </ul>
  *
  * <p>The comparison is exact, to the cent, with no tolerance: a printed subtotal rounded at the source shows up as a
  * difference, with both sums, and the Admin decides (RF-03.1.2, Q29).
  *
- * <p>The groups are the lines read after each GRUPO line, in document order (not by the code prefix, which may be
+ * <p>The groups are the lines read after each GROUP line, in document order (not by the code prefix, which may be
  * repeated or wrong).
  */
 public final class BudgetCheck {
@@ -50,7 +50,7 @@ public final class BudgetCheck {
             result.add(subtotalCheck(g));
         }
         if (!e.withoutGroup().isEmpty()) {
-            result.add(new TotalsCheck("LINHA_SEM_GRUPO", "Toda linha pertence a um grupo", false,
+            result.add(new TotalsCheck("LINE_WITHOUT_GROUP", "Toda linha pertence a um grupo", false,
                     "linhas antes do primeiro grupo: " + e.withoutGroup().stream().map(BudgetLine::printedCode)
                             .collect(Collectors.joining(", "))));
         }
@@ -79,10 +79,10 @@ public final class BudgetCheck {
         String description = "Soma das linhas do grupo " + group.printedCode() + " = subtotal impresso";
         String name = group.printedCode() + " " + group.description();
         if (sum.compareTo(printed) == 0) {
-            return new TotalsCheck("SUBTOTAL_GRUPO", description, true,
+            return new TotalsCheck("GROUP_SUBTOTAL", description, true,
                     "%s: soma das linhas %s; impresso %s".formatted(name, format(sum), format(printed)));
         }
-        return new TotalsCheck("SUBTOTAL_GRUPO", description, false,
+        return new TotalsCheck("GROUP_SUBTOTAL", description, false,
                 "%s: soma das linhas %s; impresso %s; diferença %s".formatted(name, format(sum),
                         format(printed), format(printed.subtract(sum))));
     }
@@ -102,12 +102,12 @@ public final class BudgetCheck {
     /**
      * Total − funds, checked against the sum of the printed subtotals of the other groups. When the sum of those
      * groups' lines is different (rounding at the source), the detail shows both; the difference itself already shows
-     * up in the group's SUBTOTAL_GRUPO.
+     * up in the group's GROUP_SUBTOTAL.
      */
     private static TotalsCheck monthlyPlannedCheck(Structure e) {
         String description = "Previsto do mês = total menos os fundos";
         if (e.total() == null || e.funds().isEmpty()) {
-            return new TotalsCheck("PREVISTO_MES", description, false,
+            return new TotalsCheck("MONTHLY_PLANNED", description, false,
                     e.total() == null ? "linha de total não encontrada" : "grupo de fundos não encontrado");
         }
         BigDecimal total = e.total().budgeted();
@@ -123,7 +123,7 @@ public final class BudgetCheck {
         if (lines.compareTo(planned) != 0) {
             detail += "; soma das linhas dos demais grupos " + format(lines);
         }
-        return new TotalsCheck("PREVISTO_MES", description, ok, detail);
+        return new TotalsCheck("MONTHLY_PLANNED", description, ok, detail);
     }
 
     /** RF-03.1.3: each fund is the rate printed in the "%" column over the monthly planned (total − funds). */
@@ -144,7 +144,7 @@ public final class BudgetCheck {
             parts.add("%s %s: %s%% de %s = %s; impresso %s".formatted(l.printedCode(), l.description(),
                     format(rate.get()), format(planned), format(expected), format(l.budgeted())));
         }
-        return new TotalsCheck("FUNDO_TAXA", "Cada fundo = taxa da coluna % sobre o previsto do mês", ok,
+        return new TotalsCheck("FUND_RATE", "Cada fundo = taxa da coluna % sobre o previsto do mês", ok,
                 parts.isEmpty() ? "grupo de fundos sem linhas" : String.join("; ", parts));
     }
 
@@ -157,7 +157,7 @@ public final class BudgetCheck {
                 .map(en -> "%s aparece %d vezes (ordens %s)".formatted(en.getKey(), en.getValue().size(),
                         joinSequences(en.getValue())))
                 .toList();
-        return new TotalsCheck("CODIGO_REPETIDO", "Nenhum código de linha impresso mais de uma vez",
+        return new TotalsCheck("REPEATED_CODE", "Nenhum código de linha impresso mais de uma vez",
                 repeatedCodes.isEmpty(), repeatedCodes.isEmpty() ? "nenhum código repetido" : String.join("; ",
                         repeatedCodes));
     }
@@ -202,11 +202,11 @@ public final class BudgetCheck {
             for (BudgetLine l : budget.lines()) {
                 switch (l.type()) {
                     case TOTAL -> total = total == null ? l : total;
-                    case GRUPO -> {
+                    case GROUP -> {
                         current = new Group(l, new ArrayList<>());
                         groups.add(current);
                     }
-                    case LINHA -> {
+                    case LINE -> {
                         if (current == null) {
                             withoutGroup.add(l);
                         } else {

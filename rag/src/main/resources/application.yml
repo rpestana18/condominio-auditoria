@@ -35,7 +35,7 @@ spring:
         # Quantos arquivos são lidos ao mesmo tempo; cada um pega uma mensagem por vez
         concurrency: ${RAG_PARALELISMO:2}
         prefetch: 1
-        # Erro inesperado (ex.: fila do backend fora do ar): tenta de novo e depois manda para a fila .erro
+        # Erro inesperado (ex.: fila do backend fora do ar): tenta de novo e depois manda para a fila .error
         default-requeue-rejected: false
         retry:
           enabled: true

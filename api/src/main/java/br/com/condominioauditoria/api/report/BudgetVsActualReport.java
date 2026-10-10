@@ -46,7 +46,7 @@ public record BudgetVsActualReport(String condominium, String period, String fun
             String generatedBy,
             Instant generatedAt) {
         BudgetVsActualResponse r = calculation.result();
-        boolean calculated = r.status() == BudgetVsActualStatus.CALCULADO;
+        boolean calculated = r.status() == BudgetVsActualStatus.CALCULATED;
         List<PendingItem> pendingItems = new ArrayList<>();
         if (calculated) {
             calculation.evidence().getOrDefault(BudgetVsActualCalculator.TARGET_TO_REALLOCATE, List.of())

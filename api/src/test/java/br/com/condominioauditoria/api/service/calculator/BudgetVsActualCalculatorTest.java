@@ -71,7 +71,7 @@ class BudgetVsActualCalculatorTest {
 
         var r = calculate(budget, new Month(SEPTEMBER), List.of());
 
-        assertThat(r.status()).isEqualTo(BudgetVsActualStatus.SEM_FLUXO);
+        assertThat(r.status()).isEqualTo(BudgetVsActualStatus.NO_CASH_FLOW);
         assertThat(r.message()).isEqualTo("Sem fluxo carregado para 09/2026");
         assertThat(r.totals()).isNull();
         assertThat(r.groups()).isEmpty();
@@ -83,20 +83,20 @@ class BudgetVsActualCalculatorTest {
         assertThat(calculate(budget, new Month(YearMonth.of(2026, 4)), List.of()).message())
                 .isEqualTo("Sem PO aprovada para 04/2026");
         assertThat(BudgetVsActualCalculator.calculate(input(null, new Month(SEPTEMBER), List.of(), OPERATING)).result()
-                .status()).isEqualTo(BudgetVsActualStatus.SEM_PO);
+                .status()).isEqualTo(BudgetVsActualStatus.NO_BUDGET);
 
         Budget read = new Budget(CONDOMINIUM, UUID.randomUUID(), "a".repeat(64));
-        read.recordReading("po-protest", "PO", null, null, null, BudgetStatus.LIDA, null, null, BigDecimal.ONE,
+        read.recordReading("po-protest", "PO", null, null, null, BudgetStatus.READ, null, null, BigDecimal.ONE,
                 new BigDecimal("0.01"), Instant.EPOCH);
         var unconfirmed = BudgetVsActualCalculator.calculate(new Input(read, null, budget.lines, List.of(), Map.of(),
                 Map.of(), OPERATING, List.of(), List.of(), List.of(), null, List.of(), new Month(SEPTEMBER))).result();
-        assertThat(unconfirmed.status()).isEqualTo(BudgetVsActualStatus.PO_NAO_CONFIRMADA);
+        assertThat(unconfirmed.status()).isEqualTo(BudgetVsActualStatus.BUDGET_NOT_CONFIRMED);
         assertThat(unconfirmed.totals()).isNull();
 
         var withoutOperatingFund = BudgetVsActualCalculator.calculate(input(budget, new Month(SEPTEMBER),
                 List.of(cashFlow(septemberFile, SEPTEMBER)),
                 null)).result();
-        assertThat(withoutOperatingFund.status()).isEqualTo(BudgetVsActualStatus.SEM_FUNDO_ORDINARIO);
+        assertThat(withoutOperatingFund.status()).isEqualTo(BudgetVsActualStatus.NO_OPERATING_FUND);
     }
 
     @Test
@@ -163,11 +163,11 @@ class BudgetVsActualCalculatorTest {
 
         var r = calculate(budget, new Month(SEPTEMBER), List.of(cashFlow(septemberFile, SEPTEMBER)));
         var reserve = r.funds().stream().filter(f -> RESERVE.equals(f.fundId())).findFirst().orElseThrow();
-        assertThat(reserve.status()).isEqualTo(FundComparisonStatus.COMPARADO);
+        assertThat(reserve.status()).isEqualTo(FundComparisonStatus.COMPARED);
         assertThat(reserve.collected()).isEqualByComparingTo("300.00");
         assertThat(reserve.credits()).isEqualByComparingTo("400.00");
         assertThat(r.funds()).anySatisfy(f -> {
-            assertThat(f.status()).isEqualTo(FundComparisonStatus.LINHA_SEM_FUNDO);
+            assertThat(f.status()).isEqualTo(FundComparisonStatus.LINE_WITHOUT_FUND);
             assertThat(f.lineCode()).isEqualTo("1.9.2");
             assertThat(f.collected()).isNull();
         });
@@ -179,7 +179,7 @@ class BudgetVsActualCalculatorTest {
         field.set(fee, null);
         var old = calculate(budget, new Month(SEPTEMBER), List.of(cashFlow(septemberFile, SEPTEMBER)));
         assertThat(old.funds()).anySatisfy(f -> {
-            assertThat(f.status()).isEqualTo(FundComparisonStatus.REPROCESSAR_FLUXO);
+            assertThat(f.status()).isEqualTo(FundComparisonStatus.REPROCESS_CASH_FLOW);
             assertThat(f.collected()).isNull();
         });
     }
@@ -207,29 +207,29 @@ class BudgetVsActualCalculatorTest {
     private static TestBudget simpleBudget(String budgeted) {
         Budget p = confirmed();
         BudgetLine total = line(p, 1, BudgetLineType.TOTAL, "1", null, "TOTAL", budgeted);
-        BudgetLine group = line(p, 2, BudgetLineType.GRUPO, "1.1", null, "PESSOAL", budgeted);
-        BudgetLine l = line(p, 3, BudgetLineType.LINHA, "1.1.1", "1545 - Salários", "Salários", budgeted);
+        BudgetLine group = line(p, 2, BudgetLineType.GROUP, "1.1", null, "PESSOAL", budgeted);
+        BudgetLine l = line(p, 3, BudgetLineType.LINE, "1.1.1", "1545 - Salários", "Salários", budgeted);
         AccountMapping d = new AccountMapping(p, "1001", "SALARIO", MappingTarget.line(l),
-                AccountMappingStatus.CONFIRMADO,
+                AccountMappingStatus.CONFIRMED,
                 AccountMappingSource.ADMIN, null, false, "admin", Instant.EPOCH);
         return new TestBudget(p, List.of(total, group, l), List.of(d), Map.of());
     }
 
     private static TestBudget budgetWithFund() {
         Budget p = confirmed();
-        BudgetLine group = line(p, 1, BudgetLineType.GRUPO, "1.1", null, "PESSOAL", "1000.00");
-        BudgetLine l = line(p, 2, BudgetLineType.LINHA, "1.1.1", "1545 - Salários", "Salários", "1000.00");
-        BudgetLine funds = new BudgetLine(p, 3, 1, BudgetLineType.GRUPO, "1.9", null, "Fundos", null,
+        BudgetLine group = line(p, 1, BudgetLineType.GROUP, "1.1", null, "PESSOAL", "1000.00");
+        BudgetLine l = line(p, 2, BudgetLineType.LINE, "1.1.1", "1545 - Salários", "Salários", "1000.00");
+        BudgetLine funds = new BudgetLine(p, 3, 1, BudgetLineType.GROUP, "1.9", null, "Fundos", null,
                 "Fundos do Condomínio",
                 BigDecimal.ZERO.setScale(2), new BigDecimal("50.00"), null, null);
-        BudgetLine reserve = line(p, 4, BudgetLineType.LINHA, "1.9.1", null, "Fundo de Reserva", "30.00");
-        BudgetLine works = line(p, 5, BudgetLineType.LINHA, "1.9.2", null, "Fundo de Obras", "20.00");
+        BudgetLine reserve = line(p, 4, BudgetLineType.LINE, "1.9.1", null, "Fundo de Reserva", "30.00");
+        BudgetLine works = line(p, 5, BudgetLineType.LINE, "1.9.2", null, "Fundo de Obras", "20.00");
         return new TestBudget(p, List.of(group, l, funds, reserve, works), List.of(), Map.of(reserve.getId(), RESERVE));
     }
 
     private static Budget confirmed() {
         Budget p = new Budget(CONDOMINIUM, UUID.randomUUID(), "a".repeat(64));
-        p.recordReading("po-protest", "PO", null, null, null, BudgetStatus.LIDA, null, null, BigDecimal.ONE,
+        p.recordReading("po-protest", "PO", null, null, null, BudgetStatus.READ, null, null, BigDecimal.ONE,
                 new BigDecimal("0.01"), Instant.EPOCH);
         p.confirm(1, YearMonth.of(2026, 5), YearMonth.of(2027, 4), null, true, null, false, null, "admin",
                 Instant.EPOCH);

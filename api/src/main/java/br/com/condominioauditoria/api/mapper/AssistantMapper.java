@@ -28,11 +28,11 @@ public final class AssistantMapper {
 
     public static ChunkLocationResponse toResponse(Localizacao location) {
         return switch (location.getTipoCase()) {
-            case PAGINA -> new ChunkLocationResponse("PAGINA", location.getPagina().getPagina(), null, null, null,
+            case PAGINA -> new ChunkLocationResponse("PAGE", location.getPagina().getPagina(), null, null, null,
                     null, null, null, "página " + location.getPagina().getPagina());
             case PLANILHA -> {
                 var p = location.getPlanilha();
-                yield new ChunkLocationResponse("PLANILHA", null, p.getAba(), p.getLinhaInicio(), p.getLinhaFim(),
+                yield new ChunkLocationResponse("SHEET", null, p.getAba(), p.getLinhaInicio(), p.getLinhaFim(),
                         null, null, null, "aba " + p.getAba() + ", "
                                 + range("linha", "linhas", p.getLinhaInicio(), p.getLinhaFim()));
             }
@@ -40,21 +40,21 @@ public final class AssistantMapper {
                 var p = location.getParagrafos();
                 String section = p.getSecao().isBlank() ? null : p.getSecao();
                 String description = range("parágrafo", "parágrafos", p.getParagrafoInicio(), p.getParagrafoFim());
-                yield new ChunkLocationResponse("PARAGRAFOS", null, null, null, null, p.getParagrafoInicio(),
+                yield new ChunkLocationResponse("PARAGRAPHS", null, null, null, null, p.getParagrafoInicio(),
                         p.getParagrafoFim(), section, section == null ? description
                                 : "seção " + section + ", " + description);
             }
-            case TIPO_NOT_SET -> new ChunkLocationResponse("PAGINA", null, null, null, null, null, null, null,
+            case TIPO_NOT_SET -> new ChunkLocationResponse("PAGE", null, null, null, null, null, null, null,
                     "localização não informada");
         };
     }
 
-    /** The rag's category; outside the list = OUTROS (the contract only has the api's categories). */
+    /** The rag's category; outside the list = OTHER (the contract only has the api's categories). */
     static FileCategory category(String value) {
         try {
             return FileCategory.valueOf(value.strip().toUpperCase());
         } catch (IllegalArgumentException | NullPointerException e) {
-            return FileCategory.OUTROS;
+            return FileCategory.OTHER;
         }
     }
 

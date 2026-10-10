@@ -93,7 +93,7 @@ Sem o Ollama, a busca continua funcionando só por palavra para o que já foi in
 | A tela de login não abre logo após subir | O Keycloak leva cerca de 30 s para iniciar. Aguarde e recarregue |
 | O arquivo fica em "Falhou" com "O leitor de documentos não respondeu" | Confira com `docker compose ps` se o contêiner `leitor` está de pé e use **Reprocessar** |
 | O arquivo fica em "Na fila" | O serviço `rag` está parado. Suba com `docker compose start rag`: o pedido esperou na fila e é lido na hora |
-| Mensagens na fila `.erro` (painel do RabbitMQ) | Uma leitura ou gravação falhou três vezes. O log do `rag` ou do `backend` diz o motivo |
+| Mensagens na fila `.error` (painel do RabbitMQ) | Uma leitura ou gravação falhou três vezes. O log do `rag` ou do `backend` diz o motivo |
 | "Arquivo já enviado" | O sistema reconhece o mesmo conteúdo pelo hash. É proteção contra duplicidade |
 | Quer ver os logs | `docker compose logs -f backend` (ou `rag`, `mcp`, `leitor`, `fila`, `keycloak`, `banco`) |
 | Linux: erro de permissão ao gravar ou ler em `/dados` | Backend e rag rodam com o usuário 1001. Libere a pasta: `chmod 777 dados` na raiz do projeto |

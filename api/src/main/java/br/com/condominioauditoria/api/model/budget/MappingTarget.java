@@ -8,7 +8,7 @@ import java.util.UUID;
  * Target of a cash flow account: the budget line (by internal id, never by the budget's account) or a special target
  * with the text read, e.g. "AJUSTE (estorno)".
  *
- * @param budgetLineId budget line, only with {@link MappingTargetType#LINHA_PO}
+ * @param budgetLineId budget line, only with {@link MappingTargetType#BUDGET_LINE}
  *
  * @param code effective code of the line, only for the text (matching is by id)
  *
@@ -20,14 +20,14 @@ public record MappingTarget(MappingTargetType type, UUID budgetLineId, String co
 
     public MappingTarget {
         Objects.requireNonNull(type, "tipo");
-        if ((type == MappingTargetType.LINHA_PO) != (budgetLineId != null)) {
-            throw new IllegalArgumentException("Destino LINHA_PO exige a linha da PO; os demais não têm linha");
+        if ((type == MappingTargetType.BUDGET_LINE) != (budgetLineId != null)) {
+            throw new IllegalArgumentException("Destino BUDGET_LINE exige a linha da PO; os demais não têm linha");
         }
         detail = detail == null || detail.isBlank() ? null : detail.trim();
     }
 
     public static MappingTarget line(BudgetLine line) {
-        return new MappingTarget(MappingTargetType.LINHA_PO, line.getId(), line.getEffectiveCode(),
+        return new MappingTarget(MappingTargetType.BUDGET_LINE, line.getId(), line.getEffectiveCode(),
                 line.getDescription(), null);
     }
 
@@ -43,14 +43,14 @@ public record MappingTarget(MappingTargetType type, UUID budgetLineId, String co
 
     /** As shown on screen and in the trail, in the sheet format: "1.7.8 Material hidráulico", "AJUSTE (estorno)". */
     public String text() {
-        if (type == MappingTargetType.LINHA_PO) {
+        if (type == MappingTargetType.BUDGET_LINE) {
             return (code == null ? "linha " + budgetLineId : code) + (description == null ? "" : " " + description);
         }
         String label = switch (type) {
-            case AJUSTE -> "AJUSTE";
-            case A_REALOCAR -> "REALOCAR";
-            case TRANSFERENCIA -> "TRANSFERENCIA";
-            case LINHA_PO -> throw new IllegalStateException();
+            case ADJUSTMENT -> "AJUSTE";
+            case TO_REALLOCATE -> "REALOCAR";
+            case TRANSFER -> "TRANSFERENCIA";
+            case BUDGET_LINE -> throw new IllegalStateException();
         };
         return detail == null ? label : label + " (" + detail + ")";
     }

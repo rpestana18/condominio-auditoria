@@ -13,10 +13,10 @@ import java.util.Optional;
  */
 public final class ReserveFundCapRule {
 
-    public static final String CODE = "FUNDO_RESERVA_ACIMA_TETO";
+    public static final String CODE = "RESERVE_FUND_ABOVE_CAP";
     public static final String VERSION = "1";
-    public static final String PARAMETER = "TETO_FUNDO_RESERVA_PERCENTUAL";
-    public static final Severity SEVERITY = Severity.ATENCAO;
+    public static final String PARAMETER = "RESERVE_FUND_CAP_PERCENT";
+    public static final Severity SEVERITY = Severity.WARNING;
 
     private static final BigDecimal HUNDRED = new BigDecimal("100");
 

@@ -102,13 +102,13 @@ class NumericToolsTest {
 
     @Test
     void fileListBringsIdForNextTool() {
-        QueriedData dataItem = tools.execute("c3", "listar_arquivos", Map.of("categoria", "BALANCETE"),
+        QueriedData dataItem = tools.execute("c3", "listar_arquivos", Map.of("categoria", "TRIAL_BALANCE"),
                 CONDOMINIUM, client.withToken("Bearer t"));
 
         assertThat(dataItem.rows()).containsExactly(
                 new Row("Arquivos encontrados", "1"),
                 new Row("fluxo-setembro.pdf",
-                        "BALANCETE; CONCLUIDO; período 2026-09-01 a 2026-09-30; arquivoId arq-1"));
+                        "TRIAL_BALANCE; COMPLETED; período 2026-09-01 a 2026-09-30; arquivoId arq-1"));
     }
 
     @Test

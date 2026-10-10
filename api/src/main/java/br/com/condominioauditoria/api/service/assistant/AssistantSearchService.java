@@ -26,9 +26,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 /**
- * Keyword search in the documents from the screen (RF-04.18): no AI, in any AI mode (including DESLIGADO, Q7), only
+ * Keyword search in the documents from the screen (RF-04.18): no AI, in any AI mode (including OFF, Q7), only
  * with the Assistant feature enabled. Always the rag's PALAVRA mode. Same second barrier as the chat and usage record
- * "busca_documentos" (without the searched text).
+ * "document_search" (without the searched text).
  */
 @Service
 public class AssistantSearchService {

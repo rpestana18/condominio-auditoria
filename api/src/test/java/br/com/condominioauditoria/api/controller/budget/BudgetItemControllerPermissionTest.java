@@ -123,7 +123,7 @@ class BudgetItemControllerPermissionTest {
                 () -> controller.create(CONDOMINIUM, new NewBudgetItemRequest("Academia", "1.3")),
                 () -> controller.rename(CONDOMINIUM, BUDGET_ITEM, new RenameBudgetItemRequest("Academia e ginástica")),
                 () -> controller.setItem(CONDOMINIUM, BUDGET, LINE, new LineBudgetItemRequest(BUDGET_ITEM, null, null)),
-                () -> controller.batch(CONDOMINIUM, BUDGET, new BudgetItemBatchRequest(BudgetItemBatchAction.CONFIRMAR,
+                () -> controller.batch(CONDOMINIUM, BUDGET, new BudgetItemBatchRequest(BudgetItemBatchAction.CONFIRM,
                         List.of(LINE))),
                 () -> controller.suggest(CONDOMINIUM, BUDGET));
     }

@@ -9,7 +9,7 @@ import java.util.List;
  * Immutable and with nothing calculated on read: everything comes from {@link BudgetVsActualCalculator}. Money in
  * BigDecimal with 2 decimals; percentages with 1 decimal (half up), null when the planned amount is zero ("—").
  *
- * <p>With a {@code status} other than CALCULADO, the numbers are null and {@code message} says why: the system never
+ * <p>With a {@code status} other than CALCULATED, the numbers are null and {@code message} says why: the system never
  * shows zero in place of a number that was not assessed (RF-03.1.10).
  */
 public record BudgetVsActualResponse(

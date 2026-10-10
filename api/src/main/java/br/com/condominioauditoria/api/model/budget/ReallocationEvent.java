@@ -9,8 +9,8 @@ import java.util.UUID;
 @Entity
 public class ReallocationEvent {
 
-    public static final String REALOCADA = "REALOCADA";
-    public static final String DESFEITA = "DESFEITA";
+    public static final String REALLOCATED = "REALLOCATED";
+    public static final String UNDONE = "UNDONE";
 
     @Id
     private UUID id;

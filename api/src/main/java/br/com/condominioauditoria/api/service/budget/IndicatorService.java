@@ -55,11 +55,11 @@ public class IndicatorService {
             budgetVsActual.filterFund(condominiumId, fundId);
         }
         List<String> ids = fiscalYears.ids(condominiumId);
-        UUID chosen = budgetId != null ? budgetId : ids.stream().filter(id -> id.startsWith("po:")).findFirst()
-                .map(id -> UUID.fromString(id.substring(3)))
+        UUID chosen = budgetId != null ? budgetId : ids.stream().filter(id -> id.startsWith("budget:")).findFirst()
+                .map(id -> UUID.fromString(id.substring("budget:".length())))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Nenhuma PO confirmada"));
         Budget budget = budgets.findByIdAndCondominiumId(chosen, condominiumId)
-                .filter(p -> p.getStatus() == BudgetStatus.CONFIRMADA && p.getFiscalYearStart() != null)
+                .filter(p -> p.getStatus() == BudgetStatus.CONFIRMED && p.getFiscalYearStart() != null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO confirmada não encontrada"));
 
         BudgetVsActualResponse cumulative = budgetVsActual.calculate(condominiumId, "acumulado",
@@ -69,16 +69,16 @@ public class IndicatorService {
         for (YearMonth m = budget.getFiscalYearStart(); !m.isAfter(budget.getFiscalYearEnd()); m = m.plusMonths(1)) {
             MonthStatus status = FiscalYearService.status(m, cashFlows);
             BudgetVsActualResponse ofMonth = null;
-            if (status == MonthStatus.COM_FLUXO) {
+            if (status == MonthStatus.WITH_CASH_FLOW) {
                 BudgetVsActualResponse r = budgetVsActual.calculate(condominiumId, m.toString(),
                         budget.getId()).result();
-                ofMonth = r.status() == BudgetVsActualStatus.CALCULADO ? r : null;
+                ofMonth = r.status() == BudgetVsActualStatus.CALCULATED ? r : null;
             }
             months.add(new CalculatedMonth(m, status, ofMonth));
         }
 
         // Chart 7: this fiscal year and the previous one in the list (budget or printed column)
-        int i = ids.indexOf("po:" + budget.getId());
+        int i = ids.indexOf("budget:" + budget.getId());
         FiscalYearComparisonResponse compared = null;
         String withoutComparison = null;
         if (i >= 0 && i + 1 < ids.size()) {

@@ -69,7 +69,7 @@ class AccountMappingTrailPostgresTest {
                 assertThat(r.getString(1)).isEqualTo("admin");
             }
             // The mapping table (current state) accepts changes; only the trail is immutable
-            assertThat(s.executeUpdate("update account_mapping set status = 'CONFIRMADO'")).isEqualTo(1);
+            assertThat(s.executeUpdate("update account_mapping set status = 'CONFIRMED'")).isEqualTo(1);
         }
     }
 
@@ -79,10 +79,10 @@ class AccountMappingTrailPostgresTest {
             s.execute("set search_path to " + schema);
             insertEvent(s);
             String budget = budgetId(s);
-            assertThatThrownBy(() -> s.executeUpdate(mappingSql(budget, "1621", "AJUSTE", "null")))
+            assertThatThrownBy(() -> s.executeUpdate(mappingSql(budget, "1621", "ADJUSTMENT", "null")))
                     .isInstanceOf(SQLException.class).hasMessageContaining("uk_depara_conta");
-            assertThatThrownBy(() -> s.executeUpdate(mappingSql(budget, "1622", "LINHA_PO", "null")))
-                    .isInstanceOf(SQLException.class).hasMessageContaining("ck_depara_destino");
+            assertThatThrownBy(() -> s.executeUpdate(mappingSql(budget, "1622", "BUDGET_LINE", "null")))
+                    .isInstanceOf(SQLException.class).hasMessageContaining("ck_account_mapping_target");
         }
     }
 
@@ -94,16 +94,16 @@ class AccountMappingTrailPostgresTest {
         s.executeUpdate("insert into source_file (id, condominium_id, category, original_name, path, sha256, "
                 + "size_bytes,"
                 + " status, uploaded_by, uploaded_at, processing_id) values ('" + file + "', '" + condominium
-                + "', 'PO', 'po.pdf', 'c/po.pdf', '" + "a".repeat(64) + "', 1, 'CONCLUIDO', 'admin', now(), '"
+                + "', 'PO', 'po.pdf', 'c/po.pdf', '" + "a".repeat(64) + "', 1, 'COMPLETED', 'admin', now(), '"
                 + UUID.randomUUID() + "')");
         s.executeUpdate("insert into budget (id, condominium_id, file_id, sha256, status,"
                 + " rounding_tolerance, read_at) values ('" + budget + "', '" + condominium + "', '" + file
-                + "', '" + "a".repeat(64) + "', 'CONFIRMADA', 0.01, now())");
-        s.executeUpdate(mappingSql(budget.toString(), "1621", "AJUSTE", "null"));
+                + "', '" + "a".repeat(64) + "', 'CONFIRMED', 0.01, now())");
+        s.executeUpdate(mappingSql(budget.toString(), "1621", "ADJUSTMENT", "null"));
         s.executeUpdate("insert into account_mapping_event (id, condominium_id, budget_id, account_code, action, "
                 + "username, occurred_at,"
                 + " new_target_type, new_target, new_status, source) values ('" + event + "', '" + condominium
-                + "', '" + budget + "', '1621', 'SUGERIDO', 'admin', now(), 'AJUSTE', 'AJUSTE', 'SUGERIDO', 'ADMIN')");
+                + "', '" + budget + "', '1621', 'SUGGESTED', 'admin', now(), 'ADJUSTMENT', 'ADJUSTMENT', 'SUGGESTED', 'ADMIN')");
         return event;
     }
 
@@ -119,7 +119,7 @@ class AccountMappingTrailPostgresTest {
                 + "budget_line_id, status,"
                 + " source, updated_by, updated_at) values ('" + UUID.randomUUID()
                 + "', '6f1d2c1e-3b4a-4c8e-9a51-2815a0000001', '" + budget + "', '" + account + "', '" + type + "', "
-                + line + ", 'SUGERIDO', 'ADMIN', 'admin', now())";
+                + line + ", 'SUGGESTED', 'ADMIN', 'admin', now())";
     }
 
     private static String env(String name, String defaults) {

@@ -49,7 +49,7 @@ public final class CashFlowCheck {
                 }
             }
         }
-        return new TotalsCheck("SALDO_CORRENTE", "Saldo linha a linha em todos os fundos", errors.isEmpty(),
+        return new TotalsCheck("RUNNING_BALANCE", "Saldo linha a linha em todos os fundos", errors.isEmpty(),
                 errors.isEmpty() ? cashFlow.entryCount() + " lançamentos conferidos" : String.join("; ", errors));
     }
 
@@ -65,7 +65,7 @@ public final class CashFlowCheck {
                         format(section.reportedDebitTotal())));
             }
         }
-        return new TotalsCheck("TOTAIS_FUNDO", "Soma dos lançamentos = linha TOTAIS de cada fundo", errors.isEmpty(),
+        return new TotalsCheck("FUND_TOTALS", "Soma dos lançamentos = linha TOTAIS de cada fundo", errors.isEmpty(),
                 errors.isEmpty() ? cashFlow.sections().size() + " fundos conferidos" : String.join("; ", errors));
     }
 
@@ -86,7 +86,7 @@ public final class CashFlowCheck {
                         format(p.closingBalance())));
             }
         }
-        return new TotalsCheck("SALDO_FINAL_FUNDO", "Saldo final de cada fundo = Posição Financeira", errors.isEmpty(),
+        return new TotalsCheck("FUND_CLOSING_BALANCE", "Saldo final de cada fundo = Posição Financeira", errors.isEmpty(),
                 errors.isEmpty() ? cashFlow.sections().size() + " fundos conferidos" : String.join("; ", errors));
     }
 
@@ -102,7 +102,7 @@ public final class CashFlowCheck {
         String detail = total == null ? "Linha TOTAL não encontrada"
                 : "Saldo anterior %s + créditos %s − débitos %s = %s".formatted(format(total.openingBalance()),
                         format(total.credits()), format(total.debits()), format(total.closingBalance()));
-        return new TotalsCheck("TOTAL_POSICAO", "Soma dos fundos = TOTAL da Posição Financeira", ok, detail);
+        return new TotalsCheck("POSITION_TOTAL", "Soma dos fundos = TOTAL da Posição Financeira", ok, detail);
     }
 
     private static <T> BigDecimal sum(List<T> items, Function<T, BigDecimal> field) {

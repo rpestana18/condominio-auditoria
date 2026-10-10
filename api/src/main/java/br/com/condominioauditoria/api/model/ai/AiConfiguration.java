@@ -10,8 +10,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A row of the condominium's AI configuration (table ai_configuration): null feature = general mode; ASSISTENTE +
- * RESPOSTAS = chat (null mode = inherits the general one); ASSISTENTE + EMBEDDINGS = semantic search.
+ * A row of the condominium's AI configuration (table ai_configuration): null feature = general mode; ASSISTANT +
+ * ANSWERS = chat (null mode = inherits the general one); ASSISTANT + EMBEDDINGS = semantic search.
  *
  * The API key exists only encrypted with the rag's public key (the api cannot read it) and never appears in toString,
  * logs or API responses; keySuffix keeps the last 4 characters for the screen.

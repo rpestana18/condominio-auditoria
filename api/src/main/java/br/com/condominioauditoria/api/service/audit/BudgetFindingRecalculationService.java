@@ -54,7 +54,7 @@ public class BudgetFindingRecalculationService {
         }
         Set<YearMonth> months = new TreeSet<>();
         budgets.findByCondominiumIdAndStatusIn(condominiumId,
-                        EnumSet.of(BudgetStatus.CONFIRMADA, BudgetStatus.SUBSTITUIDA)).stream()
+                        EnumSet.of(BudgetStatus.CONFIRMED, BudgetStatus.SUPERSEDED)).stream()
                 .flatMap(p -> java.util.stream.Stream.of(BudgetValidity.of(p), BudgetValidity.extension(p)))
                 .flatMap(java.util.Optional::stream)
                 .forEach(v -> months.addAll(BudgetVsActualCalculator.months(v.start(), v.end())));

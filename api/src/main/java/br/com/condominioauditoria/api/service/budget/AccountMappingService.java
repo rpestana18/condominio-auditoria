@@ -64,7 +64,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Mapping of the cash flow accounts to the budget (RF-03.1.4 and RF-03.1.5; ADR 0004, Decision 4), per confirmed budget
- * version. Suggestions (previous version, sheet, name) always come in as SUGERIDO and change no number: budget vs.
+ * version. Suggestions (previous version, sheet, name) always come in as SUGGESTED and change no number: budget vs.
  * actual only uses what the Admin confirmed. Every change writes an event to the trail (insert-only).
  *
  * <p>No AI call: the suggestion by name is the pure function {@link NameSuggestion}.
@@ -125,10 +125,10 @@ public class AccountMappingService {
 
         List<AccountMappingResponse> all = List.copyOf(accounts.values());
         AccountMappingSummaryResponse summary = new AccountMappingSummaryResponse(all.size(), count(all,
-                AccountMappingStatus.CONFIRMADO),
-                count(all, AccountMappingStatus.SUGERIDO), count(all, AccountMappingStatus.RECUSADO),
+                AccountMappingStatus.CONFIRMED),
+                count(all, AccountMappingStatus.SUGGESTED), count(all, AccountMappingStatus.REJECTED),
                 (int) all.stream().filter(c -> c.status() == null).count());
-        AccountMappingFilter f = filter == null ? AccountMappingFilter.TODAS : filter;
+        AccountMappingFilter f = filter == null ? AccountMappingFilter.ALL : filter;
         return new AccountMappingsResponse(budget.getId(), budget.getVersion(), summary,
                 all.stream().filter(c -> matches(c, f)).toList());
     }
@@ -143,7 +143,7 @@ public class AccountMappingService {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "Informe o tipo de destino");
         }
         MappingTarget target;
-        if (request.type() == MappingTargetType.LINHA_PO) {
+        if (request.type() == MappingTargetType.BUDGET_LINE) {
             BudgetLine l = request.lineId() == null ? null : ctx.byId().get(request.lineId());
             if (l == null || !ctx.targetsByCode().containsValue(l)) {
                 throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, l == null
@@ -159,8 +159,8 @@ public class AccountMappingService {
             }
             target = MappingTarget.special(request.type(), request.detail());
         }
-        AccountMappingStatus status = request.confirm() == null || request.confirm() ? AccountMappingStatus.CONFIRMADO
-                : AccountMappingStatus.SUGERIDO;
+        AccountMappingStatus status = request.confirm() == null || request.confirm() ? AccountMappingStatus.CONFIRMED
+                : AccountMappingStatus.SUGGESTED;
         String name = Optional.ofNullable(cashFlowAccounts(ctx.budget()).get(code)).map(CashFlowAccount::name).orElse(null);
         Instant now = Instant.now();
         AccountMapping d = save(ctx, code, name, target, status, AccountMappingSource.ADMIN, "escolhido pelo Admin",
@@ -168,7 +168,7 @@ public class AccountMappingService {
                 username, now, true);
         if (now.equals(d.getUpdatedAt())) {
             publisher.publishEvent(BudgetChanged.of(condominiumId, "de-para da conta " + code + " "
-                    + (status == AccountMappingStatus.CONFIRMADO ? "confirmado" : "sugerido"), username, now));
+                    + (status == AccountMappingStatus.CONFIRMED ? "confirmado" : "sugerido"), username, now));
         }
         return account(Optional.ofNullable(cashFlowAccounts(ctx.budget()).get(code))
                 .orElse(new CashFlowAccount(code, name, 0, BigDecimal.ZERO.setScale(2))), d, ctx);
@@ -184,7 +184,7 @@ public class AccountMappingService {
         }
         Map<String,
                 AccountMapping> existing = byAccount(mappings.findByBudgetIdOrderByAccountCode(ctx.budget().getId()));
-        AccountMappingStatus newStatus = request.action() == AccountMappingBatchAction.CONFIRMAR ? AccountMappingStatus.CONFIRMADO : AccountMappingStatus.RECUSADO;
+        AccountMappingStatus newStatus = request.action() == AccountMappingBatchAction.CONFIRM ? AccountMappingStatus.CONFIRMED : AccountMappingStatus.REJECTED;
         Instant now = Instant.now();
         int changed = 0;
         List<SkippedAccountResponse> skipped = new ArrayList<>();
@@ -193,21 +193,21 @@ public class AccountMappingService {
             if (d == null) {
                 skipped.add(new SkippedAccountResponse(account, "conta sem de-para nesta versão: escolha o destino"));
             } else if (d.getStatus() == newStatus) {
-                skipped.add(new SkippedAccountResponse(account, "já está " + newStatus.name().toLowerCase()));
+                skipped.add(new SkippedAccountResponse(account, "já está " + newStatus.label()));
             } else {
                 MappingTarget target = d.target(ctx.byId());
                 AccountMappingStatus before = d.getStatus();
                 d.changeStatus(newStatus, username, now);
                 mappings.save(d);
                 events.save(new AccountMappingEvent(d,
-                        newStatus == AccountMappingStatus.CONFIRMADO ? AccountMappingAction.CONFIRMADO
-                        : AccountMappingAction.RECUSADO, target, before, target, username, now));
+                        newStatus == AccountMappingStatus.CONFIRMED ? AccountMappingAction.CONFIRMED
+                        : AccountMappingAction.REJECTED, target, before, target, username, now));
                 changed++;
             }
         }
         log.info("De-para da PO {}: {} conta(s) {} por {}", ctx.budget().getId(), changed, newStatus, username);
         if (changed > 0) {
-            String action = newStatus == AccountMappingStatus.CONFIRMADO ? "confirmado" : "recusado";
+            String action = newStatus == AccountMappingStatus.CONFIRMED ? "confirmado" : "recusado";
             List<String> changedAccounts = request.accounts().stream().distinct()
                     .filter(c -> skipped.stream().noneMatch(i -> i.account().equals(c))).toList();
             publisher.publishEvent(BudgetChanged.of(condominiumId, changedAccounts.size() == 1
@@ -238,7 +238,7 @@ public class AccountMappingService {
             Map<UUID, BudgetLine> previousLines = lines.findByBudgetIdOrderByPosition(previous.get().getId()).stream()
                     .collect(Collectors.toMap(BudgetLine::getId, Function.identity()));
             for (AccountMapping a : mappings.findByBudgetIdOrderByAccountCode(previous.get().getId())) {
-                if (a.getStatus() != AccountMappingStatus.CONFIRMADO || existing.containsKey(a.getAccountCode())) {
+                if (a.getStatus() != AccountMappingStatus.CONFIRMED || existing.containsKey(a.getAccountCode())) {
                     continue;
                 }
                 var copy = PreviousVersionCopy.copy(a, previousLines, ctx.targetsByCode());
@@ -246,7 +246,7 @@ public class AccountMappingService {
                     String name = Optional.ofNullable(cashFlowAccount.get(a.getAccountCode())).map(CashFlowAccount::name)
                             .orElse(a.getAccountName());
                     existing.put(a.getAccountCode(), save(ctx, a.getAccountCode(), name, c.target(),
-                            AccountMappingStatus.SUGERIDO, AccountMappingSource.VERSAO_ANTERIOR, c.reason(), c.same(),
+                            AccountMappingStatus.SUGGESTED, AccountMappingSource.PREVIOUS_VERSION, c.reason(), c.same(),
                                     username, now,
                             false));
                     fromPrevious++;
@@ -269,8 +269,8 @@ public class AccountMappingService {
             var r = nameSuggestion.suggest(e.getValue(), candidates);
             if (r instanceof NameSuggestion.Suggested s) {
                 existing.put(code, save(ctx, code, e.getValue(), MappingTarget.line(s.line()),
-                        AccountMappingStatus.SUGERIDO,
-                        AccountMappingSource.NOME, prefix + s.reason(), false, username, now, false));
+                        AccountMappingStatus.SUGGESTED,
+                        AccountMappingSource.NAME, prefix + s.reason(), false, username, now, false));
                 byName++;
             } else {
                 withoutSuggestion.add(new AccountWithoutSuggestionResponse(code, e.getValue(), prefix + r.reason()));
@@ -282,7 +282,7 @@ public class AccountMappingService {
         return new AccountMappingSuggestionsResponse(fromPrevious + byName, fromPrevious, byName, withoutSuggestion);
     }
 
-    /** Suggestion sheet (CSV): everything comes in as SUGERIDO; an account already confirmed does not change. */
+    /** Suggestion sheet (CSV): everything comes in as SUGGESTED; an account already confirmed does not change. */
     @Transactional
     public AccountMappingSheetResponse loadSheet(UUID condominiumId, UUID budgetId, String fileName, String content,
             String username) {
@@ -298,14 +298,14 @@ public class AccountMappingService {
         List<SkippedAccountResponse> skipped = new ArrayList<>();
         for (AccountMappingSheet.Item item : reading.items()) {
             AccountMapping current = existing.get(item.account());
-            if (current != null && current.getStatus() == AccountMappingStatus.CONFIRMADO) {
+            if (current != null && current.getStatus() == AccountMappingStatus.CONFIRMED) {
                 skipped.add(new SkippedAccountResponse(item.account(),
                         "já confirmada (" + current.target(ctx.byId()).text()
                         + "): para mudar, altere a conta"));
                 continue;
             }
             String name = Optional.ofNullable(cashFlowAccount.get(item.account())).map(CashFlowAccount::name).orElse(null);
-            save(ctx, item.account(), name, item.target(), AccountMappingStatus.SUGERIDO, AccountMappingSource.PLANILHA,
+            save(ctx, item.account(), name, item.target(), AccountMappingStatus.SUGGESTED, AccountMappingSource.SPREADSHEET,
                     source + ", linha " + item.line(), false, username, now, false);
             accepted++;
         }
@@ -338,12 +338,12 @@ public class AccountMappingService {
                     username, now);
             mappings.save(d);
             events.save(new AccountMappingEvent(d,
-                    status == AccountMappingStatus.CONFIRMADO ? AccountMappingAction.CONFIRMADO
-                    : AccountMappingAction.SUGERIDO, null, null, newTarget, username, now));
+                    status == AccountMappingStatus.CONFIRMED ? AccountMappingAction.CONFIRMED
+                    : AccountMappingAction.SUGGESTED, null, null, newTarget, username, now));
             return d;
         }
         AccountMapping d = existing.get();
-        if (!manual && d.getStatus() == AccountMappingStatus.CONFIRMADO) {
+        if (!manual && d.getStatus() == AccountMappingStatus.CONFIRMED) {
             return d;
         }
         MappingTarget before = d.target(ctx.byId());
@@ -355,9 +355,9 @@ public class AccountMappingService {
         d.updateName(name);
         d.change(newTarget, status, source, reason, same, username, now);
         mappings.save(d);
-        AccountMappingAction action = targetChanged ? AccountMappingAction.ALTERADO
-                : status == AccountMappingStatus.CONFIRMADO ? AccountMappingAction.CONFIRMADO
-                : status == AccountMappingStatus.RECUSADO ? AccountMappingAction.RECUSADO : AccountMappingAction.SUGERIDO;
+        AccountMappingAction action = targetChanged ? AccountMappingAction.CHANGED
+                : status == AccountMappingStatus.CONFIRMED ? AccountMappingAction.CONFIRMED
+                : status == AccountMappingStatus.REJECTED ? AccountMappingAction.REJECTED : AccountMappingAction.SUGGESTED;
         events.save(new AccountMappingEvent(d, action, before, statusBefore, newTarget, username, now));
         return d;
     }
@@ -402,7 +402,7 @@ public class AccountMappingService {
             return Optional.empty();
         }
         return budgets.findByCondominiumIdAndStatusIn(budget.getCondominiumId(),
-                        EnumSet.of(BudgetStatus.CONFIRMADA, BudgetStatus.SUBSTITUIDA)).stream()
+                        EnumSet.of(BudgetStatus.CONFIRMED, BudgetStatus.SUPERSEDED)).stream()
                 .filter(p -> p.getVersion() != null && p.getVersion() < budget.getVersion())
                 .max(Comparator.comparing(Budget::getVersion));
     }
@@ -452,13 +452,13 @@ public class AccountMappingService {
 
     private static boolean matches(AccountMappingResponse c, AccountMappingFilter f) {
         return switch (f) {
-            case TODAS -> true;
-            case PENDENTES -> c.status() != AccountMappingStatus.CONFIRMADO;
-            case SUGERIDO -> c.status() == AccountMappingStatus.SUGERIDO;
-            case CONFIRMADO -> c.status() == AccountMappingStatus.CONFIRMADO;
-            case RECUSADO -> c.status() == AccountMappingStatus.RECUSADO;
-            case SEM_DEPARA -> c.status() == null;
-            case IGUAIS_VERSAO_ANTERIOR -> c.sameAsPreviousVersion() && c.status() != null;
+            case ALL -> true;
+            case PENDING -> c.status() != AccountMappingStatus.CONFIRMED;
+            case SUGGESTED -> c.status() == AccountMappingStatus.SUGGESTED;
+            case CONFIRMED -> c.status() == AccountMappingStatus.CONFIRMED;
+            case REJECTED -> c.status() == AccountMappingStatus.REJECTED;
+            case UNMAPPED -> c.status() == null;
+            case SAME_AS_PREVIOUS_VERSION -> c.sameAsPreviousVersion() && c.status() != null;
         };
     }
 

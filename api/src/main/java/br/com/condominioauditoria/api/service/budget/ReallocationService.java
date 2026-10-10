@@ -95,7 +95,7 @@ public class ReallocationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Lançamento não encontrado (se o fluxo foi reprocessado, abra o mês de novo)"));
         SourceFile file = files.findById(l.getFileId())
-                .filter(a -> a.getCategory() == FileCategory.BALANCETE
+                .filter(a -> a.getCategory() == FileCategory.TRIAL_BALANCE
                         && BudgetVsActualQueryService.READ_CASH_FLOW.contains(a.getStatus()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT,
                         "O lançamento não é de um fluxo de caixa lido"));
@@ -110,10 +110,10 @@ public class ReallocationService {
                         + BudgetVsActualCalculator.mmyyyy(month)));
         AccountMapping mapping = l.getAccountCode() == null ? null
                 : mappings.findByBudgetIdAndAccountCode(budget.getId(), l.getAccountCode()).orElse(null);
-        if (mapping == null || mapping.getStatus() != AccountMappingStatus.CONFIRMADO
-                || mapping.getTargetType() != MappingTargetType.A_REALOCAR) {
+        if (mapping == null || mapping.getStatus() != AccountMappingStatus.CONFIRMED
+                || mapping.getTargetType() != MappingTargetType.TO_REALLOCATE) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "Só lançamentos \"a realocar\" são"
-                    + " realocados: a conta " + l.getAccountCode() + " não tem de-para confirmado para REALOCAR");
+                    + " realocados: a conta " + l.getAccountCode() + " não tem de-para confirmado para REALLOCATE");
         }
         List<BudgetLine> readChecks = lines.findByBudgetIdOrderByPosition(budget.getId());
         BudgetLine target = AccountMappingService.debitTargets(BudgetStructure.of(readChecks)).stream()
@@ -132,7 +132,7 @@ public class ReallocationService {
         String description = "realocação do lançamento de " + DATE.format(l.getDate()) + " (conta " + l.getAccountCode()
                 + ", R$ " + MoneyFormatter.format(l.getDebit()) + ") para " + target.getEffectiveCode() + " "
                 + target.getDescription();
-        events.save(new ReallocationEvent(r, ReallocationEvent.REALOCADA, username, now, description + "; arquivo "
+        events.save(new ReallocationEvent(r, ReallocationEvent.REALLOCATED, username, now, description + "; arquivo "
                 + file.getOriginalName() + ", página " + l.getPage() + ", ordem " + l.getSequence()));
         publisher.publishEvent(BudgetChanged.of(condominiumId, description, username, now));
         log.info("Realocação {}: lançamento {} → linha {} por {}", r.getId(), l.getId(), target.getEffectiveCode(),
@@ -155,7 +155,7 @@ public class ReallocationService {
                 .filter(x -> x.getId().equals(r.getBudgetLineId())).findFirst().orElse(null);
         String description = "realocação do lançamento de " + DATE.format(r.getDate()) + " (conta " + r.getAccountCode()
                 + ", R$ " + MoneyFormatter.format(r.getAmount()) + ") desfeita";
-        events.save(new ReallocationEvent(r, ReallocationEvent.DESFEITA, username, now, description
+        events.save(new ReallocationEvent(r, ReallocationEvent.UNDONE, username, now, description
                 + (line == null ? "" : "; estava em " + line.getEffectiveCode() + " " + line.getDescription())));
         publisher.publishEvent(BudgetChanged.of(condominiumId, description, username, now));
         log.info("Realocação {} desfeita por {}", r.getId(), username);

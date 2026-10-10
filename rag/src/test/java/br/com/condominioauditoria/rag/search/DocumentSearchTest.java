@@ -91,7 +91,7 @@ class DocumentSearchTest {
     }
 
     private static FoundChunk chunk(UUID id) {
-        return new FoundChunk(id, UUID.randomUUID(), "a.pdf", "ATA", new Location.Page(1), "texto", 0,
+        return new FoundChunk(id, UUID.randomUUID(), "a.pdf", "MINUTES", new Location.Page(1), "texto", 0,
                 "a".repeat(64));
     }
 }

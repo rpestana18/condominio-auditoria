@@ -283,10 +283,10 @@ public class BudgetVsActualExcelReport {
         for (FundResultResponse f : r.funds()) {
             Row fr = w.texts(null, f.fund() == null ? "—" : f.fund(), f.lineCode() == null ? "—" : f.lineCode(),
                     switch (f.status()) {
-                        case COMPARADO -> "arrecadação × previsto";
-                        case SEM_PREVISTO_NA_PO -> "sem previsto na PO";
-                        case LINHA_SEM_FUNDO -> "linha sem fundo ligado";
-                        case REPROCESSAR_FLUXO -> "reprocesse o fluxo";
+                        case COMPARED -> "arrecadação × previsto";
+                        case NOT_PLANNED_IN_BUDGET -> "sem previsto na PO";
+                        case LINE_WITHOUT_FUND -> "linha sem fundo ligado";
+                        case REPROCESS_CASH_FLOW -> "reprocesse o fluxo";
                     });
             Writer.number(fr, 3, f.planned(), e.money);
             Writer.number(fr, 4, f.collected(), e.money);
@@ -306,9 +306,9 @@ public class BudgetVsActualExcelReport {
             w.texts(e.header, "Mês", "Situação", "Previsto", "Despesa realizada", "Excesso", "% excesso");
             for (FiscalYearMonthResponse m : r.months()) {
                 Row mr = w.texts(null, BudgetVsActualReport.month(m.month()), switch (m.status()) {
-                    case COM_FLUXO -> "com fluxo";
-                    case SEM_FLUXO -> "sem fluxo carregado";
-                    case DOIS_FLUXOS -> "dois fluxos";
+                    case WITH_CASH_FLOW -> "com fluxo";
+                    case NO_CASH_FLOW -> "sem fluxo carregado";
+                    case TWO_CASH_FLOWS -> "dois fluxos";
                 });
                 Writer.number(mr, 2, m.planned(), e.money);
                 Writer.number(mr, 3, m.actualExpense(), e.money);

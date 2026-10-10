@@ -68,7 +68,7 @@ class BudgetItemTrailPostgresTest {
                 assertThat(r.getString(1)).isEqualTo("admin");
             }
             // The current state accepts changes; only the trail is immutable
-            assertThat(s.executeUpdate("update budget_line_item set status = 'CONFIRMADO'")).isEqualTo(1);
+            assertThat(s.executeUpdate("update budget_line_item set status = 'CONFIRMED'")).isEqualTo(1);
             assertThat(s.executeUpdate("update budget_item set name = 'Sindicatura'")).isEqualTo(1);
         }
     }
@@ -78,11 +78,11 @@ class BudgetItemTrailPostgresTest {
         try (Statement s = connection.createStatement()) {
             s.execute("set search_path to " + schema);
             Ids ids = insert(s);
-            assertThatThrownBy(() -> s.executeUpdate(lineItemSql(ids, "SUGERIDO")))
+            assertThatThrownBy(() -> s.executeUpdate(lineItemSql(ids, "SUGGESTED")))
                     .isInstanceOf(SQLException.class).hasMessageContaining("uk_linha_rubrica");
             s.executeUpdate("delete from budget_line_item");
             assertThatThrownBy(() -> s.executeUpdate(lineItemSql(ids, "TALVEZ")))
-                    .isInstanceOf(SQLException.class).hasMessageContaining("ck_linha_rubrica_estado");
+                    .isInstanceOf(SQLException.class).hasMessageContaining("ck_budget_line_item_status");
         }
     }
 
@@ -98,26 +98,26 @@ class BudgetItemTrailPostgresTest {
         s.executeUpdate("insert into source_file (id, condominium_id, category, original_name, path, sha256, "
                 + "size_bytes,"
                 + " status, uploaded_by, uploaded_at, processing_id) values ('" + file + "', '" + CONDOMINIUM
-                + "', 'PO', 'po.pdf', 'c/po.pdf', '" + "a".repeat(64) + "', 1, 'CONCLUIDO', 'admin', now(), '"
+                + "', 'PO', 'po.pdf', 'c/po.pdf', '" + "a".repeat(64) + "', 1, 'COMPLETED', 'admin', now(), '"
                 + UUID.randomUUID() + "')");
         s.executeUpdate("insert into budget (id, condominium_id, file_id, sha256, status,"
                 + " rounding_tolerance, read_at) values ('" + budget + "', '" + CONDOMINIUM + "', '" + file
-                + "', '" + "a".repeat(64) + "', 'CONFIRMADA', 0.01, now())");
+                + "', '" + "a".repeat(64) + "', 'CONFIRMED', 0.01, now())");
         s.executeUpdate("insert into budget_line (id, budget_id, condominium_id, file_id, sha256, position, page, type,"
                 + " printed_code, effective_code, account, description, previous_budgeted, budgeted) values ('" + line
                 + "', '" + budget + "', '" + CONDOMINIUM + "', '" + file + "', '" + "a".repeat(64)
-                + "', 1, 1, 'LINHA', '1.3.20', '1.3.20', '1682 - Sindicatura Profissional', 'Obm', 17195.00, 8000.00)");
+                + "', 1, 1, 'LINE', '1.3.20', '1.3.20', '1682 - Sindicatura Profissional', 'Obm', 17195.00, 8000.00)");
         s.executeUpdate("insert into budget_item (id, condominium_id, name, group_code, source_line_id, created_by,"
                 + " created_at) values ('" + item + "', '" + CONDOMINIUM + "', '1682 - Sindicatura Profissional', "
                 + "'1.3', '"
                 + line + "', 'admin', now())");
         Ids ids = new Ids(budget, line, item, event);
-        s.executeUpdate(lineItemSql(ids, "SUGERIDO"));
+        s.executeUpdate(lineItemSql(ids, "SUGGESTED"));
         s.executeUpdate("insert into budget_item_event (id, condominium_id, budget_id, budget_line_id, line_code, "
                 + "action,"
                 + " username, occurred_at, new_item_id, new_item, new_status, source) values ('" + event + "', '"
-                + CONDOMINIUM + "', '" + budget + "', '" + line + "', '1.3.20', 'SUGERIDO', 'admin', now(), '" + item
-                + "', '1682 - Sindicatura Profissional', 'SUGERIDO', 'CONTA_PO')");
+                + CONDOMINIUM + "', '" + budget + "', '" + line + "', '1.3.20', 'SUGGESTED', 'admin', now(), '" + item
+                + "', '1682 - Sindicatura Profissional', 'SUGGESTED', 'BUDGET_ACCOUNT')");
         return ids;
     }
 
@@ -126,7 +126,7 @@ class BudgetItemTrailPostgresTest {
                 + "status, source,"
                 + " updated_by, updated_at) values ('" + UUID.randomUUID() + "', '" + CONDOMINIUM + "', '"
                 + ids.budget() + "', '" + ids.line() + "', '" + ids.item() + "', '" + status
-                + "', 'CONTA_PO', 'admin', now())";
+                + "', 'BUDGET_ACCOUNT', 'admin', now())";
     }
 
     private static String env(String name, String defaults) {

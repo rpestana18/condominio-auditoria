@@ -11,7 +11,7 @@ import java.util.Optional;
 
 /**
  * Total, groups and lines of the budget in document order (same rule as the rag's check): a group's lines are the ones
- * after the GRUPO line, not the ones with the code prefix, which may be repeated. Pure function.
+ * after the GROUP line, not the ones with the code prefix, which may be repeated. Pure function.
  */
 public record BudgetStructure(BudgetLine total, List<Group> groups, List<BudgetLine> ungrouped) {
 
@@ -40,11 +40,11 @@ public record BudgetStructure(BudgetLine total, List<Group> groups, List<BudgetL
         for (BudgetLine l : lines) {
             switch (l.getType()) {
                 case TOTAL -> total = total == null ? l : total;
-                case GRUPO -> {
+                case GROUP -> {
                     current = new Group(l, new ArrayList<>(), isFunds(l));
                     groups.add(current);
                 }
-                case LINHA -> {
+                case LINE -> {
                     if (current == null) {
                         ungrouped.add(l);
                     } else {

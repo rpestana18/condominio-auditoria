@@ -9,19 +9,19 @@ import java.util.UUID;
 @Entity
 public class BudgetEvent {
 
-    public static final String CONFIRMED = "CONFIRMADA";
-    public static final String SUPERSEDED = "SUBSTITUIDA";
+    public static final String CONFIRMED = "CONFIRMED";
+    public static final String SUPERSEDED = "SUPERSEDED";
     /** Link of the 1.9.x lines to the funds changed after confirmation (RF-03.1.9). */
-    public static final String FUNDS_CHANGED = "FUNDOS_ALTERADOS";
+    public static final String FUNDS_CHANGED = "FUNDS_CHANGED";
     /** Budget marked as extended by the Admin, with a justification (RF-11.3). */
-    public static final String EXTENDED = "PRORROGADA";
+    public static final String EXTENDED = "EXTENDED";
     /** Extension undone by the Admin. */
-    public static final String EXTENSION_UNDONE = "PRORROGACAO_DESFEITA";
+    public static final String EXTENSION_UNDONE = "EXTENSION_UNDONE";
     /**
      * Extension shortened (or undone) automatically because another budget was confirmed in the extended months
      * (RF-11.3).
      */
-    public static final String EXTENSION_SHORTENED = "PRORROGACAO_ENCURTADA";
+    public static final String EXTENSION_SHORTENED = "EXTENSION_SHORTENED";
 
     @Id
     private UUID id;

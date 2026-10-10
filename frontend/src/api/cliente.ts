@@ -11,9 +11,9 @@ export class ErroApi extends Error {
     super(problema?.detail ?? problema?.title ?? mensagemPadrao(status));
   }
 
-  /** Código do módulo quando a recusa é "Módulo não contratado" (403 com o campo `modulo`). */
+  /** Código do módulo quando a recusa é "Módulo não contratado" (403 com o campo `feature`). */
   get moduloNaoContratado(): string | undefined {
-    return this.status === 403 ? (this.problema?.modulo ?? undefined) : undefined;
+    return this.status === 403 ? (this.problema?.feature ?? undefined) : undefined;
   }
 }
 

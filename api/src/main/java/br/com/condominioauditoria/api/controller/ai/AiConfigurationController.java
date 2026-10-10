@@ -43,18 +43,18 @@ public class AiConfigurationController {
     }
 
     /** Catalog for the screen fields, in the rag's order, without the public key. */
-    @GetMapping("/ia/provedores")
+    @GetMapping("/ai/providers")
     public List<AiProviderResponse> providers() {
         return catalog.read(token()).providers().stream().map(AiConfigurationMapper::toResponse).toList();
     }
 
-    @GetMapping("/condominios/{condominiumId}/ia")
+    @GetMapping("/condominiums/{condominiumId}/ai")
     public AiConfigurationResponse read(@PathVariable UUID condominiumId) {
         requireCondominium(condominiumId);
         return AiConfigurationMapper.toResponse(service.read(condominiumId));
     }
 
-    @PutMapping("/condominios/{condominiumId}/ia")
+    @PutMapping("/condominiums/{condominiumId}/ai")
     public AiConfigurationResponse save(@PathVariable UUID condominiumId,
             @RequestBody(required = false) AiConfigurationRequest request) {
         requireCondominium(condominiumId);

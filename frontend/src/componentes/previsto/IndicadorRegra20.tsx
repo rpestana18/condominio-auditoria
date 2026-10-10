@@ -7,55 +7,55 @@ import { formatarMoeda, formatarPercentual } from "../../formato";
  */
 export function IndicadorRegra20({ regra }: { regra: Regra20 }) {
   // Largura da barra: o percentual do excesso em relação ao limite (só desenho, sem passar de 100%)
-  const largura = Math.min(100, (regra.percentual / regra.limitePercentual) * 100);
+  const largura = Math.min(100, (regra.percentage / regra.limitPercentage) * 100);
   return (
     <section className="bloco">
       <header className="titulo-bloco">
         <h2>
-          Regra dos {regra.limitePercentual}% (Conv. 16.2)
+          Regra dos {regra.limitPercentage}% (Conv. 16.2)
         </h2>
-        <span className={regra.acimaDoLimite ? "selo critico" : "selo ok"}>
-          {regra.acimaDoLimite ? "Acima do limite: verificar ata de AGE" : "Dentro do limite"}
+        <span className={regra.aboveLimit ? "selo critico" : "selo ok"}>
+          {regra.aboveLimit ? "Acima do limite: verificar ata de AGE" : "Dentro do limite"}
         </span>
-        {regra.provisorio && <span className="selo alerta">Provisório</span>}
+        {regra.provisional && <span className="selo alerta">Provisório</span>}
       </header>
       <div className="barra-limite" aria-hidden>
-        <div className={regra.acimaDoLimite ? "preenchido critico" : "preenchido"} style={{ width: `${largura}%` }} />
+        <div className={regra.aboveLimit ? "preenchido critico" : "preenchido"} style={{ width: `${largura}%` }} />
       </div>
       <dl className="lista-numeros">
         <dt>Excesso do mês</dt>
         <dd>
-          {formatarMoeda(regra.excesso)} ({formatarPercentual(regra.percentual)} do previsto do mês)
+          {formatarMoeda(regra.overrun)} ({formatarPercentual(regra.percentage)} do previsto do mês)
         </dd>
         <dt>Limite</dt>
         <dd>
-          {formatarMoeda(regra.limite)} ({regra.limitePercentual}% de {formatarMoeda(regra.previstoMes)})
+          {formatarMoeda(regra.limit)} ({regra.limitPercentage}% de {formatarMoeda(regra.monthlyPlanned)})
         </dd>
         <dt>Linhas acima do previsto</dt>
-        <dd>{regra.linhasAcima}</dd>
-        {(regra.aRealocar > 0 || regra.semLinhaPo > 0) && (
+        <dd>{regra.linesAbove}</dd>
+        {(regra.toReallocate > 0 || regra.withoutBudgetLine > 0) && (
           <>
             <dt>Fora do excesso</dt>
             <dd>
-              a realocar {formatarMoeda(regra.aRealocar)} · sem linha da PO {formatarMoeda(regra.semLinhaPo)}
+              a realocar {formatarMoeda(regra.toReallocate)} · sem linha da PO {formatarMoeda(regra.withoutBudgetLine)}
             </dd>
             <dt>Cenário máximo</dt>
             <dd>
-              {formatarMoeda(regra.cenarioMaximo)} ({formatarPercentual(regra.percentualCenarioMaximo)})
+              {formatarMoeda(regra.maxScenario)} ({formatarPercentual(regra.maxScenarioPercentage)})
             </dd>
           </>
         )}
       </dl>
-      {regra.linhas.length > 0 && (
+      {regra.lines.length > 0 && (
         <details>
-          <summary>Linhas que compõem o excesso ({regra.linhas.length})</summary>
+          <summary>Linhas que compõem o excesso ({regra.lines.length})</summary>
           <table className="tabela compacta">
             <tbody>
-              {regra.linhas.map((l) => (
-                <tr key={l.linhaId}>
-                  <td>{l.codigo}</td>
-                  <td>{l.descricao}</td>
-                  <td className="numero">{formatarMoeda(l.excesso)}</td>
+              {regra.lines.map((l) => (
+                <tr key={l.lineId}>
+                  <td>{l.code}</td>
+                  <td>{l.description}</td>
+                  <td className="numero">{formatarMoeda(l.overrun)}</td>
                 </tr>
               ))}
             </tbody>

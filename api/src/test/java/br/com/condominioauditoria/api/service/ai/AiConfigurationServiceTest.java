@@ -79,9 +79,9 @@ class AiConfigurationServiceTest {
     void withoutRowsDefaultsApply() {
         var e = service.read(CONDOMINIUM);
 
-        assertThat(e.generalMode()).isEqualTo(AiMode.MCP_EXTERNO);
+        assertThat(e.generalMode()).isEqualTo(AiMode.EXTERNAL_MCP);
         assertThat(e.answers().mode()).isNull();
-        assertThat(e.answers().effectiveMode()).isEqualTo(AiMode.MCP_EXTERNO);
+        assertThat(e.answers().effectiveMode()).isEqualTo(AiMode.EXTERNAL_MCP);
         assertThat(e.answers().hasKey()).isFalse();
         assertThat(e.embeddings()).isEqualTo(new AiConfigurationService.Embeddings(AiMode.LOCAL, "ollama-local",
                 "bge-m3"));
@@ -91,12 +91,12 @@ class AiConfigurationServiceTest {
 
     @Test
     void requestingDefaultsSavesNothingAndDoesNotCallRag() {
-        service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO, new AnswersChange(null, null, null, null, false),
-                new EmbeddingsChange(AiMode.DESLIGADO, null, null)), "admin", "Bearer t");
+        service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP, new AnswersChange(null, null, null, null, false),
+                new EmbeddingsChange(AiMode.OFF, null, null)), "admin", "Bearer t");
         trail.clear();
         rows.clear();
 
-        service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO, new AnswersChange(null, null, null, null, false),
+        service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP, new AnswersChange(null, null, null, null, false),
                 DEFAULT_EMBEDDINGS), "admin", "Bearer t");
 
         assertThat(rows).isEmpty();
@@ -105,20 +105,20 @@ class AiConfigurationServiceTest {
 
     @Test
     void offWithoutProviderDoesNotNeedTheCatalog() {
-        service.save(CONDOMINIUM, new Change(AiMode.DESLIGADO, new AnswersChange(null, null, null, null, false),
-                new EmbeddingsChange(AiMode.DESLIGADO, "ignorado", "ignorado")), "admin", "Bearer t");
+        service.save(CONDOMINIUM, new Change(AiMode.OFF, new AnswersChange(null, null, null, null, false),
+                new EmbeddingsChange(AiMode.OFF, "ignorado", "ignorado")), "admin", "Bearer t");
 
         verify(rag, never()).listProviders(anyString());
         var e = service.read(CONDOMINIUM);
-        assertThat(e.generalMode()).isEqualTo(AiMode.DESLIGADO);
-        assertThat(e.answers().effectiveMode()).isEqualTo(AiMode.DESLIGADO);
-        assertThat(e.embeddings()).isEqualTo(new AiConfigurationService.Embeddings(AiMode.DESLIGADO, null, null));
+        assertThat(e.generalMode()).isEqualTo(AiMode.OFF);
+        assertThat(e.answers().effectiveMode()).isEqualTo(AiMode.OFF);
+        assertThat(e.embeddings()).isEqualTo(new AiConfigurationService.Embeddings(AiMode.OFF, null, null));
         assertThat(e.updatedBy()).isEqualTo("admin");
     }
 
     @Test
     void apiKeyEncryptsWithRagPublicKeyAndKeepsLastFour() throws Exception {
-        var e = service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
+        var e = service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
                 new AnswersChange(AiMode.API_KEY, "anthropic", null, "  " + KEY + " ", false), DEFAULT_EMBEDDINGS),
                 "admin", "Bearer t");
 
@@ -134,7 +134,7 @@ class AiConfigurationServiceTest {
 
         assertThat(trail).singleElement().satisfies(ev -> {
             assertThat(ev.getFeature()).isEqualTo(FeatureService.ASSISTANT);
-            assertThat(ev.getFunction()).isEqualTo(AiFunction.RESPOSTAS);
+            assertThat(ev.getFunction()).isEqualTo(AiFunction.ANSWERS);
             assertThat(ev.getUsername()).isEqualTo("admin");
             assertThat(ev.getPreviousMode()).isNull();
             assertThat(ev.getNewMode()).isEqualTo(AiMode.API_KEY);
@@ -153,31 +153,31 @@ class AiConfigurationServiceTest {
                 "Bearer t");
         assertThat(service.read(CONDOMINIUM).answers().effectiveMode()).isEqualTo(AiMode.API_KEY);
 
-        service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
+        service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
                 new AnswersChange(null, "anthropic", "claude-haiku-4-5", null, false), DEFAULT_EMBEDDINGS), "admin",
                 "Bearer t");
 
         var e = service.read(CONDOMINIUM);
         assertThat(e.answers().mode()).isNull();
-        assertThat(e.answers().effectiveMode()).isEqualTo(AiMode.MCP_EXTERNO);
+        assertThat(e.answers().effectiveMode()).isEqualTo(AiMode.EXTERNAL_MCP);
         assertThat(e.answers().hasKey()).isTrue(); // a chave fica guardada
         assertThat(e.answers().chatAvailable()).isFalse();
         assertThat(trail).last().satisfies(ev -> {
             assertThat(ev.getFeature()).isNull(); // general mode event
             assertThat(ev.getPreviousMode()).isEqualTo(AiMode.API_KEY);
-            assertThat(ev.getNewMode()).isEqualTo(AiMode.MCP_EXTERNO);
+            assertThat(ev.getNewMode()).isEqualTo(AiMode.EXTERNAL_MCP);
             assertThat(ev.isKeyReplaced()).isFalse();
         });
     }
 
     @Test
     void keepsKeyWithoutResendingAndRemovesWithRemoveKey() {
-        service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
+        service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
                 new AnswersChange(AiMode.API_KEY, "anthropic", null, KEY, false), DEFAULT_EMBEDDINGS), "admin",
                         "Bearer t");
         byte[] stored = service.read(CONDOMINIUM).answers().encryptedKey();
 
-        service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
+        service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
                 new AnswersChange(AiMode.API_KEY, "anthropic", "claude-haiku-4-5", null, false), DEFAULT_EMBEDDINGS),
                         "outro",
                 "Bearer t");
@@ -189,8 +189,8 @@ class AiConfigurationServiceTest {
             assertThat(ev.getKeySuffix()).isNull();
         });
 
-        service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
-                new AnswersChange(AiMode.DESLIGADO, "anthropic", "claude-haiku-4-5", null, true), DEFAULT_EMBEDDINGS),
+        service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
+                new AnswersChange(AiMode.OFF, "anthropic", "claude-haiku-4-5", null, true), DEFAULT_EMBEDDINGS),
                         "admin",
                 "Bearer t");
         var e = service.read(CONDOMINIUM);
@@ -204,7 +204,7 @@ class AiConfigurationServiceTest {
 
     @Test
     void contractRejectionsComeAllAtOnce() {
-        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
+        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
                 new AnswersChange(AiMode.LOCAL, null, null, KEY, true),
                 new EmbeddingsChange(AiMode.API_KEY, "voyage", null)), "admin", "Bearer t"))
                 .isInstanceOfSatisfying(AiConfigurationRejectedException.class, e -> assertThat(e.reasons())
@@ -225,38 +225,38 @@ class AiConfigurationServiceTest {
 
     @Test
     void apiKeyWithoutProviderOrOutsideCatalogIsRejected() {
-        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
+        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
                 new AnswersChange(AiMode.API_KEY, null, null, KEY, false), DEFAULT_EMBEDDINGS), "admin", "Bearer t"))
                 .isInstanceOfSatisfying(AiConfigurationRejectedException.class,
                         e -> assertThat(e.reasons()).anyMatch(m -> m.contains("escolha o provedor das respostas")));
-        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
+        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
                 new AnswersChange(AiMode.API_KEY, "openai", null, KEY, false), DEFAULT_EMBEDDINGS), "admin",
                         "Bearer t"))
                 .isInstanceOfSatisfying(AiConfigurationRejectedException.class,
                         e -> assertThat(e.reasons()).containsExactly("O provedor 'openai' não está no catálogo."));
-        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
+        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
                 new AnswersChange(AiMode.API_KEY, "anthropic", "gpt-9", KEY, false), DEFAULT_EMBEDDINGS), "admin",
                 "Bearer t"))
                 .isInstanceOfSatisfying(AiConfigurationRejectedException.class, e -> assertThat(e.reasons())
                         .containsExactly("O modelo 'gpt-9' não está no catálogo do provedor 'anthropic'."));
-        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
+        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
                 new AnswersChange(AiMode.API_KEY, "ollama-local", null, KEY, false), DEFAULT_EMBEDDINGS), "admin",
                 "Bearer t"))
                 .isInstanceOfSatisfying(AiConfigurationRejectedException.class,
                         e -> assertThat(e.reasons()).containsExactly("O provedor 'ollama-local' não é de respostas."));
     }
 
-    /** RF-09.6: DESLIGADO mode with external-provider embeddings = rejected; with a local provider = accepted. */
+    /** RF-09.6: OFF mode with external-provider embeddings = rejected; with a local provider = accepted. */
     @Test
     void embeddingsOnlyWithLocalProvider() {
-        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.DESLIGADO,
+        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.OFF,
                 new AnswersChange(null, null, null, null, false), new EmbeddingsChange(AiMode.LOCAL, "voyage", null)),
                 "admin", "Bearer t"))
                 .isInstanceOfSatisfying(AiConfigurationRejectedException.class, e -> assertThat(e.reasons())
                         .containsExactly("O provedor 'voyage' não é local: para embeddings só é aceito provedor local,"
                                 + " sem enviar texto para fora (Q12)."));
 
-        var e = service.save(CONDOMINIUM, new Change(AiMode.DESLIGADO, new AnswersChange(null, null, null, null,
+        var e = service.save(CONDOMINIUM, new Change(AiMode.OFF, new AnswersChange(null, null, null, null,
                 false), new EmbeddingsChange(AiMode.LOCAL, "ollama-local", "bge-m3")), "admin", "Bearer t");
         assertThat(e.embeddings().mode()).isEqualTo(AiMode.LOCAL);
     }
@@ -264,7 +264,7 @@ class AiConfigurationServiceTest {
     @Test
     void localGeneralModeAndKeyOutOfLengthAreRejected() {
         assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.LOCAL,
-                new AnswersChange(AiMode.DESLIGADO, null, null, "curta", false), DEFAULT_EMBEDDINGS), "admin",
+                new AnswersChange(AiMode.OFF, null, null, "curta", false), DEFAULT_EMBEDDINGS), "admin",
                         "Bearer t"))
                 .isInstanceOfSatisfying(AiConfigurationRejectedException.class, e -> assertThat(e.reasons())
                         .anyMatch(m -> m.startsWith("O modo geral LOCAL"))
@@ -275,13 +275,13 @@ class AiConfigurationServiceTest {
     @Test
     void ragDownOrWithoutPublicKeySavesNothing() {
         doThrow(Status.UNAVAILABLE.asRuntimeException()).when(rag).listProviders(anyString());
-        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
+        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
                 new AnswersChange(AiMode.API_KEY, "anthropic", null, KEY, false), DEFAULT_EMBEDDINGS), "admin",
                         "Bearer t"))
                 .isInstanceOf(AiUnavailableException.class);
 
         doReturn(TestCatalog.response("")).when(rag).listProviders(anyString());
-        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
+        assertThatThrownBy(() -> service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
                 new AnswersChange(AiMode.API_KEY, "anthropic", null, KEY, false), DEFAULT_EMBEDDINGS), "admin",
                         "Bearer t"))
                 .isInstanceOf(AiUnavailableException.class).hasMessageContaining("sem chave pública");
@@ -303,9 +303,9 @@ class AiConfigurationServiceTest {
 
         when(features.isEnabled(CONDOMINIUM, FeatureService.ASSISTANT)).thenReturn(true);
         assertThat(service.assistantContext(CONDOMINIUM)).isEqualTo(
-                new AssistantContextResponse(AiMode.MCP_EXTERNO, AiMode.LOCAL, false));
+                new AssistantContextResponse(AiMode.EXTERNAL_MCP, AiMode.LOCAL, false));
 
-        service.save(CONDOMINIUM, new Change(AiMode.MCP_EXTERNO,
+        service.save(CONDOMINIUM, new Change(AiMode.EXTERNAL_MCP,
                 new AnswersChange(AiMode.API_KEY, "anthropic", null, KEY, false), DEFAULT_EMBEDDINGS), "admin",
                         "Bearer t");
         assertThat(service.assistantContext(CONDOMINIUM)).isEqualTo(

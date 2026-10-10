@@ -10,16 +10,16 @@ import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.security.CondominiumAccess;
 import br.com.condominioauditoria.api.service.query.QueryService;
-import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
-import br.com.condominioauditoria.contratos.assistente.v1.DadoGravado;
-import br.com.condominioauditoria.contratos.assistente.v1.LinhaDado;
-import br.com.condominioauditoria.contratos.assistente.v1.PerguntarEvento;
-import br.com.condominioauditoria.contratos.assistente.v1.PerguntarRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.RespostaPergunta;
-import br.com.condominioauditoria.contratos.assistente.v1.SituacaoResposta;
-import br.com.condominioauditoria.contratos.consulta.v1.ConsultaGrpc;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarCondominiosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarCondominiosResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.AssistantGrpc;
+import br.com.condominioauditoria.contracts.assistant.v2.StoredData;
+import br.com.condominioauditoria.contracts.assistant.v2.DataRow;
+import br.com.condominioauditoria.contracts.assistant.v2.AskEvent;
+import br.com.condominioauditoria.contracts.assistant.v2.AskRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.Answer;
+import br.com.condominioauditoria.contracts.assistant.v2.AnswerOutcome;
+import br.com.condominioauditoria.contracts.query.v2.QueryGrpc;
+import br.com.condominioauditoria.contracts.query.v2.ListCondominiumsRequest;
+import br.com.condominioauditoria.contracts.query.v2.ListCondominiumsResponse;
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
@@ -52,7 +52,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 
 /**
- * Question round trip (ADR 0003, Decision 5.2): an "API" thread calls the rag (Perguntar) and waits; during the
+ * Question round trip (ADR 0003, Decision 5.2): an "API" thread calls the rag (Ask) and waits; during the
  * question, the rag calls the api's Consulta through the real gRPC server (real port, its own thread pool) with the
  * user's token received in the metadata. Checks that the api accepts the token forwarded by the rag, applies the user's
  * access (only condominium A) and that nothing deadlocks with a single API thread.
@@ -70,7 +70,7 @@ class QuestionRoundTripTest {
 
     private final JwtDecoder decoder = token -> switch (token) {
         case "usuario-a" -> new Jwt(token, Instant.now(), Instant.now().plusSeconds(300), Map.of("alg", "none"),
-                Map.of("preferred_username", "usuario.a", "perfis", List.of("USUARIO"), "condominios",
+                Map.of("preferred_username", "usuario.a", "roles", List.of("USER"), "condominiums",
                         List.of(A.toString())));
         default -> throw new BadJwtException("assinatura inválida");
     };
@@ -92,7 +92,7 @@ class QuestionRoundTripTest {
         var query = new QueryGrpcService(new QueryService(access, condominiums, null, null, null, null, null, null));
         var converter = new JwtAuthenticationConverter();
         converter.setPrincipalClaimName("preferred_username");
-        converter.setJwtGrantedAuthoritiesConverter(jwt -> jwt.getClaimAsStringList("perfis").stream()
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> jwt.getClaimAsStringList("roles").stream()
                 .map(p -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + p)).toList());
         api = new GrpcServer(query, new GrpcAuthInterceptor(decoder, converter),
                 new ApiProperties(null, null, new ApiProperties.GrpcProperties(0), null));
@@ -102,20 +102,20 @@ class QuestionRoundTripTest {
 
         // fake rag: in the middle of the question, calls the api's Consulta with the token it received
         var receivedToken = new AtomicReference<String>();
-        var assistant = new AssistenteGrpc.AssistenteImplBase() {
+        var assistant = new AssistantGrpc.AssistantImplBase() {
             @Override
-            public void perguntar(PerguntarRequest request, StreamObserver<PerguntarEvento> response) {
+            public void ask(AskRequest request, StreamObserver<AskEvent> response) {
                 var headers = new Metadata();
                 headers.put(GrpcAuthInterceptor.AUTHORIZATION, receivedToken.get());
-                ListarCondominiosResponse list = ConsultaGrpc.newBlockingStub(ragToApiChannel)
+                ListCondominiumsResponse list = QueryGrpc.newBlockingStub(ragToApiChannel)
                         .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers))
                         .withDeadlineAfter(10, TimeUnit.SECONDS)
-                        .listarCondominios(ListarCondominiosRequest.getDefaultInstance());
-                var data = DadoGravado.newBuilder().setChamadaId("c1").setConsulta("listar_condominios");
-                list.getCondominiosList().forEach(c -> data.addLinhas(LinhaDado.newBuilder().setRotulo("Condomínio")
-                        .setValor(c.getNome())));
-                response.onNext(PerguntarEvento.newBuilder().setResposta(RespostaPergunta.newBuilder()
-                        .setSituacao(SituacaoResposta.SITUACAO_RESPOSTA_RESPONDIDA).addNosDadosGravados(data)).build());
+                        .listCondominiums(ListCondominiumsRequest.getDefaultInstance());
+                var data = StoredData.newBuilder().setCallId("c1").setQuery("list_condominiums");
+                list.getCondominiumsList().forEach(c -> data.addRows(DataRow.newBuilder().setLabel("Condomínio")
+                        .setValue(c.getName())));
+                response.onNext(AskEvent.newBuilder().setAnswer(Answer.newBuilder()
+                        .setOutcome(AnswerOutcome.ANSWER_OUTCOME_ANSWERED).addInStoredData(data)).build());
                 response.onCompleted();
             }
         };
@@ -147,11 +147,11 @@ class QuestionRoundTripTest {
                 new ApiProperties.RagProperties("rag:9091", 5, 20, 300)));
         ExecutorService apiThread = Executors.newSingleThreadExecutor(r -> new Thread(r, "http-nio-teste"));
         try {
-            RespostaPergunta response = apiThread.submit(() -> client.ask(PerguntarRequest.newBuilder()
-                    .setCondominioId(A.toString()).setPergunta("quais condomínios?").build(), "Bearer usuario-a"))
+            Answer response = apiThread.submit(() -> client.ask(AskRequest.newBuilder()
+                    .setCondominiumId(A.toString()).setQuestion("quais condomínios?").build(), "Bearer usuario-a"))
                     .get(20, TimeUnit.SECONDS);
 
-            assertThat(response.getNosDadosGravados(0).getLinhasList()).extracting(LinhaDado::getValor)
+            assertThat(response.getInStoredData(0).getRowsList()).extracting(DataRow::getValue)
                     .containsExactly("Condomínio A"); // B does not show up: the user's access applied
             assertThat(queryThread.get()).startsWith("grpc-servidor-");
         } finally {

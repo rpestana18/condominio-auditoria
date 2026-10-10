@@ -5,9 +5,9 @@ import br.com.condominioauditoria.api.exception.AiUnavailableException;
 import br.com.condominioauditoria.api.grpc.client.AssistantClient;
 import br.com.condominioauditoria.api.model.enums.AiFunction;
 import br.com.condominioauditoria.api.service.calculator.UsageCostCalculator.ModelPrice;
-import br.com.condominioauditoria.contratos.assistente.v1.ListarProvedoresResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.ModeloProvedor;
-import br.com.condominioauditoria.contratos.assistente.v1.Provedor;
+import br.com.condominioauditoria.contracts.assistant.v2.ListProvidersResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.ProviderModel;
+import br.com.condominioauditoria.contracts.assistant.v2.Provider;
 import io.grpc.StatusRuntimeException;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -23,7 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Catalog of AI providers and models, read from the rag (ListarProvedores; RF-09.6, ADR 0003) and kept in memory for a
+ * Catalog of AI providers and models, read from the rag (ListProviders; RF-09.6, ADR 0003) and kept in memory for a
  * few minutes (condominio.rag.catalog-cache-seconds), so the rag is not called on every screen or save. The catalog is
  * the same for every user; the token only lets the rag accept the call.
  */
@@ -101,7 +101,7 @@ public class AiCatalog {
         if (current != null && now.isBefore(current.readAt().plus(ttl))) {
             return current.catalog();
         }
-        ListarProvedoresResponse response;
+        ListProvidersResponse response;
         try {
             response = rag.listProviders(authorization);
         } catch (StatusRuntimeException error) {
@@ -126,33 +126,33 @@ public class AiCatalog {
         }
     }
 
-    static Catalog convert(ListarProvedoresResponse response) {
-        List<AiProvider> providers = response.getProvedoresList().stream()
+    static Catalog convert(ListProvidersResponse response) {
+        List<AiProvider> providers = response.getProvidersList().stream()
                 .filter(p -> {
                     boolean known = function(p) != null;
                     if (!known) {
-                        log.warn("Catálogo de IA: provedor {} sem uso informado foi ignorado", p.getCodigo());
+                        log.warn("Catálogo de IA: provedor {} sem uso informado foi ignorado", p.getCode());
                     }
                     return known;
                 })
-                .map(p -> new AiProvider(p.getCodigo(), p.getNome(), p.getTipo(), function(p), p.getLocal(),
-                        p.getPrecisaChave(), p.getDimensao() > 0 ? p.getDimensao() : null,
-                        p.getModelosList().stream().map(AiCatalog::model).toList()))
+                .map(p -> new AiProvider(p.getCode(), p.getName(), p.getType(), function(p), p.getLocal(),
+                        p.getRequiresKey(), p.getDimension() > 0 ? p.getDimension() : null,
+                        p.getModelsList().stream().map(AiCatalog::model).toList()))
                 .toList();
-        return new Catalog(providers, response.getChavePublicaPem());
+        return new Catalog(providers, response.getPublicKeyPem());
     }
 
-    private static AiFunction function(Provedor p) {
-        return switch (p.getUso()) {
-            case USO_PROVEDOR_RESPOSTAS -> AiFunction.RESPOSTAS;
-            case USO_PROVEDOR_EMBEDDINGS -> AiFunction.EMBEDDINGS;
+    private static AiFunction function(Provider p) {
+        return switch (p.getUsage()) {
+            case PROVIDER_USAGE_ANSWERS -> AiFunction.ANSWERS;
+            case PROVIDER_USAGE_EMBEDDINGS -> AiFunction.EMBEDDINGS;
             default -> null;
         };
     }
 
-    private static AiModel model(ModeloProvedor m) {
-        return new AiModel(m.getId(), m.getNome(), m.getPadrao(), price(m.getPrecoEntradaMilhaoUsd()),
-                price(m.getPrecoSaidaMilhaoUsd()));
+    private static AiModel model(ProviderModel m) {
+        return new AiModel(m.getId(), m.getName(), m.getIsDefault(), price(m.getInputPricePerMillionUsd()),
+                price(m.getOutputPricePerMillionUsd()));
     }
 
     /** Exact decimal text ("2.00"); empty = 0 (local model); wrong format = null (cost not calculated). */

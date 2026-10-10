@@ -65,61 +65,62 @@ class AiConfigurationServicePostgresTest {
     @Test
     void defaultsWithoutRowsAndSaveEncryptsAndKeepsTrailWithoutKey() throws Exception {
         UUID created = newCondominium();
-        assertThat(service.read(created).generalMode()).isEqualTo(AiMode.MCP_EXTERNO);
-        assertThat(jdbc.queryForObject("select count(*) from configuracao_ia where condominio_id = ?", Long.class,
+        assertThat(service.read(created).generalMode()).isEqualTo(AiMode.EXTERNAL_MCP);
+        assertThat(jdbc.queryForObject("select count(*) from ai_configuration where condominium_id = ?", Long.class,
                 created)).isZero();
 
-        service.save(created, new Change(AiMode.DESLIGADO, new AnswersChange(AiMode.API_KEY, "anthropic", null, KEY,
-                false), new EmbeddingsChange(AiMode.DESLIGADO, null, null)), "admin", "Bearer t");
+        service.save(created, new Change(AiMode.OFF, new AnswersChange(AiMode.API_KEY, "anthropic", null, KEY,
+                false), new EmbeddingsChange(AiMode.OFF, null, null)), "admin", "Bearer t");
 
         var e = service.read(created);
-        assertThat(e.generalMode()).isEqualTo(AiMode.DESLIGADO);
+        assertThat(e.generalMode()).isEqualTo(AiMode.OFF);
         assertThat(e.answers().effectiveMode()).isEqualTo(AiMode.API_KEY);
         assertThat(e.answers().keySuffix()).isEqualTo("x9Qa");
         assertThat(TestKeyPair.decrypt(e.answers().encryptedKey(), TestKeyPair.pair().getPrivate()))
                 .isEqualTo(KEY);
-        assertThat(e.embeddings().mode()).isEqualTo(AiMode.DESLIGADO);
+        assertThat(e.embeddings().mode()).isEqualTo(AiMode.OFF);
 
         List<Map<String, Object>> trail = jdbc.queryForList(
-                "select * from evento_configuracao_ia where condominio_id = ? order by funcao, modulo nulls first",
+                "select * from ai_configuration_event where condominium_id = ? order by function, feature nulls first",
                         created);
         assertThat(trail).hasSize(3);
         assertThat(trail).allSatisfy(row -> assertThat(row.values()).noneMatch(
                 v -> v != null && v.toString().contains("sk-ant")));
         assertThat(trail).anySatisfy(row -> {
-            assertThat(row.get("funcao")).isEqualTo("RESPOSTAS");
-            assertThat(row.get("modulo")).isEqualTo(FeatureService.ASSISTANT);
-            assertThat(row.get("chave_trocada")).isEqualTo(true);
-            assertThat(row.get("chave_final")).isEqualTo("x9Qa");
-            assertThat(row.get("modo_novo")).isEqualTo("API_KEY");
+            assertThat(row.get("function")).isEqualTo("ANSWERS");
+            assertThat(row.get("feature")).isEqualTo(FeatureService.ASSISTANT);
+            assertThat(row.get("key_replaced")).isEqualTo(true);
+            assertThat(row.get("key_suffix")).isEqualTo("x9Qa");
+            assertThat(row.get("new_mode")).isEqualTo("API_KEY");
         });
 
         // Same request again (without resending the key): nothing changes, no event
-        service.save(created, new Change(AiMode.DESLIGADO, new AnswersChange(AiMode.API_KEY, "anthropic", null, null,
-                false), new EmbeddingsChange(AiMode.DESLIGADO, null, null)), "admin", "Bearer t");
-        assertThat(jdbc.queryForObject("select count(*) from evento_configuracao_ia where condominio_id = ?",
+        service.save(created, new Change(AiMode.OFF, new AnswersChange(AiMode.API_KEY, "anthropic", null, null,
+                false), new EmbeddingsChange(AiMode.OFF, null, null)), "admin", "Bearer t");
+        assertThat(jdbc.queryForObject("select count(*) from ai_configuration_event where condominium_id = ?",
                 Long.class, created)).isEqualTo(3);
     }
 
     @Test
     void trailRejectsUpdateDeleteAndTruncate() {
         UUID created = newCondominium();
-        service.save(created, new Change(AiMode.DESLIGADO, new AnswersChange(null, null, null, null, false),
+        service.save(created, new Change(AiMode.OFF, new AnswersChange(null, null, null, null, false),
                 new EmbeddingsChange(AiMode.LOCAL, "ollama-local", null)), "admin", "Bearer t");
 
-        assertThatThrownBy(() -> jdbc.update("update evento_configuracao_ia set usuario = 'x' where condominio_id = ?",
+        assertThatThrownBy(() -> jdbc.update("update ai_configuration_event set username = 'x' where condominium_id "
+                + "= ?",
                 created)).isInstanceOf(DataAccessException.class).hasMessageContaining("só de inserção");
-        assertThatThrownBy(() -> jdbc.update("delete from evento_configuracao_ia where condominio_id = ?", created))
+        assertThatThrownBy(() -> jdbc.update("delete from ai_configuration_event where condominium_id = ?", created))
                 .isInstanceOf(DataAccessException.class).hasMessageContaining("só de inserção");
-        assertThatThrownBy(() -> jdbc.execute("truncate evento_configuracao_ia"))
+        assertThatThrownBy(() -> jdbc.execute("truncate ai_configuration_event"))
                 .isInstanceOf(DataAccessException.class).hasMessageContaining("só de inserção");
     }
 
     @Test
     void oneRowPerCondominiumFeatureAndFunctionEvenWithNullFeature() {
         UUID created = newCondominium();
-        String general = "insert into configuracao_ia (id, condominio_id, modulo, funcao, modo, atualizado_por,"
-                + " atualizado_em) values (gen_random_uuid(), ?, null, 'RESPOSTAS', 'DESLIGADO', 'admin', now())";
+        String general = "insert into ai_configuration (id, condominium_id, feature, function, mode, updated_by,"
+                + " updated_at) values (gen_random_uuid(), ?, null, 'ANSWERS', 'OFF', 'admin', now())";
         jdbc.update(general, created);
         assertThatThrownBy(() -> jdbc.update(general, created)).isInstanceOf(DataAccessException.class);
     }
@@ -127,21 +128,24 @@ class AiConfigurationServicePostgresTest {
     @Test
     void generalModeHasNoProviderNorKeyAndKeyWithoutSuffixIsRejected() {
         UUID created = newCondominium();
-        assertThatThrownBy(() -> jdbc.update("insert into configuracao_ia (id, condominio_id, modulo, funcao, modo,"
-                + " provedor, atualizado_por, atualizado_em) values (gen_random_uuid(), ?, null, 'RESPOSTAS',"
+        assertThatThrownBy(() -> jdbc.update("insert into ai_configuration (id, condominium_id, feature, function, "
+                + "mode,"
+                + " provider, updated_by, updated_at) values (gen_random_uuid(), ?, null, 'ANSWERS',"
                 + " 'API_KEY', 'anthropic', 'admin', now())", created)).isInstanceOf(DataAccessException.class);
-        assertThatThrownBy(() -> jdbc.update("insert into configuracao_ia (id, condominio_id, modulo, funcao, modo,"
-                + " chave_cifrada, atualizado_por, atualizado_em) values (gen_random_uuid(), ?, 'ASSISTENTE',"
-                + " 'RESPOSTAS', 'API_KEY', '\\x01'::bytea, 'admin', now())", created))
+        assertThatThrownBy(() -> jdbc.update("insert into ai_configuration (id, condominium_id, feature, function, "
+                + "mode,"
+                + " encrypted_key, updated_by, updated_at) values (gen_random_uuid(), ?, 'ASSISTANT',"
+                + " 'ANSWERS', 'API_KEY', '\\x01'::bytea, 'admin', now())", created))
                 .isInstanceOf(DataAccessException.class);
-        assertThatThrownBy(() -> jdbc.update("insert into configuracao_ia (id, condominio_id, modulo, funcao, modo,"
-                + " atualizado_por, atualizado_em) values (gen_random_uuid(), ?, 'ASSISTENTE', 'EMBEDDINGS', null,"
+        assertThatThrownBy(() -> jdbc.update("insert into ai_configuration (id, condominium_id, feature, function, "
+                + "mode,"
+                + " updated_by, updated_at) values (gen_random_uuid(), ?, 'ASSISTANT', 'EMBEDDINGS', null,"
                 + " 'admin', now())", created)).isInstanceOf(DataAccessException.class);
     }
 
     private UUID newCondominium() {
         UUID id = UUID.randomUUID();
-        jdbc.update("insert into condominio (id, nome) values (?, ?)", id, "Teste IA " + id);
+        jdbc.update("insert into condominium (id, name) values (?, ?)", id, "Teste IA " + id);
         return id;
     }
 }

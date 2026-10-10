@@ -25,7 +25,7 @@ import { formatarMes } from "../formato";
  * Tela "Previsto × realizado" (RF-03.1.13 e RF-11.4), para todos os perfis. Os filtros ficam no endereço
  * (?periodo=2026-09&po=...&fundo=<id do fundo>), para o link da tela inicial e do de-para abrirem a mesma visão.
  * O exercício é escolhido pela lista do GET /exercicios e vai para a API como o `po` daquele exercício; sem `po`,
- * a API usa o exercício vigente. Com `?alvo=linha:<id>` (vindo de "Comparar exercícios"), a evidência já abre.
+ * a API usa o exercício vigente. Com `?alvo=line:<id>` (vindo de "Comparar exercícios"), a evidência já abre.
  */
 export function PrevistoRealizado() {
   const { condominioId } = useSessao();
@@ -38,15 +38,15 @@ export function PrevistoRealizado() {
   const { data: previsoes = [] } = usePrevisoes(condominioId);
   const { data: fundos = [] } = useFundos(condominioId);
   // O acumulado traz os meses do exercício (para o filtro e o gráfico mês a mês)
-  const acumulado = usePrevistoRealizado(condominioId, "acumulado", poId);
-  const ultimoMes = acumulado.data?.mesesSomados.at(-1);
-  const periodo = parametros.get("periodo") ?? (acumulado.isFetched ? (ultimoMes ?? "acumulado") : null);
+  const acumulado = usePrevistoRealizado(condominioId, "cumulative", poId);
+  const ultimoMes = acumulado.data?.summedMonths.at(-1);
+  const periodo = parametros.get("periodo") ?? (acumulado.isFetched ? (ultimoMes ?? "cumulative") : null);
   // O filtro de fundo vai para a API: ela devolve só o que pertence à visão escolhida
   const consulta = usePrevistoRealizado(condominioId, periodo, poId, fundoId);
 
   // Sem `po` no endereço, o exercício mostrado é o que a API escolheu (o vigente)
-  const poMostrada = poId ?? acumulado.data?.po?.id ?? null;
-  const exercicio = exercicios.find((e) => e.tipo === "PO" && e.poId === poMostrada);
+  const poMostrada = poId ?? acumulado.data?.budget?.id ?? null;
+  const exercicio = exercicios.find((e) => e.type === "PO" && e.budgetId === poMostrada);
 
   /** Troca um filtro no endereço. A evidência aberta pelo link (?alvo=) fecha junto. */
   const trocar = (mudancas: Record<string, string | null>) =>
@@ -63,8 +63,8 @@ export function PrevistoRealizado() {
   return (
     <>
       <header className="titulo-pagina">
-        <h1>Previsto × realizado{periodo && periodo !== "acumulado" ? ` · ${formatarMes(periodo)}` : " · acumulado"}</h1>
-        {periodo && consulta.data?.situacao === "CALCULADO" && <BotoesExportacao periodo={periodo} poId={poId} fundoId={fundoId} />}
+        <h1>Previsto × realizado{periodo && periodo !== "cumulative" ? ` · ${formatarMes(periodo)}` : " · acumulado"}</h1>
+        {periodo && consulta.data?.status === "CALCULATED" && <BotoesExportacao periodo={periodo} poId={poId} fundoId={fundoId} />}
       </header>
       <FiltrosPrevisto
         exercicios={exercicios}
@@ -72,8 +72,8 @@ export function PrevistoRealizado() {
         poId={poMostrada}
         // Outro exercício tem outros meses: o período volta ao padrão (último mês com fluxo)
         aoTrocarPo={(id) => trocar({ po: id, periodo: null })}
-        periodo={periodo ?? "acumulado"}
-        meses={acumulado.data?.meses ?? []}
+        periodo={periodo ?? "cumulative"}
+        meses={acumulado.data?.months ?? []}
         aoTrocarPeriodo={(p) => trocar({ periodo: p })}
         fundos={fundos}
         fundoId={fundoId}
@@ -114,43 +114,43 @@ function Conteudo({ resultado, periodo, alvoUrl, aoFecharAlvoUrl, aoEscolherMes 
     setEvidencia(null);
     if (alvoUrl) aoFecharAlvoUrl();
   };
-  const { totais } = resultado;
+  const { totals: totais } = resultado;
 
   return (
     <div className={evidencia ? "com-detalhe" : undefined}>
       <div>
         <EstadoPrevisto resultado={resultado} />
-        {resultado.avisos.map((a, i) => (
-          <p key={`${a.codigo}-${i}`} className="aviso alerta">
-            {a.texto}
+        {resultado.warnings.map((a, i) => (
+          <p key={`${a.code}-${i}`} className="aviso alerta">
+            {a.text}
           </p>
         ))}
 
-        {resultado.situacao !== "CALCULADO" ? (
+        {resultado.status !== "CALCULATED" ? (
           <SemNumeros resultado={resultado} />
         ) : (
           <>
             {/* Com o filtro de outro fundo, a API devolve totais e grupos vazios: só o painel do fundo aparece */}
             {totais && <ResumoPrevisto resultado={resultado} totais={totais} aoAbrirEvidencia={setEvidencia} />}
-            {resultado.regra20 && <IndicadorRegra20 regra={resultado.regra20} />}
-            {resultado.grupos.length > 0 &&
-              (periodo === "acumulado" ? (
-                <GraficoMeses meses={resultado.meses} aoEscolherMes={aoEscolherMes} />
+            {resultado.rule20 && <IndicadorRegra20 regra={resultado.rule20} />}
+            {resultado.groups.length > 0 &&
+              (periodo === "cumulative" ? (
+                <GraficoMeses meses={resultado.months} aoEscolherMes={aoEscolherMes} />
               ) : (
-                <GraficoGrupos grupos={resultado.grupos} />
+                <GraficoGrupos grupos={resultado.groups} />
               ))}
-            {resultado.grupos.length > 0 && <TabelaPrevisto grupos={resultado.grupos} aoAbrirEvidencia={setEvidencia} />}
+            {resultado.groups.length > 0 && <TabelaPrevisto grupos={resultado.groups} aoAbrirEvidencia={setEvidencia} />}
             {totais && <BlocosAParte resultado={resultado} aoAbrirEvidencia={setEvidencia} />}
-            {resultado.fundos.length > 0 && <PainelFundos fundos={resultado.fundos} aoAbrirEvidencia={setEvidencia} />}
+            {resultado.funds.length > 0 && <PainelFundos fundos={resultado.funds} aoAbrirEvidencia={setEvidencia} />}
           </>
         )}
-        {periodo !== "acumulado" && <AchadosDoMes competencia={periodo} />}
+        {periodo !== "cumulative" && <AchadosDoMes competencia={periodo} />}
         <p className="discreto">
-          As diferenças são indícios para conferência, com os lançamentos de origem. Cálculo: versão {resultado.versaoCalculo}.
+          As diferenças são indícios para conferência, com os lançamentos de origem. Cálculo: versão {resultado.calculationVersion}.
         </p>
       </div>
-      {evidencia && resultado.po && (
-        <PainelEvidencia periodo={periodo} po={resultado.po} alvo={evidencia} aoFechar={fecharEvidencia} />
+      {evidencia && resultado.budget && (
+        <PainelEvidencia periodo={periodo} po={resultado.budget} alvo={evidencia} aoFechar={fecharEvidencia} />
       )}
     </div>
   );

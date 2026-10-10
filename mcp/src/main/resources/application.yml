@@ -5,11 +5,11 @@ spring:
     mcp:
       server:
         name: condominio-auditoria
-        version: 0.3.0
+        version: 0.4.0
         instructions: >
           Consulta a contabilidade de condomínios: fundos, arquivos enviados, conferências e lançamentos,
-          e busca trechos nos documentos enviados (buscar_documentos).
-          Comece por listar_condominios. Valores em reais vêm como texto com duas casas.
+          e busca trechos nos documentos enviados (search_documents).
+          Comece por list_condominiums. Valores em reais vêm como texto com duas casas.
           Cite o arquivo e a página quando mostrar um lançamento, e o documento e a localização quando usar um trecho.
           Números para conta vêm das ferramentas numéricas, nunca do texto de um trecho.
           Aponte indícios com a evidência; não escreva conclusões acusatórias.

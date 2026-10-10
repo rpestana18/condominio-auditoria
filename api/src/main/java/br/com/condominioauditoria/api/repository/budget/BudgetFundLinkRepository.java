@@ -11,7 +11,7 @@ public interface BudgetFundLinkRepository extends JpaRepository<BudgetFundLink, 
     List<BudgetFundLink> findByBudgetId(UUID budgetId);
 
     /**
-     * Deletes the current link (the state; the trail stays in evento_previsao) in the database right away, before the
+     * Deletes the current link (the state; the trail stays in budget_event) in the database right away, before the
      * new inserts: the unique keys per line and per fund cannot collide in the middle of the change.
      */
     @Modifying(flushAutomatically = true)

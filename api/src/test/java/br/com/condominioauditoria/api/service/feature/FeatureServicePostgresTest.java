@@ -92,18 +92,19 @@ class FeatureServicePostgresTest {
         features.change(created, FeatureService.ASSISTANT, true, "Contrato assinado", "admin");
         usage.recordMcpCall(created, "conselheiro", true);
 
-        assertThatThrownBy(() -> jdbc.update("update evento_modulo set motivo = 'outro' where condominio_id = ?",
+        assertThatThrownBy(() -> jdbc.update("update feature_event set reason = 'outro' where condominium_id = ?",
                 created))
                 .isInstanceOf(DataAccessException.class).hasMessageContaining("só aceita inclusão");
-        assertThatThrownBy(() -> jdbc.update("delete from evento_modulo where condominio_id = ?", created))
+        assertThatThrownBy(() -> jdbc.update("delete from feature_event where condominium_id = ?", created))
                 .isInstanceOf(DataAccessException.class).hasMessageContaining("só aceita inclusão");
-        assertThatThrownBy(() -> jdbc.execute("truncate evento_modulo"))
+        assertThatThrownBy(() -> jdbc.execute("truncate feature_event"))
                 .isInstanceOf(DataAccessException.class).hasMessageContaining("só aceita inclusão");
-        assertThatThrownBy(() -> jdbc.update("update uso_modulo set usuario = 'x' where condominio_id = ?", created))
+        assertThatThrownBy(() -> jdbc.update("update feature_usage set username = 'x' where condominium_id = "
+                + "?", created))
                 .isInstanceOf(DataAccessException.class).hasMessageContaining("só aceita inclusão");
-        assertThatThrownBy(() -> jdbc.update("delete from uso_modulo where condominio_id = ?", created))
+        assertThatThrownBy(() -> jdbc.update("delete from feature_usage where condominium_id = ?", created))
                 .isInstanceOf(DataAccessException.class).hasMessageContaining("só aceita inclusão");
-        assertThat(jdbc.queryForObject("select count(*) from evento_modulo where condominio_id = ?", Long.class,
+        assertThat(jdbc.queryForObject("select count(*) from feature_event where condominium_id = ?", Long.class,
                 created))
                 .isEqualTo(1);
     }
@@ -111,13 +112,14 @@ class FeatureServicePostgresTest {
     @Test
     void databaseAcceptsNullReasonAndRejectsBlankReasonAndUnknownFunction() {
         UUID created = newCondominium();
-        assertThatThrownBy(() -> jdbc.update("insert into evento_modulo values (gen_random_uuid(), ?, 'ASSISTENTE',"
+        assertThatThrownBy(() -> jdbc.update("insert into feature_event values (gen_random_uuid(), ?, 'ASSISTANT',"
                 + " false, true, 'admin', now(), '   ')", created)).isInstanceOf(DataAccessException.class);
         features.change(created, FeatureService.ASSISTANT, true, null, "admin");
         assertThat(features.events(created, FeatureService.ASSISTANT)).singleElement()
                 .satisfies(e -> assertThat(e.getReason()).isNull());
-        assertThatThrownBy(() -> jdbc.update("insert into uso_modulo (id, condominio_id, modulo, funcao, quando)"
-                + " values (gen_random_uuid(), ?, 'ASSISTENTE', 'chat', now())", created))
+        assertThatThrownBy(() -> jdbc.update("insert into feature_usage (id, condominium_id, feature, function, "
+                + "occurred_at)"
+                + " values (gen_random_uuid(), ?, 'ASSISTANT', 'chat', now())", created))
                 .isInstanceOf(DataAccessException.class);
     }
 
@@ -133,8 +135,8 @@ class FeatureServicePostgresTest {
         var summary = usage.summary(created, today.withDayOfMonth(1), today);
 
         assertThat(summary.byFunction()).containsExactly(
-                new UsageTotal(null, FeatureService.ASSISTANT, UsageFunction.CHAMADA_MCP, 2, 0, 0, 0, 0),
-                new UsageTotal(null, FeatureService.ASSISTANT, UsageFunction.INDEXACAO, 2, 0, 0, 2, 10));
+                new UsageTotal(null, FeatureService.ASSISTANT, UsageFunction.MCP_CALL, 2, 0, 0, 0, 0),
+                new UsageTotal(null, FeatureService.ASSISTANT, UsageFunction.INDEXING, 2, 0, 0, 2, 10));
         assertThat(summary.byMonth()).extracting(UsageTotal::month).containsOnly(today.toString().substring(0, 7));
         assertThat(usage.summary(created, today.minusYears(1), today.minusYears(1)).byMonth()).isEmpty();
     }
@@ -165,7 +167,7 @@ class FeatureServicePostgresTest {
 
     private UUID newCondominium() {
         UUID id = UUID.randomUUID();
-        jdbc.update("insert into condominio (id, nome) values (?, ?)", id, "Teste " + id);
+        jdbc.update("insert into condominium (id, name) values (?, ?)", id, "Teste " + id);
         return id;
     }
 }

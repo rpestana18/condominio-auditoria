@@ -21,10 +21,10 @@ import java.util.stream.Collectors;
 public final class FundView {
 
     /** Warnings that only concern the Condomínio fund. */
-    private static final Set<String> OPERATING_FUND_WARNINGS = Set.of("SEM_DEPARA_CONFIRMADO", "LANCAMENTO_SEM_CONTA",
-            "A_REALOCAR", "REALOCACAO_SEM_LANCAMENTO", "REALOCACAO_SEM_EFEITO", "CONFERENCIA_FLUXO",
-            "REGRA_NAO_AVALIADA");
-    private static final Set<String> FUND_WARNINGS = Set.of("LINHA_SEM_FUNDO", "REPROCESSAR_FLUXO");
+    private static final Set<String> OPERATING_FUND_WARNINGS = Set.of("NO_CONFIRMED_MAPPING", "ENTRY_WITHOUT_ACCOUNT",
+            "TO_REALLOCATE", "REALLOCATION_WITHOUT_ENTRY", "REALLOCATION_WITHOUT_EFFECT", "CASH_FLOW_CHECK",
+            "RULE_NOT_EVALUATED");
+    private static final Set<String> FUND_WARNINGS = Set.of("LINE_WITHOUT_FUND", "REPROCESS_CASH_FLOW");
 
     private FundView() {
     }
@@ -32,12 +32,12 @@ public final class FundView {
     /** Null {@code fundId}: no filter (everything). */
     public static Calculation filter(Calculation c, UUID fundId, UUID operatingFundId) {
         BudgetVsActualResponse r = c.result();
-        if (fundId == null || r.status() != BudgetVsActualStatus.CALCULADO) {
+        if (fundId == null || r.status() != BudgetVsActualStatus.CALCULATED) {
             return c;
         }
         if (fundId.equals(operatingFundId)) {
             Map<String, List<EvidenceResponse>> ev = c.evidence().entrySet().stream()
-                    .filter(x -> !x.getKey().startsWith("fundo:"))
+                    .filter(x -> !x.getKey().startsWith("fund:"))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a,
                             java.util.TreeMap::new));
             return new Calculation(new BudgetVsActualResponse(r.calculationVersion(), r.period(), r.status(),

@@ -2,19 +2,19 @@ package br.com.condominioauditoria.api.grpc.server;
 
 import br.com.condominioauditoria.api.exception.FeatureNotEnabledException;
 import br.com.condominioauditoria.api.service.query.QueryService;
-import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosResponse;
-import br.com.condominioauditoria.contratos.consulta.v1.ConferenciasDoArquivoRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ConferenciasDoArquivoResponse;
-import br.com.condominioauditoria.contratos.consulta.v1.ConsultaGrpc;
-import br.com.condominioauditoria.contratos.consulta.v1.Lancamento;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarArquivosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarArquivosResponse;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarCondominiosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarCondominiosResponse;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarLancamentosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ResumoFundosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ResumoFundosResponse;
+import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsRequest;
+import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsResponse;
+import br.com.condominioauditoria.contracts.query.v2.FileChecksRequest;
+import br.com.condominioauditoria.contracts.query.v2.FileChecksResponse;
+import br.com.condominioauditoria.contracts.query.v2.QueryGrpc;
+import br.com.condominioauditoria.contracts.query.v2.Entry;
+import br.com.condominioauditoria.contracts.query.v2.ListFilesRequest;
+import br.com.condominioauditoria.contracts.query.v2.ListFilesResponse;
+import br.com.condominioauditoria.contracts.query.v2.ListCondominiumsRequest;
+import br.com.condominioauditoria.contracts.query.v2.ListCondominiumsResponse;
+import br.com.condominioauditoria.contracts.query.v2.ListEntriesRequest;
+import br.com.condominioauditoria.contracts.query.v2.FundSummaryRequest;
+import br.com.condominioauditoria.contracts.query.v2.FundSummaryResponse;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
@@ -25,11 +25,11 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
 /**
- * Entry point of contracts/grpc/consulta/v1/consulta.proto. Read-only: each rpc calls {@link QueryService} and turns
+ * Entry point of contracts/grpc/query/v2/query.proto. Read-only: each rpc calls {@link QueryService} and turns
  * its exceptions into the gRPC status the contract promises.
  */
 @Component
-public class QueryGrpcService extends ConsultaGrpc.ConsultaImplBase {
+public class QueryGrpcService extends QueryGrpc.QueryImplBase {
 
     private static final Logger log = LoggerFactory.getLogger(QueryGrpcService.class);
 
@@ -40,30 +40,30 @@ public class QueryGrpcService extends ConsultaGrpc.ConsultaImplBase {
     }
 
     @Override
-    public void listarCondominios(ListarCondominiosRequest request,
-            StreamObserver<ListarCondominiosResponse> response) {
+    public void listCondominiums(ListCondominiumsRequest request,
+            StreamObserver<ListCondominiumsResponse> response) {
         respond(response, query::condominiums);
     }
 
     @Override
-    public void resumoFundos(ResumoFundosRequest request, StreamObserver<ResumoFundosResponse> response) {
+    public void fundSummary(FundSummaryRequest request, StreamObserver<FundSummaryResponse> response) {
         respond(response, () -> query.fundSummary(request));
     }
 
     @Override
-    public void listarArquivos(ListarArquivosRequest request, StreamObserver<ListarArquivosResponse> response) {
+    public void listFiles(ListFilesRequest request, StreamObserver<ListFilesResponse> response) {
         respond(response, () -> query.files(request));
     }
 
     @Override
-    public void conferenciasDoArquivo(ConferenciasDoArquivoRequest request,
-            StreamObserver<ConferenciasDoArquivoResponse> response) {
+    public void fileChecks(FileChecksRequest request,
+            StreamObserver<FileChecksResponse> response) {
         respond(response, () -> query.fileChecks(request));
     }
 
     /** Streamed response: each entry goes out as soon as it is converted. */
     @Override
-    public void listarLancamentos(ListarLancamentosRequest request, StreamObserver<Lancamento> response) {
+    public void listEntries(ListEntriesRequest request, StreamObserver<Entry> response) {
         try {
             query.ledgerEntries(request).forEach(response::onNext);
             response.onCompleted();
@@ -73,7 +73,7 @@ public class QueryGrpcService extends ConsultaGrpc.ConsultaImplBase {
     }
 
     @Override
-    public void buscarDocumentos(BuscarDocumentosRequest request, StreamObserver<BuscarDocumentosResponse> response) {
+    public void searchDocuments(SearchDocumentsRequest request, StreamObserver<SearchDocumentsResponse> response) {
         respond(response, () -> query.searchDocuments(request));
     }
 

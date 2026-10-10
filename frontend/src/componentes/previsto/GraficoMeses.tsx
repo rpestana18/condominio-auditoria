@@ -2,10 +2,10 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import type { MesPrevistoRealizado } from "../../api/tipos";
 import { formatarMes, formatarMesCurto, formatarMoeda, formatarMoedaCurta } from "../../formato";
 
-const situacao: Record<MesPrevistoRealizado["situacao"], string> = {
-  COM_FLUXO: "",
-  SEM_FLUXO: "sem fluxo",
-  DOIS_FLUXOS: "dois fluxos",
+const situacao: Record<MesPrevistoRealizado["status"], string> = {
+  WITH_CASH_FLOW: "",
+  NO_CASH_FLOW: "sem fluxo",
+  TWO_CASH_FLOWS: "dois fluxos",
 };
 
 interface Props {
@@ -20,12 +20,12 @@ interface Props {
 export function GraficoMeses({ meses, aoEscolherMes }: Props) {
   const dados = meses.map((m) => {
     // Segunda linha do eixo: a situação do mês e, depois dos 12 meses, a marca de prorrogado (RF-11.3)
-    const marca = [situacao[m.situacao], m.prorrogado ? "prorrogado" : ""].filter(Boolean).join(" · ");
+    const marca = [situacao[m.status], m.extended ? "prorrogado" : ""].filter(Boolean).join(" · ");
     return {
-      mes: m.mes,
-      rotulo: marca ? `${formatarMesCurto(m.mes)}\n${marca}` : formatarMesCurto(m.mes),
-      previsto: m.situacao === "COM_FLUXO" ? m.previsto : null,
-      realizado: m.situacao === "COM_FLUXO" ? m.despesaRealizada : null,
+      mes: m.month,
+      rotulo: marca ? `${formatarMesCurto(m.month)}\n${marca}` : formatarMesCurto(m.month),
+      previsto: m.status === "WITH_CASH_FLOW" ? m.planned : null,
+      realizado: m.status === "WITH_CASH_FLOW" ? m.actualExpense : null,
     };
   });
   return (

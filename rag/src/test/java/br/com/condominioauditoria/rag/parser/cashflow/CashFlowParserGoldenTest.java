@@ -54,7 +54,7 @@ public class CashFlowParserGoldenTest {
         assertThat(CashFlowCheck.check(cashFlow)).allSatisfy(v ->
                 assertThat(v.ok()).as(v.code() + ": " + v.detail()).isTrue())
                 .extracting(TotalsCheck::code)
-                .containsExactly("SALDO_CORRENTE", "TOTAIS_FUNDO", "SALDO_FINAL_FUNDO", "TOTAL_POSICAO");
+                .containsExactly("RUNNING_BALANCE", "FUND_TOTALS", "FUND_CLOSING_BALANCE", "POSITION_TOTAL");
     }
 
     @Test
@@ -126,8 +126,8 @@ public class CashFlowParserGoldenTest {
 
     @Test
     public void fullResultFitsQueueContract() {
-        var file = new br.com.condominioauditoria.rag.messaging.FileReceivedMessage(1, java.util.UUID.randomUUID(),
-                java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), "BALANCETE", "fluxo.pdf", "x/fluxo.pdf",
+        var file = new br.com.condominioauditoria.rag.messaging.FileReceivedMessage(3, java.util.UUID.randomUUID(),
+                java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), "TRIAL_BALANCE", "fluxo.pdf", "x/fluxo.pdf",
                 "a".repeat(64));
         byte[] json = new br.com.condominioauditoria.rag.messaging.MessageContract().write(
                 br.com.condominioauditoria.rag.messaging.ProcessingResultMessage.completed(file,

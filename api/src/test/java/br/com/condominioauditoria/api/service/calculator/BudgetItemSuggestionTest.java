@@ -77,7 +77,7 @@ class BudgetItemSuggestionTest {
         var r = BudgetItemSuggestion.suggest(List.of(newLine), List.of(newLine), List.of(),
                 confirmed).get(newLine.line().getId());
 
-        assertThat(r).isEqualTo(new Suggested(item, BudgetItemSource.CONTA_PO,
+        assertThat(r).isEqualTo(new Suggested(item, BudgetItemSource.BUDGET_ACCOUNT,
                 "mesma conta da PO e mesmo grupo: 1682 - SINDICATURA  PROFISSIONAL, 1.3"));
     }
 
@@ -95,12 +95,12 @@ class BudgetItemSuggestionTest {
 
         assertThat(r).isInstanceOfSatisfying(Suggested.class, s -> {
             assertThat(s.budgetItemId()).isEqualTo(fromPrevious);
-            assertThat(s.source()).isEqualTo(BudgetItemSource.VERSAO_ANTERIOR);
+            assertThat(s.source()).isEqualTo(BudgetItemSource.PREVIOUS_VERSION);
         });
     }
 
     private static LineWithGroup line(Budget budget, String code, String account, String group) {
-        BudgetLine l = BudgetImportService.line(budget, new BudgetLineData(1, 1, BudgetLineType.LINHA, code, account,
+        BudgetLine l = BudgetImportService.line(budget, new BudgetLineData(1, 1, BudgetLineType.LINE, code, account,
                 null, null,
                 "Fornecedor " + code, BigDecimal.ZERO.setScale(2), new BigDecimal("100.00"), null, null));
         return new LineWithGroup(l, group);

@@ -27,15 +27,15 @@ class MessageContractTest {
     private final MessageContract contract = new MessageContract();
 
     static byte[] example(String version, String name) throws Exception {
-        return Files.readAllBytes(Path.of(System.getProperty("contratos.dir"), "mensagens", version, "exemplos", name));
+        return Files.readAllBytes(Path.of(System.getProperty("contratos.dir"), "mensagens", version, version.equals("v3") ? "examples" : "exemplos", name));
     }
 
     @Test
     void readsTheCashFlowExampleWithCondoFeeReceipt() throws Exception {
-        ProcessingResultMessage r = contract.readProcessingResult(example("v2", "resultado-concluido-fluxo.json"));
+        ProcessingResultMessage r = contract.readProcessingResult(example("v3", "processing-result-cash-flow.json"));
 
-        assertThat(r.version()).isEqualTo(2);
-        assertThat(r.status()).isEqualTo(ProcessingResultMessage.Status.CONCLUIDO);
+        assertThat(r.version()).isEqualTo(3);
+        assertThat(r.status()).isEqualTo(ProcessingResultMessage.Status.COMPLETED);
         assertThat(r.budget()).isNull();
         assertThat(r.cashFlow().entryCount()).isEqualTo(2);
         var water = r.cashFlow().sections().getFirst().entries().getFirst();
@@ -51,7 +51,7 @@ class MessageContractTest {
 
     @Test
     void readsTheBudgetExample() throws Exception {
-        ProcessingResultMessage r = contract.readProcessingResult(example("v2", "resultado-concluido-po.json"));
+        ProcessingResultMessage r = contract.readProcessingResult(example("v3", "processing-result-budget.json"));
 
         assertThat(r.cashFlow()).isNull();
         var budget = r.budget();
@@ -65,37 +65,37 @@ class MessageContractTest {
         assertThat(buildingManager.budgeted()).isEqualByComparingTo("8000.00");
         assertThat(buildingManager.budgeted().scale()).isEqualTo(2);
         assertThat(buildingManager.percentageText()).isEqualTo("-53,47%");
-        assertThat(line(budget, "1.4.3").mark()).isEqualTo(BudgetLineMark.RATEIO_A_PARTE);
+        assertThat(line(budget, "1.4.3").mark()).isEqualTo(BudgetLineMark.SEPARATE_APPORTIONMENT);
         assertThat(line(budget, "1.4.3").account()).isNull();
         assertThat(line(budget, "1.4.3").accountText()).isEqualTo("Débito em receitas eventuais");
         assertThat(line(budget, "1.9.1").accountText()).isEqualTo("Fundo de Reserva");
         assertThat(budget.lines().stream().filter(l -> l.printedCode().equals("1.3.2"))).hasSize(2);
         assertThat(r.totalsChecks()).anySatisfy(c -> {
-            assertThat(c.code()).isEqualTo("CODIGO_REPETIDO");
+            assertThat(c.code()).isEqualTo("REPEATED_CODE");
             assertThat(c.ok()).isFalse();
         });
     }
 
     @Test
-    void v1MessageIsRejected() throws Exception {
-        assertThatThrownBy(() -> contract.readProcessingResult(example("v1", "resultado-concluido.json")))
+    void v2MessageIsRejected() throws Exception {
+        assertThatThrownBy(() -> contract.readProcessingResult(example("v2", "resultado-concluido-fluxo.json")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("fora do contrato");
     }
 
     @Test
     void entryWithoutCondoFeeReceiptIsRejected() throws Exception {
-        String json = new String(example("v2", "resultado-concluido-fluxo.json"), StandardCharsets.UTF_8)
-                .replaceAll(",\\s*\"recebimentoCota\": false", "");
-        assertThat(json).doesNotContain("\"recebimentoCota\": false");
+        String json = new String(example("v3", "processing-result-cash-flow.json"), StandardCharsets.UTF_8)
+                .replaceAll(",\\s*\"condoFeeReceipt\": false", "");
+        assertThat(json).doesNotContain("\"condoFeeReceipt\": false");
         assertThatThrownBy(() -> contract.readProcessingResult(json.getBytes(StandardCharsets.UTF_8)))
                 .hasMessageContaining("fora do contrato");
     }
 
     @Test
     void unknownBudgetMarkIsRejected() throws Exception {
-        String json = new String(example("v2", "resultado-concluido-po.json"), StandardCharsets.UTF_8)
-                .replaceFirst("\"RATEIO_A_PARTE\"", "\"Rateio à parte\"");
+        String json = new String(example("v3", "processing-result-budget.json"), StandardCharsets.UTF_8)
+                .replaceFirst("\"SEPARATE_APPORTIONMENT\"", "\"Rateio à parte\"");
         assertThatThrownBy(() -> contract.readProcessingResult(json.getBytes(StandardCharsets.UTF_8)))
                 .hasMessageContaining("fora do contrato");
     }
@@ -103,7 +103,7 @@ class MessageContractTest {
     @Test
     void failedWithoutReasonIsRejected() {
         String json = """
-                {"versao":2,"processamentoId":"%s","arquivoId":"%s","condominioId":"%s","situacao":"FALHOU"}"""
+                {"version":3,"processingId":"%s","fileId":"%s","condominiumId":"%s","status":"FAILED"}"""
                 .formatted(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
         assertThatThrownBy(() -> contract.readProcessingResult(json.getBytes(StandardCharsets.UTF_8)))
                 .hasMessageContaining("fora do contrato");
@@ -111,11 +111,11 @@ class MessageContractTest {
 
     @Test
     void moneyAsNumberIsRejected() throws Exception {
-        String cashFlow = new String(example("v2", "resultado-concluido-fluxo.json"), StandardCharsets.UTF_8)
+        String cashFlow = new String(example("v3", "processing-result-cash-flow.json"), StandardCharsets.UTF_8)
                 .replace("\"1500.10\"", "1500.1");
         assertThatThrownBy(() -> contract.readProcessingResult(cashFlow.getBytes(StandardCharsets.UTF_8)))
                 .hasMessageContaining("fora do contrato");
-        String budget = new String(example("v2", "resultado-concluido-po.json"), StandardCharsets.UTF_8)
+        String budget = new String(example("v3", "processing-result-budget.json"), StandardCharsets.UTF_8)
                 .replace("\"1585.14\"", "1585.14");
         assertThatThrownBy(() -> contract.readProcessingResult(budget.getBytes(StandardCharsets.UTF_8)))
                 .hasMessageContaining("fora do contrato");
@@ -123,10 +123,10 @@ class MessageContractTest {
 
     @Test
     void readRequestFollowsTheContract() {
-        var file = new SourceFile(UUID.randomUUID(), FileCategory.BALANCETE, "fluxo.pdf", "c/BALANCETE/2026/x-fluxo.pdf",
+        var file = new SourceFile(UUID.randomUUID(), FileCategory.TRIAL_BALANCE, "fluxo.pdf", "c/TRIAL_BALANCE/2026/x-fluxo.pdf",
                 "c".repeat(64), 10, "application/pdf", "gestor");
         String json = new String(contract.write(FileReceivedMessage.from(file)), StandardCharsets.UTF_8);
-        assertThat(json).contains("\"versao\":1").contains("\"categoria\":\"BALANCETE\"")
+        assertThat(json).contains("\"version\":3").contains("\"category\":\"TRIAL_BALANCE\"")
                 .contains(file.getProcessingId().toString());
     }
 
@@ -138,9 +138,9 @@ class MessageContractTest {
 
     @Test
     void readsTheIndexedExample() throws Exception {
-        IndexingResultMessage r = contract.readIndexingResult(example("resultado-indexacao-indexado.json"));
+        IndexingResultMessage r = contract.readIndexingResult(example("indexing-result-indexed.json"));
 
-        assertThat(r.status()).isEqualTo(IndexingResultMessage.Status.INDEXADO);
+        assertThat(r.status()).isEqualTo(IndexingResultMessage.Status.INDEXED);
         assertThat(r.indexingId()).isEqualTo(UUID.fromString("3c9d1e2f-4a5b-4c6d-8e7f-9a0b1c2d3e4f"));
         assertThat(r.pages()).isEqualTo(12);
         assertThat(r.chunks()).isEqualTo(15);
@@ -149,9 +149,9 @@ class MessageContractTest {
 
     @Test
     void readsTheNoTextExample() throws Exception {
-        IndexingResultMessage r = contract.readIndexingResult(example("resultado-indexacao-sem-texto.json"));
+        IndexingResultMessage r = contract.readIndexingResult(example("indexing-result-no-text.json"));
 
-        assertThat(r.status()).isEqualTo(IndexingResultMessage.Status.SEM_TEXTO);
+        assertThat(r.status()).isEqualTo(IndexingResultMessage.Status.NO_TEXT);
         assertThat(r.reason()).contains("sem texto extraível");
         assertThat(r.chunks()).isZero();
     }
@@ -159,7 +159,7 @@ class MessageContractTest {
     @Test
     void indexedWithoutCountsIsRejected() {
         String json = """
-                {"versao":1,"indexacaoId":"%s","arquivoId":"%s","condominioId":"%s","situacao":"INDEXADO"}"""
+                {"version":3,"indexingId":"%s","fileId":"%s","condominiumId":"%s","status":"INDEXED"}"""
                 .formatted(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
         assertThatThrownBy(() -> contract.readIndexingResult(json.getBytes(StandardCharsets.UTF_8)))
                 .hasMessageContaining("fora do contrato");
@@ -168,7 +168,7 @@ class MessageContractTest {
     @Test
     void indexingErrorWithoutReasonIsRejected() {
         String json = """
-                {"versao":1,"indexacaoId":"%s","arquivoId":"%s","condominioId":"%s","situacao":"ERRO","motivo":""}"""
+                {"version":3,"indexingId":"%s","fileId":"%s","condominiumId":"%s","status":"ERROR","reason":""}"""
                 .formatted(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
         assertThatThrownBy(() -> contract.readIndexingResult(json.getBytes(StandardCharsets.UTF_8)))
                 .hasMessageContaining("fora do contrato");
@@ -177,15 +177,15 @@ class MessageContractTest {
     @Test
     void minimalIndexingIsAccepted() {
         String json = """
-                {"versao":1,"indexacaoId":"%s","arquivoId":"%s","condominioId":"%s","situacao":"INDEXANDO"}"""
+                {"version":3,"indexingId":"%s","fileId":"%s","condominiumId":"%s","status":"INDEXING"}"""
                 .formatted(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
         assertThat(contract.readIndexingResult(json.getBytes(StandardCharsets.UTF_8)).status())
-                .isEqualTo(IndexingResultMessage.Status.INDEXANDO);
+                .isEqualTo(IndexingResultMessage.Status.INDEXING);
     }
 
     /** The contract's request examples fit the api record and come out the same, and valid. */
     @ParameterizedTest
-    @ValueSource(strings = {"indexar-arquivo-indexar.json", "indexar-arquivo-retirar.json"})
+    @ValueSource(strings = {"index-file-index.json", "index-file-withdraw.json"})
     void indexingRequestExampleRoundTrips(String name) throws Exception {
         var mapper = JsonMapper.builder().build();
         IndexFileMessage request = mapper.readValue(example(name), IndexFileMessage.class);
@@ -197,11 +197,11 @@ class MessageContractTest {
 
     @Test
     void indexingRequestFollowsTheContract() {
-        var file = new SourceFile(UUID.randomUUID(), FileCategory.ATA, "ata.pdf", "c/ATA/2026/x-ata.pdf",
+        var file = new SourceFile(UUID.randomUUID(), FileCategory.MINUTES, "ata.pdf", "c/MINUTES/2026/x-ata.pdf",
                 "a".repeat(64), 10, "application/pdf", "gestor");
         file.requestIndexing();
         String json = new String(contract.write(IndexFileMessage.index(file)), StandardCharsets.UTF_8);
-        assertThat(json).contains("\"operacao\":\"INDEXAR\"").contains("\"categoria\":\"ATA\"")
+        assertThat(json).contains("\"operation\":\"INDEX\"").contains("\"category\":\"MINUTES\"")
                 .contains(file.getIndexingId().toString());
         // Each request has its own id, different from the read's id
         assertThat(file.getIndexingId()).isNotEqualTo(file.getProcessingId());
@@ -209,13 +209,13 @@ class MessageContractTest {
 
     @Test
     void requestOutsideTheContractIsNotSent() {
-        var file = new SourceFile(UUID.randomUUID(), FileCategory.ATA, "ata.pdf", "c/ATA/2026/x-ata.pdf",
+        var file = new SourceFile(UUID.randomUUID(), FileCategory.MINUTES, "ata.pdf", "c/MINUTES/2026/x-ata.pdf",
                 "hash-invalido", 10, "application/pdf", "gestor");
         assertThatThrownBy(() -> contract.write(IndexFileMessage.index(file)))
                 .hasMessageContaining("fora do contrato");
     }
 
     private static byte[] example(String name) throws Exception {
-        return Files.readAllBytes(Path.of(System.getProperty("contratos.dir"), "mensagens/v1/exemplos", name));
+        return Files.readAllBytes(Path.of(System.getProperty("contratos.dir"), "mensagens/v3/examples", name));
     }
 }

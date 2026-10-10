@@ -21,28 +21,28 @@ const rotuloLado: Record<Lado, string> = { acima: "acima do previsto", abaixo: "
 export function GraficoMaioresDiferencas({ diferencas, contexto }: Props) {
   // As duas listas na ordem da API: primeiro as mais acima, depois as mais abaixo
   const itens: { lado: Lado; d: DiferencaIndicador }[] = [
-    ...diferencas.acima.map((d) => ({ lado: "acima" as const, d })),
-    ...diferencas.abaixo.map((d) => ({ lado: "abaixo" as const, d })),
+    ...diferencas.above.map((d) => ({ lado: "acima" as const, d })),
+    ...diferencas.below.map((d) => ({ lado: "abaixo" as const, d })),
   ];
   const acoes = itens.map(({ d }) =>
-    contexto.abrir({ poId: contexto.poId, periodo: "acumulado", alvo: d.alvo, fundoId: contexto.fundoId }),
+    contexto.abrir({ poId: contexto.poId, periodo: "cumulative", alvo: d.target, fundoId: contexto.fundoId }),
   );
   const tabela: ModeloTabela = {
     legenda: "Maiores diferenças do acumulado por linha da PO (realizado menos previsto)",
     colunaRotulo: "Linha da PO",
     colunas: ["Posição", "Previsto (R$)", "Realizado (R$)", "Diferença (R$)"],
     linhas: itens.map(({ lado, d }, i) => ({
-      chave: d.linhaId,
-      rotulo: `${d.codigo} ${d.descricao}`,
+      chave: d.lineId,
+      rotulo: `${d.code} ${d.description}`,
       celulas: [
         { texto: rotuloLado[lado] },
-        { texto: formatarMoeda(d.previsto), aoAbrir: acoes[i] },
-        { texto: formatarMoeda(d.realizado), aoAbrir: acoes[i] },
-        { texto: formatarDiferenca(d.diferenca), aoAbrir: acoes[i] },
+        { texto: formatarMoeda(d.planned), aoAbrir: acoes[i] },
+        { texto: formatarMoeda(d.actual), aoAbrir: acoes[i] },
+        { texto: formatarDiferenca(d.difference), aoAbrir: acoes[i] },
       ],
     })),
   };
-  const dados = itens.map(({ lado, d }, indice) => ({ indice, lado, nome: `${d.codigo} ${d.descricao}`, diferenca: d.diferenca }));
+  const dados = itens.map(({ lado, d }, indice) => ({ indice, lado, nome: `${d.code} ${d.description}`, diferenca: d.difference }));
 
   return (
     <CartaoIndicador

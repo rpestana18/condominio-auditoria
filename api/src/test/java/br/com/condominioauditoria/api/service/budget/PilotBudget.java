@@ -92,57 +92,57 @@ public final class PilotBudget {
         String funds = reserveFund == null ? "22581.01" : new BigDecimal(reserveFund).add(new BigDecimal("9032.40")).toPlainString();
         String total = reserveFund == null ? "474201.13" : new BigDecimal("451620.12").add(new BigDecimal(funds)).toPlainString();
         add(BudgetLineType.TOTAL, "1", null, "Soma das seções 1.1 a 1.9", null, "TOTAL DAS DESPESAS", total, null);
-        add(BudgetLineType.GRUPO, "1.1", null, "Subtotal (soma linhas 5 a 18)", null, "PESSOAL", staffSubtotal, null);
-        add(BudgetLineType.LINHA, "1.1.5", "1553 - Férias", null, null, "Provisão de Férias", "1585.14", "366,97%");
-        add(BudgetLineType.LINHA, "1.1.1", "1500 - Demais", null, null, "Demais linhas de pessoal", "67608.72", null);
-        add(BudgetLineType.GRUPO, "1.2", null, "Subtotal (soma linhas 20 a 21)", null, "CONSUMO/UTILIDADES", "694.05",
+        add(BudgetLineType.GROUP, "1.1", null, "Subtotal (soma linhas 5 a 18)", null, "PESSOAL", staffSubtotal, null);
+        add(BudgetLineType.LINE, "1.1.5", "1553 - Férias", null, null, "Provisão de Férias", "1585.14", "366,97%");
+        add(BudgetLineType.LINE, "1.1.1", "1500 - Demais", null, null, "Demais linhas de pessoal", "67608.72", null);
+        add(BudgetLineType.GROUP, "1.2", null, "Subtotal (soma linhas 20 a 21)", null, "CONSUMO/UTILIDADES", "694.05",
                 null);
-        add(BudgetLineType.LINHA, "1.2.1", "1560 - Consumo", null, null, "Consumo", "694.05", null);
-        add(BudgetLineType.GRUPO, "1.3", null, "Subtotal (soma linhas 23 a 46)", null, "SERVIÇOS - CONTRATOS EFETIVOS",
+        add(BudgetLineType.LINE, "1.2.1", "1560 - Consumo", null, null, "Consumo", "694.05", null);
+        add(BudgetLineType.GROUP, "1.3", null, "Subtotal (soma linhas 23 a 46)", null, "SERVIÇOS - CONTRATOS EFETIVOS",
                 "336274.17", null);
-        add(BudgetLineType.LINHA, "1.3.2", "1598 - Bombas", null, null, "Servirio Soluções Tecnicas Ltda", "3000.00",
+        add(BudgetLineType.LINE, "1.3.2", "1598 - Bombas", null, null, "Servirio Soluções Tecnicas Ltda", "3000.00",
                 "-6,25%");
         if (gymEquipment) {
-            add(BudgetLineType.LINHA, "1.3.5", "1606 - Aparelhos de Ginástica", null, null, "Manutenção Academia",
+            add(BudgetLineType.LINE, "1.3.5", "1606 - Aparelhos de Ginástica", null, null, "Manutenção Academia",
                     "0.00", null);
         }
-        add(BudgetLineType.LINHA, "1.3.20", "1682 - Sindicatura Profissional", null, null, "Obm - Sergio Diniz",
+        add(BudgetLineType.LINE, "1.3.20", "1682 - Sindicatura Profissional", null, null, "Obm - Sergio Diniz",
                 "8000.00", "-53,47%");
-        add(BudgetLineType.LINHA, "1.3.23", "1621 - Interfones", null, null,
+        add(BudgetLineType.LINE, "1.3.23", "1621 - Interfones", null, null,
                 "Manutenção Preventiva De Interfones/Cftv", "0.00", null);
-        add(BudgetLineType.LINHA, "1.3.1", "1692 - Demais", null, null, "Demais contratos", "323755.25", null);
-        add(BudgetLineType.LINHA, "1.3.2", "1624 - Caixa D'água", null, null, "Caixa D'água", "1518.93", null);
-        add(BudgetLineType.GRUPO, "1.4", null, "Subtotal (soma linhas 49 a 51)", null, "TARIFAS PÚBLICAS", "0.00",
+        add(BudgetLineType.LINE, "1.3.1", "1692 - Demais", null, null, "Demais contratos", "323755.25", null);
+        add(BudgetLineType.LINE, "1.3.2", "1624 - Caixa D'água", null, null, "Caixa D'água", "1518.93", null);
+        add(BudgetLineType.GROUP, "1.4", null, "Subtotal (soma linhas 49 a 51)", null, "TARIFAS PÚBLICAS", "0.00",
                 null);
-        add(BudgetLineType.LINHA, "1.4.1", null, null, BudgetLineMark.RATEIO_A_PARTE, "Força e Luz", "0.00", null);
-        add(BudgetLineType.LINHA, "1.4.2", null, null, BudgetLineMark.RATEIO_A_PARTE, "Água e Esgoto", "0.00", null);
-        add(BudgetLineType.LINHA, "1.4.3", null, "Débito em receitas eventuais", BudgetLineMark.RATEIO_A_PARTE, "Gás",
+        add(BudgetLineType.LINE, "1.4.1", null, null, BudgetLineMark.SEPARATE_APPORTIONMENT, "Força e Luz", "0.00", null);
+        add(BudgetLineType.LINE, "1.4.2", null, null, BudgetLineMark.SEPARATE_APPORTIONMENT, "Água e Esgoto", "0.00", null);
+        add(BudgetLineType.LINE, "1.4.3", null, "Débito em receitas eventuais", BudgetLineMark.SEPARATE_APPORTIONMENT, "Gás",
                 "0.00", null);
-        add(BudgetLineType.GRUPO, "1.5", null, "Subtotal (soma linhas 53 a 55)", null, "AQUISIÇÃO DE BENS", "2850.00",
+        add(BudgetLineType.GROUP, "1.5", null, "Subtotal (soma linhas 53 a 55)", null, "AQUISIÇÃO DE BENS", "2850.00",
                 null);
-        add(BudgetLineType.LINHA, "1.5.1", "1700 - Bens", null, null, "Aquisição de bens", "2850.00", null);
-        add(BudgetLineType.GRUPO, "1.6", null, "Subtotal (soma linhas 57 a 77)", null, "DESPESAS ADMINISTRATIVAS",
+        add(BudgetLineType.LINE, "1.5.1", "1700 - Bens", null, null, "Aquisição de bens", "2850.00", null);
+        add(BudgetLineType.GROUP, "1.6", null, "Subtotal (soma linhas 57 a 77)", null, "DESPESAS ADMINISTRATIVAS",
                 "17388.04", null);
-        add(BudgetLineType.LINHA, "1.6.15", null, null, BudgetLineMark.RATEIO_A_PARTE, "Seguro predial", "0.00", null);
-        add(BudgetLineType.LINHA, "1.6.1", "1710 - Demais", null, null, "Demais administrativas", "17388.04", null);
+        add(BudgetLineType.LINE, "1.6.15", null, null, BudgetLineMark.SEPARATE_APPORTIONMENT, "Seguro predial", "0.00", null);
+        add(BudgetLineType.LINE, "1.6.1", "1710 - Demais", null, null, "Demais administrativas", "17388.04", null);
         if (previousColumn) {
-            add(BudgetLineType.LINHA, "1.6.21", "1346 - Outros Serviços Contratados", null, null,
+            add(BudgetLineType.LINE, "1.6.21", "1346 - Outros Serviços Contratados", null, null,
                     "E-mail GoDaddy (anual)",
                     "0.00", "-32,07%");
         }
-        add(BudgetLineType.GRUPO, "1.7", null, "Subtotal (soma linhas 79 a 90)", null, "MATERIAIS/SUPRIMENTOS",
+        add(BudgetLineType.GROUP, "1.7", null, "Subtotal (soma linhas 79 a 90)", null, "MATERIAIS/SUPRIMENTOS",
                 "15200.00", null);
         if (gymEquipment) {
-            add(BudgetLineType.LINHA, "1.7.2", "1606 - Aparelhos de Ginástica", null, null, "Peças de Ginástica",
+            add(BudgetLineType.LINE, "1.7.2", "1606 - Aparelhos de Ginástica", null, null, "Peças de Ginástica",
                     "0.00", null);
         }
-        add(BudgetLineType.LINHA, "1.7.8", "1606 - Material Hidráulico", null, null, "Material Hidráulico", "15200.00",
+        add(BudgetLineType.LINE, "1.7.8", "1606 - Material Hidráulico", null, null, "Material Hidráulico", "15200.00",
                 null);
-        add(BudgetLineType.GRUPO, "1.8", null, "Subtotal (soma linhas 92 a 99)", null, "SERVIÇOS", "10020.00", null);
-        add(BudgetLineType.LINHA, "1.8.1", "1693 - Serviços", null, null, "Serviços", "10020.00", null);
-        add(BudgetLineType.GRUPO, "1.9", null, "Fundos", null, "Fundos do Condomínio", funds, null);
-        add(BudgetLineType.LINHA, "1.9.1", null, "Fundo de Reserva", null, "Fundo de Reserva", reserve, "3,00%");
-        add(BudgetLineType.LINHA, "1.9.2", null, "Obras Reformas e Infraestrutura", null, "Fundo de Obras", "9032.40",
+        add(BudgetLineType.GROUP, "1.8", null, "Subtotal (soma linhas 92 a 99)", null, "SERVIÇOS", "10020.00", null);
+        add(BudgetLineType.LINE, "1.8.1", "1693 - Serviços", null, null, "Serviços", "10020.00", null);
+        add(BudgetLineType.GROUP, "1.9", null, "Fundos", null, "Fundos do Condomínio", funds, null);
+        add(BudgetLineType.LINE, "1.9.1", null, "Fundo de Reserva", null, "Fundo de Reserva", reserve, "3,00%");
+        add(BudgetLineType.LINE, "1.9.2", null, "Obras Reformas e Infraestrutura", null, "Fundo de Obras", "9032.40",
                 "2,00%");
         return new BudgetData("PROPOSTA ORÇAMENTÁRIA 2026 / 2027", "2026 / 2027", List.of("2025/2026", "2026/2027"),
                 List.copyOf(lines));
@@ -152,17 +152,17 @@ public final class PilotBudget {
     public List<TotalsCheckData> totalsChecks() {
         boolean staffOk = staffSubtotal.equals("69193.86");
         return List.of(
-                new TotalsCheckData("SUBTOTAL_GRUPO", "Soma das linhas do grupo 1.1 = subtotal impresso", staffOk,
+                new TotalsCheckData("GROUP_SUBTOTAL", "Soma das linhas do grupo 1.1 = subtotal impresso", staffOk,
                         "1.1 PESSOAL: soma das linhas 69.193,86; impresso " + staffSubtotal),
                 passed("1.2"), failed("1.3", "336.274,18", "336.274,17"), passed("1.4"), passed("1.5"), passed("1.6"),
                         passed("1.7"),
                 passed("1.8"), reserveFund == null ? failed("1.9", "22.581,00", "22.581,01") : passed("1.9"),
                 new TotalsCheckData("TOTAL", "Soma dos grupos = total impresso", staffOk, "soma dos grupos x impresso"),
-                new TotalsCheckData("PREVISTO_MES", "Previsto do mês = total menos os fundos", staffOk,
+                new TotalsCheckData("MONTHLY_PLANNED", "Previsto do mês = total menos os fundos", staffOk,
                         "474.201,13 - 22.581,01 = 451.620,12"),
-                new TotalsCheckData("FUNDO_TAXA", "Cada fundo = taxa da coluna % sobre o previsto do mês", true,
+                new TotalsCheckData("FUND_RATE", "Cada fundo = taxa da coluna % sobre o previsto do mês", true,
                         "1.9.1: 3,00% de 451.620,12 = 13.548,60"),
-                new TotalsCheckData("CODIGO_REPETIDO", "Nenhum código de linha impresso mais de uma vez", false,
+                new TotalsCheckData("REPEATED_CODE", "Nenhum código de linha impresso mais de uma vez", false,
                         "1.3.2 aparece 2 vezes (ordens 8 e 12)"));
     }
 
@@ -176,12 +176,12 @@ public final class PilotBudget {
     }
 
     private static TotalsCheckData passed(String group) {
-        return new TotalsCheckData("SUBTOTAL_GRUPO", "Soma das linhas do grupo " + group + " = subtotal impresso", true,
+        return new TotalsCheckData("GROUP_SUBTOTAL", "Soma das linhas do grupo " + group + " = subtotal impresso", true,
                 group + ": confere");
     }
 
     private static TotalsCheckData failed(String group, String sum, String printed) {
-        return new TotalsCheckData("SUBTOTAL_GRUPO", "Soma das linhas do grupo " + group + " = subtotal impresso",
+        return new TotalsCheckData("GROUP_SUBTOTAL", "Soma das linhas do grupo " + group + " = subtotal impresso",
                 false,
                 group + ": soma das linhas " + sum + "; impresso " + printed + "; diferença 0,01");
     }

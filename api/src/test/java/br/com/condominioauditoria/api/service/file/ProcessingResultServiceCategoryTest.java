@@ -42,7 +42,7 @@ class ProcessingResultServiceCategoryTest {
 
     @Test
     void cashFlowInAnotherCategoryDeletesExtractionAndSavesNoEntries() {
-        SourceFile file = new SourceFile(UUID.randomUUID(), FileCategory.CONTRATO, "fluxo.pdf", "c/fluxo.pdf",
+        SourceFile file = new SourceFile(UUID.randomUUID(), FileCategory.CONTRACT, "fluxo.pdf", "c/fluxo.pdf",
                 "b".repeat(64), 100, "application/pdf", "gestor");
         var entry = new LedgerEntryData(1, 1, LocalDate.of(2026, 9, 5), "1621", "Material hidráulico", null,
                 "Compra de registro", new BigDecimal("0.00"), new BigDecimal("150.00"), new BigDecimal("850.00"), null);
@@ -50,8 +50,8 @@ class ProcessingResultServiceCategoryTest {
                 List.of(new Section("Ordinário", new BigDecimal("1000.00"), List.of(entry),
                         new BigDecimal("0.00"), new BigDecimal("150.00"))),
                 List.of(), null);
-        var result = new ProcessingResultMessage(2, file.getProcessingId(), file.getId(),
-                file.getCondominiumId(), Status.CONCLUIDO, null, "fluxo-caixa-fundos", 1, cashFlow, null, List.of());
+        var result = new ProcessingResultMessage(3, file.getProcessingId(), file.getId(),
+                file.getCondominiumId(), Status.COMPLETED, null, "fluxo-caixa-fundos", 1, cashFlow, null, List.of());
         when(files.findById(file.getId())).thenReturn(Optional.of(file));
 
         service.save(result);
@@ -60,7 +60,7 @@ class ProcessingResultServiceCategoryTest {
         verify(balances).deleteByFileId(file.getId());
         verify(totalsChecks).deleteByFileId(file.getId());
         verify(entries, never()).saveAll(any());
-        assertThat(file.getStatus()).isEqualTo(FileStatus.CONCLUIDO);
+        assertThat(file.getStatus()).isEqualTo(FileStatus.COMPLETED);
         assertThat(file.getEntryCount()).isNull();
         assertThat(file.getMessage()).contains("Balancetes e fluxos de caixa");
     }

@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Findings of the condominium, read only, for every role (marking statuses comes with RF-02.8). */
 @RestController
-@RequestMapping("/api/condominios/{condominiumId}/achados")
+@RequestMapping("/api/condominiums/{condominiumId}/findings")
 class FindingController {
 
     private final CondominiumAccess access;
@@ -26,9 +26,9 @@ class FindingController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     List<FindingResponse> list(@PathVariable UUID condominiumId,
-            @RequestParam(name = "competencia", required = false) String referenceMonth) {
+            @RequestParam(name = "referenceMonth", required = false) String referenceMonth) {
         access.require(condominiumId);
         return findings.list(condominiumId, referenceMonth);
     }

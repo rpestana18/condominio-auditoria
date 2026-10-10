@@ -12,7 +12,7 @@ interface Props {
   contexto: ContextoGrafico;
 }
 
-const nomeDoFundo = (s: SerieFundoIndicador) => (s.linhaCodigo ? `${s.linhaCodigo} ${s.fundo}` : s.fundo);
+const nomeDoFundo = (s: SerieFundoIndicador) => (s.lineCode ? `${s.lineCode} ${s.fund}` : s.fund);
 
 /**
  * Gráfico 6 (RF-11.11 e RF-03.1.9): para cada fundo ligado a uma linha 1.9, a arrecadação e o previsto do mês,
@@ -35,7 +35,7 @@ export function GraficoFundos({ series, contexto }: Props) {
       {series.length === 0 ? (
         <p className="discreto">Nenhum fundo ligado às linhas 1.9 da PO deste exercício.</p>
       ) : (
-        series.map((s, i) => <GraficoDeUmFundo key={s.fundoId} serie={s} {...modelos[i]} />)
+        series.map((s, i) => <GraficoDeUmFundo key={s.fundId} serie={s} {...modelos[i]} />)
       )}
     </CartaoIndicador>
   );
@@ -43,17 +43,17 @@ export function GraficoFundos({ series, contexto }: Props) {
 
 function modeloDoFundo(serie: SerieFundoIndicador, contexto: ContextoGrafico) {
   // O fundo do ponto vai como filtro: o previsto × realizado abre só o painel dele
-  const acoes = serie.pontos.map((p) => abrirPonto(contexto, p, serie.fundoId));
+  const acoes = serie.points.map((p) => abrirPonto(contexto, p, serie.fundId));
   const tabela: ModeloTabela = {
     legenda: `${nomeDoFundo(serie)}: arrecadação × previsto`,
     colunaRotulo: "Mês",
     colunas: ["Previsto (R$)", "Arrecadado (R$)"],
-    linhas: serie.pontos.map((p, i) => ({
-      chave: p.mes,
-      rotulo: formatarMes(p.mes),
+    linhas: serie.points.map((p, i) => ({
+      chave: p.month,
+      rotulo: formatarMes(p.month),
       celulas: [
-        { texto: moedaDoMes(p.previsto, p.situacao), aoAbrir: acoes[i] },
-        { texto: moedaDoMes(p.arrecadado, p.situacao), aoAbrir: acoes[i] },
+        { texto: moedaDoMes(p.planned, p.status), aoAbrir: acoes[i] },
+        { texto: moedaDoMes(p.collected, p.status), aoAbrir: acoes[i] },
       ],
     })),
   };
@@ -67,11 +67,11 @@ interface PropsFundo {
 }
 
 function GraficoDeUmFundo({ serie, acoes, tabela }: PropsFundo) {
-  const dados = serie.pontos.map((p, indice) => ({
+  const dados = serie.points.map((p, indice) => ({
     indice,
-    eixo: rotuloEixoMes(p.mes, p.situacao),
-    previsto: p.previsto ?? null,
-    arrecadado: p.arrecadado ?? null,
+    eixo: rotuloEixoMes(p.month, p.status),
+    previsto: p.planned ?? null,
+    arrecadado: p.collected ?? null,
   }));
   const aoClicar = (item: { payload?: unknown }) => acoes[(item.payload as { indice: number }).indice]?.();
   return (

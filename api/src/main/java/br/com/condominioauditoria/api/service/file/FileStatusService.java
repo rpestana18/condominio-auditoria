@@ -23,7 +23,7 @@ public class FileStatusService {
     public void processing(UUID fileId, UUID processingId) {
         files.findById(fileId)
                 .filter(a -> a.isCurrentProcessing(processingId))
-                .filter(a -> a.getStatus() == FileStatus.PENDENTE)
+                .filter(a -> a.getStatus() == FileStatus.PENDING)
                 .ifPresent(a -> a.startProcessing());
     }
 

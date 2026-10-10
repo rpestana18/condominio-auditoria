@@ -19,14 +19,14 @@ export function RespostaDoAssistente({ resposta, prefixo }: Props) {
   const { condominioId } = useSessao();
   const [destacada, setDestacada] = useState<number | null>(null);
   const [erroAbertura, setErroAbertura] = useState<string | null>(null);
-  const porNumero = new Map(resposta.citacoes.map((c) => [c.numero, c]));
+  const porNumero = new Map(resposta.citations.map((c) => [c.number, c]));
   const idFonte = (numero: number) => `${prefixo}-fonte-${numero}`;
 
   /** Clique no [n]: destaca a fonte; se for PDF com página, já abre o original nela (RF-04.9). */
   function abrirCitacao(citacao: CitacaoDocumento) {
-    setDestacada(citacao.numero);
+    setDestacada(citacao.number);
     setErroAbertura(null);
-    const elemento = document.getElementById(idFonte(citacao.numero));
+    const elemento = document.getElementById(idFonte(citacao.number));
     elemento?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     elemento?.focus({ preventScroll: true });
     if (paginaDoPdf(citacao)) {
@@ -36,28 +36,28 @@ export function RespostaDoAssistente({ resposta, prefixo }: Props) {
     }
   }
 
-  if (resposta.situacao === "NAO_ENCONTRADA") {
+  if (resposta.status === "NOT_FOUND") {
     return (
       <div className="resposta">
         <p>
           <strong>Não encontrei nos documentos.</strong>
         </p>
-        {resposta.sugestao && <p className="discreto">Pode faltar: {resposta.sugestao}</p>}
-        {resposta.aviso && <p className="discreto aviso-resposta">{resposta.aviso}</p>}
+        {resposta.suggestion && <p className="discreto">Pode faltar: {resposta.suggestion}</p>}
+        {resposta.warning && <p className="discreto aviso-resposta">{resposta.warning}</p>}
       </div>
     );
   }
 
   return (
-    <div className={resposta.citacoes.length > 0 ? "resposta com-fontes" : "resposta"}>
+    <div className={resposta.citations.length > 0 ? "resposta com-fontes" : "resposta"}>
       <div className="resposta-texto">
-        {resposta.nosDocumentos.length > 0 && (
+        {resposta.fromDocuments.length > 0 && (
           <section className="bloco-resposta" aria-label="Nos documentos">
             <h3>Nos documentos</h3>
-            {resposta.nosDocumentos.map((paragrafo, i) => (
+            {resposta.fromDocuments.map((paragrafo, i) => (
               <p key={i}>
-                {paragrafo.texto}{" "}
-                {paragrafo.citacoes.map((n) => {
+                {paragrafo.text}{" "}
+                {paragrafo.citations.map((n) => {
                   const citacao = porNumero.get(n);
                   // Citação que o backend descartou (arquivo sem acesso ou excluído) não vira link
                   if (!citacao) return null;
@@ -66,8 +66,8 @@ export function RespostaDoAssistente({ resposta, prefixo }: Props) {
                       key={n}
                       type="button"
                       className="marcador-citacao"
-                      aria-label={`Fonte ${n}: ${citacao.nomeArquivo}, ${formatarLocalizacao(citacao)}`}
-                      title={`${citacao.nomeArquivo}, ${formatarLocalizacao(citacao)}`}
+                      aria-label={`Fonte ${n}: ${citacao.fileName}, ${formatarLocalizacao(citacao)}`}
+                      title={`${citacao.fileName}, ${formatarLocalizacao(citacao)}`}
                       onClick={() => abrirCitacao(citacao)}
                     >
                       [{n}]
@@ -78,21 +78,21 @@ export function RespostaDoAssistente({ resposta, prefixo }: Props) {
             ))}
           </section>
         )}
-        {resposta.nosDadosGravados.length > 0 && <DadosGravados dados={resposta.nosDadosGravados} />}
-        {resposta.aviso && <p className="discreto aviso-resposta">{resposta.aviso}</p>}
+        {resposta.fromStoredData.length > 0 && <DadosGravados dados={resposta.fromStoredData} />}
+        {resposta.warning && <p className="discreto aviso-resposta">{resposta.warning}</p>}
         {erroAbertura && (
           <p className="aviso erro" role="alert">
             {erroAbertura}
           </p>
         )}
-        <p className="discreto">Modelo: {resposta.modelo}</p>
+        <p className="discreto">Modelo: {resposta.model}</p>
       </div>
 
-      {resposta.citacoes.length > 0 && (
+      {resposta.citations.length > 0 && (
         <aside className="fontes" aria-label="Fontes desta resposta">
           <h3>Fontes</h3>
-          {resposta.citacoes.map((c) => (
-            <FonteDocumento key={c.numero} id={idFonte(c.numero)} trecho={c} numero={c.numero} destacada={destacada === c.numero} />
+          {resposta.citations.map((c) => (
+            <FonteDocumento key={c.number} id={idFonte(c.number)} trecho={c} numero={c.number} destacada={destacada === c.number} />
           ))}
         </aside>
       )}

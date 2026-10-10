@@ -22,7 +22,7 @@ const visoes: { codigo: Visao; rotulo: string }[] = [
 
 /**
  * Tela "Comparar exercícios" (RF-11.6), para todos os perfis. Os filtros ficam no endereço
- * (?exercicios=po:...,coluna:...&fundo=...&mesmosMeses=true&visao=grupos). Sem `exercicios`, o backend
+ * (?exercicios=budget:...,column:...&fundo=...&mesmosMeses=true&visao=grupos). Sem `exercicios`, o backend
  * escolhe os dois mais recentes. Todo número e toda variação vêm prontos do GET /comparacao-exercicios.
  */
 export function CompararExercicios() {
@@ -64,7 +64,7 @@ export function CompararExercicios() {
         aoTrocarFundo={(f) => trocar("fundo", f)}
         mesmosMeses={mesmosMeses}
         aoTrocarMesmosMeses={(m) => trocar("mesmosMeses", m ? "true" : null)}
-        comparando={resposta?.comparando}
+        comparando={resposta?.comparing}
       />
 
       {consulta.isLoading ? (
@@ -74,8 +74,8 @@ export function CompararExercicios() {
       ) : resposta ? (
         <div className={colunaAberta ? "com-detalhe" : undefined}>
           <div>
-            <ExerciciosComparados comparados={resposta.exercicios} exercicios={exercicios} aoConferirColuna={setColunaAberta} />
-            {resposta.avisos.map((a, i) => (
+            <ExerciciosComparados comparados={resposta.fiscalYears} exercicios={exercicios} aoConferirColuna={setColunaAberta} />
+            {resposta.warnings.map((a, i) => (
               <p key={i} className="aviso alerta">
                 {a}
               </p>
@@ -107,11 +107,11 @@ export function CompararExercicios() {
 
 /**
  * Sem escolha no endereço, os marcados são os que o backend usou. Casa pelo tipo e pela PO, para não
- * depender do formato do id ("po:<uuid>" ou só o uuid).
+ * depender do formato do id ("budget:<uuid>" ou só o uuid).
  */
 function idsUsados(resposta: ComparacaoExercicios | null, exercicios: Exercicio[]): string[] {
   if (!resposta) return [];
-  return exercicios.filter((e) => resposta.exercicios.some((r) => r.tipo === e.tipo && r.poId === e.poId)).map((e) => e.id);
+  return exercicios.filter((e) => resposta.fiscalYears.some((r) => r.type === e.type && r.budgetId === e.budgetId)).map((e) => e.id);
 }
 
 interface PropsVisoes {
@@ -122,28 +122,28 @@ interface PropsVisoes {
 
 /** As três visões do RF-11.6. O modo dos valores (previsto do mês ou meses comparados) vale para grupos e linhas. */
 function Visoes({ resposta, visao, fundoId }: PropsVisoes) {
-  const [modo, setModo] = useState<ModoValores>("PREVISTO_MES");
-  const abridor = useAbridorEvidencia(resposta.exercicios, fundoId);
-  const { exercicios } = resposta;
+  const [modo, setModo] = useState<ModoValores>("MONTHLY_PLANNED");
+  const abridor = useAbridorEvidencia(resposta.fiscalYears, fundoId);
+  const { fiscalYears: exercicios } = resposta;
 
-  if (visao === "resumo") return <ResumoComparacao exercicios={exercicios} resumo={resposta.resumo} abridor={abridor} />;
+  if (visao === "resumo") return <ResumoComparacao exercicios={exercicios} resumo={resposta.summary} abridor={abridor} />;
 
   const seletorModo = (
     <label className="discreto">
       Mostrar{" "}
       <select value={modo} onChange={(e) => setModo(e.target.value as ModoValores)}>
-        <option value="PREVISTO_MES">previsto do mês</option>
+        <option value="MONTHLY_PLANNED">previsto do mês</option>
         <option value="MESES">previsto e realizado dos meses comparados</option>
       </select>
     </label>
   );
 
   if (visao === "grupos") {
-    const linhas: LinhaComparada[] = resposta.grupos.map((g) => ({
-      chave: g.codigo,
-      titulo: `${g.codigo} ${g.descricao}`,
-      observacao: g.fundos ? "fundos: realizado = arrecadação" : null,
-      valores: g.valores,
+    const linhas: LinhaComparada[] = resposta.groups.map((g) => ({
+      chave: g.code,
+      titulo: `${g.code} ${g.description}`,
+      observacao: g.funds ? "fundos: realizado = arrecadação" : null,
+      valores: g.values,
     }));
     return (
       <section className="bloco">
@@ -156,11 +156,11 @@ function Visoes({ resposta, visao, fundoId }: PropsVisoes) {
     );
   }
 
-  const linhas: LinhaComparada[] = resposta.linhas.map((r) => ({
-    chave: r.rubricaId,
-    titulo: r.nome,
-    observacao: r.grupo ? `grupo ${r.grupo}` : null,
-    valores: r.valores,
+  const linhas: LinhaComparada[] = resposta.lines.map((r) => ({
+    chave: r.budgetItemId,
+    titulo: r.name,
+    observacao: r.group ? `grupo ${r.group}` : null,
+    valores: r.values,
   }));
   return (
     <>
@@ -175,7 +175,7 @@ function Visoes({ resposta, visao, fundoId }: PropsVisoes) {
           <TabelaComparada exercicios={exercicios} linhas={linhas} modo={modo} abridor={abridor} mostrarLinhasDaPo />
         )}
       </section>
-      <SemCorrespondencia exercicios={exercicios} linhas={resposta.semCorrespondencia} abridor={abridor} />
+      <SemCorrespondencia exercicios={exercicios} linhas={resposta.unmatched} abridor={abridor} />
     </>
   );
 }

@@ -2,12 +2,10 @@ package br.com.condominioauditoria.api.model.usage;
 
 import br.com.condominioauditoria.api.model.enums.AiMode;
 import br.com.condominioauditoria.api.model.enums.UsageFunction;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 import org.hibernate.annotations.Immutable;
@@ -18,38 +16,24 @@ import org.hibernate.annotations.Immutable;
  */
 @Entity
 @Immutable
-@Table(name = "uso_modulo")
 public class FeatureUsage {
 
     @Id
     private UUID id;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "modulo")
     private String feature;
-    @Column(name = "funcao")
     private UsageFunction function;
     /** Null for background processing (e.g. indexing). */
-    @Column(name = "usuario")
     private String username;
-    @Column(name = "quando")
     private Instant occurredAt;
-    @Column(name = "modo")
     @Enumerated(EnumType.STRING)
     private AiMode mode;
-    @Column(name = "provedor")
     private String provider;
-    @Column(name = "modelo")
     private String model;
-    @Column(name = "tokens_entrada")
     private Long inputTokens;
-    @Column(name = "tokens_saida")
     private Long outputTokens;
-    @Column(name = "arquivos")
     private Integer files;
-    @Column(name = "paginas")
     private Integer pages;
-    @Column(name = "versao_prompt")
     private String promptVersion;
 
     protected FeatureUsage() {

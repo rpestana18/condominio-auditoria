@@ -2,14 +2,14 @@ package br.com.condominioauditoria.api.grpc.client;
 
 import br.com.condominioauditoria.api.config.properties.ApiProperties;
 import br.com.condominioauditoria.api.grpc.server.GrpcAuthInterceptor;
-import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.ListarProvedoresRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.ListarProvedoresResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.PerguntarEvento;
-import br.com.condominioauditoria.contratos.assistente.v1.PerguntarRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.RespostaPergunta;
+import br.com.condominioauditoria.contracts.assistant.v2.AssistantGrpc;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.ListProvidersRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.ListProvidersResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.AskEvent;
+import br.com.condominioauditoria.contracts.assistant.v2.AskRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.Answer;
 import io.grpc.Channel;
 import io.grpc.Metadata;
 import io.grpc.Status;
@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.stereotype.Component;
 
 /**
- * Client of the rag's Assistant service (contracts/grpc/assistente/v1). Forwards the user's token in the
+ * Client of the rag's Assistant service (contracts/grpc/assistant/v2). Forwards the user's token in the
  * "authorization" metadata, as the mcp does with the api, and every call has a configurable deadline.
  *
  * Asking is synchronous from the caller's point of view: the REST API thread waits for the whole stream. Meanwhile the
@@ -39,26 +39,26 @@ public class AssistantClient {
         this.questionTimeoutSeconds = properties.rag().questionTimeoutSeconds();
     }
 
-    public BuscarResponse search(BuscarRequest request, String authorization) {
-        return stub(authorization, timeoutSeconds).buscar(request);
+    public SearchResponse search(SearchRequest request, String authorization) {
+        return stub(authorization, timeoutSeconds).search(request);
     }
 
-    public ListarProvedoresResponse listProviders(String authorization) {
-        return stub(authorization, timeoutSeconds).listarProvedores(ListarProvedoresRequest.getDefaultInstance());
+    public ListProvidersResponse listProviders(String authorization) {
+        return stub(authorization, timeoutSeconds).listProviders(ListProvidersRequest.getDefaultInstance());
     }
 
     /**
-     * Collects the Perguntar stream: ignores the progress events and returns the last "resposta" event. A rag error
+     * Collects the Ask stream: ignores the progress events and returns the last "resposta" event. A rag error
      * (gRPC status) propagates as {@link io.grpc.StatusRuntimeException}; a stream that ends without an answer becomes
      * INTERNAL.
      */
-    public RespostaPergunta ask(PerguntarRequest request, String authorization) {
-        Iterator<PerguntarEvento> events = stub(authorization, questionTimeoutSeconds).perguntar(request);
-        RespostaPergunta response = null;
+    public Answer ask(AskRequest request, String authorization) {
+        Iterator<AskEvent> events = stub(authorization, questionTimeoutSeconds).ask(request);
+        Answer response = null;
         while (events.hasNext()) {
-            PerguntarEvento event = events.next();
-            if (event.hasResposta()) {
-                response = event.getResposta();
+            AskEvent event = events.next();
+            if (event.hasAnswer()) {
+                response = event.getAnswer();
             }
         }
         if (response == null) {
@@ -71,10 +71,10 @@ public class AssistantClient {
         return questionTimeoutSeconds;
     }
 
-    private AssistenteGrpc.AssistenteBlockingStub stub(String authorization, long timeout) {
+    private AssistantGrpc.AssistantBlockingStub stub(String authorization, long timeout) {
         var headers = new Metadata();
         headers.put(GrpcAuthInterceptor.AUTHORIZATION, authorization);
-        return AssistenteGrpc.newBlockingStub(channel)
+        return AssistantGrpc.newBlockingStub(channel)
                 .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers))
                 .withDeadlineAfter(timeout, TimeUnit.SECONDS);
     }

@@ -10,15 +10,15 @@ interface Props {
   aoConferirColuna: (poId: string) => void;
 }
 
-const prefixoColuna = "coluna:";
+const prefixoColuna = "column:";
 
 /**
  * PO que imprimiu a coluna "Orçado anterior" de um exercício, quando houver conferência a mostrar (RF-11.5):
- * na coluna impressa, a própria PO do item; numa PO que substituiu a coluna, a do id "coluna:<uuid da PO>".
+ * na coluna impressa, a própria PO do item; numa PO que substituiu a coluna, a do id "column:<uuid da PO>".
  */
 function poDaColuna(comparado: ExercicioComparado, exercicios: Exercicio[]): string | null {
-  if (comparado.tipo === "COLUNA_IMPRESSA") return comparado.poId;
-  const substituida = exercicios.find((e) => e.tipo === comparado.tipo && e.poId === comparado.poId)?.colunaImpressa;
+  if (comparado.type === "PRINTED_COLUMN") return comparado.budgetId;
+  const substituida = exercicios.find((e) => e.type === comparado.type && e.budgetId === comparado.budgetId)?.printedColumn;
   return substituida?.startsWith(prefixoColuna) ? substituida.slice(prefixoColuna.length) : null;
 }
 
@@ -31,20 +31,20 @@ export function ExerciciosComparados({ comparados, exercicios, aoConferirColuna 
         return (
           <div key={c.id} className="cartao-numero">
             <span className="cartao-titulo">
-              {c.tipo === "COLUNA_IMPRESSA" ? "PO anterior pela coluna impressa" : c.versao ? `PO versão ${c.versao}` : "PO"}
+              {c.type === "PRINTED_COLUMN" ? "PO anterior pela coluna impressa" : c.version ? `PO versão ${c.version}` : "PO"}
             </span>
-            <strong className="nome-fundo">{c.rotulo}</strong>
+            <strong className="nome-fundo">{c.label}</strong>
             <span className="discreto">
-              {formatarMes(c.inicio)} a {formatarMes(c.fim)}
+              {formatarMes(c.start)} a {formatarMes(c.end)}
             </span>
             <span className="discreto">
-              {c.tipo === "COLUNA_IMPRESSA"
+              {c.type === "PRINTED_COLUMN"
                 ? "Só previsto, sem realizado"
-                : `Meses somados: ${c.meses.map(formatarMes).join(", ") || "nenhum"}`}
+                : `Meses somados: ${c.months.map(formatarMes).join(", ") || "nenhum"}`}
             </span>
             {poColuna && (
               <button type="button" className="botao-link" onClick={() => aoConferirColuna(poColuna)}>
-                {c.tipo === "COLUNA_IMPRESSA" ? "Conferir a coluna impressa" : "Ver a coluna impressa (conferência)"}
+                {c.type === "PRINTED_COLUMN" ? "Conferir a coluna impressa" : "Ver a coluna impressa (conferência)"}
               </button>
             )}
           </div>

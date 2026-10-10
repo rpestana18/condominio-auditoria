@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 /**
  * Suggestion of a cash flow account's target by name (RF-03.1.5; ADR 0004, Decision 4). Deterministic text comparison,
- * without AI, database or clock: works in any AI mode, DESLIGADO included.
+ * without AI, database or clock: works in any AI mode, OFF included.
  *
  * <p>The account number never matters (RF-03.1.4): normalization drops every digit, on both sides. So cash flow account
  * 1621 ("MATERIAL HIDRÁULICO") has nothing in common with budget line 1.3.23 ("1621 - Interfones").
@@ -71,7 +71,7 @@ public final class NameSuggestion {
      */
     public static List<BudgetLine> candidates(BudgetStructure structure) {
         return structure.groupsWithoutFunds().stream().flatMap(g -> g.lines().stream())
-                .filter(l -> l.getMark() != BudgetLineMark.RATEIO_A_PARTE).toList();
+                .filter(l -> l.getMark() != BudgetLineMark.SEPARATE_APPORTIONMENT).toList();
     }
 
     /** Upper case, without accents, punctuation or digits; abbreviations expanded and stop words removed. */

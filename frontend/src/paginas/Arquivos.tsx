@@ -15,7 +15,7 @@ type FiltroIndexacao = "TODOS" | "NAO_INDEXADO" | SituacaoIndexacao;
 
 /** Só esconde linhas que já vieram da API; não calcula nada. */
 const passaNoFiltro = (a: ArquivoResumo, filtro: FiltroIndexacao) =>
-  filtro === "TODOS" || (filtro === "NAO_INDEXADO" ? !a.indexacao : a.indexacao?.situacao === filtro);
+  filtro === "TODOS" || (filtro === "NAO_INDEXADO" ? !a.indexing : a.indexing?.status === filtro);
 
 /** Arquivos separados por categoria, do mais recente para o mais antigo. */
 export function Arquivos() {
@@ -26,11 +26,11 @@ export function Arquivos() {
   const [parametros] = useSearchParams();
   const [selecionado, setSelecionado] = useState<string | null>(() => parametros.get("arquivo"));
   const [editando, setEditando] = useState<ArquivoResumo | null>(null);
-  const podeEditar = pode("GESTOR", "ADMIN");
+  const podeEditar = pode("MANAGER", "ADMIN");
   const [filtroIndexacao, setFiltroIndexacao] = useState<FiltroIndexacao>("TODOS");
   const { data: todos = [], isLoading } = useArquivos(condominioId, categoria);
   // A coluna "Busca" só existe com o módulo Assistente ligado (sem ele a API não manda o estado)
-  const comBusca = moduloLigado("ASSISTENTE") || todos.some((a) => a.indexacao);
+  const comBusca = moduloLigado("ASSISTANT") || todos.some((a) => a.indexing);
   const arquivos = comBusca ? todos.filter((a) => passaNoFiltro(a, filtroIndexacao)) : todos;
 
   return (
@@ -46,8 +46,8 @@ export function Arquivos() {
             Todas
           </button>
           {categorias.map((c) => (
-            <button key={c.codigo} role="tab" aria-selected={categoria === c.codigo} onClick={() => setCategoria(c.codigo)}>
-              {c.rotulo}
+            <button key={c.code} role="tab" aria-selected={categoria === c.code} onClick={() => setCategoria(c.code)}>
+              {c.label}
             </button>
           ))}
         </div>
@@ -91,26 +91,26 @@ export function Arquivos() {
             <tbody>
               {arquivos.map((a) => (
                 <tr key={a.id} onClick={() => setSelecionado(a.id)} className={a.id === selecionado ? "selecionado" : undefined}>
-                  <td>{a.nome}</td>
-                  {!categoria && <td>{a.categoriaRotulo}</td>}
-                  <td>{formatarPeriodo(a.periodoInicio, a.periodoFim)}</td>
+                  <td>{a.name}</td>
+                  {!categoria && <td>{a.categoryLabel}</td>}
+                  <td>{formatarPeriodo(a.periodStart, a.periodEnd)}</td>
                   <td>
-                    {formatarDataHora(a.enviadoEm)} <span className="discreto">por {a.enviadoPor}</span>
+                    {formatarDataHora(a.uploadedAt)} <span className="discreto">por {a.uploadedBy}</span>
                   </td>
                   <td>
                     <StatusArquivo status={a.status} />
                   </td>
                   {comBusca && (
                     <td>
-                      <IndexacaoArquivo indexacao={a.indexacao} />
+                      <IndexacaoArquivo indexacao={a.indexing} />
                     </td>
                   )}
                   {podeEditar && (
                     <td>
                       <button
                         className="botao-link"
-                        disabled={a.status === "PROCESSANDO"}
-                        title={a.status === "PROCESSANDO" ? "O arquivo já está sendo processado" : "Mudar a categoria"}
+                        disabled={a.status === "PROCESSING"}
+                        title={a.status === "PROCESSING" ? "O arquivo já está sendo processado" : "Mudar a categoria"}
                         onClick={(e) => {
                           e.stopPropagation();
                           setEditando(a);

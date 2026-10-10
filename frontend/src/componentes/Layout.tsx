@@ -18,7 +18,7 @@ export function Layout() {
           </NavLink>
           <NavLink to="/arquivos">Arquivos</NavLink>
           {/* Só com o módulo ligado (RF-10.3), para todos os perfis; o backend recusa (403) se estiver desligado */}
-          {moduloLigado("ASSISTENTE") && <NavLink to="/assistente">Assistente</NavLink>}
+          {moduloLigado("ASSISTANT") && <NavLink to="/assistente">Assistente</NavLink>}
           {/* RF-11.1: todos os perfis veem a seção; as ações de edição dentro das telas são só do Admin */}
           <span className="menu-secao">Análise da PO</span>
           <NavLink to="/previsto-realizado">Previsto × realizado</NavLink>
@@ -44,11 +44,11 @@ export function Layout() {
       </aside>
       <div className="conteudo">
         <header className="topo">
-          {usuario.condominios.length > 1 ? (
+          {usuario.condominiums.length > 1 ? (
             <select value={condominioId} onChange={(e) => trocarCondominio(e.target.value)} aria-label="Condomínio">
-              {usuario.condominios.map((c) => (
+              {usuario.condominiums.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.nome}
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -57,7 +57,7 @@ export function Layout() {
           )}
           <div className="usuario">
             <span>
-              {usuario.nome} <small>({usuario.perfis.join(", ").toLowerCase()})</small>
+              {usuario.name} <small>({usuario.roles.join(", ").toLowerCase()})</small>
             </span>
             <button className="botao-link" onClick={sair}>
               Sair

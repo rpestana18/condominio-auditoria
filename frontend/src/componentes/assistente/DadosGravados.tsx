@@ -3,27 +3,39 @@ import type { DadoGravado } from "../../api/tipos";
 
 /** Nome legível de cada consulta numérica (as ferramentas que o rag chama no backend). */
 const nomesConsultas: Record<string, string> = {
-  resumo_fundos: "Resumo dos fundos",
-  buscar_lancamentos: "Lançamentos",
-  listar_arquivos: "Arquivos enviados",
-  conferencias_do_arquivo: "Conferências do arquivo",
+  fund_summary: "Resumo dos fundos",
+  find_entries: "Lançamentos",
+  list_files: "Arquivos enviados",
+  file_checks: "Conferências do arquivo",
+};
+
+/** Nome legível de cada filtro das consultas (o rag manda os nomes do contrato, em inglês). */
+const nomesParametros: Record<string, string> = {
+  dateFrom: "data inicial",
+  dateTo: "data final",
+  fund: "fundo",
+  text: "texto",
+  outflowsOnly: "só saídas",
+  limit: "limite",
+  category: "categoria",
+  fileId: "arquivo",
 };
 
 const valorParametro = (dado: DadoGravado, ...nomes: string[]) =>
-  dado.parametros.find((p) => nomes.includes(p.nome))?.valor;
+  dado.parameters.find((p) => nomes.includes(p.name))?.value;
 
 /**
  * Tela onde a pessoa confere o número (RF-04.14). Só rotas que existem hoje; sem tela, sem link.
  * Lançamentos ainda não têm tela própria: aparece só o nome da consulta.
  */
 function linkDaConsulta(dado: DadoGravado): { para: string; rotulo: string } | null {
-  switch (dado.consulta) {
-    case "resumo_fundos":
+  switch (dado.query) {
+    case "fund_summary":
       return { para: "/", rotulo: "Ver saldo por fundo no Início" };
-    case "listar_arquivos":
+    case "list_files":
       return { para: "/arquivos", rotulo: "Ver em Arquivos" };
-    case "conferencias_do_arquivo": {
-      const arquivoId = valorParametro(dado, "arquivoId", "arquivo_id");
+    case "file_checks": {
+      const arquivoId = valorParametro(dado, "fileId");
       return { para: arquivoId ? `/arquivos?arquivo=${encodeURIComponent(arquivoId)}` : "/arquivos", rotulo: "Ver conferências do arquivo" };
     }
     default:
@@ -41,22 +53,22 @@ export function DadosGravados({ dados }: { dados: DadoGravado[] }) {
         return (
           <div key={i} className="dado-gravado">
             <p className="discreto">
-              Consulta: <strong>{nomesConsultas[dado.consulta] ?? dado.consulta}</strong>
-              {dado.parametros.length > 0 && ` (${dado.parametros.map((p) => `${p.nome}: ${p.valor}`).join("; ")})`}
+              Consulta: <strong>{nomesConsultas[dado.query] ?? dado.query}</strong>
+              {dado.parameters.length > 0 && ` (${dado.parameters.map((p) => `${nomesParametros[p.name] ?? p.name}: ${p.value}`).join("; ")})`}
             </p>
-            {dado.linhas.length > 0 && (
+            {dado.rows.length > 0 && (
               <table className="tabela compacta">
                 <tbody>
-                  {dado.linhas.map((l, j) => (
+                  {dado.rows.map((l, j) => (
                     <tr key={j}>
-                      <td>{l.rotulo}</td>
-                      <td className="numero">{l.valor}</td>
+                      <td>{l.label}</td>
+                      <td className="numero">{l.value}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
-            {dado.comentario && <p>{dado.comentario}</p>}
+            {dado.comment && <p>{dado.comment}</p>}
             {link && (
               <Link to={link.para} className="botao-link">
                 {link.rotulo}

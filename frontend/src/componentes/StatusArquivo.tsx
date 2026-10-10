@@ -1,11 +1,11 @@
 import type { StatusArquivo as Status } from "../api/tipos";
 
 const rotulos: Record<Status, string> = {
-  PENDENTE: "Na fila",
-  PROCESSANDO: "Processando",
-  CONCLUIDO: "Concluído",
-  PRECISA_REVISAO: "Precisa revisão",
-  FALHOU: "Falhou",
+  PENDING: "Na fila",
+  PROCESSING: "Processando",
+  COMPLETED: "Concluído",
+  NEEDS_REVIEW: "Precisa revisão",
+  FAILED: "Falhou",
 };
 
 export function StatusArquivo({ status }: { status: Status }) {

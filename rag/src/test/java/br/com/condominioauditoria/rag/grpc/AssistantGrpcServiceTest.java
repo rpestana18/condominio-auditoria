@@ -10,11 +10,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
+import br.com.condominioauditoria.contracts.assistant.v2.AssistantGrpc;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchFilters;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchMode;
 import br.com.condominioauditoria.rag.repository.IndexRepository;
 import br.com.condominioauditoria.rag.search.DocumentSearch;
 import br.com.condominioauditoria.rag.search.EmbeddingGenerator;
@@ -37,7 +37,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-/** gRPC contract Assistente.Buscar: input validation, filters passed on and location of each type. */
+/** gRPC contract Assistant.Search: input validation, filters passed on and location of each type. */
 class AssistantGrpcServiceTest {
 
     private static final String CONDOMINIUM = "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001";
@@ -46,7 +46,7 @@ class AssistantGrpcServiceTest {
     private final EmbeddingGenerator embeddings = mock(EmbeddingGenerator.class);
     private Server server;
     private ManagedChannel channel;
-    private AssistenteGrpc.AssistenteBlockingStub client;
+    private AssistantGrpc.AssistantBlockingStub client;
 
     @BeforeEach
     void start() throws Exception {
@@ -61,7 +61,7 @@ class AssistantGrpcServiceTest {
                         mock(ProviderCatalog.class), mock(RagKeys.class)))
                 .build().start();
         channel = InProcessChannelBuilder.forName(name).directExecutor().build();
-        client = AssistenteGrpc.newBlockingStub(channel);
+        client = AssistantGrpc.newBlockingStub(channel);
     }
 
     @AfterEach
@@ -80,17 +80,17 @@ class AssistantGrpcServiceTest {
                         chunk(file, new Location.Paragraphs(4, 7, ""))),
                         DocumentSearch.Mode.KEYWORD));
 
-        BuscarResponse response = client.buscar(BuscarRequest.newBuilder().setCondominioId(CONDOMINIUM)
-                .setTexto("multa").build());
+        SearchResponse response = client.search(SearchRequest.newBuilder().setCondominiumId(CONDOMINIUM)
+                .setText("multa").build());
 
-        assertThat(response.getModoUsado()).isEqualTo(ModoBusca.MODO_BUSCA_PALAVRA);
-        assertThat(response.getTrechosList()).hasSize(3);
-        assertThat(response.getTrechos(0).getLocalizacao().getPagina().getPagina()).isEqualTo(3);
-        assertThat(response.getTrechos(1).getLocalizacao().getPlanilha().getAba()).isEqualTo("Jan");
-        assertThat(response.getTrechos(1).getLocalizacao().getPlanilha().getLinhaFim()).isEqualTo(31);
-        assertThat(response.getTrechos(2).getLocalizacao().getParagrafos().getParagrafoInicio()).isEqualTo(4);
-        assertThat(response.getTrechos(0).getArquivoId()).isEqualTo(file.toString());
-        assertThat(response.getTrechos(0).getSha256()).hasSize(64);
+        assertThat(response.getModeUsed()).isEqualTo(SearchMode.SEARCH_MODE_KEYWORD);
+        assertThat(response.getChunksList()).hasSize(3);
+        assertThat(response.getChunks(0).getLocation().getPage().getPage()).isEqualTo(3);
+        assertThat(response.getChunks(1).getLocation().getSheet().getTab()).isEqualTo("Jan");
+        assertThat(response.getChunks(1).getLocation().getSheet().getEndRow()).isEqualTo(31);
+        assertThat(response.getChunks(2).getLocation().getParagraphs().getParagraphStart()).isEqualTo(4);
+        assertThat(response.getChunks(0).getFileId()).isEqualTo(file.toString());
+        assertThat(response.getChunks(0).getSha256()).hasSize(64);
     }
 
     @Test
@@ -99,17 +99,17 @@ class AssistantGrpcServiceTest {
         when(search.search(any(), anyString(), any(), anyInt()))
                 .thenReturn(new DocumentSearch.Result(List.of(), DocumentSearch.Mode.KEYWORD));
 
-        client.buscar(BuscarRequest.newBuilder().setCondominioId(CONDOMINIUM).setTexto("\"fundo de reserva\"")
-                .setModo(ModoBusca.MODO_BUSCA_PALAVRA).setLimite(5)
-                .setFiltros(FiltrosBusca.newBuilder().addCategorias("ATA").setDataInicio("2026-01-01")
-                        .addArquivoIds(file.toString()))
+        client.search(SearchRequest.newBuilder().setCondominiumId(CONDOMINIUM).setText("\"fundo de reserva\"")
+                .setMode(SearchMode.SEARCH_MODE_KEYWORD).setLimit(5)
+                .setFilters(SearchFilters.newBuilder().addCategories("MINUTES").setDateFrom("2026-01-01")
+                        .addFileIds(file.toString()))
                 .build());
 
         ArgumentCaptor<IndexRepository.SearchFilters> filters = ArgumentCaptor.forClass(
                 IndexRepository.SearchFilters.class);
         verify(search).search(filters.capture(), eq("\"fundo de reserva\""), eq(DocumentSearch.Mode.KEYWORD), eq(5));
         assertThat(filters.getValue().condominiumId()).isEqualTo(UUID.fromString(CONDOMINIUM));
-        assertThat(filters.getValue().categories()).containsExactly("ATA");
+        assertThat(filters.getValue().categories()).containsExactly("MINUTES");
         assertThat(filters.getValue().dateFrom()).isEqualTo(LocalDate.of(2026, 1, 1));
         assertThat(filters.getValue().dateTo()).isNull();
         assertThat(filters.getValue().fileIds()).containsExactly(file);
@@ -117,19 +117,19 @@ class AssistantGrpcServiceTest {
 
     @Test
     void invalidInputIsInvalidArgument() {
-        assertInvalid(BuscarRequest.newBuilder().setCondominioId(CONDOMINIUM).setTexto("  ").build(), "Texto");
-        assertInvalid(BuscarRequest.newBuilder().setCondominioId("x").setTexto("a").build(), "condominio_id");
-        assertInvalid(BuscarRequest.newBuilder().setTexto("a").build(), "condominio_id");
-        assertInvalid(BuscarRequest.newBuilder().setCondominioId(CONDOMINIUM).setTexto("a").setLimite(-1).build(),
+        assertInvalid(SearchRequest.newBuilder().setCondominiumId(CONDOMINIUM).setText("  ").build(), "Texto");
+        assertInvalid(SearchRequest.newBuilder().setCondominiumId("x").setText("a").build(), "condominio_id");
+        assertInvalid(SearchRequest.newBuilder().setText("a").build(), "condominio_id");
+        assertInvalid(SearchRequest.newBuilder().setCondominiumId(CONDOMINIUM).setText("a").setLimit(-1).build(),
                 "Limite");
-        assertInvalid(BuscarRequest.newBuilder().setCondominioId(CONDOMINIUM).setTexto("a")
-                .setFiltros(FiltrosBusca.newBuilder().setDataFim("30/09/2026")).build(), "data_fim");
-        assertInvalid(BuscarRequest.newBuilder().setCondominioId(CONDOMINIUM).setTexto("a")
-                .setModeloEmbeddings("outro").build(), "outro");
+        assertInvalid(SearchRequest.newBuilder().setCondominiumId(CONDOMINIUM).setText("a")
+                .setFilters(SearchFilters.newBuilder().setDateTo("30/09/2026")).build(), "data_fim");
+        assertInvalid(SearchRequest.newBuilder().setCondominiumId(CONDOMINIUM).setText("a")
+                .setEmbeddingModel("outro").build(), "outro");
     }
 
-    private void assertInvalid(BuscarRequest request, String chunk) {
-        assertThatThrownBy(() -> client.buscar(request))
+    private void assertInvalid(SearchRequest request, String chunk) {
+        assertThatThrownBy(() -> client.search(request))
                 .isInstanceOfSatisfying(StatusRuntimeException.class, e -> {
                     assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.INVALID_ARGUMENT);
                     assertThat(e.getStatus().getDescription()).contains(chunk);
@@ -137,6 +137,6 @@ class AssistantGrpcServiceTest {
     }
 
     private static FoundChunk chunk(UUID file, Location local) {
-        return new FoundChunk(UUID.randomUUID(), file, "a.pdf", "ATA", local, "texto", 0.5, "a".repeat(64));
+        return new FoundChunk(UUID.randomUUID(), file, "a.pdf", "MINUTES", local, "texto", 0.5, "a".repeat(64));
     }
 }

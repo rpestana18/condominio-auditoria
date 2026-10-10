@@ -68,13 +68,13 @@ class ReserveFundCapRuleTest {
         var proof = List.of(new FindingSyncService.Evidence(UUID.randomUUID(), "a".repeat(64), 1, "PO, linha 1.9.1",
                 null));
 
-        Finding first = registry.register(condominium, ReserveFundCapRule.CODE, "1", Severity.ATENCAO,
-                YearMonth.of(2026, 5), "previsao:x:linha:y", "texto", proof);
-        Finding second = registry.register(condominium, ReserveFundCapRule.CODE, "1", Severity.ATENCAO,
-                YearMonth.of(2026, 5), "previsao:x:linha:y", "texto", proof);
+        Finding first = registry.register(condominium, ReserveFundCapRule.CODE, "1", Severity.WARNING,
+                YearMonth.of(2026, 5), "budget:x:line:y", "texto", proof);
+        Finding second = registry.register(condominium, ReserveFundCapRule.CODE, "1", Severity.WARNING,
+                YearMonth.of(2026, 5), "budget:x:line:y", "texto", proof);
 
         assertThat(second).isSameAs(first);
-        assertThat(first.getStatus()).isEqualTo(FindingStatus.ABERTO);
+        assertThat(first.getStatus()).isEqualTo(FindingStatus.OPEN);
         verify(findings, times(1)).save(any());
         verify(evidence, times(1)).save(any());
         assertThat(Optional.of(first.getReferenceMonth())).contains(YearMonth.of(2026, 5));

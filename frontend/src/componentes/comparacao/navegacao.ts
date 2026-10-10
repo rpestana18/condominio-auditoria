@@ -4,9 +4,9 @@ import type { ExercicioComparado } from "../../api/tipos";
 /** Onde abrir um número no previsto × realizado: exercício (PO), período, fundo e, quando houver, o alvo da evidência. */
 export interface DestinoPrevisto {
   poId: string;
-  /** "acumulado" ou AAAA-MM, como pede a API. */
+  /** "cumulative" ou AAAA-MM, como pede a API. */
   periodo: string;
-  /** "linha:<id>", "grupo:<id>", "fundo:<id>", "total"... Sem alvo, a tela abre no período sem o painel de evidência. */
+  /** "line:<id>", "group:<id>", "fund:<id>", "total"... Sem alvo, a tela abre no período sem o painel de evidência. */
   alvo?: string | null;
   fundoId?: string | null;
 }
@@ -33,8 +33,8 @@ export function useAbridorEvidencia(exercicios: ExercicioComparado[], fundoId: s
   const navegar = useNavigate();
   return (exercicioId, alvo) => {
     const exercicio = exercicios.find((e) => e.id === exercicioId);
-    const periodo = exercicio?.periodo;
+    const periodo = exercicio?.period;
     if (!exercicio || !periodo || !alvo) return undefined;
-    return () => navegar(enderecoPrevisto({ poId: exercicio.poId, periodo, alvo, fundoId }));
+    return () => navegar(enderecoPrevisto({ poId: exercicio.budgetId, periodo, alvo, fundoId }));
   };
 }

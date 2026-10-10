@@ -17,7 +17,7 @@ import tools.jackson.databind.ser.std.ToStringSerializer;
 
 /**
  * Converts the queue messages to and from JSON and validates them against the contracts, on output and on input:
- * FileReceivedMessage in contracts/mensagens/v1 and ProcessingResultMessage in contracts/mensagens/v2 (ADR 0004).
+ * FileReceivedMessage in contracts/mensagens/v3 (ADR 0006).
  * Money goes as text ("1234.56"), never as a floating-point number.
  */
 @Component
@@ -34,34 +34,34 @@ public class MessageContract {
 
     public MessageContract() {
         SchemaRegistry record = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
-        this.fileReceived = record.getSchema(SchemaLocation.of("classpath:mensagens/v1/arquivo-recebido.schema.json"));
-        this.processingResult = record.getSchema(SchemaLocation.of("classpath:mensagens/v2/resultado-processamento.schema.json"));
-        this.indexFile = record.getSchema(SchemaLocation.of("classpath:mensagens/v1/indexar-arquivo.schema.json"));
+        this.fileReceived = record.getSchema(SchemaLocation.of("classpath:mensagens/v3/file-received.schema.json"));
+        this.processingResult = record.getSchema(SchemaLocation.of("classpath:mensagens/v3/processing-result.schema.json"));
+        this.indexFile = record.getSchema(SchemaLocation.of("classpath:mensagens/v3/index-file.schema.json"));
         this.indexingResult = record.getSchema(
-                SchemaLocation.of("classpath:mensagens/v1/resultado-indexacao.schema.json"));
+                SchemaLocation.of("classpath:mensagens/v3/indexing-result.schema.json"));
     }
 
     public FileReceivedMessage readFileReceived(byte[] body) {
         String json = new String(body, StandardCharsets.UTF_8);
-        validate(fileReceived, json, "ArquivoRecebido v1");
+        validate(fileReceived, json, "FileReceived v3");
         return mapper.readValue(json, FileReceivedMessage.class);
     }
 
     public byte[] write(ProcessingResultMessage message) {
         String json = mapper.writeValueAsString(message);
-        validate(processingResult, json, "ResultadoProcessamento v2");
+        validate(processingResult, json, "ProcessingResult v3");
         return json.getBytes(StandardCharsets.UTF_8);
     }
 
     public IndexFileMessage readIndexFile(byte[] body) {
         String json = new String(body, StandardCharsets.UTF_8);
-        validate(indexFile, json, "IndexarArquivo");
+        validate(indexFile, json, "IndexFile v3");
         return mapper.readValue(json, IndexFileMessage.class);
     }
 
     public byte[] write(IndexingResultMessage message) {
         String json = mapper.writeValueAsString(message);
-        validate(indexingResult, json, "ResultadoIndexacao");
+        validate(indexingResult, json, "IndexingResult v3");
         return json.getBytes(StandardCharsets.UTF_8);
     }
 

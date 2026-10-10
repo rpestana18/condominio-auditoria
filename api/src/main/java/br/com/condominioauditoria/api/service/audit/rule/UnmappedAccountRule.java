@@ -10,13 +10,13 @@ import br.com.condominioauditoria.api.model.enums.Severity;
  */
 public final class UnmappedAccountRule {
 
-    public static final String CODE = "CONTA_SEM_LINHA_PO";
+    public static final String CODE = "ACCOUNT_WITHOUT_BUDGET_LINE";
     public static final String VERSION = "1";
-    public static final Severity SEVERITY = Severity.ATENCAO;
+    public static final Severity SEVERITY = Severity.WARNING;
 
-    /** Target of the finding: "conta:&lt;code&gt;" or "conta:sem-conta". */
+    /** Target of the finding: "account:&lt;code&gt;" or "account:no-account". */
     public static String target(String account) {
-        return "conta:" + (account == null ? "sem-conta" : account);
+        return "account:" + (account == null ? "no-account" : account);
     }
 
     private UnmappedAccountRule() {

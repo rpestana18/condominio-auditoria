@@ -13,11 +13,11 @@ function alternar<T>(lista: T[] | undefined, item: T): T[] {
 /** Resumo do que está filtrado, para o título fechado: "2 categorias · 01/01/2025 a 31/12/2025". */
 function resumo(filtros: Filtros): string {
   const partes: string[] = [];
-  const categorias = filtros.categorias?.length ?? 0;
-  const documentos = filtros.arquivoIds?.length ?? 0;
+  const categorias = filtros.categories?.length ?? 0;
+  const documentos = filtros.fileIds?.length ?? 0;
   if (categorias) partes.push(categorias === 1 ? "1 categoria" : `${categorias} categorias`);
-  if (filtros.dataInicio || filtros.dataFim) {
-    partes.push(`${formatarData(filtros.dataInicio) || "…"} a ${formatarData(filtros.dataFim) || "…"}`);
+  if (filtros.startDate || filtros.endDate) {
+    partes.push(`${formatarData(filtros.startDate) || "…"} a ${formatarData(filtros.endDate) || "…"}`);
   }
   if (documentos) partes.push(documentos === 1 ? "1 documento" : `${documentos} documentos`);
   return partes.length ? partes.join(" · ") : "todos os documentos";
@@ -32,7 +32,7 @@ export function FiltrosDocumentos() {
   const { filtros, alterarFiltros } = useConversa();
   const { data: categorias = [] } = useCategorias();
   const { data: arquivos = [] } = useArquivos(condominioId);
-  const ativo = Boolean(filtros.categorias?.length || filtros.arquivoIds?.length || filtros.dataInicio || filtros.dataFim);
+  const ativo = Boolean(filtros.categories?.length || filtros.fileIds?.length || filtros.startDate || filtros.endDate);
 
   return (
     <details className="bloco filtros-documentos">
@@ -45,13 +45,13 @@ export function FiltrosDocumentos() {
           <legend>Categorias</legend>
           <div className="lista-opcoes">
             {categorias.map((c) => (
-              <label key={c.codigo}>
+              <label key={c.code}>
                 <input
                   type="checkbox"
-                  checked={filtros.categorias?.includes(c.codigo) ?? false}
-                  onChange={() => alterarFiltros({ ...filtros, categorias: alternar<Categoria>(filtros.categorias, c.codigo) })}
+                  checked={filtros.categories?.includes(c.code) ?? false}
+                  onChange={() => alterarFiltros({ ...filtros, categories: alternar<Categoria>(filtros.categories, c.code) })}
                 />
-                {c.rotulo}
+                {c.label}
               </label>
             ))}
           </div>
@@ -63,17 +63,17 @@ export function FiltrosDocumentos() {
             De
             <input
               type="date"
-              value={filtros.dataInicio ?? ""}
-              onChange={(e) => alterarFiltros({ ...filtros, dataInicio: e.target.value || null })}
+              value={filtros.startDate ?? ""}
+              onChange={(e) => alterarFiltros({ ...filtros, startDate: e.target.value || null })}
             />
           </label>
           <label className="campo">
             Até
             <input
               type="date"
-              value={filtros.dataFim ?? ""}
-              min={filtros.dataInicio ?? undefined}
-              onChange={(e) => alterarFiltros({ ...filtros, dataFim: e.target.value || null })}
+              value={filtros.endDate ?? ""}
+              min={filtros.startDate ?? undefined}
+              onChange={(e) => alterarFiltros({ ...filtros, endDate: e.target.value || null })}
             />
           </label>
           <p className="discreto">Convenção, regimento e contratos sem competência podem entrar mesmo com período.</p>
@@ -86,16 +86,16 @@ export function FiltrosDocumentos() {
           ) : (
             <div className="lista-opcoes rolavel">
               {arquivos.map((a) => (
-                <label key={a.id} title={a.nome}>
+                <label key={a.id} title={a.name}>
                   <input
                     type="checkbox"
-                    checked={filtros.arquivoIds?.includes(a.id) ?? false}
-                    onChange={() => alterarFiltros({ ...filtros, arquivoIds: alternar(filtros.arquivoIds, a.id) })}
+                    checked={filtros.fileIds?.includes(a.id) ?? false}
+                    onChange={() => alterarFiltros({ ...filtros, fileIds: alternar(filtros.fileIds, a.id) })}
                   />
-                  <span className="nome-documento">{a.nome}</span>
+                  <span className="nome-documento">{a.name}</span>
                   <span className="discreto">
-                    {a.categoriaRotulo}
-                    {a.periodoInicio && ` · ${formatarPeriodo(a.periodoInicio, a.periodoFim)}`}
+                    {a.categoryLabel}
+                    {a.periodStart && ` · ${formatarPeriodo(a.periodStart, a.periodEnd)}`}
                   </span>
                 </label>
               ))}

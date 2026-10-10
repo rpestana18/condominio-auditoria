@@ -86,7 +86,7 @@ public final class UsageExcelReport {
                 Row row = usageSheet.createRow(n++);
                 text(row, 0, t.month());
                 text(row, 1, t.feature());
-                text(row, 2, t.function().code());
+                text(row, 2, t.function().label());
                 row.createCell(3).setCellValue(t.count());
                 row.createCell(4).setCellValue(t.inputTokens());
                 row.createCell(5).setCellValue(t.outputTokens());

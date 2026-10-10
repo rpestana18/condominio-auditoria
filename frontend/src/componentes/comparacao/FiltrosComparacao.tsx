@@ -47,10 +47,10 @@ export function FiltrosComparacao(props: Props) {
                   disabled={marcado && marcados.length <= 2}
                   onChange={() => alternar(e.id)}
                 />
-                {e.rotulo}
+                {e.label}
                 <span className="discreto">
-                  {formatarMes(e.inicio)} a {formatarMes(e.fim)}
-                  {e.tipo === "COLUNA_IMPRESSA" && " · só previsto"}
+                  {formatarMes(e.start)} a {formatarMes(e.end)}
+                  {e.type === "PRINTED_COLUMN" && " · só previsto"}
                 </span>
               </label>
             );

@@ -33,7 +33,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class FilePublisher {
 
     private static final Logger log = LoggerFactory.getLogger(FilePublisher.class);
-    private static final List<FileStatus> IN_PROGRESS = List.of(FileStatus.PENDENTE, FileStatus.PROCESSANDO);
+    private static final List<FileStatus> IN_PROGRESS = List.of(FileStatus.PENDING, FileStatus.PROCESSING);
 
     private final RabbitTemplate rabbit;
     private final MessageContract contract;

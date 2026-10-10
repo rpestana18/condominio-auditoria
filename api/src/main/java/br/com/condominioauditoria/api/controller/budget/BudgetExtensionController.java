@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 403). The extension shows in the budget summary, which every role reads.
  */
 @RestController
-@RequestMapping("/api/condominios/{condominiumId}/previsoes/{budgetId}/prorrogacao")
+@RequestMapping("/api/condominiums/{condominiumId}/budgets/{budgetId}/extension")
 public class BudgetExtensionController {
 
     private final CondominiumAccess access;

@@ -49,7 +49,10 @@ public class BudgetVsActualExportService {
         BudgetVsActualReport report = BudgetVsActualReport.build(condominium.getName(), fund, calculation,
                 generatedBy, Instant.now());
         byte[] content = format == ExportFormat.PDF ? pdf.generate(report) : excel.generate(report);
-        String name = "previsto-realizado-" + calculation.result().period() + "." + format.extension();
+        String resultPeriod = calculation.result().period();
+        // The file name is for people: the API code "cumulative" is shown as "acumulado"
+        String name = "previsto-realizado-" + ("cumulative".equals(resultPeriod) ? "acumulado" : resultPeriod) + "."
+                + format.extension();
         return new ExportedFileResponse(name, format.contentType(), content);
     }
 

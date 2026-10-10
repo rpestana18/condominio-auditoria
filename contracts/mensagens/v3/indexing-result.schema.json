@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://condominio-auditoria/contracts/mensagens/v3/indexing-result.schema.json",
+  "title": "IndexingResult v3",
+  "description": "v3 (ADR 0006, fase 2): igual à versão anterior, com nomes e códigos em inglês. rag → api (fila api.indexing-results). INDEXING quando o trabalho começa; INDEXED com páginas e trechos; NO_TEXT quando o arquivo não tem texto extraível (ex.: PDF digitalizado sem OCR); WITHDRAWN em resposta a WITHDRAW; ERROR com o motivo. Mesmas regras de retentativa, fila .erro e varredura da ADR 0002, com indexingId no papel do processingId.",
+  "type": "object",
+  "required": ["version", "indexingId", "fileId", "condominiumId", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {"const": 3},
+    "indexingId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "O mesmo do IndexarArquivo que originou este resultado."
+    },
+    "fileId": {"type": "string", "format": "uuid"},
+    "condominiumId": {"type": "string", "format": "uuid"},
+    "status": {"enum": ["INDEXING", "INDEXED", "NO_TEXT", "WITHDRAWN", "ERROR"]},
+    "reason": {
+      "type": ["string", "null"],
+      "description": "Obrigatório em NO_TEXT e ERROR: explicação legível para a tela de Arquivos."
+    },
+    "pages": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Páginas (PDF), abas (Excel) ou 1 (Word) lidas. Obrigatório em INDEXED."
+    },
+    "chunks": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Trechos gravados no índice. Obrigatório em INDEXED."
+    },
+    "embeddingModel": {
+      "type": ["string", "null"],
+      "description": "Modelo que gerou os vetores (ex.: bge-m3). Nulo quando não há vetores (embeddings desligados ou sem texto)."
+    },
+    "indexerVersion": {
+      "type": ["string", "null"],
+      "description": "Versão das regras de corte de trechos do rag (ex.: 1). Obrigatório em INDEXED; mudou a versão, o arquivo é reindexado."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"status": {"enum": ["NO_TEXT", "ERROR"]}}
+      },
+      "then": {
+        "required": ["reason"],
+        "properties": {"reason": {"type": "string", "minLength": 1}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"status": {"const": "INDEXED"}}
+      },
+      "then": {
+        "required": ["pages", "chunks", "indexerVersion"],
+        "properties": {
+          "pages": {"type": "integer"},
+          "chunks": {"type": "integer"},
+          "indexerVersion": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  ]
+}

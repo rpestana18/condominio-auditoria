@@ -31,7 +31,7 @@ class IndexingResultServiceTest {
 
     @BeforeEach
     void setUp() {
-        file = new SourceFile(UUID.randomUUID(), FileCategory.ATA, "ata.pdf", "c/ATA/2026/x-ata.pdf", "a".repeat(64), 10,
+        file = new SourceFile(UUID.randomUUID(), FileCategory.MINUTES, "ata.pdf", "c/MINUTES/2026/x-ata.pdf", "a".repeat(64), 10,
                 "application/pdf", "gestor");
         file.requestIndexing();
         when(files.findById(file.getId())).thenReturn(Optional.of(file));
@@ -39,7 +39,7 @@ class IndexingResultServiceTest {
 
     @Test
     void newFileStartsWithoutIndexing() {
-        var newFile = new SourceFile(UUID.randomUUID(), FileCategory.ATA, "ata.pdf", "c/ATA/2026/x-ata.pdf", "a".repeat(64), 10,
+        var newFile = new SourceFile(UUID.randomUUID(), FileCategory.MINUTES, "ata.pdf", "c/MINUTES/2026/x-ata.pdf", "a".repeat(64), 10,
                 "application/pdf", "gestor");
         assertThat(newFile.getIndexingStatus()).isNull();
         assertThat(newFile.getIndexingId()).isNull();
@@ -47,9 +47,9 @@ class IndexingResultServiceTest {
 
     @Test
     void indexedRecordsUsageOnceEvenWhenRedelivered() {
-        service.apply(result(file.getIndexingId(), Status.INDEXANDO, null, null, null));
-        service.apply(result(file.getIndexingId(), Status.INDEXADO, null, 12, 15));
-        service.apply(result(file.getIndexingId(), Status.INDEXADO, null, 12, 15)); // redelivery
+        service.apply(result(file.getIndexingId(), Status.INDEXING, null, null, null));
+        service.apply(result(file.getIndexingId(), Status.INDEXED, null, 12, 15));
+        service.apply(result(file.getIndexingId(), Status.INDEXED, null, 12, 15)); // redelivery
 
         verify(usageRecorder, times(1)).recordIndexing(file.getCondominiumId(), 12, "bge-m3");
     }
@@ -58,27 +58,27 @@ class IndexingResultServiceTest {
     void noTextErrorAndDiscardedRecordNoUsage() {
         UUID old = file.getIndexingId();
         file.requestIndexing();
-        service.apply(result(old, Status.INDEXADO, null, 3, 4));
-        service.apply(result(file.getIndexingId(), Status.SEM_TEXTO, "sem texto", 3, 0));
-        service.apply(result(file.getIndexingId(), Status.ERRO, "falhou", null, null));
+        service.apply(result(old, Status.INDEXED, null, 3, 4));
+        service.apply(result(file.getIndexingId(), Status.NO_TEXT, "sem texto", 3, 0));
+        service.apply(result(file.getIndexingId(), Status.ERROR, "falhou", null, null));
 
         verifyNoInteractions(usageRecorder);
     }
 
     @Test
     void newRequestStartsQueued() {
-        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.NA_FILA);
+        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.QUEUED);
         assertThat(file.getIndexingId()).isNotNull();
         assertThat(file.getIndexingAttempts()).isEqualTo(1);
     }
 
     @Test
     void savesIndexingThenIndexed() {
-        assertThat(service.apply(result(file.getIndexingId(), Status.INDEXANDO, null, null, null))).isTrue();
-        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.INDEXANDO);
+        assertThat(service.apply(result(file.getIndexingId(), Status.INDEXING, null, null, null))).isTrue();
+        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.INDEXING);
 
-        assertThat(service.apply(result(file.getIndexingId(), Status.INDEXADO, null, 12, 15))).isTrue();
-        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.INDEXADO);
+        assertThat(service.apply(result(file.getIndexingId(), Status.INDEXED, null, 12, 15))).isTrue();
+        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.INDEXED);
         assertThat(file.getIndexingPages()).isEqualTo(12);
         assertThat(file.getIndexingChunks()).isEqualTo(15);
         assertThat(file.getIndexingReason()).isNull();
@@ -86,9 +86,9 @@ class IndexingResultServiceTest {
 
     @Test
     void noTextKeepsTheReason() {
-        service.apply(result(file.getIndexingId(), Status.SEM_TEXTO, "PDF digitalizado sem texto", 3, 0));
+        service.apply(result(file.getIndexingId(), Status.NO_TEXT, "PDF digitalizado sem texto", 3, 0));
 
-        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.SEM_TEXTO);
+        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.NO_TEXT);
         assertThat(file.getIndexingReason()).isEqualTo("PDF digitalizado sem texto");
     }
 
@@ -97,52 +97,52 @@ class IndexingResultServiceTest {
         UUID old = file.getIndexingId();
         file.requestIndexing(); // reprocessed midway
 
-        assertThat(service.apply(result(old, Status.INDEXADO, null, 12, 15))).isFalse();
-        assertThat(service.apply(result(old, Status.ERRO, "falhou", null, null))).isFalse();
+        assertThat(service.apply(result(old, Status.INDEXED, null, 12, 15))).isFalse();
+        assertThat(service.apply(result(old, Status.ERROR, "falhou", null, null))).isFalse();
 
-        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.NA_FILA);
+        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.QUEUED);
         assertThat(file.getIndexingChunks()).isNull();
     }
 
     @Test
     void newRequestClearsThePreviousResult() {
-        service.apply(result(file.getIndexingId(), Status.ERRO, "rag caiu", null, null));
+        service.apply(result(file.getIndexingId(), Status.ERROR, "rag caiu", null, null));
         UUID previous = file.getIndexingId();
 
         file.requestIndexing();
 
         assertThat(file.getIndexingId()).isNotEqualTo(previous);
-        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.NA_FILA);
+        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.QUEUED);
         assertThat(file.getIndexingReason()).isNull();
     }
 
     @Test
     void lateIndexingDoesNotUndoTheResult() {
-        service.apply(result(file.getIndexingId(), Status.INDEXADO, null, 1, 2));
-        service.apply(result(file.getIndexingId(), Status.INDEXANDO, null, null, null));
+        service.apply(result(file.getIndexingId(), Status.INDEXED, null, 1, 2));
+        service.apply(result(file.getIndexingId(), Status.INDEXING, null, null, null));
 
-        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.INDEXADO);
+        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.INDEXED);
     }
 
     @Test
     void resultFromAnotherCondominiumIsDiscarded() {
-        var changed = new IndexingResultMessage(1, file.getIndexingId(), file.getId(), UUID.randomUUID(),
-                Status.INDEXADO, null, 1, 1, "bge-m3", "1");
+        var changed = new IndexingResultMessage(3, file.getIndexingId(), file.getId(), UUID.randomUUID(),
+                Status.INDEXED, null, 1, 1, "bge-m3", "1");
 
         assertThat(service.apply(changed)).isFalse();
-        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.NA_FILA);
+        assertThat(file.getIndexingStatus()).isEqualTo(IndexingStatus.QUEUED);
     }
 
     @Test
     void missingFileIsDiscarded() {
-        var other = new IndexingResultMessage(1, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                Status.INDEXADO, null, 1, 1, "bge-m3", "1");
+        var other = new IndexingResultMessage(3, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                Status.INDEXED, null, 1, 1, "bge-m3", "1");
         assertThat(service.apply(other)).isFalse();
     }
 
     private IndexingResultMessage result(UUID indexingId, Status status, String reason, Integer pages,
             Integer chunks) {
-        return new IndexingResultMessage(1, indexingId, file.getId(), file.getCondominiumId(), status, reason,
+        return new IndexingResultMessage(3, indexingId, file.getId(), file.getCondominiumId(), status, reason,
                 pages, chunks, chunks == null ? null : "bge-m3", chunks == null ? null : "1");
     }
 }

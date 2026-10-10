@@ -2,7 +2,7 @@ import type { ModoIa } from "../../api/tipos";
 
 /** Modos que o Admin pode escolher nesta fase. LOCAL de respostas está previsto, mas ainda sem provedor (o backend recusa). */
 export const descricoesModo: Record<Exclude<ModoIa, "LOCAL">, { rotulo: string; descricao: string }> = {
-  MCP_EXTERNO: {
+  EXTERNAL_MCP: {
     rotulo: "Claude do usuário (MCP)",
     descricao: "Cada pessoa usa o próprio Claude conectado ao MCP do sistema. O sistema não chama IA. Padrão do piloto.",
   },
@@ -10,7 +10,7 @@ export const descricoesModo: Record<Exclude<ModoIa, "LOCAL">, { rotulo: string; 
     rotulo: "Chave do condomínio",
     descricao: "O sistema chama o provedor de IA com a chave cadastrada abaixo. O uso fica registrado.",
   },
-  DESLIGADO: {
+  OFF: {
     rotulo: "Desligado",
     descricao: "Nenhuma IA de respostas; só regras, cálculos e a busca por palavra.",
   },

@@ -24,7 +24,7 @@ import type {
   ResultadoSugestoes,
 } from "./tipos";
 
-/** "2026-09" (um mês) ou "acumulado" (exercício da PO), como pede a API. */
+/** "2026-09" (um mês) ou "cumulative" (exercício da PO), como pede a API. */
 export type Periodo = string;
 
 export type FormatoExportacao = "pdf" | "xlsx";
@@ -37,21 +37,21 @@ export function consulta(parametros: Record<string, string | null | undefined>):
   return texto ? `?${texto}` : "";
 }
 
-export const base = (condominioId: string) => `/condominios/${condominioId}`;
+export const base = (condominioId: string) => `/condominiums/${condominioId}`;
 
 // ---------- PO ----------
 
 export function usePrevisoes(condominioId: string) {
   return useQuery({
     queryKey: ["previsoes", condominioId],
-    queryFn: async () => (await obter<PrevisaoResumo[]>(`${base(condominioId)}/previsoes`)) ?? [],
+    queryFn: async () => (await obter<PrevisaoResumo[]>(`${base(condominioId)}/budgets`)) ?? [],
   });
 }
 
 export function usePrevisao(condominioId: string, poId: string | undefined) {
   return useQuery({
     queryKey: ["previsao", condominioId, poId],
-    queryFn: () => obter<PrevisaoDetalhe>(`${base(condominioId)}/previsoes/${poId}`),
+    queryFn: () => obter<PrevisaoDetalhe>(`${base(condominioId)}/budgets/${poId}`),
     enabled: !!poId,
   });
 }
@@ -63,21 +63,21 @@ export function usePrevistoRealizado(condominioId: string, periodo: Periodo | nu
   return useQuery({
     queryKey: ["previsto-realizado", condominioId, periodo, poId ?? "vigente", fundoId ?? "todos"],
     queryFn: () =>
-      obter<PrevistoRealizado>(`${base(condominioId)}/previsto-realizado${consulta({ periodo, po: poId, fundo: fundoId })}`),
+      obter<PrevistoRealizado>(`${base(condominioId)}/budget-vs-actual${consulta({ period: periodo, budget: poId, fund: fundoId })}`),
     enabled: periodo !== null,
   });
 }
 
 /**
- * Lançamentos de um número da tela. Alvo: "linha:<id>", "grupo:<id>", "total", "fundo:<id>", AJUSTES,
- * A_REALOCAR, SEM_LINHA_PO ou TRANSFERENCIAS (contrato da API).
+ * Lançamentos de um número da tela. Alvo: "line:<id>", "group:<id>", "total", "fund:<id>", ADJUSTMENTS,
+ * TO_REALLOCATE, NO_BUDGET_LINE ou TRANSFERS (contrato da API).
  */
 export function useEvidencia(condominioId: string, periodo: Periodo, poId: string | null | undefined, alvo: string | null) {
   return useQuery({
     queryKey: ["evidencia", condominioId, periodo, poId ?? "vigente", alvo],
     queryFn: async () =>
       (await obter<EvidenciaLancamento[]>(
-        `${base(condominioId)}/previsto-realizado/evidencia${consulta({ periodo, po: poId, alvo })}`,
+        `${base(condominioId)}/budget-vs-actual/evidence${consulta({ period: periodo, budget: poId, target: alvo })}`,
       )) ?? [],
     enabled: alvo !== null,
   });
@@ -91,14 +91,14 @@ export function caminhoExportacao(
   poId?: string | null,
   fundoId?: string | null,
 ) {
-  return `${base(condominioId)}/previsto-realizado/exportacao${consulta({ formato, periodo, po: poId, fundo: fundoId })}`;
+  return `${base(condominioId)}/budget-vs-actual/export${consulta({ format: formato, period: periodo, budget: poId, fund: fundoId })}`;
 }
 
 /** Fundos do fluxo pelo nome impresso (filtro de fundo e ligação das linhas 1.9). */
 export function useFundos(condominioId: string) {
   return useQuery({
     queryKey: ["fundos", condominioId],
-    queryFn: async () => (await obter<FundoFluxo[]>(`${base(condominioId)}/fundos`)) ?? [],
+    queryFn: async () => (await obter<FundoFluxo[]>(`${base(condominioId)}/funds`)) ?? [],
   });
 }
 
@@ -106,14 +106,14 @@ export function useFundos(condominioId: string) {
 export function useAchados(condominioId: string, competencia: string | null) {
   return useQuery({
     queryKey: ["achados", condominioId, competencia ?? "todos"],
-    queryFn: async () => (await obter<Achado[]>(`${base(condominioId)}/achados${consulta({ competencia })}`)) ?? [],
+    queryFn: async () => (await obter<Achado[]>(`${base(condominioId)}/findings${consulta({ referenceMonth: competencia })}`)) ?? [],
   });
 }
 
 export function useEventosPrevisao(condominioId: string, poId: string | undefined) {
   return useQuery({
     queryKey: ["previsao-eventos", condominioId, poId],
-    queryFn: async () => (await obter<EventoPrevisao[]>(`${base(condominioId)}/previsoes/${poId}/eventos`)) ?? [],
+    queryFn: async () => (await obter<EventoPrevisao[]>(`${base(condominioId)}/budgets/${poId}/events`)) ?? [],
     enabled: !!poId,
   });
 }
@@ -123,7 +123,7 @@ export function useEventosPrevisao(condominioId: string, poId: string | undefine
 export function useRealocacoes(condominioId: string, poId: string | undefined) {
   return useQuery({
     queryKey: ["realocacoes", condominioId, poId],
-    queryFn: async () => (await obter<Realocacao[]>(`${base(condominioId)}/realocacoes${consulta({ po: poId })}`)) ?? [],
+    queryFn: async () => (await obter<Realocacao[]>(`${base(condominioId)}/reallocations${consulta({ budget: poId })}`)) ?? [],
     enabled: !!poId,
   });
 }
@@ -135,7 +135,7 @@ export function useDepara(condominioId: string, poId: string | undefined, filtro
     queryKey: ["depara", condominioId, poId, filtro],
     queryFn: () =>
       obter<DeparaLista>(
-        `${base(condominioId)}/previsoes/${poId}/depara${consulta({ filtro: filtro === "TODAS" ? null : filtro })}`,
+        `${base(condominioId)}/budgets/${poId}/account-mappings${consulta({ filter: filtro === "ALL" ? null : filtro })}`,
       ),
     enabled: !!poId,
   });
@@ -144,7 +144,7 @@ export function useDepara(condominioId: string, poId: string | undefined, filtro
 export function useEventosDepara(condominioId: string, poId: string | undefined, ativo: boolean) {
   return useQuery({
     queryKey: ["depara-eventos", condominioId, poId],
-    queryFn: async () => (await obter<EventoDepara[]>(`${base(condominioId)}/previsoes/${poId}/depara/eventos`)) ?? [],
+    queryFn: async () => (await obter<EventoDepara[]>(`${base(condominioId)}/budgets/${poId}/account-mappings/events`)) ?? [],
     enabled: !!poId && ativo,
   });
 }
@@ -171,7 +171,7 @@ export function useConfirmarPrevisao(condominioId: string, poId: string) {
   const recarregar = useRecarregarOrcamento();
   return useMutation({
     mutationFn: (pedido: PedidoConfirmacao) =>
-      enviarJson<PrevisaoDetalhe>(`${base(condominioId)}/previsoes/${poId}/confirmacao`, pedido),
+      enviarJson<PrevisaoDetalhe>(`${base(condominioId)}/budgets/${poId}/confirmation`, pedido),
     onSuccess: recarregar,
   });
 }
@@ -180,7 +180,7 @@ export function useDefinirDepara(condominioId: string, poId: string) {
   const recarregar = useRecarregarOrcamento();
   return useMutation({
     mutationFn: ({ conta, pedido }: { conta: string; pedido: PedidoDestino }) =>
-      atualizar<ContaDepara>(`${base(condominioId)}/previsoes/${poId}/depara/${encodeURIComponent(conta)}`, pedido),
+      atualizar<ContaDepara>(`${base(condominioId)}/budgets/${poId}/account-mappings/${encodeURIComponent(conta)}`, pedido),
     onSuccess: recarregar,
   });
 }
@@ -188,7 +188,7 @@ export function useDefinirDepara(condominioId: string, poId: string) {
 export function useLoteDepara(condominioId: string, poId: string) {
   const recarregar = useRecarregarOrcamento();
   return useMutation({
-    mutationFn: (pedido: PedidoLote) => enviarJson<ResultadoLote>(`${base(condominioId)}/previsoes/${poId}/depara/lote`, pedido),
+    mutationFn: (pedido: PedidoLote) => enviarJson<ResultadoLote>(`${base(condominioId)}/budgets/${poId}/account-mappings/batch`, pedido),
     onSuccess: recarregar,
   });
 }
@@ -196,7 +196,7 @@ export function useLoteDepara(condominioId: string, poId: string) {
 export function useSugerirDepara(condominioId: string, poId: string) {
   const recarregar = useRecarregarOrcamento();
   return useMutation({
-    mutationFn: () => enviarJson<ResultadoSugestoes>(`${base(condominioId)}/previsoes/${poId}/depara/sugestoes`),
+    mutationFn: () => enviarJson<ResultadoSugestoes>(`${base(condominioId)}/budgets/${poId}/account-mappings/suggestions`),
     onSuccess: recarregar,
   });
 }
@@ -206,8 +206,8 @@ export function usePlanilhaDepara(condominioId: string, poId: string) {
   return useMutation({
     mutationFn: (arquivo: File) => {
       const corpo = new FormData();
-      corpo.append("arquivo", arquivo);
-      return enviar<ResultadoPlanilha>(`${base(condominioId)}/previsoes/${poId}/depara/planilha`, corpo);
+      corpo.append("file", arquivo);
+      return enviar<ResultadoPlanilha>(`${base(condominioId)}/budgets/${poId}/account-mappings/sheet`, corpo);
     },
     onSuccess: recarregar,
   });
@@ -217,7 +217,7 @@ export function usePlanilhaDepara(condominioId: string, poId: string) {
 export function useRealocar(condominioId: string) {
   const recarregar = useRecarregarOrcamento();
   return useMutation({
-    mutationFn: (pedido: PedidoRealocacao) => enviarJson<Realocacao>(`${base(condominioId)}/realocacoes`, pedido),
+    mutationFn: (pedido: PedidoRealocacao) => enviarJson<Realocacao>(`${base(condominioId)}/reallocations`, pedido),
     onSuccess: recarregar,
   });
 }
@@ -226,7 +226,7 @@ export function useRealocar(condominioId: string) {
 export function useDesfazerRealocacao(condominioId: string) {
   const recarregar = useRecarregarOrcamento();
   return useMutation({
-    mutationFn: (realocacaoId: string) => excluir<Realocacao>(`${base(condominioId)}/realocacoes/${realocacaoId}`),
+    mutationFn: (realocacaoId: string) => excluir<Realocacao>(`${base(condominioId)}/reallocations/${realocacaoId}`),
     onSuccess: recarregar,
   });
 }
@@ -236,7 +236,7 @@ export function useAlterarFundosPo(condominioId: string, poId: string) {
   const recarregar = useRecarregarOrcamento();
   return useMutation({
     mutationFn: (fundos: { linhaId: string; fundoId: string | null }[]) =>
-      atualizar<PrevisaoDetalhe>(`${base(condominioId)}/previsoes/${poId}/fundos`, { fundos }),
+      atualizar<PrevisaoDetalhe>(`${base(condominioId)}/budgets/${poId}/funds`, { funds: fundos.map((f) => ({ lineId: f.linhaId, fundId: f.fundoId })) }),
     onSuccess: recarregar,
   });
 }

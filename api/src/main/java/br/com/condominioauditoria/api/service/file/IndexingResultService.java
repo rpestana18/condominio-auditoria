@@ -15,8 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
  * user may have reprocessed the file midway. It is also discarded when the condominium does not match the file's (a
  * mixed-up message never touches a file of another condominium).
  *
- * Every file that becomes Indexed creates an "indexacao" usage record (RF-09.7) with 1 file and the pages read. A
- * repeated INDEXADO of the same request (queue redelivery) does not count again.
+ * Every file that becomes Indexed creates an "indexing" usage record (RF-09.7) with 1 file and the pages read. A
+ * repeated INDEXED of the same request (queue redelivery) does not count again.
  */
 @Service
 public class IndexingResultService {
@@ -41,22 +41,22 @@ public class IndexingResultService {
                     result.fileId(), result.indexingId());
             return false;
         }
-        boolean alreadyIndexed = file.getIndexingStatus() == IndexingStatus.INDEXADO;
+        boolean alreadyIndexed = file.getIndexingStatus() == IndexingStatus.INDEXED;
         switch (result.status()) {
-            case INDEXANDO -> file.startIndexing();
-            case INDEXADO -> file.completeIndexing(IndexingStatus.INDEXADO, null, result.pages(),
+            case INDEXING -> file.startIndexing();
+            case INDEXED -> file.completeIndexing(IndexingStatus.INDEXED, null, result.pages(),
                     result.chunks());
-            case SEM_TEXTO -> file.completeIndexing(IndexingStatus.SEM_TEXTO, result.reason(),
+            case NO_TEXT -> file.completeIndexing(IndexingStatus.NO_TEXT, result.reason(),
                     result.pages(), result.chunks());
-            case RETIRADO -> file.completeIndexing(IndexingStatus.RETIRADO, null, result.pages(),
+            case WITHDRAWN -> file.completeIndexing(IndexingStatus.WITHDRAWN, null, result.pages(),
                     result.chunks());
-            case ERRO -> file.completeIndexing(IndexingStatus.ERRO, result.reason(), result.pages(),
+            case ERROR -> file.completeIndexing(IndexingStatus.ERROR, result.reason(), result.pages(),
                     result.chunks());
         }
-        if (result.status() == IndexingResultMessage.Status.INDEXADO && !alreadyIndexed) {
+        if (result.status() == IndexingResultMessage.Status.INDEXED && !alreadyIndexed) {
             usageRecorder.recordIndexing(file.getCondominiumId(), result.pages(), result.embeddingModel());
         }
-        if (result.status() != IndexingResultMessage.Status.INDEXANDO) {
+        if (result.status() != IndexingResultMessage.Status.INDEXING) {
             log.info("Indexação de {}: {} ({} trechos)", file.getOriginalName(), result.status(),
                     result.chunks());
         }

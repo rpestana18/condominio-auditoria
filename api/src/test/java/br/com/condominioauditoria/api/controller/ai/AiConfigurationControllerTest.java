@@ -49,7 +49,7 @@ import org.springframework.transaction.support.TransactionOperations;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * AI configuration in the API (RF-09.6): only ADMIN reads and saves, including the catalog; GESTOR and USUARIO neither
+ * AI configuration in the API (RF-09.6): only ADMIN reads and saves, including the catalog; MANAGER and USER neither
  * change nor see it. The key never appears in the response JSON (neither plain nor encrypted) and the catalog goes out
  * without the public key.
  */
@@ -111,7 +111,7 @@ class AiConfigurationControllerTest {
 
     @Test
     void managerAndUserNeitherSeeNorChangeAi() {
-        for (String role : List.of("USUARIO", "GESTOR")) {
+        for (String role : List.of("USER", "MANAGER")) {
             logIn(role);
             assertThatThrownBy(() -> controller.read(A)).isInstanceOf(AccessDeniedException.class);
             assertThatThrownBy(() -> controller.save(A, request(KEY))).isInstanceOf(AccessDeniedException.class);
@@ -135,8 +135,8 @@ class AiConfigurationControllerTest {
                     .doesNotContain(Base64.getEncoder().encodeToString(rows.stream()
                             .filter(AiConfiguration::hasKey).findFirst().orElseThrow().getEncryptedKey())
                             .substring(0, 20))
-                    .contains("\"chaveCadastrada\":true").contains("\"chaveFinal\":\"x9Qa\"")
-                    .contains("\"modoEfetivo\":\"API_KEY\"").contains("\"atualizadoPor\":\"pessoa.admin\"");
+                    .contains("\"keyRegistered\":true").contains("\"keySuffix\":\"x9Qa\"")
+                    .contains("\"effectiveMode\":\"API_KEY\"").contains("\"updatedBy\":\"pessoa.admin\"");
         }
     }
 
@@ -146,19 +146,19 @@ class AiConfigurationControllerTest {
 
         String text = JsonMapper.builder().build().writeValueAsString(controller.providers());
 
-        assertThat(text).contains("\"codigo\":\"anthropic\"").contains("\"precoEntradaMilhaoUsd\":\"2.00\"")
-                .contains("\"uso\":\"EMBEDDINGS\"").doesNotContain("BEGIN PUBLIC KEY").doesNotContain("chavePublica");
+        assertThat(text).contains("\"code\":\"anthropic\"").contains("\"inputPricePerMillionUsd\":\"2.00\"")
+                .contains("\"function\":\"EMBEDDINGS\"").doesNotContain("BEGIN PUBLIC KEY").doesNotContain("publicKey");
     }
 
     private static AiConfigurationRequest request(String key) {
-        return new AiConfigurationRequest(AiMode.MCP_EXTERNO, new AiAssistantRequest(
+        return new AiConfigurationRequest(AiMode.EXTERNAL_MCP, new AiAssistantRequest(
                 new AiAnswersRequest(AiMode.API_KEY, "anthropic", null, key, null),
                 new AiEmbeddingsRequest(AiMode.LOCAL, "ollama-local", null)));
     }
 
     private static void logIn(String role) {
         Jwt jwt = new Jwt("t", Instant.now(), Instant.now().plusSeconds(300), Map.of("alg", "none"),
-                Map.of("preferred_username", "pessoa." + role.toLowerCase(), "condominios", List.of(A.toString())));
+                Map.of("preferred_username", "pessoa." + role.toLowerCase(), "condominiums", List.of(A.toString())));
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
                 List.of(new SimpleGrantedAuthority("ROLE_" + role)), "pessoa." + role.toLowerCase()));
     }

@@ -36,7 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class FeatureService {
 
     /** Code of the Assistant feature in the catalog (catalogo-modulos.yml). */
-    public static final String ASSISTANT = "ASSISTENTE";
+    public static final String ASSISTANT = "ASSISTANT";
     public static final int MAX_REASON_LENGTH = 500;
 
     private static final Logger log = LoggerFactory.getLogger(FeatureService.class);

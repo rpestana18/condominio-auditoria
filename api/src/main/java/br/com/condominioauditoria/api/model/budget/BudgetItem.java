@@ -1,9 +1,7 @@
 package br.com.condominioauditoria.api.model.budget;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -12,22 +10,15 @@ import java.util.UUID;
  * item correspond. Never deleted; the Admin may rename it.
  */
 @Entity
-@Table(name = "rubrica")
 public class BudgetItem {
 
     @Id
     private UUID id;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "nome")
     private String name;
-    @Column(name = "grupo_codigo")
     private String groupCode;
-    @Column(name = "linha_origem_id")
     private UUID sourceLineId;
-    @Column(name = "criada_por")
     private String createdBy;
-    @Column(name = "criada_em")
     private Instant createdAt;
 
     protected BudgetItem() {

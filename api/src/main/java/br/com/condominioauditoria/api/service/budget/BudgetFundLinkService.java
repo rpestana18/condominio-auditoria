@@ -42,7 +42,7 @@ import org.springframework.web.server.ResponseStatusException;
  * Change of the link of the 1.9.x lines to the cash flow funds after the budget is confirmed (RF-03.1.9 and
  * RF-03.1.13): Admin only; each line with at most one fund and each fund on at most one line; never the operating fund.
  * The list sent is the complete link: a missing line or one with a null fund ends up without a fund ("linha 1.9.x sem
- * fundo ligado"). The trail (event FUNDOS_ALTERADOS) records each line's previous and new fund, with who and when, and
+ * fundo ligado"). The trail (event FUNDS_CHANGED) records each line's previous and new fund, with who and when, and
  * the findings are recalculated after the commit.
  */
 @Service

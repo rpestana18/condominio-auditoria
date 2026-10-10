@@ -36,21 +36,21 @@ export function TrilhaRubricas({ poId }: { poId: string }) {
             <tbody>
               {eventos.map((e) => (
                 <tr key={e.id}>
-                  <td>{formatarDataHora(e.em)}</td>
-                  <td>{e.usuario}</td>
-                  <td>{e.codigo ? `${e.codigo} ${e.descricao ?? ""}` : <span className="discreto">—</span>}</td>
-                  <td>{rotuloAcaoRubrica[e.acao]}</td>
+                  <td>{formatarDataHora(e.at)}</td>
+                  <td>{e.username}</td>
+                  <td>{e.code ? `${e.code} ${e.description ?? ""}` : <span className="discreto">—</span>}</td>
+                  <td>{rotuloAcaoRubrica[e.action]}</td>
                   <td className="discreto">
-                    {e.rubricaAnterior ?? "—"}
-                    {comEstado(e.estadoAnterior)}
+                    {e.previousItem ?? "—"}
+                    {comEstado(e.previousStatus)}
                   </td>
                   <td>
-                    {e.rubricaNova}
-                    {comEstado(e.estadoNovo)}
+                    {e.newItem}
+                    {comEstado(e.newStatus)}
                   </td>
                   <td className="discreto">
-                    {e.origem && rotuloOrigemRubrica[e.origem]}
-                    {e.motivo && <small className="observacao">{e.motivo}</small>}
+                    {e.source && rotuloOrigemRubrica[e.source]}
+                    {e.reason && <small className="observacao">{e.reason}</small>}
                   </td>
                 </tr>
               ))}

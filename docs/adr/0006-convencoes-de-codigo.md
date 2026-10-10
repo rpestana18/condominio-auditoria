@@ -97,7 +97,7 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | custo estimado | `estimatedCost` | |
 | configuração de IA, trilha da configuração | `AiConfiguration`, `AiConfigurationEvent` | |
 | catálogo de IA (provedores e modelos) | `AiCatalog`, `AiProvider`, `AiModel` | |
-| função de IA (respostas, embeddings) | `AiFunction`, `answers`, `embeddings` | as constantes `RESPOSTAS` e `EMBEDDINGS` ficam até a fase 2 |
+| função de IA (respostas, embeddings) | `AiFunction`, `answers`, `embeddings` | constantes `ANSWERS` e `EMBEDDINGS` desde a fase 2 |
 | chave cifrada, final da chave | `encryptedKey`, `keySuffix` | |
 | cifrador da chave de API | `ApiKeyCipher` | |
 | pergunta, histórico (da conversa) | `Question`, `ConversationTurn` | |
@@ -105,7 +105,7 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | trecho, citação | `Chunk`, `Citation` | |
 | dados gravados | `storedData` | dados do banco usados na resposta do chat |
 | segunda barreira | `FileAccessBarrier` | |
-| consulta (gRPC) | `QueryService`, `QueryGrpcService` | o serviço gRPC `Consulta` do contrato não muda até a fase 2 |
+| consulta (gRPC) | `QueryService`, `QueryGrpcService` | o serviço gRPC do contrato é `Query` desde a v2 (fase 2) |
 | prazo (de uma chamada) | `timeout`, `deadline` | |
 | código impresso, código efetivo | `printedCode`, `effectiveCode` | |
 | orçado, orçado anterior | `budgeted`, `previousBudgeted` | |
@@ -130,12 +130,12 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | sugestão pelo nome, nota, palavras vazias, abreviações | `NameSuggestion`, `score`, `stopWords`, `abbreviations` | |
 | planilha do de-para | `AccountMappingSheet` | |
 | cópia da versão anterior, igual à versão anterior | `PreviousVersionCopy`, `sameAsPreviousVersion` | |
-| sugerido, confirmado, recusado (estado) | `status` (`SUGERIDO`, `CONFIRMADO`, `RECUSADO`) | as constantes ficam até a fase 2 |
+| sugerido, confirmado, recusado (estado) | `status` (`SUGGESTED`, `CONFIRMED`, `REJECTED`) | constantes em inglês desde a fase 2 |
 | origem (da sugestão), motivo | `source`, `reason` | |
 | lote (confirmar ou recusar vários) | `batch` | |
 | previsto, realizado, diferença, execução | `planned`, `actual`, `difference`, `execution` | |
 | cálculo do previsto × realizado | `BudgetVsActualCalculator` | |
-| situação do resultado, situação do mês | `BudgetVsActualStatus`, `MonthStatus` | as constantes ficam até a fase 2 |
+| situação do resultado, situação do mês | `BudgetVsActualStatus`, `MonthStatus` | constantes em inglês desde a fase 2 (ex.: `CALCULATED`, `WITH_CASH_FLOW`) |
 | coluna impressa ("Orçado anterior") | `PrintedColumn` | |
 | conferência (do fluxo, da coluna) | `check` | |
 | alvo (da evidência) | `target` | |
@@ -189,7 +189,7 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | catálogo de provedores (no rag) | `ProviderCatalog`, `AiProperties` | no rag a função de IA já é `ANSWERS`/`EMBEDDINGS`: só vem do `application.yml` |
 | chaves do rag, envelope da chave | `RagKeys`, `KeyEnvelope` | |
 | reais (formatação do bloco de dados gravados) | `ReaisFormatter` | |
-| ferramentas do condomínio (mcp), cliente do api | `CondominiumTools`, `ApiClient` | os nomes das ferramentas, dos parâmetros e dos campos JSON das respostas ficam em português até a fase 2: são a interface que a IA externa vê |
+| ferramentas do condomínio (mcp), cliente do api | `CondominiumTools`, `ApiClient` | os nomes das ferramentas, dos parâmetros e dos campos JSON das respostas estão em inglês desde a fase 2 (ex.: `search_documents`, `condominiumId`); as descrições, que a IA externa lê, ficam em português |
 | entradas, saídas, enviado em | `inflows`, `outflows`, `uploadedAt` | |
 
 ---
@@ -270,7 +270,7 @@ Exemplo de para onde vai cada classe de hoje:
 
 | Hoje | Depois |
 |---|---|
-| `orcamento/PrevisaoOrcamentaria` | `model/budget/Budget` (`@Table(name = "previsao_orcamentaria")` até a fase 2) |
+| `orcamento/PrevisaoOrcamentaria` | `model/budget/Budget` (tabela `budget` desde a fase 2) |
 | `orcamento/EstadoPrevisao` | `model/enums/BudgetStatus` |
 | `orcamento/PrevisaoOrcamentariaRepository` | `repository/budget/BudgetRepository` |
 | `orcamento/ConfirmacaoPrevisao` | `service/budget/BudgetConfirmationService` |
@@ -394,3 +394,15 @@ Regra: **nenhum pacote repete** o nome do serviço nem do pacote pai (nada de `b
 4. Nome do serviço: **tirar o `backend`, raiz única com nome por papel** (ver Decisão 4). Nome do backend: **`api`**.
 5. Mapper: **à mão**, sem MapStruct.
 6. Escopo: **tudo o que é código em inglês, opção B (três fases)**.
+
+## Fase 2 (10/10/2026)
+
+Feita num PR só, a pedido do usuário. As escolhas abaixo seguiram a opção recomendada do cartão de decisão, que ainda pode ser revista:
+
+- **Banco:** migrações `V16`/`V17` do `api` e `V3`/`V4` do `rag` renomeiam tabelas, colunas, índices e restrições para inglês e traduzem os códigos gravados (estados, categorias, prefixos de alvo como `budget:`, `line:`, `fund:`). As entidades perderam o `name` de `@Table`/`@Column`. Os dados antigos são convertidos pela própria migração.
+- **API REST:** caminhos, parâmetros, campos JSON e códigos em inglês (ex.: `GET /api/condominiums/{id}/budget-vs-actual?period=cumulative`). Não há versão antiga convivendo: o frontend muda no mesmo PR. Os esquemas do `contracts/openapi.yaml` têm o nome do DTO Java (ex.: `SourceFileResponse`). Os textos para pessoas (mensagens de erro, rótulos, nomes de arquivo exportado) continuam em português.
+- **Fila:** mensagens `v3` em `contracts/mensagens/v3/`, que substituem a v2 (as pastas antigas ficam como histórico).
+- **gRPC:** `v2` (`condominio.query.v2.Query` e `condominio.assistant.v2.Assistant`), que substitui a v1. Os números dos campos não mudaram.
+- **Keycloak:** perfis `USER`, `MANAGER` e `ADMIN`; a claim e o atributo do usuário passam a ser `condominiums`. Um Keycloak já criado precisa ser recriado para importar o realm novo.
+- **MCP e chat:** ferramentas, parâmetros e campos JSON em inglês (`list_condominiums`, `fund_summary`, `list_files`, `file_checks`, `find_entries`, `search_documents`); as descrições continuam em português.
+- **Fica para a fase 3:** o contrato do leitor (`contracts/leitor/v1`, com `sem_texto`, `texto` etc.), o `leitor/` e os nomes do código do frontend. As rotas e os textos da tela continuam em português.

@@ -3,12 +3,10 @@ package br.com.condominioauditoria.api.model.budget;
 import br.com.condominioauditoria.api.model.enums.BudgetItemAction;
 import br.com.condominioauditoria.api.model.enums.BudgetItemSource;
 import br.com.condominioauditoria.api.model.enums.BudgetItemStatus;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -17,46 +15,29 @@ import java.util.UUID;
  * update and delete with a trigger (V14). Creating and renaming an item have no line.
  */
 @Entity
-@Table(name = "evento_rubrica")
 public class BudgetItemEvent {
 
     @Id
     private UUID id;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "previsao_id")
     private UUID budgetId;
-    @Column(name = "linha_po_id")
     private UUID budgetLineId;
-    @Column(name = "linha_codigo")
     private String lineCode;
-    @Column(name = "linha_descricao")
     private String lineDescription;
-    @Column(name = "acao")
     @Enumerated(EnumType.STRING)
     private BudgetItemAction action;
-    @Column(name = "usuario")
     private String username;
-    @Column(name = "em")
     private Instant occurredAt;
-    @Column(name = "rubrica_anterior_id")
     private UUID previousItemId;
-    @Column(name = "rubrica_anterior")
     private String previousItem;
-    @Column(name = "estado_anterior")
     @Enumerated(EnumType.STRING)
     private BudgetItemStatus previousStatus;
-    @Column(name = "rubrica_nova_id")
     private UUID newItemId;
-    @Column(name = "rubrica_nova")
     private String newItem;
-    @Column(name = "estado_novo")
     @Enumerated(EnumType.STRING)
     private BudgetItemStatus newStatus;
-    @Column(name = "origem")
     @Enumerated(EnumType.STRING)
     private BudgetItemSource source;
-    @Column(name = "motivo")
     private String reason;
 
     protected BudgetItemEvent() {
@@ -90,7 +71,7 @@ public class BudgetItemEvent {
 
     /** Item created (without a line, or from a budget line). */
     public static BudgetItemEvent created(BudgetItem item, BudgetLine source, String username, Instant at) {
-        BudgetItemEvent e = new BudgetItemEvent(item.getCondominiumId(), BudgetItemAction.CRIADA, item, username, at);
+        BudgetItemEvent e = new BudgetItemEvent(item.getCondominiumId(), BudgetItemAction.CREATED, item, username, at);
         if (source != null) {
             e.budgetId = source.getBudgetId();
             e.budgetLineId = source.getId();
@@ -101,7 +82,7 @@ public class BudgetItemEvent {
     }
 
     public static BudgetItemEvent renamed(BudgetItem item, String previousName, String username, Instant at) {
-        BudgetItemEvent e = new BudgetItemEvent(item.getCondominiumId(), BudgetItemAction.RENOMEADA, item, username,
+        BudgetItemEvent e = new BudgetItemEvent(item.getCondominiumId(), BudgetItemAction.RENAMED, item, username,
                 at);
         e.previousItemId = item.getId();
         e.previousItem = previousName;

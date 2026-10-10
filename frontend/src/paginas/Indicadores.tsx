@@ -46,7 +46,7 @@ export function Indicadores() {
       </header>
       <div className="filtros">
         {/* Sem `po` no endereço, o exercício mostrado é o que a API escolheu (o mais recente) */}
-        <SeletorExercicio exercicios={exercicios} poId={poId ?? consulta.data?.poId ?? null} aoTrocar={(id) => trocar("po", id)} />
+        <SeletorExercicio exercicios={exercicios} poId={poId ?? consulta.data?.budgetId ?? null} aoTrocar={(id) => trocar("po", id)} />
         <SeletorFundo fundos={fundos} fundoId={fundoId} aoTrocar={(f) => trocar("fundo", f)} />
       </div>
 
@@ -72,24 +72,24 @@ interface PropsGraficos {
 function Graficos({ indicadores: ind, fundoId }: PropsGraficos) {
   const abrir = useAbrirNoPrevisto();
   const contexto: ContextoGrafico = {
-    poId: ind.poId,
+    poId: ind.budgetId,
     fundoId,
-    periodo: `${formatarMes(ind.inicio)} a ${formatarMes(ind.fim)} (${ind.rotulo})`,
-    dadosDe: ind.dadosDe,
+    periodo: `${formatarMes(ind.start)} a ${formatarMes(ind.end)} (${ind.label})`,
+    dadosDe: ind.dataAsOf,
     abrir,
   };
   // Gráficos 1 a 5 são do fundo Condomínio: com outro fundo no filtro, a API manda as séries nulas
-  const semCondominio = !ind.execucaoMensal && !ind.regra20 && !ind.acumulado && !ind.realizadoPorGrupo && !ind.maioresDiferencas;
+  const semCondominio = !ind.monthlyExecution && !ind.rule20 && !ind.cumulative && !ind.actualByGroup && !ind.largestDifferences;
 
   return (
     <>
       <p className="discreto">
-        Exercício {ind.rotulo}: {formatarMes(ind.inicio)} a {formatarMes(ind.fim)}. Os números são os mesmos da tela "Previsto ×
+        Exercício {ind.label}: {formatarMes(ind.start)} a {formatarMes(ind.end)}. Os números são os mesmos da tela "Previsto ×
         realizado"; clique num valor para abri-lo lá, com os lançamentos de origem.
       </p>
-      {ind.avisos.length > 0 && (
+      {ind.warnings.length > 0 && (
         <ul className="avisos-discretos" aria-label="Avisos">
-          {ind.avisos.map((a, i) => (
+          {ind.warnings.map((a, i) => (
             <li key={i}>{a}</li>
           ))}
         </ul>
@@ -101,14 +101,14 @@ function Graficos({ indicadores: ind, fundoId }: PropsGraficos) {
           motivo="Os gráficos 1 a 5 são do fundo Condomínio e não se aplicam ao fundo escolhido no filtro."
         />
       )}
-      {ind.execucaoMensal && <GraficoExecucaoMensal pontos={ind.execucaoMensal} contexto={contexto} />}
-      {ind.regra20 && <GraficoRegra20 pontos={ind.regra20} limitePercentual={ind.limitePercentual} contexto={contexto} />}
-      {ind.acumulado && <GraficoAcumulado pontos={ind.acumulado} contexto={contexto} />}
-      {ind.realizadoPorGrupo && <GraficoRealizadoPorGrupo series={ind.realizadoPorGrupo} contexto={contexto} />}
-      {ind.maioresDiferencas && <GraficoMaioresDiferencas diferencas={ind.maioresDiferencas} contexto={contexto} />}
+      {ind.monthlyExecution && <GraficoExecucaoMensal pontos={ind.monthlyExecution} contexto={contexto} />}
+      {ind.rule20 && <GraficoRegra20 pontos={ind.rule20} limitePercentual={ind.limitPercentage} contexto={contexto} />}
+      {ind.cumulative && <GraficoAcumulado pontos={ind.cumulative} contexto={contexto} />}
+      {ind.actualByGroup && <GraficoRealizadoPorGrupo series={ind.actualByGroup} contexto={contexto} />}
+      {ind.largestDifferences && <GraficoMaioresDiferencas diferencas={ind.largestDifferences} contexto={contexto} />}
 
-      {ind.fundos ? (
-        <GraficoFundos series={ind.fundos} contexto={contexto} />
+      {ind.funds ? (
+        <GraficoFundos series={ind.funds} contexto={contexto} />
       ) : (
         <NaoSeAplica
           titulo="6. Fundos: arrecadação × previsto"
@@ -116,8 +116,8 @@ function Graficos({ indicadores: ind, fundoId }: PropsGraficos) {
         />
       )}
 
-      {ind.comparacao ? (
-        <GraficoEntreExercicios comparacao={ind.comparacao} contexto={contexto} />
+      {ind.comparison ? (
+        <GraficoEntreExercicios comparacao={ind.comparison} contexto={contexto} />
       ) : (
         <NaoSeAplica titulo="7. Comparação entre exercícios" motivo="Sem comparação para este exercício (veja os avisos acima)." />
       )}

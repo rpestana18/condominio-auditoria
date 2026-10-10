@@ -19,25 +19,25 @@ interface Props {
  */
 export function GraficoRealizadoPorGrupo({ series, contexto }: Props) {
   // Todas as séries trazem os mesmos meses do exercício, na mesma ordem
-  const meses = series[0]?.pontos ?? [];
-  const acoes = series.map((s) => s.pontos.map((p) => abrirPonto(contexto, p)));
+  const meses = series[0]?.points ?? [];
+  const acoes = series.map((s) => s.points.map((p) => abrirPonto(contexto, p)));
   const tabela: ModeloTabela = {
     legenda: "Realizado por grupo da PO, mês a mês",
     colunaRotulo: "Mês",
-    colunas: series.map((s) => `${s.codigo} ${s.descricao} (R$)`),
+    colunas: series.map((s) => `${s.code} ${s.description} (R$)`),
     linhas: meses.map((m, i) => ({
-      chave: m.mes,
-      rotulo: formatarMes(m.mes),
+      chave: m.month,
+      rotulo: formatarMes(m.month),
       celulas: series.map((s, g) => {
-        const ponto = s.pontos[i];
-        return { texto: ponto ? moedaDoMes(ponto.valor, ponto.situacao) : "—", aoAbrir: acoes[g][i] };
+        const ponto = s.points[i];
+        return { texto: ponto ? moedaDoMes(ponto.amount, ponto.status) : "—", aoAbrir: acoes[g][i] };
       }),
     })),
   };
   // Chaves "g0", "g1"...: o Recharts leria "1.1" como caminho de objeto
   const dados = meses.map((m, indice) => {
-    const linha: Record<string, number | string | null> = { indice, eixo: rotuloEixoMes(m.mes, m.situacao) };
-    series.forEach((s, g) => (linha[`g${g}`] = s.pontos[indice]?.valor ?? null));
+    const linha: Record<string, number | string | null> = { indice, eixo: rotuloEixoMes(m.month, m.status) };
+    series.forEach((s, g) => (linha[`g${g}`] = s.points[indice]?.amount ?? null));
     return linha;
   });
 
@@ -63,9 +63,9 @@ export function GraficoRealizadoPorGrupo({ series, contexto }: Props) {
             <Legend />
             {series.map((s, g) => (
               <Bar
-                key={s.codigo}
+                key={s.code}
                 dataKey={`g${g}`}
-                name={`${s.codigo} ${s.descricao}`}
+                name={`${s.code} ${s.description}`}
                 stackId="grupos"
                 fill={corDaSerie(g)}
                 isAnimationActive={false}

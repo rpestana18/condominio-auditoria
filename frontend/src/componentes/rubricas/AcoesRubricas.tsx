@@ -26,18 +26,18 @@ export function AcoesRubricas({ poId, linhas, selecionadas, aoConcluirLote }: Pr
   const ocupado = lote.isPending || sugerir.isPending;
   const erro = lote.error ?? sugerir.error;
   const descrever = (linhaId: string) => {
-    const linha = linhas.find((l) => l.linhaId === linhaId);
-    return linha ? `${linha.codigo} ${linha.descricao}` : linhaId;
+    const linha = linhas.find((l) => l.lineId === linhaId);
+    return linha ? `${linha.code} ${linha.description}` : linhaId;
   };
 
-  const executarLote = (acao: "CONFIRMAR" | "RECUSAR") =>
+  const executarLote = (acao: "CONFIRM" | "REJECT") =>
     lote.mutate(
-      { acao, linhas: selecionadas },
+      { action: acao, lines: selecionadas },
       {
         onSuccess: (r) => {
           setMensagem({
-            texto: `${r.alteradas} linha(s) ${acao === "CONFIRMAR" ? "confirmadas" : "recusadas"}.`,
-            naoAlteradas: r.ignoradas.map((i) => ({ linha: descrever(i.linhaId), motivo: i.motivo })),
+            texto: `${r.changed} linha(s) ${acao === "CONFIRM" ? "confirmadas" : "recusadas"}.`,
+            naoAlteradas: r.skipped.map((i) => ({ linha: descrever(i.lineId), motivo: i.reason })),
           });
           aoConcluirLote();
         },
@@ -48,19 +48,19 @@ export function AcoesRubricas({ poId, linhas, selecionadas, aoConcluirLote }: Pr
     sugerir.mutate(undefined, {
       onSuccess: (r) =>
         setMensagem({
-          texto: r.primeiraPo
-            ? `Primeira PO do condomínio: ${r.rubricasCriadas} rubrica(s) criadas, já confirmadas.`
-            : `${r.sugeridas} sugestão(ões): ${r.daVersaoAnterior} da versão anterior, ${r.pelaConta} pela conta da PO e grupo. ${r.semSugestao.length} sem sugestão.`,
-          naoAlteradas: r.semSugestao.map((s) => ({ linha: `${s.codigo} ${s.conta}`, motivo: s.motivo })),
+          texto: r.firstBudget
+            ? `Primeira PO do condomínio: ${r.createdItems} rubrica(s) criadas, já confirmadas.`
+            : `${r.suggested} sugestão(ões): ${r.fromPreviousVersion} da versão anterior, ${r.byAccount} pela conta da PO e grupo. ${r.withoutSuggestion.length} sem sugestão.`,
+          naoAlteradas: r.withoutSuggestion.map((s) => ({ linha: `${s.code} ${s.account}`, motivo: s.reason })),
         }),
     });
 
   return (
     <div className="envio">
-      <button className="botao" disabled={ocupado || selecionadas.length === 0} onClick={() => executarLote("CONFIRMAR")}>
+      <button className="botao" disabled={ocupado || selecionadas.length === 0} onClick={() => executarLote("CONFIRM")}>
         Confirmar selecionadas ({selecionadas.length})
       </button>
-      <button className="botao secundario" disabled={ocupado || selecionadas.length === 0} onClick={() => executarLote("RECUSAR")}>
+      <button className="botao secundario" disabled={ocupado || selecionadas.length === 0} onClick={() => executarLote("REJECT")}>
         Recusar selecionadas
       </button>
       <button

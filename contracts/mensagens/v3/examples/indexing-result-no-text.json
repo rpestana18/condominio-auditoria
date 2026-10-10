@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "indexingId": "3c9d1e2f-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+  "fileId": "5a1c9e3b-2f4d-4b8a-8c7e-1d2f3a4b5c6d",
+  "condominiumId": "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001",
+  "status": "NO_TEXT",
+  "reason": "PDF sem texto extraível (provavelmente digitalizado); nenhuma das 12 páginas tem texto",
+  "pages": 12,
+  "chunks": 0,
+  "embeddingModel": null,
+  "indexerVersion": "1"
+}

@@ -1,9 +1,7 @@
 package br.com.condominioauditoria.api.model.feature;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 import org.hibernate.annotations.Immutable;
@@ -14,25 +12,17 @@ import org.hibernate.annotations.Immutable;
  */
 @Entity
 @Immutable
-@Table(name = "evento_modulo")
 public class FeatureEvent {
 
     @Id
     private UUID id;
-    @Column(name = "condominio_id")
     private UUID condominiumId;
-    @Column(name = "modulo")
     private String feature;
-    @Column(name = "ligado_antes")
     private boolean enabledBefore;
-    @Column(name = "ligado_depois")
     private boolean enabledAfter;
-    @Column(name = "usuario")
     private String username;
-    @Column(name = "quando")
     private Instant occurredAt;
     /** Optional (RF-10.6): null when not given. */
-    @Column(name = "motivo")
     private String reason;
 
     protected FeatureEvent() {

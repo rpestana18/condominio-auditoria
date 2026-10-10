@@ -40,7 +40,7 @@ class BudgetExtensionServiceTest {
 
         assertThat(scenario.budgetOfMonth(APRIL)).isEmpty();
         BudgetVsActualResponse r = scenario.budgetVsActual.get(scenario.condominiumId, "2026-04", null);
-        assertThat(r.status()).isEqualTo(BudgetVsActualStatus.SEM_PO);
+        assertThat(r.status()).isEqualTo(BudgetVsActualStatus.NO_BUDGET);
         assertThat(r.message()).isEqualTo("Sem PO aprovada para 04/2026");
     }
 
@@ -57,10 +57,10 @@ class BudgetExtensionServiceTest {
         assertThat(scenario.budgetOfMonth(APRIL)).contains(previous);
         BudgetVsActualResponse r = scenario.budgetVsActual.get(scenario.condominiumId, "2026-04", null);
         assertThat(r.budget().id()).isEqualTo(previous.getId());
-        assertThat(r.status()).isEqualTo(BudgetVsActualStatus.SEM_FLUXO);
+        assertThat(r.status()).isEqualTo(BudgetVsActualStatus.NO_CASH_FLOW);
         assertThat(r.months()).singleElement().extracting(FiscalYearMonthResponse::extended).isEqualTo(true);
-        assertThat(r.warnings()).extracting(BudgetVsActualWarningResponse::code).contains("PO_PRORROGADA");
-        assertThat(r.warnings().stream().filter(a -> a.code().equals("PO_PRORROGADA")).findFirst().orElseThrow().text())
+        assertThat(r.warnings()).extracting(BudgetVsActualWarningResponse::code).contains("BUDGET_EXTENDED");
+        assertThat(r.warnings().stream().filter(a -> a.code().equals("BUDGET_EXTENDED")).findFirst().orElseThrow().text())
                 .isEqualTo("PO prorrogada: 04/2026 usa a PO do exercício 04/2025 a 03/2026, prorrogada até 04/2026 por"
                         + " admin. Justificativa: PO 2026/2027 aprovada só na AGO de maio");
         BudgetEvent e = scenario.budgetEvents.getLast();
@@ -137,7 +137,7 @@ class BudgetExtensionServiceTest {
         debit(march, "100.00", LocalDate.of(2026, 3, 10));
         debit(april, "250.00", LocalDate.of(2026, 4, 10));
 
-        BudgetVsActualResponse r = scenario.budgetVsActual.get(scenario.condominiumId, "acumulado",
+        BudgetVsActualResponse r = scenario.budgetVsActual.get(scenario.condominiumId, "cumulative",
                 previous.getId());
 
         assertThat(r.months()).hasSize(13);

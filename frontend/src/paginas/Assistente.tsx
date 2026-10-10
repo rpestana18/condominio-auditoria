@@ -10,8 +10,8 @@ type Aba = "CONVERSA" | "BUSCA";
 /**
  * Tela "Assistente" (RF-04.8 a 04.18). O que aparece depende do modo de IA efetivo que vem do contexto (RF-04.16):
  * - chat disponível (API_KEY com chave): conversa + busca nos documentos;
- * - MCP_EXTERNO: aviso de que o assistente é o Claude do usuário, instruções de conexão + busca;
- * - DESLIGADO ou API_KEY sem chave: só a busca, com o motivo.
+ * - EXTERNAL_MCP: aviso de que o assistente é o Claude do usuário, instruções de conexão + busca;
+ * - OFF ou API_KEY sem chave: só a busca, com o motivo.
  * Esconder não basta: o backend recusa o chat (409) fora do modo certo e tudo (403) sem o módulo.
  */
 export function Assistente() {
@@ -19,11 +19,11 @@ export function Assistente() {
   const [aba, setAba] = useState<Aba>("CONVERSA");
 
   if (!contextoCarregado) return <p className="aviso">Carregando…</p>;
-  if (!moduloLigado("ASSISTENTE") || !assistente) {
+  if (!moduloLigado("ASSISTANT") || !assistente) {
     return <p className="aviso">O módulo Assistente não está ligado neste condomínio.</p>;
   }
 
-  const chat = assistente.chatDisponivel;
+  const chat = assistente.chatAvailable;
   return (
     // key: trocar de condomínio limpa o resultado da busca (a conversa já é zerada no ProvedorConversa)
     <div key={condominioId}>
@@ -32,7 +32,7 @@ export function Assistente() {
         <span className="discreto">{condominioNome}</span>
       </header>
 
-      {!chat && (assistente.modoRespostas === "MCP_EXTERNO" ? <AvisoMcp /> : <MotivoSemChat assistente={assistente} />)}
+      {!chat && (assistente.answersMode === "EXTERNAL_MCP" ? <AvisoMcp /> : <MotivoSemChat assistente={assistente} />)}
 
       <FiltrosDocumentos />
 

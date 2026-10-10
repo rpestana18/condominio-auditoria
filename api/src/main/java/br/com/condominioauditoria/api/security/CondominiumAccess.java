@@ -9,7 +9,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 
-/** Isolation between condominiums: the token carries the "condominios" list the user has access to. Admin sees all. */
+/** Isolation between condominiums: the token carries the "condominiums" list the user has access to. Admin sees all. */
 @Component
 public class CondominiumAccess {
 
@@ -29,7 +29,7 @@ public class CondominiumAccess {
 
     public List<String> tokenCondominiums() {
         if (authentication().getPrincipal() instanceof Jwt jwt) {
-            List<String> list = jwt.getClaimAsStringList("condominios");
+            List<String> list = jwt.getClaimAsStringList("condominiums");
             return list == null ? List.of() : list;
         }
         return List.of();

@@ -9,11 +9,11 @@ import br.com.condominioauditoria.api.mapper.AssistantMapper;
 import br.com.condominioauditoria.api.security.CondominiumAccess;
 import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.api.service.usage.UsageService;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.Trecho;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchFilters;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchMode;
+import br.com.condominioauditoria.contracts.assistant.v2.IndexedChunk;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import java.util.List;
@@ -26,9 +26,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 /**
- * Keyword search in the documents from the screen (RF-04.18): no AI, in any AI mode (including DESLIGADO, Q7), only
+ * Keyword search in the documents from the screen (RF-04.18): no AI, in any AI mode (including OFF, Q7), only
  * with the Assistant feature enabled. Always the rag's PALAVRA mode. Same second barrier as the chat and usage record
- * "busca_documentos" (without the searched text).
+ * "document_search" (without the searched text).
  */
 @Service
 public class AssistantSearchService {
@@ -58,26 +58,26 @@ public class AssistantSearchService {
 
     public List<DocumentChunkResponse> search(UUID condominiumId, DocumentSearchRequest request) {
         features.require(condominiumId, FeatureService.ASSISTANT);
-        BuscarRequest ragRequest = buildRequest(condominiumId, request);
+        SearchRequest ragRequest = buildRequest(condominiumId, request);
         String authorization = access.bearerToken().orElseThrow(() -> new IllegalStateException("Token ausente"));
-        BuscarResponse response;
+        SearchResponse response;
         try {
             response = rag.search(ragRequest, authorization);
         } catch (StatusRuntimeException error) {
             throw translate(error);
         }
-        Set<String> visible = barrier.visibleIds(condominiumId, response.getTrechosList());
-        List<Trecho> allowed = response.getTrechosList().stream()
+        Set<String> visible = barrier.visibleIds(condominiumId, response.getChunksList());
+        List<IndexedChunk> allowed = response.getChunksList().stream()
                 .filter(t -> FileAccessBarrier.isAllowed(t, visible)).toList();
-        if (allowed.size() < response.getTrechosCount()) {
+        if (allowed.size() < response.getChunksCount()) {
             log.warn("Busca nos documentos: {} trecho(s) do rag descartado(s) pela segunda barreira (condomínio {})",
-                    response.getTrechosCount() - allowed.size(), condominiumId);
+                    response.getChunksCount() - allowed.size(), condominiumId);
         }
         usage.recordDocumentSearch(condominiumId, access.username());
         return allowed.stream().map(AssistantMapper::toResponse).toList();
     }
 
-    static BuscarRequest buildRequest(UUID condominiumId, DocumentSearchRequest request) {
+    static SearchRequest buildRequest(UUID condominiumId, DocumentSearchRequest request) {
         String text = request == null || request.text() == null ? "" : request.text().strip();
         if (text.isEmpty()) {
             throw new InvalidRequestException("Informe o texto da busca");
@@ -89,14 +89,14 @@ public class AssistantSearchService {
         if (limit < 1 || limit > MAX_LIMIT) {
             throw new InvalidRequestException("O limite deve ser de 1 a " + MAX_LIMIT);
         }
-        var builder = BuscarRequest.newBuilder()
-                .setCondominioId(condominiumId.toString())
-                .setTexto(text)
-                .setModo(ModoBusca.MODO_BUSCA_PALAVRA)
-                .setLimite(limit);
-        FiltrosBusca filters = RagRequests.filters(request.filters());
+        var builder = SearchRequest.newBuilder()
+                .setCondominiumId(condominiumId.toString())
+                .setText(text)
+                .setMode(SearchMode.SEARCH_MODE_KEYWORD)
+                .setLimit(limit);
+        SearchFilters filters = RagRequests.filters(request.filters());
         if (filters != null) {
-            builder.setFiltros(filters);
+            builder.setFilters(filters);
         }
         return builder.build();
     }

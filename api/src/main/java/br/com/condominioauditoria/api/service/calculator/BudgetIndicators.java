@@ -71,7 +71,7 @@ public final class BudgetIndicators {
         boolean otherFund = e.fundId() != null && !e.fundId().equals(e.operatingFundId());
         boolean operatingOnly = e.fundId() != null && e.fundId().equals(e.operatingFundId());
         List<String> warnings = new ArrayList<>();
-        long withoutCashFlow = e.months().stream().filter(m -> m.status() != MonthStatus.COM_FLUXO).count();
+        long withoutCashFlow = e.months().stream().filter(m -> m.status() != MonthStatus.WITH_CASH_FLOW).count();
         if (withoutCashFlow > 0) {
             warnings.add(withoutCashFlow + (withoutCashFlow == 1 ? " mês" : " meses") + " do exercício sem números (sem fluxo"
                     + " carregado ou com dois fluxos)");
@@ -169,7 +169,7 @@ public final class BudgetIndicators {
      * Chart 5, from the cumulative: the 10 lines furthest above (difference &gt; 0) and the 10 furthest below (&lt; 0).
      */
     public static LargestDifferencesResponse largestDifferences(BudgetVsActualResponse cumulative) {
-        if (cumulative == null || cumulative.status() != BudgetVsActualStatus.CALCULADO) {
+        if (cumulative == null || cumulative.status() != BudgetVsActualStatus.CALCULATED) {
             return new LargestDifferencesResponse(List.of(), List.of());
         }
         List<LineDifferenceResponse> all = cumulative.groups().stream().flatMap(g -> g.lines().stream())
@@ -208,7 +208,7 @@ public final class BudgetIndicators {
         for (FundResultResponse f : ofFiscalYear.values()) {
             List<FundPointResponse> points = e.months().stream().map(m -> {
                 FundResultResponse ofMonth = m.result() == null ? null : m.result().funds().stream()
-                        .filter(x -> f.fundId().equals(x.fundId()) && x.status() == FundComparisonStatus.COMPARADO)
+                        .filter(x -> f.fundId().equals(x.fundId()) && x.status() == FundComparisonStatus.COMPARED)
                         .findFirst().orElse(null);
                 return ofMonth == null ? new FundPointResponse(m.month().toString(), m.status(), null, null, null)
                         : new FundPointResponse(m.month().toString(), m.status(), ofMonth.planned(),
@@ -228,7 +228,7 @@ public final class BudgetIndicators {
         for (int i = 0; i < c.fiscalYears().size(); i++) {
             var ex = c.fiscalYears().get(i);
             fiscalYears.add(new ComparisonFiscalYearResponse(ex.id(), ex.label(), c.summary().get(i).execution(),
-                    ex.period(), ex.type() == FiscalYearType.COLUNA_IMPRESSA ? null : ex.budgetId()));
+                    ex.period(), ex.type() == FiscalYearType.PRINTED_COLUMN ? null : ex.budgetId()));
         }
         List<ComparisonGroupResponse> groups = new ArrayList<>();
         for (ComparedGroupResponse g : c.groups()) {

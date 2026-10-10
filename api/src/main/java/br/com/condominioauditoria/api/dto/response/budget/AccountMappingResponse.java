@@ -2,7 +2,6 @@ package br.com.condominioauditoria.api.dto.response.budget;
 
 import br.com.condominioauditoria.api.model.enums.AccountMappingSource;
 import br.com.condominioauditoria.api.model.enums.AccountMappingStatus;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -12,15 +11,15 @@ import java.time.Instant;
  * the sheet).
  */
 public record AccountMappingResponse(
-        @JsonProperty("conta") String account,
-        @JsonProperty("nome") String name,
-        @JsonProperty("lancamentos") int ledgerEntries,
-        @JsonProperty("debitos") BigDecimal debits,
-        @JsonProperty("destino") MappingTargetResponse target,
-        @JsonProperty("estado") AccountMappingStatus status,
-        @JsonProperty("origem") AccountMappingSource source,
-        @JsonProperty("motivo") String reason,
-        @JsonProperty("igualVersaoAnterior") boolean sameAsPreviousVersion,
-        @JsonProperty("atualizadoPor") String updatedBy,
-        @JsonProperty("atualizadoEm") Instant updatedAt) {
+        String account,
+        String name,
+        int ledgerEntries,
+        BigDecimal debits,
+        MappingTargetResponse target,
+        AccountMappingStatus status,
+        AccountMappingSource source,
+        String reason,
+        boolean sameAsPreviousVersion,
+        String updatedBy,
+        Instant updatedAt) {
 }

@@ -46,7 +46,7 @@ public record BudgetVsActualReport(String condominium, String period, String fun
             String generatedBy,
             Instant generatedAt) {
         BudgetVsActualResponse r = calculation.result();
-        boolean calculated = r.status() == BudgetVsActualStatus.CALCULADO;
+        boolean calculated = r.status() == BudgetVsActualStatus.CALCULATED;
         List<PendingItem> pendingItems = new ArrayList<>();
         if (calculated) {
             calculation.evidence().getOrDefault(BudgetVsActualCalculator.TARGET_TO_REALLOCATE, List.of())
@@ -92,7 +92,7 @@ public record BudgetVsActualReport(String condominium, String period, String fun
     }
 
     private static String period(BudgetVsActualResponse r) {
-        if (!"acumulado".equals(r.period())) {
+        if (!"cumulative".equals(r.period())) {
             return BudgetVsActualCalculator.mmyyyy(YearMonth.parse(r.period()));
         }
         String summed = r.summedMonths().isEmpty() ? "nenhum"

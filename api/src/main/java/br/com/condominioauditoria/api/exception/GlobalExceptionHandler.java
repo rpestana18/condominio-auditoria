@@ -14,7 +14,7 @@ class GlobalExceptionHandler {
     ProblemDetail duplicate(DuplicateFileException e) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
         p.setTitle("Arquivo já enviado");
-        p.setProperty("arquivoExistenteId", e.existingId());
+        p.setProperty("existingFileId", e.existingId());
         return p;
     }
 
@@ -23,7 +23,7 @@ class GlobalExceptionHandler {
     ProblemDetail confirmationRejected(BudgetConfirmationRejectedException e) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(e.status(), e.getMessage());
         p.setTitle("Confirmação recusada");
-        p.setProperty("motivos", e.reasons());
+        p.setProperty("reasons", e.reasons());
         return p;
     }
 
@@ -45,7 +45,7 @@ class GlobalExceptionHandler {
     ProblemDetail featureNotContracted(FeatureNotEnabledException e) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
         p.setTitle("Módulo não contratado");
-        p.setProperty("modulo", e.feature());
+        p.setProperty("feature", e.feature());
         return p;
     }
 
@@ -64,7 +64,7 @@ class GlobalExceptionHandler {
     ProblemDetail aiConfigurationRejected(AiConfigurationRejectedException e) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, e.getMessage());
         p.setTitle("Configuração de IA recusada");
-        p.setProperty("motivos", e.reasons());
+        p.setProperty("reasons", e.reasons());
         return p;
     }
 
@@ -82,7 +82,7 @@ class GlobalExceptionHandler {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(e.status(), e.getMessage());
         p.setTitle(e.title());
         if (e.aiMode() != null) {
-            p.setProperty("modoIa", e.aiMode().name());
+            p.setProperty("aiMode", e.aiMode().name());
         }
         return p;
     }

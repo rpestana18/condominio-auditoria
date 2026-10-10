@@ -30,21 +30,21 @@ export function TrilhaDepara({ poId }: { poId: string }) {
           <tbody>
             {eventos.map((e) => (
               <tr key={e.id}>
-                <td>{formatarDataHora(e.em)}</td>
-                <td>{e.usuario}</td>
+                <td>{formatarDataHora(e.at)}</td>
+                <td>{e.username}</td>
                 <td>
-                  {e.conta} {e.nome}
+                  {e.account} {e.name}
                 </td>
                 <td className="discreto">
-                  {e.destinoAnterior ?? "—"}
-                  {e.estadoAnterior && ` (${rotuloEstadoDepara[e.estadoAnterior].toLowerCase()})`}
+                  {e.previousTarget ?? "—"}
+                  {e.previousStatus && ` (${rotuloEstadoDepara[e.previousStatus].toLowerCase()})`}
                 </td>
                 <td>
-                  {e.destinoNovo} ({rotuloEstadoDepara[e.estadoNovo].toLowerCase()})
+                  {e.newTarget} ({rotuloEstadoDepara[e.newStatus].toLowerCase()})
                 </td>
                 <td className="discreto">
-                  {rotuloOrigem[e.origem]}
-                  {e.motivo && ` · ${e.motivo}`}
+                  {rotuloOrigem[e.source]}
+                  {e.reason && ` · ${e.reason}`}
                 </td>
               </tr>
             ))}

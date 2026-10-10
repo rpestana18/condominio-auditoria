@@ -24,14 +24,14 @@ export function PrevisaoPo() {
   if (isLoading) return <p className="aviso">Carregando…</p>;
   if (error) return <p className="aviso erro">{error.message}</p>;
   if (!detalhe) return null;
-  const { previsao } = detalhe;
-  const aguardando = previsao.estado === "LIDA" || previsao.estado === "LIDA_COM_DIVERGENCIA";
+  const { budget: previsao } = detalhe;
+  const aguardando = previsao.status === "READ" || previsao.status === "READ_WITH_DISCREPANCY";
 
   return (
     <>
       <header className="titulo-pagina">
-        <h1>{previsao.titulo ?? "Previsão orçamentária"}</h1>
-        <span className={previsao.estado === "CONFIRMADA" ? "selo ok" : "selo alerta"}>{rotuloEstadoPo[previsao.estado]}</span>
+        <h1>{previsao.title ?? "Previsão orçamentária"}</h1>
+        <span className={previsao.status === "CONFIRMED" ? "selo ok" : "selo alerta"}>{rotuloEstadoPo[previsao.status]}</span>
         <Link className="botao-link" to="/previsoes">
           Todas as POs
         </Link>
@@ -40,61 +40,61 @@ export function PrevisaoPo() {
       <Resumo detalhe={detalhe} condominioId={condominioId} />
       {aguardando && !pode("ADMIN") && <p className="aviso alerta">Aguardando a confirmação do Admin.</p>}
       {aguardando && pode("ADMIN") && <FormConfirmacaoPo detalhe={detalhe} />}
-      <ConferenciasPo conferencias={detalhe.conferencias} avisos={detalhe.avisos} />
-      {previsao.estado === "CONFIRMADA" && pode("ADMIN") ? (
+      <ConferenciasPo conferencias={detalhe.checks} avisos={detalhe.warnings} />
+      {previsao.status === "CONFIRMED" && pode("ADMIN") ? (
         <EditarFundosPo detalhe={detalhe} />
       ) : (
-        detalhe.fundos.length > 0 && <FundosLigados detalhe={detalhe} />
+        detalhe.funds.length > 0 && <FundosLigados detalhe={detalhe} />
       )}
-      {detalhe.achados.length > 0 && <Achados detalhe={detalhe} />}
+      {detalhe.findings.length > 0 && <Achados detalhe={detalhe} />}
       <EventosPo poId={previsao.id} />
       {/* Rubricas só existem depois da confirmação (RF-11.7); a lista é para todos, a edição só do Admin */}
-      {(previsao.estado === "CONFIRMADA" || previsao.estado === "SUBSTITUIDA") && <RubricasPo previsao={previsao} />}
-      <LinhasPo linhas={detalhe.linhas} colunaOrcadoAnterior={detalhe.colunaOrcadoAnterior} colunaOrcado={detalhe.colunaOrcado} />
+      {(previsao.status === "CONFIRMED" || previsao.status === "SUPERSEDED") && <RubricasPo previsao={previsao} />}
+      <LinhasPo linhas={detalhe.lines} colunaOrcadoAnterior={detalhe.previousBudgetedColumn} colunaOrcado={detalhe.budgetedColumn} />
     </>
   );
 }
 
 function Resumo({ detalhe, condominioId }: { detalhe: PrevisaoDetalhe; condominioId: string }) {
-  const { previsao, confirmacao } = detalhe;
+  const { budget: previsao, confirmation: confirmacao } = detalhe;
   return (
     <section className="bloco">
       <dl className="lista-numeros">
         <dt>Arquivo</dt>
         <dd>
-          <button className="botao-link" onClick={() => void abrirArquivo(`/condominios/${condominioId}/arquivos/${previsao.arquivoId}/conteudo`)}>
-            {previsao.arquivoNome ?? "Abrir original"}
+          <button className="botao-link" onClick={() => void abrirArquivo(`/condominiums/${condominioId}/files/${previsao.fileId}/content`)}>
+            {previsao.fileName ?? "Abrir original"}
           </button>{" "}
           <span className="hash">{previsao.sha256}</span>
         </dd>
         <dt>Exercício</dt>
         <dd>
-          {previsao.exercicioInicio && previsao.exercicioFim
-            ? `${formatarMes(previsao.exercicioInicio)} a ${formatarMes(previsao.exercicioFim)}`
-            : `impresso: ${previsao.exercicioImpresso ?? "—"}`}
+          {previsao.fiscalYearStart && previsao.fiscalYearEnd
+            ? `${formatarMes(previsao.fiscalYearStart)} a ${formatarMes(previsao.fiscalYearEnd)}`
+            : `impresso: ${previsao.printedFiscalYear ?? "—"}`}
         </dd>
         <dt>Previsto do mês</dt>
         <dd>
-          {formatarMoeda(previsao.previstoMes)} <span className="discreto">(soma das linhas de despesa)</span>
-          {detalhe.previstoMesImpresso !== null && detalhe.previstoMesImpresso !== undefined && (
-            <span className="discreto"> · impresso: {formatarMoeda(detalhe.previstoMesImpresso)}</span>
+          {formatarMoeda(previsao.monthlyPlanned)} <span className="discreto">(soma das linhas de despesa)</span>
+          {detalhe.printedMonthlyPlanned !== null && detalhe.printedMonthlyPlanned !== undefined && (
+            <span className="discreto"> · impresso: {formatarMoeda(detalhe.printedMonthlyPlanned)}</span>
           )}
         </dd>
         <dt>Lida em</dt>
-        <dd>{formatarDataHora(previsao.lidaEm)}</dd>
-        {previsao.confirmadaEm && (
+        <dd>{formatarDataHora(previsao.readAt)}</dd>
+        {previsao.confirmedAt && (
           <>
             <dt>Confirmada</dt>
             <dd>
-              {formatarDataHora(previsao.confirmadaEm)} por {previsao.confirmadaPor}
-              {confirmacao?.semAta ? " · sem ata" : confirmacao?.dataAprovacao ? ` · ata de ${formatarData(confirmacao.dataAprovacao)}` : ""}
+              {formatarDataHora(previsao.confirmedAt)} por {previsao.confirmedBy}
+              {confirmacao?.withoutMinutes ? " · sem ata" : confirmacao?.approvalDate ? ` · ata de ${formatarData(confirmacao.approvalDate)}` : ""}
             </dd>
           </>
         )}
-        {detalhe.substituidaDesde && (
+        {detalhe.supersededFrom && (
           <>
             <dt>Substituída desde</dt>
-            <dd>{formatarMes(detalhe.substituidaDesde)}</dd>
+            <dd>{formatarMes(detalhe.supersededFrom)}</dd>
           </>
         )}
       </dl>
@@ -108,13 +108,13 @@ function FundosLigados({ detalhe }: { detalhe: PrevisaoDetalhe }) {
       <h2>Fundos ligados às linhas de fundos</h2>
       <table className="tabela compacta">
         <tbody>
-          {detalhe.fundos.map((f) => (
-            <tr key={f.linhaId}>
+          {detalhe.funds.map((f) => (
+            <tr key={f.lineId}>
               <td>
-                {f.codigoEfetivo} {f.descricao}
+                {f.effectiveCode} {f.description}
               </td>
-              <td className="numero">{formatarMoeda(f.orcado)}</td>
-              <td>{f.fundo}</td>
+              <td className="numero">{formatarMoeda(f.budgeted)}</td>
+              <td>{f.fund}</td>
             </tr>
           ))}
         </tbody>
@@ -128,10 +128,10 @@ function Achados({ detalhe }: { detalhe: PrevisaoDetalhe }) {
     <section className="bloco">
       <h2>Achados desta PO</h2>
       <ul className="lista-simples">
-        {detalhe.achados.map((a) => (
+        {detalhe.findings.map((a) => (
           <li key={a.id}>
-            <span className={a.severidade === "CRITICO" ? "selo critico" : "selo alerta"}>{rotuloSeveridade[a.severidade]}</span>{" "}
-            <span className="selo neutro">{rotuloEstadoAchado[a.estado]}</span> {formatarMes(a.competencia)} · {a.descricao}
+            <span className={a.severity === "CRITICAL" ? "selo critico" : "selo alerta"}>{rotuloSeveridade[a.severity]}</span>{" "}
+            <span className="selo neutro">{rotuloEstadoAchado[a.status]}</span> {formatarMes(a.referenceMonth)} · {a.description}
           </li>
         ))}
       </ul>

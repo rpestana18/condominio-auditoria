@@ -73,7 +73,7 @@ public class QuestionService {
         this.config = properties.assistant();
     }
 
-    /** Stages of the stream's progress event (assistente.proto, EtapaPergunta). */
+    /** Stages of the stream's progress event (assistant.proto, AskStage). */
     public enum Stage {
         SEARCHING_CHUNKS, QUERYING_DATA, DRAFTING, VALIDATING, RETRYING
     }
@@ -146,7 +146,7 @@ public class QuestionService {
         for (int attempt = 1; attempt <= ATTEMPTS; attempt++) {
             Draft draft = draft(request, conversation, calls, attempt, progress);
             if (draft.safetyRefusal()) {
-                // Model safety refusal: no retry (assistente.proto)
+                // Model safety refusal: no retry (assistant.proto)
                 return notFound(conversation, request, attempt, join(warning,
                         "O modelo recusou responder a esta pergunta por política de segurança do provedor."));
             }
@@ -212,7 +212,7 @@ public class QuestionService {
                 Status.Code code = error.getStatus().getCode();
                 if (code == Status.Code.UNAVAILABLE || code == Status.Code.DEADLINE_EXCEEDED
                         || code == Status.Code.UNIMPLEMENTED) {
-                    // api down = UNAVAILABLE in Perguntar; there is no way to answer any number
+                    // api down = UNAVAILABLE in Ask; there is no way to answer any number
                     throw error;
                 }
                 log.info("Ferramenta {} recusada pelo backend ({}): {}", call.name(), code,

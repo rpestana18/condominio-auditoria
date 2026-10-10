@@ -21,7 +21,7 @@ public interface CondominiumFeatureRepository extends JpaRepository<CondominiumF
      */
     @Query(nativeQuery = true, value = """
             select 1 from (select pg_advisory_xact_lock(
-                hashtextextended('modulo_condominio:' || :condominiumId || ':' || :feature, 0))) t
+                hashtextextended('condominium_feature:' || :condominiumId || ':' || :feature, 0))) t
             """)
     Integer serializeChange(String condominiumId, String feature);
 

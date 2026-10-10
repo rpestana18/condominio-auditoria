@@ -62,9 +62,9 @@ import org.springframework.web.server.ResponseStatusException;
 public class BudgetVsActualQueryService {
 
     /** Cash flow files read (with or without a failing check), as in the dashboard. */
-    static final Set<FileStatus> READ_CASH_FLOW = EnumSet.of(FileStatus.CONCLUIDO, FileStatus.PRECISA_REVISAO);
-    private static final Set<BudgetWarningCode> BUDGET_WARNINGS = EnumSet.of(BudgetWarningCode.ARREDONDAMENTO,
-            BudgetWarningCode.CONFIRMADA_COM_DIVERGENCIA);
+    static final Set<FileStatus> READ_CASH_FLOW = EnumSet.of(FileStatus.COMPLETED, FileStatus.NEEDS_REVIEW);
+    private static final Set<BudgetWarningCode> BUDGET_WARNINGS = EnumSet.of(BudgetWarningCode.ROUNDING,
+            BudgetWarningCode.CONFIRMED_WITH_DISCREPANCY);
 
     private final CondominiumRepository condominiums;
     private final BudgetRepository budgets;
@@ -124,8 +124,8 @@ public class BudgetVsActualQueryService {
     }
 
     /**
-     * Entries that make up a number: "linha:&lt;id&gt;", "grupo:&lt;id&gt;", "total", "fundo:&lt;id&gt;", AJUSTES,
-     * A_REALOCAR, SEM_LINHA_PO, TRANSFERENCIAS.
+     * Entries that make up a number: "line:&lt;id&gt;", "group:&lt;id&gt;", "total", "fund:&lt;id&gt;", ADJUSTMENTS,
+     * TO_REALLOCATE, NO_BUDGET_LINE, TRANSFERS.
      */
     @Transactional(readOnly = true)
     public List<EvidenceResponse> evidence(UUID condominiumId, String period, UUID budgetId, String target) {
@@ -186,7 +186,7 @@ public class BudgetVsActualQueryService {
 
     /** The condominium's read cash flows with a period (trial balances completed or to review). */
     public List<CashFlowFile> cashFlows(UUID condominiumId) {
-        return files.findByCondominiumIdAndCategoryAndStatusIn(condominiumId, FileCategory.BALANCETE, READ_CASH_FLOW)
+        return files.findByCondominiumIdAndCategoryAndStatusIn(condominiumId, FileCategory.TRIAL_BALANCE, READ_CASH_FLOW)
                 .stream().filter(a -> a.getPeriodStart() != null && a.getPeriodEnd() != null)
                 .map(a -> new CashFlowFile(a.getId(), a.getOriginalName(), a.getSha256(), a.getPeriodStart(),
                         a.getPeriodEnd(), a.getUploadedAt(), a.getUploadedBy()))
@@ -202,20 +202,20 @@ public class BudgetVsActualQueryService {
             return budgetQuery.activeInMonth(condominiumId, m.month());
         }
         // Cumulative without a given budget: the most recent confirmed version
-        return budgets.findByCondominiumIdAndStatusIn(condominiumId, EnumSet.of(BudgetStatus.CONFIRMADA)).stream()
+        return budgets.findByCondominiumIdAndStatusIn(condominiumId, EnumSet.of(BudgetStatus.CONFIRMED)).stream()
                 .filter(p -> p.getVersion() != null).max(Comparator.comparing(Budget::getVersion));
     }
 
     public static Period period(String text) {
         String t = text == null ? "" : text.trim();
-        if (t.equalsIgnoreCase("acumulado")) {
+        if (t.equalsIgnoreCase("cumulative")) {
             return new Cumulative();
         }
         try {
             return new Month(YearMonth.parse(t));
         } catch (DateTimeParseException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Período deve ser AAAA-MM (ex.: 2026-09) ou \"acumulado\": " + text);
+                    "Período deve ser AAAA-MM (ex.: 2026-09) ou \"cumulative\": " + text);
         }
     }
 }

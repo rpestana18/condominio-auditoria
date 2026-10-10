@@ -32,9 +32,9 @@ import org.springframework.transaction.support.TransactionOperations;
  * The condominium's AI configuration (RF-09.1, RF-09.2, RF-09.6; ADR 0003, Decision 4 and Sub-decision 4.1 A).
  *
  * <ul>
- * <li>General mode: no row = MCP_EXTERNO (the pilot's default).</li>
+ * <li>General mode: no row = EXTERNAL_MCP (the pilot's default).</li>
  * <li>Assistant answers (chat): null mode = inherits the general mode; provider, model and encrypted key.</li>
- * <li>Assistant embeddings: only LOCAL (local catalog provider) or DESLIGADO in this phase (Q12); no row = LOCAL with
+ * <li>Assistant embeddings: only LOCAL (local catalog provider) or OFF in this phase (Q12); no row = LOCAL with
  * ollama-local/bge-m3.</li>
  * </ul>
  *
@@ -47,7 +47,7 @@ public class AiConfigurationService {
 
     private static final Logger log = LoggerFactory.getLogger(AiConfigurationService.class);
 
-    public static final AiMode DEFAULT_GENERAL_MODE = AiMode.MCP_EXTERNO;
+    public static final AiMode DEFAULT_GENERAL_MODE = AiMode.EXTERNAL_MCP;
     public static final AiMode DEFAULT_EMBEDDINGS_MODE = AiMode.LOCAL;
     public static final String DEFAULT_EMBEDDINGS_PROVIDER = "ollama-local";
     public static final String DEFAULT_EMBEDDINGS_MODEL = "bge-m3";
@@ -121,8 +121,8 @@ public class AiConfigurationService {
     }
 
     static Effective effective(List<AiConfiguration> rows) {
-        Optional<AiConfiguration> general = row(rows, null, AiFunction.RESPOSTAS);
-        Optional<AiConfiguration> answers = row(rows, FeatureService.ASSISTANT, AiFunction.RESPOSTAS);
+        Optional<AiConfiguration> general = row(rows, null, AiFunction.ANSWERS);
+        Optional<AiConfiguration> answers = row(rows, FeatureService.ASSISTANT, AiFunction.ANSWERS);
         Optional<AiConfiguration> embeddings = row(rows, FeatureService.ASSISTANT, AiFunction.EMBEDDINGS);
         AiMode generalMode = general.map(AiConfiguration::getMode).orElse(DEFAULT_GENERAL_MODE);
         AiMode answersMode = answers.map(AiConfiguration::getMode).orElse(null);
@@ -146,7 +146,7 @@ public class AiConfigurationService {
 
     // Saving
 
-    /** PUT /condominios/{id}/ia. The key is write-only: null keeps the stored one; removeKey deletes it. */
+    /** PUT /condominiums/{id}/ai. The key is write-only: null keeps the stored one; removeKey deletes it. */
     public record Change(AiMode generalMode, AnswersChange answers, EmbeddingsChange embeddings) {
     }
 
@@ -185,8 +185,8 @@ public class AiConfigurationService {
         List<String> reasons = new ArrayList<>();
 
         if (change.generalMode() == AiMode.LOCAL) {
-            reasons.add("O modo geral LOCAL ainda não está disponível nesta fase: escolha MCP_EXTERNO, API_KEY ou"
-                    + " DESLIGADO.");
+            reasons.add("O modo geral LOCAL ainda não está disponível nesta fase: escolha EXTERNAL_MCP, API_KEY ou"
+                    + " OFF.");
         }
         if (answersChange.mode() == AiMode.LOCAL) {
             reasons.add("O modo LOCAL para as respostas do Assistente ainda não está disponível nesta fase (previsto,"
@@ -199,8 +199,8 @@ public class AiConfigurationService {
         if (key != null && (key.length() < KEY_MIN_LENGTH || key.length() > KEY_MAX_LENGTH)) {
             reasons.add("A chave de API deve ter de " + KEY_MIN_LENGTH + " a " + KEY_MAX_LENGTH + " caracteres.");
         }
-        if (embeddingsChange.mode() != AiMode.LOCAL && embeddingsChange.mode() != AiMode.DESLIGADO) {
-            reasons.add("Para embeddings só são aceitos os modos LOCAL ou DESLIGADO nesta fase: só embeddings locais"
+        if (embeddingsChange.mode() != AiMode.LOCAL && embeddingsChange.mode() != AiMode.OFF) {
+            reasons.add("Para embeddings só são aceitos os modos LOCAL ou OFF nesta fase: só embeddings locais"
                     + " são permitidos, sem enviar texto para fora (Q12).");
         }
 
@@ -220,14 +220,14 @@ public class AiConfigurationService {
             reasons.add("No modo API_KEY, escolha o provedor das respostas no catálogo.");
         }
         if (answersProvider != null) {
-            answersModel = validateProvider(cat, answersProvider, answersModel, AiFunction.RESPOSTAS, false, reasons);
+            answersModel = validateProvider(cat, answersProvider, answersModel, AiFunction.ANSWERS, false, reasons);
         }
         boolean keyAfter = key != null || (!answersChange.removeKey() && current.answers().hasKey());
         if (effective == AiMode.API_KEY && !keyAfter) {
             reasons.add("O modo API_KEY exige a chave de API do condomínio: informe a chave.");
         }
 
-        // Embeddings: LOCAL requires a local catalog provider; DESLIGADO has no provider or model
+        // Embeddings: LOCAL requires a local catalog provider; OFF has no provider or model
         if (embeddingsChange.mode() == AiMode.LOCAL) {
             if (embeddingsProvider == null) {
                 reasons.add("Com embeddings LOCAL, escolha o provedor local do catálogo (ex.: "
@@ -268,19 +268,19 @@ public class AiConfigurationService {
         Instant now = Instant.now();
 
         // Modo geral
-        Optional<AiConfiguration> general = row(rows, null, AiFunction.RESPOSTAS);
+        Optional<AiConfiguration> general = row(rows, null, AiFunction.ANSWERS);
         AiMode generalBefore = general.map(AiConfiguration::getMode).orElse(DEFAULT_GENERAL_MODE);
         if (generalBefore != generalMode) {
-            AiConfiguration l = general.orElseGet(() -> new AiConfiguration(condominiumId, null, AiFunction.RESPOSTAS));
+            AiConfiguration l = general.orElseGet(() -> new AiConfiguration(condominiumId, null, AiFunction.ANSWERS));
             l.change(generalMode, null, null, username, now);
             configurations.save(l);
-            events.save(new AiConfigurationEvent(condominiumId, null, AiFunction.RESPOSTAS, username, now,
+            events.save(new AiConfigurationEvent(condominiumId, null, AiFunction.ANSWERS, username, now,
                     generalBefore,
                     generalMode, null, null, null, null, false, null));
         }
 
         // Assistant answers
-        Optional<AiConfiguration> ans = row(rows, FeatureService.ASSISTANT, AiFunction.RESPOSTAS);
+        Optional<AiConfiguration> ans = row(rows, FeatureService.ASSISTANT, AiFunction.ANSWERS);
         Values answersBefore = ans.map(l -> new Values(l.getMode(), l.getProvider(), l.getModel()))
                 .orElse(new Values(null, null, null));
         boolean hadKey = ans.map(AiConfiguration::hasKey).orElse(false);
@@ -293,7 +293,7 @@ public class AiConfigurationService {
         }
         if (!answersBefore.equals(answers) || keyReplaced) {
             AiConfiguration l = ans.orElseGet(() -> new AiConfiguration(condominiumId, FeatureService.ASSISTANT,
-                    AiFunction.RESPOSTAS));
+                    AiFunction.ANSWERS));
             l.change(answers.mode(), answers.provider(), answers.model(), username, now);
             if (encryptedKey != null) {
                 l.replaceKey(encryptedKey, keySuffix);
@@ -301,7 +301,7 @@ public class AiConfigurationService {
                 l.replaceKey(null, null);
             }
             configurations.save(l);
-            events.save(new AiConfigurationEvent(condominiumId, FeatureService.ASSISTANT, AiFunction.RESPOSTAS,
+            events.save(new AiConfigurationEvent(condominiumId, FeatureService.ASSISTANT, AiFunction.ANSWERS,
                     username, now,
                     answersBefore.mode(), answers.mode(), answersBefore.provider(), answers.provider(),
                             answersBefore.model(),
@@ -336,7 +336,7 @@ public class AiConfigurationService {
             return model;
         }
         if (p.get().function() != usage) {
-            reasons.add("O provedor '" + provider + "' não é de " + (usage == AiFunction.RESPOSTAS ? "respostas"
+            reasons.add("O provedor '" + provider + "' não é de " + (usage == AiFunction.ANSWERS ? "respostas"
                     : "embeddings") + ".");
             return model;
         }

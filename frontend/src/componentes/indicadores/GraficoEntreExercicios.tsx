@@ -21,30 +21,30 @@ interface Props {
  * execução abre o exercício no período dele. A coluna impressa (`poId` nulo) e grupo sem alvo ficam sem link.
  */
 export function GraficoEntreExercicios({ comparacao, contexto }: Props) {
-  const { grupos } = comparacao;
+  const { groups: grupos } = comparacao;
 
   /** Ação que abre o exercício `i` no previsto × realizado (com o alvo, se houver); `undefined` sem PO ou período. */
   const abrirExercicio = (i: number, alvo?: string | null): (() => void) | undefined => {
-    const { poId, periodo } = comparacao.exercicios[i];
+    const { budgetId: poId, period: periodo } = comparacao.fiscalYears[i];
     if (!poId || !periodo) return undefined;
     return contexto.abrir({ poId, periodo, alvo, fundoId: contexto.fundoId });
   };
   /** Ação da barra do grupo `g` no exercício `i`: só com alvo (sem alvo não há evidência para abrir). */
   const abrirGrupo = (g: number, i: number) => {
-    const alvo = grupos[g].alvos[i];
+    const alvo = grupos[g].targets[i];
     return alvo ? abrirExercicio(i, alvo) : undefined;
   };
-  const acoesExecucao = comparacao.exercicios.map((_, i) => abrirExercicio(i));
+  const acoesExecucao = comparacao.fiscalYears.map((_, i) => abrirExercicio(i));
 
   const tabelaGrupos: ModeloTabela = {
     legenda: "Previsto do mês por grupo da PO em cada exercício",
     colunaRotulo: "Grupo",
-    colunas: comparacao.exercicios.map((ex) => `${ex.rotulo} (R$)`),
+    colunas: comparacao.fiscalYears.map((ex) => `${ex.label} (R$)`),
     linhas: grupos.map((g, indiceGrupo) => ({
-      chave: g.codigo,
-      rotulo: `${g.codigo} ${g.descricao}`,
-      celulas: comparacao.exercicios.map((_, i) => ({
-        texto: formatarMoedaOuTraco(g.previstoMes[i]),
+      chave: g.code,
+      rotulo: `${g.code} ${g.description}`,
+      celulas: comparacao.fiscalYears.map((_, i) => ({
+        texto: formatarMoedaOuTraco(g.monthlyPlanned[i]),
         aoAbrir: abrirGrupo(indiceGrupo, i),
       })),
     })),
@@ -53,21 +53,21 @@ export function GraficoEntreExercicios({ comparacao, contexto }: Props) {
     legenda: "Execução acumulada de cada exercício",
     colunaRotulo: "Exercício",
     colunas: ["Execução acumulada (%)"],
-    linhas: comparacao.exercicios.map((ex, i) => ({
+    linhas: comparacao.fiscalYears.map((ex, i) => ({
       chave: ex.id,
-      rotulo: ex.rotulo,
-      celulas: [{ texto: formatarPercentual(ex.execucao), aoAbrir: acoesExecucao[i] }],
+      rotulo: ex.label,
+      celulas: [{ texto: formatarPercentual(ex.execution), aoAbrir: acoesExecucao[i] }],
     })),
   };
 
   // Chaves "e0", "e1"... na ordem dos exercícios; o eixo mostra só o código do grupo (o nome vai na dica)
   const dadosGrupos = grupos.map((g, indice) => {
-    const linha: Record<string, number | string | null> = { indice, codigo: g.codigo };
-    comparacao.exercicios.forEach((_, i) => (linha[`e${i}`] = g.previstoMes[i] ?? null));
+    const linha: Record<string, number | string | null> = { indice, codigo: g.code };
+    comparacao.fiscalYears.forEach((_, i) => (linha[`e${i}`] = g.monthlyPlanned[i] ?? null));
     return linha;
   });
-  const dadosExecucao = comparacao.exercicios.map((ex, indice) => ({ indice, rotulo: ex.rotulo, execucao: ex.execucao ?? null }));
-  const periodo = comparacao.exercicios.map((ex) => ex.rotulo).join(" × ");
+  const dadosExecucao = comparacao.fiscalYears.map((ex, indice) => ({ indice, rotulo: ex.label, execucao: ex.execution ?? null }));
+  const periodo = comparacao.fiscalYears.map((ex) => ex.label).join(" × ");
 
   return (
     <CartaoIndicador
@@ -92,11 +92,11 @@ export function GraficoEntreExercicios({ comparacao, contexto }: Props) {
           <YAxis tickFormatter={formatarMoedaCurta} width={80} />
           <Tooltip content={dicaDaTabela(tabelaGrupos)} />
           <Legend />
-          {comparacao.exercicios.map((ex, i) => (
+          {comparacao.fiscalYears.map((ex, i) => (
             <Bar
               key={ex.id}
               dataKey={`e${i}`}
-              name={ex.rotulo}
+              name={ex.label}
               fill={corDaSerie(i)}
               isAnimationActive={false}
               cursor={acoesExecucao[i] ? "pointer" : undefined}

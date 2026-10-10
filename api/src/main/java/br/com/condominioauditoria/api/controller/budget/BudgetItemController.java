@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
  * the Admin (Gestor and Usuário get 403).
  */
 @RestController
-@RequestMapping("/api/condominios/{condominiumId}")
+@RequestMapping("/api/condominiums/{condominiumId}")
 public class BudgetItemController {
 
     private final CondominiumAccess access;
@@ -44,14 +44,14 @@ public class BudgetItemController {
         this.service = service;
     }
 
-    @GetMapping("/rubricas")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @GetMapping("/budget-items")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public List<BudgetItemResponse> catalog(@PathVariable UUID condominiumId) {
         access.require(condominiumId);
         return service.catalog(condominiumId);
     }
 
-    @PostMapping("/rubricas")
+    @PostMapping("/budget-items")
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
     public BudgetItemResponse create(@PathVariable UUID condominiumId, @RequestBody NewBudgetItemRequest request) {
@@ -59,7 +59,7 @@ public class BudgetItemController {
         return service.create(condominiumId, request, access.username());
     }
 
-    @PutMapping("/rubricas/{itemId}")
+    @PutMapping("/budget-items/{itemId}")
     @PreAuthorize("hasRole('ADMIN')")
     public BudgetItemResponse rename(@PathVariable UUID condominiumId, @PathVariable UUID itemId,
             @RequestBody RenameBudgetItemRequest request) {
@@ -67,22 +67,22 @@ public class BudgetItemController {
         return service.rename(condominiumId, itemId, request, access.username());
     }
 
-    @GetMapping("/previsoes/{budgetId}/rubricas")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @GetMapping("/budgets/{budgetId}/budget-items")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public BudgetItemsResponse list(@PathVariable UUID condominiumId, @PathVariable UUID budgetId,
-            @RequestParam(name = "filtro", required = false) BudgetItemFilter filter) {
+            @RequestParam(name = "filter", required = false) BudgetItemFilter filter) {
         access.require(condominiumId);
         return service.list(condominiumId, budgetId, filter);
     }
 
-    @GetMapping("/previsoes/{budgetId}/rubricas/eventos")
-    @PreAuthorize("hasAnyRole('USUARIO', 'GESTOR', 'ADMIN')")
+    @GetMapping("/budgets/{budgetId}/budget-items/events")
+    @PreAuthorize("hasAnyRole('USER', 'MANAGER', 'ADMIN')")
     public List<BudgetItemEventResponse> events(@PathVariable UUID condominiumId, @PathVariable UUID budgetId) {
         access.require(condominiumId);
         return service.events(condominiumId, budgetId);
     }
 
-    @PutMapping("/previsoes/{budgetId}/rubricas/{lineId}")
+    @PutMapping("/budgets/{budgetId}/budget-items/{lineId}")
     @PreAuthorize("hasRole('ADMIN')")
     public BudgetLineItemResponse setItem(@PathVariable UUID condominiumId, @PathVariable UUID budgetId,
             @PathVariable UUID lineId,
@@ -91,7 +91,7 @@ public class BudgetItemController {
         return service.setItem(condominiumId, budgetId, lineId, request, access.username());
     }
 
-    @PostMapping("/previsoes/{budgetId}/rubricas/lote")
+    @PostMapping("/budgets/{budgetId}/budget-items/batch")
     @PreAuthorize("hasRole('ADMIN')")
     public BudgetItemBatchResponse batch(@PathVariable UUID condominiumId, @PathVariable UUID budgetId,
             @RequestBody BudgetItemBatchRequest request) {
@@ -99,7 +99,7 @@ public class BudgetItemController {
         return service.batch(condominiumId, budgetId, request, access.username());
     }
 
-    @PostMapping("/previsoes/{budgetId}/rubricas/sugestoes")
+    @PostMapping("/budgets/{budgetId}/budget-items/suggestions")
     @PreAuthorize("hasRole('ADMIN')")
     public BudgetItemSuggestionsResponse suggest(@PathVariable UUID condominiumId, @PathVariable UUID budgetId) {
         access.require(condominiumId);

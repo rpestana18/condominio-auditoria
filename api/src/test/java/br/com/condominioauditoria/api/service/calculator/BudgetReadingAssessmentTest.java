@@ -29,7 +29,7 @@ class BudgetReadingAssessmentTest {
 
         var result = BudgetReadingAssessment.assess(structure, pilot.totalsChecksForAssessment(), ONE_CENT);
 
-        assertThat(result.status()).isEqualTo(BudgetStatus.LIDA);
+        assertThat(result.status()).isEqualTo(BudgetStatus.READ);
         assertThat(result.discrepancies()).isEmpty();
         assertThat(result.roundings()).containsExactly(
                 "1.3 SERVIÇOS - CONTRATOS EFETIVOS impresso 336.274,17; soma das linhas 336.274,18; diferença de 0,01"
@@ -60,7 +60,7 @@ class BudgetReadingAssessmentTest {
         var result = BudgetReadingAssessment.assess(BudgetStructure.of(pilot.savedLines(budget)),
                 pilot.totalsChecksForAssessment(), new BigDecimal("0.00"));
 
-        assertThat(result.status()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
+        assertThat(result.status()).isEqualTo(BudgetStatus.READ_WITH_DISCREPANCY);
         assertThat(result.discrepancies()).hasSize(2);
         assertThat(result.roundings()).isEmpty();
     }
@@ -72,7 +72,7 @@ class BudgetReadingAssessmentTest {
         var result = BudgetReadingAssessment.assess(BudgetStructure.of(pilot.savedLines(budget)),
                 pilot.totalsChecksForAssessment(), ONE_CENT);
 
-        assertThat(result.status()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
+        assertThat(result.status()).isEqualTo(BudgetStatus.READ_WITH_DISCREPANCY);
         assertThat(result.discrepancies()).contains("1.1 PESSOAL impresso 69.193,00; soma das linhas 69.193,86",
                 "Total impresso 474.201,13; soma dos grupos 474.200,27");
         assertThat(result.roundings()).hasSize(2);
@@ -81,33 +81,33 @@ class BudgetReadingAssessmentTest {
     @Test
     void repeatedCodeAloneIsNotDiscrepancy() {
         BudgetStructure structure = BudgetStructure.of(PilotBudget.defaults().savedLines(budget));
-        var checks = List.of(new BudgetCheck("CODIGO_REPETIDO", "x", false, "1.3.2 aparece 2 vezes"));
+        var checks = List.of(new BudgetCheck("REPEATED_CODE", "x", false, "1.3.2 aparece 2 vezes"));
 
         var result = BudgetReadingAssessment.assess(structure, checks, ONE_CENT);
 
-        assertThat(result.status()).isEqualTo(BudgetStatus.LIDA);
+        assertThat(result.status()).isEqualTo(BudgetStatus.READ);
         assertThat(result.checks()).extracting(AssessedCheck::classification)
-                .containsExactly(CheckClassification.CODIGO_REPETIDO);
+                .containsExactly(CheckClassification.REPEATED_CODE);
     }
 
     @Test
     void failureNotConfirmedByRecomputedSumIsDiscrepancy() {
         BudgetStructure structure = BudgetStructure.of(PilotBudget.defaults().savedLines(budget));
         // Group 1.1 matches by the saved lines, but the rag reported a failure: it is not rounding
-        var checks = List.of(new BudgetCheck("SUBTOTAL_GRUPO", "1.1", false, "1.1 PESSOAL: não bate"));
+        var checks = List.of(new BudgetCheck("GROUP_SUBTOTAL", "1.1", false, "1.1 PESSOAL: não bate"));
 
         var result = BudgetReadingAssessment.assess(structure, checks, ONE_CENT);
 
-        assertThat(result.status()).isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
+        assertThat(result.status()).isEqualTo(BudgetStatus.READ_WITH_DISCREPANCY);
     }
 
     @Test
     void unknownFailedCheckIsDiscrepancy() {
         BudgetStructure structure = BudgetStructure.of(PilotBudget.defaults().savedLines(budget));
-        var checks = List.of(new BudgetCheck("LINHA_SEM_GRUPO", "x", false, "linhas antes do primeiro grupo: 1.0.1"));
+        var checks = List.of(new BudgetCheck("LINE_WITHOUT_GROUP", "x", false, "linhas antes do primeiro grupo: 1.0.1"));
 
         assertThat(BudgetReadingAssessment.assess(structure, checks, ONE_CENT).status())
-                .isEqualTo(BudgetStatus.LIDA_COM_DIVERGENCIA);
+                .isEqualTo(BudgetStatus.READ_WITH_DISCREPANCY);
     }
 
     @Test

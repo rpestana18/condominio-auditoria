@@ -1,28 +1,20 @@
 package br.com.condominioauditoria.api.model.condominium;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "condominio")
 public class Condominium {
 
     @Id
     private UUID id;
-    @Column(name = "nome")
     private String name;
     private String cnpj;
-    @Column(name = "criado_em")
     private Instant createdAt;
-    @Column(name = "fundo_ordinario_id")
     private UUID operatingFundId;
-    @Column(name = "fundo_ordinario_confirmado_por")
     private String operatingFundConfirmedBy;
-    @Column(name = "fundo_ordinario_confirmado_em")
     private Instant operatingFundConfirmedAt;
 
     protected Condominium() {

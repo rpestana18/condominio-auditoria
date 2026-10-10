@@ -35,11 +35,11 @@ import br.com.condominioauditoria.api.service.assistant.FileAccessBarrier;
 import br.com.condominioauditoria.api.service.condominium.CondominiumService;
 import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.api.service.usage.UsageService;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.LocalPlanilha;
-import br.com.condominioauditoria.contratos.assistente.v1.Localizacao;
-import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.Trecho;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.SheetLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.ChunkLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchMode;
+import br.com.condominioauditoria.contracts.assistant.v2.IndexedChunk;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -57,7 +57,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Assistant API: roles with the real method security (USUARIO, GESTOR and ADMIN ask and search in their own
+ * Assistant API: roles with the real method security (USER, MANAGER and ADMIN ask and search in their own
  * condominium) and HTTP responses through the real error handler (403 feature, 409 with modoIa without calling the rag,
  * 200).
  */
@@ -93,8 +93,8 @@ class AssistantControllerTest {
         rag = new FakeRag();
         when(condominiums.existsById(A)).thenReturn(true);
         when(files.findByCondominiumIdAndIdIn(eq(A), anyCollection())).thenReturn(List.of(workbook));
-        when(aiConfiguration.read(A)).thenReturn(new Effective(AiMode.MCP_EXTERNO,
-                new Answers(null, AiMode.MCP_EXTERNO, null, null, null, null),
+        when(aiConfiguration.read(A)).thenReturn(new Effective(AiMode.EXTERNAL_MCP,
+                new Answers(null, AiMode.EXTERNAL_MCP, null, null, null, null),
                 new Embeddings(AiMode.LOCAL, "ollama-local", "bge-m3"), null, null));
         var access = new CondominiumAccess();
         var barrier = new FileAccessBarrier(files);
@@ -126,36 +126,36 @@ class AssistantControllerTest {
     @Test
     void allRolesSearchByWordInOwnCondominiumAndRecordUsage() {
         rag.onSearch = (p, r) -> {
-            r.onNext(BuscarResponse.newBuilder().setModoUsado(ModoBusca.MODO_BUSCA_PALAVRA)
-                    .addTrechos(Trecho.newBuilder().setTrechoId("t1").setArquivoId(workbook.getId().toString())
-                            .setNomeArquivo("po.xlsx").setCategoria("PO").setTexto("Portão 12.000,00")
+            r.onNext(SearchResponse.newBuilder().setModeUsed(SearchMode.SEARCH_MODE_KEYWORD)
+                    .addChunks(IndexedChunk.newBuilder().setChunkId("t1").setFileId(workbook.getId().toString())
+                            .setFileName("po.xlsx").setCategory("PO").setText("Portão 12.000,00")
                             .setSha256(workbook.getSha256())
-                            .setLocalizacao(Localizacao.newBuilder().setPlanilha(LocalPlanilha.newBuilder()
-                                    .setAba("Junho").setLinhaInicio(10).setLinhaFim(14))))
-                    .addTrechos(Trecho.newBuilder().setTrechoId("t2").setArquivoId(UUID.randomUUID().toString()))
+                            .setLocation(ChunkLocation.newBuilder().setSheet(SheetLocation.newBuilder()
+                                    .setTab("Junho").setStartRow(10).setEndRow(14))))
+                    .addChunks(IndexedChunk.newBuilder().setChunkId("t2").setFileId(UUID.randomUUID().toString()))
                     .build());
             r.onCompleted();
         };
-        for (String role : List.of("USUARIO", "GESTOR", "ADMIN")) {
+        for (String role : List.of("USER", "MANAGER", "ADMIN")) {
             AssistantQuestionServiceTest.logIn(role, A);
             var chunks = controller.search(A, new DocumentSearchRequest("  portão ", null, null));
             assertThat(chunks).singleElement().satisfies(t -> {
                 assertThat(t.category()).isEqualTo(FileCategory.PO);
-                assertThat(t.location().type()).isEqualTo("PLANILHA");
+                assertThat(t.location().type()).isEqualTo("SHEET");
                 assertThat(t.location().description()).isEqualTo("aba Junho, linhas 10 a 14");
             });
             verify(usage).recordDocumentSearch(A, "pessoa." + role.toLowerCase());
         }
         assertThat(rag.searches).allSatisfy(b -> {
-            assertThat(b.getModo()).isEqualTo(ModoBusca.MODO_BUSCA_PALAVRA);
-            assertThat(b.getTexto()).isEqualTo("portão");
-            assertThat(b.getLimite()).isEqualTo(10);
+            assertThat(b.getMode()).isEqualTo(SearchMode.SEARCH_MODE_KEYWORD);
+            assertThat(b.getText()).isEqualTo("portão");
+            assertThat(b.getLimit()).isEqualTo(10);
         });
     }
 
     @Test
     void withoutCondominiumAccessNeitherAsksNorSearches() {
-        AssistantQuestionServiceTest.logIn("GESTOR", A);
+        AssistantQuestionServiceTest.logIn("MANAGER", A);
         UUID other = UUID.randomUUID();
         assertThatThrownBy(() -> controller.ask(other, new QuestionRequest("x", null, null)))
                 .isInstanceOf(AccessDeniedException.class);
@@ -175,26 +175,26 @@ class AssistantControllerTest {
 
     @Test
     void limitOutsideOneToFiftyIs400() throws Exception {
-        AssistantQuestionServiceTest.logIn("USUARIO", A);
-        mvc.perform(post("/api/condominios/{id}/assistente/busca", A).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"texto\":\"portão\",\"limite\":51}"))
+        AssistantQuestionServiceTest.logIn("USER", A);
+        mvc.perform(post("/api/condominiums/{id}/assistant/search", A).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"portão\",\"limit\":51}"))
                 .andExpect(status().isBadRequest());
         assertThat(rag.searches).isEmpty();
     }
 
     @Test
     void featureOffIs403WithFeatureCode() throws Exception {
-        AssistantQuestionServiceTest.logIn("USUARIO", A);
+        AssistantQuestionServiceTest.logIn("USER", A);
         doThrow(new FeatureNotEnabledException(FeatureService.ASSISTANT, "Assistente")).when(features)
                 .require(A, FeatureService.ASSISTANT);
 
-        mvc.perform(post("/api/condominios/{id}/assistente/perguntas", A).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"pergunta\":\"o portão foi aprovado?\"}"))
+        mvc.perform(post("/api/condominiums/{id}/assistant/questions", A).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\":\"o portão foi aprovado?\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.detail").value("Módulo Assistente não contratado para este condomínio."))
-                .andExpect(jsonPath("$.modulo").value("ASSISTENTE"));
-        mvc.perform(post("/api/condominios/{id}/assistente/busca", A).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"texto\":\"portão\"}"))
+                .andExpect(jsonPath("$.feature").value("ASSISTANT"));
+        mvc.perform(post("/api/condominiums/{id}/assistant/search", A).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"portão\"}"))
                 .andExpect(status().isForbidden());
         assertThat(rag.questions).isEmpty();
         assertThat(rag.searches).isEmpty();
@@ -203,13 +203,13 @@ class AssistantControllerTest {
 
     @Test
     void externalMcpIs409WithAiModeWithoutCallingRag() throws Exception {
-        AssistantQuestionServiceTest.logIn("USUARIO", A);
+        AssistantQuestionServiceTest.logIn("USER", A);
 
-        mvc.perform(post("/api/condominios/{id}/assistente/perguntas", A).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"pergunta\":\"o portão foi aprovado?\"}"))
+        mvc.perform(post("/api/condominiums/{id}/assistant/questions", A).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\":\"o portão foi aprovado?\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("O assistente deste condomínio é o seu Claude, conectado ao MCP."))
-                .andExpect(jsonPath("$.modoIa").value("MCP_EXTERNO"));
+                .andExpect(jsonPath("$.aiMode").value("EXTERNAL_MCP"));
         assertThat(rag.questions).isEmpty();
         verify(usage, org.mockito.Mockito.never()).recordQuestion(any(), any(), any(), any(),
                 org.mockito.ArgumentMatchers.anyLong(),
@@ -218,15 +218,15 @@ class AssistantControllerTest {
 
     @Test
     void searchWorksWithAiOff() throws Exception {
-        when(aiConfiguration.read(A)).thenReturn(new Effective(AiMode.DESLIGADO,
-                new Answers(null, AiMode.DESLIGADO, null, null, null, null),
-                new Embeddings(AiMode.DESLIGADO, null, null), null, null));
-        AssistantQuestionServiceTest.logIn("USUARIO", A);
+        when(aiConfiguration.read(A)).thenReturn(new Effective(AiMode.OFF,
+                new Answers(null, AiMode.OFF, null, null, null, null),
+                new Embeddings(AiMode.OFF, null, null), null, null));
+        AssistantQuestionServiceTest.logIn("USER", A);
 
-        mvc.perform(post("/api/condominios/{id}/assistente/busca", A).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"texto\":\"portão\",\"filtros\":{\"categorias\":[\"PO\"]}}"))
+        mvc.perform(post("/api/condominiums/{id}/assistant/search", A).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"portão\",\"filters\":{\"categories\":[\"PO\"]}}"))
                 .andExpect(status().isOk());
         assertThat(rag.searches).singleElement()
-                .satisfies(b -> assertThat(b.getFiltros().getCategoriasList()).containsExactly("PO"));
+                .satisfies(b -> assertThat(b.getFilters().getCategoriesList()).containsExactly("PO"));
     }
 }

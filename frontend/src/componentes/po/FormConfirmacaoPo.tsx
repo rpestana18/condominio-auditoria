@@ -13,50 +13,50 @@ import { formatarData, formatarMoeda } from "../../formato";
  */
 export function FormConfirmacaoPo({ detalhe }: { detalhe: PrevisaoDetalhe }) {
   const { condominioId } = useSessao();
-  const confirmar = useConfirmarPrevisao(condominioId, detalhe.previsao.id);
-  const { data: atas = [] } = useArquivos(condominioId, "ATA");
+  const confirmar = useConfirmarPrevisao(condominioId, detalhe.budget.id);
+  const { data: atas = [] } = useArquivos(condominioId, "MINUTES");
   const { data: fundosDoCondominio = [] } = useFundos(condominioId);
 
-  const [inicio, setInicio] = useState(detalhe.previsao.exercicioInicio ?? "");
-  const [fim, setFim] = useState(detalhe.previsao.exercicioFim ?? "");
+  const [inicio, setInicio] = useState(detalhe.budget.fiscalYearStart ?? "");
+  const [fim, setFim] = useState(detalhe.budget.fiscalYearEnd ?? "");
   const [semAta, setSemAta] = useState(false);
   const [ataId, setAtaId] = useState("");
   const [dataAprovacao, setDataAprovacao] = useState("");
   const [codigos, setCodigos] = useState<Record<string, string>>(() =>
-    Object.fromEntries(detalhe.codigosRepetidos.flatMap((r) => r.linhas.map((l) => [l.linhaId, l.codigoEfetivo]))),
+    Object.fromEntries(detalhe.repeatedCodes.flatMap((r) => r.lines.map((l) => [l.lineId, l.effectiveCode]))),
   );
   const [fundos, setFundos] = useState<Record<string, string>>(() =>
-    Object.fromEntries(detalhe.fundos.map((f) => [f.linhaId, f.fundoId])),
+    Object.fromEntries(detalhe.funds.map((f) => [f.lineId, f.fundId])),
   );
   const [reaprovacao, setReaprovacao] = useState(false);
   const [ciente, setCiente] = useState(false);
   const [justificativa, setJustificativa] = useState("");
 
-  const comDivergencia = detalhe.previsao.estado === "LIDA_COM_DIVERGENCIA";
-  const linhasDeFundo = detalhe.linhas.filter((l) => l.linhaDeFundo && l.tipo === "LINHA");
+  const comDivergencia = detalhe.budget.status === "READ_WITH_DISCREPANCY";
+  const linhasDeFundo = detalhe.lines.filter((l) => l.fundLine && l.type === "LINE");
   // Fundos do fluxo pelo nome impresso. O fundo ordinário (fundo Condomínio) não pode ser ligado a 1.9.x.
-  const fundosDoFluxo = fundosDoCondominio.filter((f) => !f.ordinario);
+  const fundosDoFluxo = fundosDoCondominio.filter((f) => !f.operating);
 
   function enviar(evento: FormEvent) {
     evento.preventDefault();
     const pedido: PedidoConfirmacao = {
-      exercicioInicio: inicio,
-      exercicioFim: fim,
-      semAta,
-      ataArquivoId: semAta ? null : ataId || null,
-      dataAprovacao: semAta ? null : dataAprovacao || null,
-      codigosEfetivos: Object.entries(codigos).map(([linhaId, codigo]) => ({ linhaId, codigo })),
-      fundos: Object.entries(fundos)
+      fiscalYearStart: inicio,
+      fiscalYearEnd: fim,
+      withoutMinutes: semAta,
+      minutesFileId: semAta ? null : ataId || null,
+      approvalDate: semAta ? null : dataAprovacao || null,
+      effectiveCodes: Object.entries(codigos).map(([linhaId, codigo]) => ({ lineId: linhaId, code: codigo })),
+      funds: Object.entries(fundos)
         .filter(([, fundoId]) => fundoId)
-        .map(([linhaId, fundoId]) => ({ linhaId, fundoId })),
-      reaprovacao,
-      cienteDivergencia: ciente,
-      justificativa: ciente ? justificativa : null,
+        .map(([linhaId, fundoId]) => ({ lineId: linhaId, fundId: fundoId })),
+      reapproval: reaprovacao,
+      discrepancyAcknowledged: ciente,
+      justification: ciente ? justificativa : null,
     };
     confirmar.mutate(pedido);
   }
 
-  const motivos = confirmar.error instanceof ErroApi ? (confirmar.error.problema?.motivos ?? []) : [];
+  const motivos = confirmar.error instanceof ErroApi ? (confirmar.error.problema?.reasons ?? []) : [];
 
   return (
     <form className="bloco formulario" onSubmit={enviar}>
@@ -88,7 +88,7 @@ export function FormConfirmacaoPo({ detalhe }: { detalhe: PrevisaoDetalhe }) {
                 <option value="">Escolha a ata</option>
                 {atas.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.nome} · enviada em {formatarData(a.enviadoEm)}
+                    {a.name} · enviada em {formatarData(a.uploadedAt)}
                   </option>
                 ))}
               </select>
@@ -101,18 +101,18 @@ export function FormConfirmacaoPo({ detalhe }: { detalhe: PrevisaoDetalhe }) {
         )}
       </fieldset>
 
-      {detalhe.codigosRepetidos.length > 0 && (
+      {detalhe.repeatedCodes.length > 0 && (
         <fieldset>
           <legend>Códigos repetidos na PO</legend>
           <p className="discreto">Dê um código distinto a uma das linhas. Nenhuma linha é descartada nem somada à outra.</p>
-          {detalhe.codigosRepetidos.map((r) =>
-            r.linhas.map((l) => (
-              <label key={l.linhaId} className="campo">
-                {r.codigoImpresso} · {l.descricao}
+          {detalhe.repeatedCodes.map((r) =>
+            r.lines.map((l) => (
+              <label key={l.lineId} className="campo">
+                {r.printedCode} · {l.description}
                 <input
                   required
-                  value={codigos[l.linhaId] ?? ""}
-                  onChange={(e) => setCodigos((atual) => ({ ...atual, [l.linhaId]: e.target.value }))}
+                  value={codigos[l.lineId] ?? ""}
+                  onChange={(e) => setCodigos((atual) => ({ ...atual, [l.lineId]: e.target.value }))}
                 />
               </label>
             )),
@@ -128,7 +128,7 @@ export function FormConfirmacaoPo({ detalhe }: { detalhe: PrevisaoDetalhe }) {
           </p>
           {linhasDeFundo.map((l) => (
             <label key={l.id} className="campo">
-              {l.codigoEfetivo} {l.descricao} · {formatarMoeda(l.orcado)}/mês
+              {l.effectiveCode} {l.description} · {formatarMoeda(l.budgeted)}/mês
               <select
                 value={fundos[l.id] ?? ""}
                 onChange={(e) => setFundos((atual) => ({ ...atual, [l.id]: e.target.value }))}
@@ -136,7 +136,7 @@ export function FormConfirmacaoPo({ detalhe }: { detalhe: PrevisaoDetalhe }) {
                 <option value="">Sem fundo ligado</option>
                 {fundosDoFluxo.map((f) => (
                   <option key={f.id} value={f.id}>
-                    {f.nome}
+                    {f.name}
                   </option>
                 ))}
               </select>

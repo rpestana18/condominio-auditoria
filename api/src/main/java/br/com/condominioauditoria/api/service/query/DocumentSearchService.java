@@ -9,21 +9,21 @@ import br.com.condominioauditoria.api.security.CondominiumAccess;
 import br.com.condominioauditoria.api.service.ai.AiConfigurationService;
 import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.api.service.usage.UsageService;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.Localizacao;
-import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.Trecho;
-import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosResponse;
-import br.com.condominioauditoria.contratos.consulta.v1.FiltrosDocumentos;
-import br.com.condominioauditoria.contratos.consulta.v1.LocalPagina;
-import br.com.condominioauditoria.contratos.consulta.v1.LocalParagrafos;
-import br.com.condominioauditoria.contratos.consulta.v1.LocalPlanilha;
-import br.com.condominioauditoria.contratos.consulta.v1.LocalizacaoTrecho;
-import br.com.condominioauditoria.contratos.consulta.v1.ModoBuscaDocumentos;
-import br.com.condominioauditoria.contratos.consulta.v1.TrechoDocumento;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchFilters;
+import br.com.condominioauditoria.contracts.assistant.v2.ChunkLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchMode;
+import br.com.condominioauditoria.contracts.assistant.v2.IndexedChunk;
+import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsRequest;
+import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsResponse;
+import br.com.condominioauditoria.contracts.query.v2.DocumentFilters;
+import br.com.condominioauditoria.contracts.query.v2.PageLocation;
+import br.com.condominioauditoria.contracts.query.v2.ParagraphsLocation;
+import br.com.condominioauditoria.contracts.query.v2.SheetLocation;
+import br.com.condominioauditoria.contracts.query.v2.DocumentChunkLocation;
+import br.com.condominioauditoria.contracts.query.v2.DocumentSearchMode;
+import br.com.condominioauditoria.contracts.query.v2.DocumentChunk;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import java.time.LocalDate;
@@ -40,17 +40,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * rpc BuscarDocumentos (contracts/grpc/consulta/v1, ADR 0003, Decision 5.3): validates the request, forwards it to the
- * rag (Assistente.Buscar) with the user's token and, on the way back, drops chunks of files that do not exist in the
+ * rpc SearchDocuments (contracts/grpc/query/v2, ADR 0003, Decision 5.3): validates the request, forwards it to the
+ * rag (Assistant.Search) with the user's token and, on the way back, drops chunks of files that do not exist in the
  * api for the requested condominium (second barrier, besides the condominium filter the rag already applies).
  *
  * Belongs to the Assistant feature (RF-10.3): with it disabled in the condominium, rejects with FAILED_PRECONDITION
  * "Módulo Assistente não contratado para este condomínio." without calling the rag. Each answered search creates a
- * "chamada_mcp" usage record (RF-09.7; this rpc's caller is the mcp).
+ * "mcp_call" usage record (RF-09.7; this rpc's caller is the mcp).
  *
- * Search mode by the condominium's AI configuration (delivery 3, Q16): embeddings DESLIGADO = PALAVRA; LOCAL = HIBRIDA
+ * Search mode by the condominium's AI configuration (delivery 3, Q16): embeddings OFF = PALAVRA; LOCAL = HIBRIDA
  * with the configured model (the rag falls back to PALAVRA if embeddings are down). Works in any answers mode,
- * including DESLIGADO.
+ * including OFF.
  */
 @Component
 public class DocumentSearchService {
@@ -80,81 +80,81 @@ public class DocumentSearchService {
     /**
      * Called inside the rpc, with the token's user already in the security context and the condominium access checked.
      */
-    public BuscarDocumentosResponse search(UUID condominiumId, BuscarDocumentosRequest request) {
+    public SearchDocumentsResponse search(UUID condominiumId, SearchDocumentsRequest request) {
         features.require(condominiumId, FeatureService.ASSISTANT);
         var embeddings = aiConfiguration.read(condominiumId).embeddings();
-        BuscarRequest ragRequest = toRagRequest(condominiumId, request).toBuilder()
-                .setModo(embeddings.mode() == AiMode.DESLIGADO ? ModoBusca.MODO_BUSCA_PALAVRA
-                        : ModoBusca.MODO_BUSCA_HIBRIDA)
-                .setModeloEmbeddings(embeddings.mode() == AiMode.LOCAL && embeddings.model() != null
+        SearchRequest ragRequest = toRagRequest(condominiumId, request).toBuilder()
+                .setMode(embeddings.mode() == AiMode.OFF ? SearchMode.SEARCH_MODE_KEYWORD
+                        : SearchMode.SEARCH_MODE_HYBRID)
+                .setEmbeddingModel(embeddings.mode() == AiMode.LOCAL && embeddings.model() != null
                         ? embeddings.model() : "")
                 .build();
         String authorization = access.bearerToken()
                 .orElseThrow(() -> Status.UNAUTHENTICATED.withDescription("Token ausente").asRuntimeException());
-        BuscarResponse response;
+        SearchResponse response;
         try {
             response = rag.search(ragRequest, authorization);
         } catch (StatusRuntimeException error) {
             throw translateRagError(error);
         }
-        usage.recordMcpCall(condominiumId, access.username(), response.getModoUsado() == ModoBusca.MODO_BUSCA_HIBRIDA);
-        return BuscarDocumentosResponse.newBuilder()
-                .addAllTrechos(allowed(condominiumId, response.getTrechosList()).stream()
+        usage.recordMcpCall(condominiumId, access.username(), response.getModeUsed() == SearchMode.SEARCH_MODE_HYBRID);
+        return SearchDocumentsResponse.newBuilder()
+                .addAllChunks(allowed(condominiumId, response.getChunksList()).stream()
                         .map(DocumentSearchService::convert).toList())
-                .setModoUsado(switch (response.getModoUsado()) {
-                    case MODO_BUSCA_PALAVRA -> ModoBuscaDocumentos.MODO_BUSCA_DOCUMENTOS_PALAVRA;
-                    case MODO_BUSCA_HIBRIDA -> ModoBuscaDocumentos.MODO_BUSCA_DOCUMENTOS_HIBRIDA;
-                    default -> ModoBuscaDocumentos.MODO_BUSCA_DOCUMENTOS_NAO_INFORMADO;
+                .setModeUsed(switch (response.getModeUsed()) {
+                    case SEARCH_MODE_KEYWORD -> DocumentSearchMode.DOCUMENT_SEARCH_MODE_KEYWORD;
+                    case SEARCH_MODE_HYBRID -> DocumentSearchMode.DOCUMENT_SEARCH_MODE_HYBRID;
+                    default -> DocumentSearchMode.DOCUMENT_SEARCH_MODE_UNSPECIFIED;
                 })
                 .build();
     }
 
     /** Contract validations: text required, non-negative limit (0 = 10, above 50 = 50), ISO dates. */
-    static BuscarRequest toRagRequest(UUID condominiumId, BuscarDocumentosRequest request) {
-        String text = request.getTexto().strip();
+    static SearchRequest toRagRequest(UUID condominiumId, SearchDocumentsRequest request) {
+        String text = request.getText().strip();
         if (text.isEmpty()) {
             throw new IllegalArgumentException("Informe o texto da busca");
         }
-        if (request.getLimite() < 0) {
-            throw new IllegalArgumentException("Limite não pode ser negativo: " + request.getLimite());
+        if (request.getLimit() < 0) {
+            throw new IllegalArgumentException("Limite não pode ser negativo: " + request.getLimit());
         }
-        int limit = request.getLimite() == 0 ? DEFAULT_LIMIT : Math.min(request.getLimite(), MAX_LIMIT);
-        var builder = BuscarRequest.newBuilder()
-                .setCondominioId(condominiumId.toString())
-                .setTexto(text)
-                .setModo(ModoBusca.MODO_BUSCA_HIBRIDA)
-                .setLimite(limit);
-        if (request.hasFiltros()) {
-            builder.setFiltros(filters(request.getFiltros()));
+        int limit = request.getLimit() == 0 ? DEFAULT_LIMIT : Math.min(request.getLimit(), MAX_LIMIT);
+        var builder = SearchRequest.newBuilder()
+                .setCondominiumId(condominiumId.toString())
+                .setText(text)
+                .setMode(SearchMode.SEARCH_MODE_HYBRID)
+                .setLimit(limit);
+        if (request.hasFilters()) {
+            builder.setFilters(filters(request.getFilters()));
         }
         return builder.build();
     }
 
-    private static FiltrosBusca filters(FiltrosDocumentos f) {
-        String start = date(f.getDataInicio());
-        String end = date(f.getDataFim());
+    private static SearchFilters filters(DocumentFilters f) {
+        String start = date(f.getDateFrom());
+        String end = date(f.getDateTo());
         if (!start.isEmpty() && !end.isEmpty() && start.compareTo(end) > 0) {
             throw new IllegalArgumentException("Data inicial depois da final: " + start + " a " + end);
         }
-        return FiltrosBusca.newBuilder()
-                .addAllCategorias(f.getCategoriasList().stream().map(DocumentSearchService::category).distinct().toList())
-                .setDataInicio(start)
-                .setDataFim(end)
-                .addAllArquivoIds(f.getArquivoIdsList().stream().map(DocumentSearchService::fileId).distinct().toList())
+        return SearchFilters.newBuilder()
+                .addAllCategories(f.getCategoriesList().stream().map(DocumentSearchService::category).distinct().toList())
+                .setDateFrom(start)
+                .setDateTo(end)
+                .addAllFileIds(f.getFileIdsList().stream().map(DocumentSearchService::fileId).distinct().toList())
                 .build();
     }
 
     /** Second barrier: only chunks of files that exist in the api and belong to the requested condominium remain. */
-    private List<Trecho> allowed(UUID condominiumId, List<Trecho> chunks) {
+    private List<IndexedChunk> allowed(UUID condominiumId, List<IndexedChunk> chunks) {
         Set<UUID> cited = new HashSet<>();
-        for (Trecho t : chunks) {
-            optionalUuid(t.getArquivoId()).ifPresent(cited::add);
+        for (IndexedChunk t : chunks) {
+            optionalUuid(t.getFileId()).ifPresent(cited::add);
         }
         Set<String> ofCondominium = cited.isEmpty() ? Set.of()
                 : files.findByCondominiumIdAndIdIn(condominiumId, cited).stream()
                         .map(SourceFile::getId).map(UUID::toString).collect(Collectors.toSet());
-        List<Trecho> list = chunks.stream()
-                .filter(t -> optionalUuid(t.getArquivoId()).map(UUID::toString).filter(ofCondominium::contains).isPresent())
+        List<IndexedChunk> list = chunks.stream()
+                .filter(t -> optionalUuid(t.getFileId()).map(UUID::toString).filter(ofCondominium::contains).isPresent())
                 .toList();
         if (list.size() < chunks.size()) {
             log.warn("Busca nos documentos: {} trecho(s) do rag descartado(s) por arquivo fora do condomínio {}",
@@ -163,32 +163,32 @@ public class DocumentSearchService {
         return list;
     }
 
-    static TrechoDocumento convert(Trecho t) {
-        return TrechoDocumento.newBuilder()
-                .setTrechoId(t.getTrechoId())
-                .setArquivoId(t.getArquivoId())
-                .setNomeArquivo(t.getNomeArquivo())
-                .setCategoria(t.getCategoria())
-                .setLocalizacao(location(t.getLocalizacao()))
-                .setTexto(t.getTexto())
-                .setPontuacao(t.getPontuacao())
+    static DocumentChunk convert(IndexedChunk t) {
+        return DocumentChunk.newBuilder()
+                .setChunkId(t.getChunkId())
+                .setFileId(t.getFileId())
+                .setFileName(t.getFileName())
+                .setCategory(t.getCategory())
+                .setLocation(location(t.getLocation()))
+                .setText(t.getText())
+                .setScore(t.getScore())
                 .setSha256(t.getSha256())
                 .build();
     }
 
-    private static LocalizacaoTrecho location(Localizacao l) {
-        var builder = LocalizacaoTrecho.newBuilder();
-        switch (l.getTipoCase()) {
-            case PAGINA -> builder.setPagina(LocalPagina.newBuilder().setPagina(l.getPagina().getPagina()));
-            case PLANILHA -> builder.setPlanilha(LocalPlanilha.newBuilder()
-                    .setAba(l.getPlanilha().getAba())
-                    .setLinhaInicio(l.getPlanilha().getLinhaInicio())
-                    .setLinhaFim(l.getPlanilha().getLinhaFim()));
-            case PARAGRAFOS -> builder.setParagrafos(LocalParagrafos.newBuilder()
-                    .setParagrafoInicio(l.getParagrafos().getParagrafoInicio())
-                    .setParagrafoFim(l.getParagrafos().getParagrafoFim())
-                    .setSecao(l.getParagrafos().getSecao()));
-            case TIPO_NOT_SET -> {
+    private static DocumentChunkLocation location(ChunkLocation l) {
+        var builder = DocumentChunkLocation.newBuilder();
+        switch (l.getKindCase()) {
+            case PAGE -> builder.setPage(PageLocation.newBuilder().setPage(l.getPage().getPage()));
+            case SHEET -> builder.setSheet(SheetLocation.newBuilder()
+                    .setTab(l.getSheet().getTab())
+                    .setStartRow(l.getSheet().getStartRow())
+                    .setEndRow(l.getSheet().getEndRow()));
+            case PARAGRAPHS -> builder.setParagraphs(ParagraphsLocation.newBuilder()
+                    .setParagraphStart(l.getParagraphs().getParagraphStart())
+                    .setParagraphEnd(l.getParagraphs().getParagraphEnd())
+                    .setSection(l.getParagraphs().getSection()));
+            case KIND_NOT_SET -> {
             }
         }
         return builder.build();

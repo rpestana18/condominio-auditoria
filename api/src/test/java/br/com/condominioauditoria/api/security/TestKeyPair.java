@@ -13,7 +13,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 /**
  * RSA pair generated in the test (as the rag generates the development one) and the rag's side of the envelope, written
- * here independently, byte by byte as in contracts/grpc/assistente/v1 (ConfiguracaoPergunta.chave_cifrada).
+ * here independently, byte by byte as in contracts/grpc/assistant/v2 (AskConfiguration.encrypted_key).
  */
 public final class TestKeyPair {
 

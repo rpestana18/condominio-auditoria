@@ -78,7 +78,7 @@ public class ProcessingResultService {
         if (locked.isPresent()) {
             // ADR 0004, Decision 3: numbers of a confirmed budget may already have been exported; nothing from this
             // read goes in
-            file.complete(FileStatus.CONCLUIDO, "A PO deste arquivo já foi confirmada e não foi alterada. "
+            file.complete(FileStatus.COMPLETED, "A PO deste arquivo já foi confirmada e não foi alterada. "
                     + "Para mudar a PO, envie o arquivo corrigido e confirme como nova versão.",
                     locked.get().getParser(), null, null, null);
             return;
@@ -100,16 +100,16 @@ public class ProcessingResultService {
         }
 
         CashFlow cashFlow = result.cashFlow();
-        if (cashFlow != null && file.getCategory() != FileCategory.BALANCETE) {
+        if (cashFlow != null && file.getCategory() != FileCategory.TRIAL_BALANCE) {
             // RF-01.7: only the trial balance and cash flow category creates entries, balances and totals checks.
-            file.complete(FileStatus.CONCLUIDO,
+            file.complete(FileStatus.COMPLETED,
                     "Arquivo guardado. Ele parece um fluxo de caixa: para gerar os lançamentos, mude a categoria para \""
-                            + FileCategory.BALANCETE.label() + "\".",
+                            + FileCategory.TRIAL_BALANCE.label() + "\".",
                     null, null, null, null);
             return;
         }
         if (cashFlow == null) {
-            file.complete(FileStatus.CONCLUIDO,
+            file.complete(FileStatus.COMPLETED,
                     "Arquivo guardado. A leitura dos dados deste tipo de documento ainda vai ser construída.",
                     null, null, null, null);
             return;
@@ -117,7 +117,7 @@ public class ProcessingResultService {
         List<TotalsCheckData> checks = result.totalsChecks() == null ? List.of() : result.totalsChecks();
         saveCashFlow(file, cashFlow, checks);
         long failures = checks.stream().filter(v -> !v.ok()).count();
-        file.complete(failures == 0 ? FileStatus.CONCLUIDO : FileStatus.PRECISA_REVISAO,
+        file.complete(failures == 0 ? FileStatus.COMPLETED : FileStatus.NEEDS_REVIEW,
                 failures == 0 ? "Todas as conferências passaram" : failures + " conferência(s) não bateram",
                 result.parser(), cashFlow.periodStart(), cashFlow.periodEnd(), cashFlow.entryCount());
         log.info("Arquivo {} gravado: {} lançamentos", file.getOriginalName(), cashFlow.entryCount());
@@ -126,7 +126,7 @@ public class ProcessingResultService {
     private void saveBudget(SourceFile file, ProcessingResultMessage result, BudgetData budgetData) {
         if (file.getCategory() != FileCategory.PO) {
             // Same RF-01.7 rule as for the cash flow: only the PO category saves the budget
-            file.complete(FileStatus.CONCLUIDO,
+            file.complete(FileStatus.COMPLETED,
                     "Arquivo guardado. Ele parece uma previsão orçamentária: para gravar a PO, mude a categoria para \""
                             + FileCategory.PO.label() + "\".",
                     null, null, null, null);
@@ -137,8 +137,8 @@ public class ProcessingResultService {
             totalsChecks.save(new TotalsCheck(file.getId(), i + 1, checks.get(i)));
         }
         Budget budget = budgets.save(file, result.parser(), budgetData, checks);
-        boolean divergent = budget.getStatus() == BudgetStatus.LIDA_COM_DIVERGENCIA;
-        file.complete(divergent ? FileStatus.PRECISA_REVISAO : FileStatus.CONCLUIDO,
+        boolean divergent = budget.getStatus() == BudgetStatus.READ_WITH_DISCREPANCY;
+        file.complete(divergent ? FileStatus.NEEDS_REVIEW : FileStatus.COMPLETED,
                 divergent
                         ? "PO lida com divergência: confira as somas antes de confirmar"
                         : "PO lida: aguarda a confirmação do Admin",

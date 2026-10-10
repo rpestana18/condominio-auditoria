@@ -14,13 +14,13 @@ import static org.mockito.Mockito.when;
 
 import br.com.condominioauditoria.rag.client.DocumentReaderClient;
 import br.com.condominioauditoria.rag.config.QueueConfig;
-import br.com.condominioauditoria.rag.indice.DocumentoCortado;
-import br.com.condominioauditoria.rag.indice.EmbeddingsIndisponiveisException;
-import br.com.condominioauditoria.rag.indice.GeradorEmbeddings;
-import br.com.condominioauditoria.rag.indice.RepositorioIndice;
-import br.com.condominioauditoria.rag.indice.RepositorioIndice.DocumentoIndexado;
+import br.com.condominioauditoria.rag.exception.EmbeddingsUnavailableException;
 import br.com.condominioauditoria.rag.messaging.MessageContract;
 import br.com.condominioauditoria.rag.model.document.ReadDocument;
+import br.com.condominioauditoria.rag.repository.IndexRepository;
+import br.com.condominioauditoria.rag.repository.IndexRepository.IndexedDocument;
+import br.com.condominioauditoria.rag.search.ChunkedDocument;
+import br.com.condominioauditoria.rag.search.EmbeddingGenerator;
 import br.com.condominioauditoria.storage.Storage;
 import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
@@ -47,15 +47,15 @@ public class FileIndexingServiceTest {
     private final RabbitTemplate rabbit = mock(RabbitTemplate.class);
     private final Storage storage = mock(Storage.class);
     private final DocumentReaderClient reader = mock(DocumentReaderClient.class);
-    private final GeradorEmbeddings embeddings = mock(GeradorEmbeddings.class);
-    private final RepositorioIndice repository = mock(RepositorioIndice.class);
+    private final EmbeddingGenerator embeddings = mock(EmbeddingGenerator.class);
+    private final IndexRepository repository = mock(IndexRepository.class);
     private final FileIndexingService service = new FileIndexingService(contract, rabbit, storage, reader,
             embeddings, repository);
 
     @BeforeEach
     public void setUp() throws Exception {
-        when(embeddings.modelo()).thenReturn("bge-m3");
-        when(embeddings.aceita(any())).thenReturn(true);
+        when(embeddings.model()).thenReturn("bge-m3");
+        when(embeddings.accepts(any())).thenReturn(true);
         when(storage.open(anyString())).thenAnswer(i -> new ByteArrayInputStream(new byte[] {1}));
         when(reader.read(anyString(), any())).thenReturn(new ReadDocument("1", "t",
                 new ReadDocument.FileInfo("ata.pdf", SHA, 1), "docx", List.of(), List.of(),
@@ -64,16 +64,16 @@ public class FileIndexingServiceTest {
 
     @Test
     public void ollamaDownStoresChunksWithoutVectorAndWarns() throws Exception {
-        when(repository.buscar(FILE)).thenReturn(Optional.empty());
-        when(embeddings.gerar(anyList())).thenThrow(new EmbeddingsIndisponiveisException("Ollama fora do ar", null));
+        when(repository.find(FILE)).thenReturn(Optional.empty());
+        when(embeddings.generate(anyList())).thenThrow(new EmbeddingsUnavailableException("Ollama fora do ar", null));
 
         service.onReceive(request());
 
-        ArgumentCaptor<DocumentoCortado> cut = ArgumentCaptor.forClass(DocumentoCortado.class);
-        verify(repository).substituir(any(), cut.capture(), isNull(), isNull(), eq(
+        ArgumentCaptor<ChunkedDocument> cut = ArgumentCaptor.forClass(ChunkedDocument.class);
+        verify(repository).replace(any(), cut.capture(), isNull(), isNull(), eq(
                 "Indexado só para a busca por palavra, sem busca por significado: Ollama fora do ar"));
-        assertThat(cut.getValue().trechos()).hasSize(1);
-        verify(repository, never()).marcarErro(any(), any(), any());
+        assertThat(cut.getValue().chunks()).hasSize(1);
+        verify(repository, never()).markError(any(), any(), any());
         List<JsonNode> published = published(2);
         assertThat(published.get(0).get("situacao").asString()).isEqualTo("INDEXANDO");
         assertThat(published.get(1).get("situacao").asString()).isEqualTo("INDEXADO");
@@ -84,26 +84,26 @@ public class FileIndexingServiceTest {
 
     @Test
     public void indexedWithoutVectorIsReindexedWithBgeM3() throws Exception {
-        when(repository.buscar(FILE)).thenReturn(Optional.of(new DocumentoIndexado(FILE, SHA, "indexado",
+        when(repository.find(FILE)).thenReturn(Optional.of(new IndexedDocument(FILE, SHA, "indexado",
                 "Indexado só para a busca por palavra", 1, 1, null, "1", false)));
-        when(embeddings.gerar(anyList())).thenReturn(List.of(new float[1024]));
+        when(embeddings.generate(anyList())).thenReturn(List.of(new float[1024]));
 
         service.onReceive(request());
 
-        verify(repository, never()).confirmarSemReindexar(any());
-        verify(repository).substituir(any(), any(), anyList(), eq("bge-m3"), isNull());
+        verify(repository, never()).confirmUnchanged(any());
+        verify(repository).replace(any(), any(), anyList(), eq("bge-m3"), isNull());
         assertThat(published(2).get(1).get("modeloEmbeddings").asString()).isEqualTo("bge-m3");
     }
 
     @Test
     public void indexedWithBgeM3IsSkipped() throws Exception {
-        when(repository.buscar(FILE)).thenReturn(Optional.of(new DocumentoIndexado(FILE, SHA, "indexado",
+        when(repository.find(FILE)).thenReturn(Optional.of(new IndexedDocument(FILE, SHA, "indexado",
                 null, 1, 1, "bge-m3", "1", false)));
 
         service.onReceive(request());
 
-        verify(repository).confirmarSemReindexar(any());
-        verify(repository, never()).substituir(any(), any(), any(), any(), any());
+        verify(repository).confirmUnchanged(any());
+        verify(repository, never()).replace(any(), any(), any(), any(), any());
         assertThat(published(1).getFirst().get("situacao").asString()).isEqualTo("INDEXADO");
     }
 

@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.rag.config;
 
+import br.com.condominioauditoria.rag.config.properties.RagProperties;
 import br.com.condominioauditoria.rag.parser.ReaderContract;
 import br.com.condominioauditoria.rag.parser.budget.ProtestBudgetParser;
 import br.com.condominioauditoria.rag.parser.cashflow.CashFlowParser;
@@ -14,26 +15,26 @@ import org.springframework.context.annotation.Configuration;
 public class RagConfig {
 
     @Bean
-    public Storage armazenamento(PropriedadesRag propriedades) throws IOException {
-        var config = propriedades.armazenamento();
-        return switch (config.tipo()) {
-            case "local" -> new LocalStorage(Path.of(config.pasta()));
-            default -> throw new IllegalStateException("Tipo de armazenamento não suportado: " + config.tipo());
+    public Storage storage(RagProperties properties) throws IOException {
+        var config = properties.storage();
+        return switch (config.type()) {
+            case "local" -> new LocalStorage(Path.of(config.folder()));
+            default -> throw new IllegalStateException("Tipo de armazenamento não suportado: " + config.type());
         };
     }
 
     @Bean
-    public ReaderContract contratoLeitor() {
+    public ReaderContract readerContract() {
         return new ReaderContract();
     }
 
     @Bean
-    public CashFlowParser interpretadorFluxoCaixa() {
+    public CashFlowParser cashFlowParser() {
         return new CashFlowParser();
     }
 
     @Bean
-    public ProtestBudgetParser interpretadorPoProtest() {
+    public ProtestBudgetParser protestBudgetParser() {
         return new ProtestBudgetParser();
     }
 }

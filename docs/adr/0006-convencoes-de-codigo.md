@@ -170,6 +170,25 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | processamento, indexação (do arquivo, no rag) | `FileProcessingService`, `FileIndexingService` | |
 | ordem (de leitura) | `sequence` | |
 | ignorada (no lote), recusada (na planilha) | `skipped`, `rejected` | |
+| trecho cortado, documento cortado, cortador de trechos | `Chunk`, `ChunkedDocument`, `TextChunker` | |
+| trecho encontrado, localização (página, planilha, parágrafos) | `FoundChunk`, `Location` (`Page`, `Sheet`, `Paragraphs`) | |
+| busca nos documentos, por palavra, híbrida | `DocumentSearch`, `KEYWORD`, `HYBRID` | o contrato gRPC mantém `MODO_BUSCA_PALAVRA` e `MODO_BUSCA_HIBRIDA` |
+| restrições da busca, frase, termo negado | `SearchRestrictions`, `phrase`, `negated` | |
+| fusão de posições, posição, pontuação | `RankFusion`, `rank`, `score` | |
+| gerador de embeddings | `EmbeddingGenerator` | |
+| repositório do índice, documento indexado, achado | `IndexRepository`, `IndexedDocument`, `Hit` | |
+| gateway da IA, conversa, contrato do modelo | `AiGateway`, `Conversation`, `ModelContract` | |
+| ferramenta (definição, chamada, resultado), turno, parada | `ToolDefinition`, `ToolCall`, `ToolResult`, `Turn`, `Stop` | `Stop` e não `StopReason`, que é do SDK da Anthropic |
+| erro do provedor (chave recusada, limite, indisponível) | `ProviderErrorException` (`KEY_REJECTED`, `RATE_LIMITED`, `UNAVAILABLE`) | |
+| pedido de pergunta, resultado da pergunta, troca | `QuestionRequest`, `QuestionResult`, `Exchange` | no rag; `Question` e `ConversationTurn` ficam no api |
+| dado consultado, ferramentas numéricas, cliente de consulta | `QueriedData`, `NumericTools`, `QueryClient` | |
+| serviço de perguntas, etapa, andamento, redação | `QuestionService`, `Stage`, `ProgressListener`, `Draft` | |
+| esquema da resposta, validador da resposta, instruções do assistente | `ResponseSchema`, `ResponseValidator`, `AssistantInstructions` | |
+| termos de conduta, marca de não conferido | `conductTerms`, `UNVERIFIED_MARK` | |
+| nos documentos, nos dados gravados | `inDocuments`, `inStoredData` | |
+| catálogo de provedores (no rag) | `ProviderCatalog`, `AiProperties` | no rag a função de IA já é `ANSWERS`/`EMBEDDINGS`: só vem do `application.yml` |
+| chaves do rag, envelope da chave | `RagKeys`, `KeyEnvelope` | |
+| reais (formatação do bloco de dados gravados) | `ReaisFormatter` | |
 
 ---
 
@@ -282,6 +301,7 @@ rag/src/main/java/br/com/condominioauditoria/rag/
 ├── repository/      # índice no pgvector (hoje rag.indice.RepositorioIndice)
 ├── search/          # corte em trechos, embeddings, busca híbrida (hoje rag.indice), dono: agente rag
 ├── client/          # leitor HTTP, consulta ao backend por gRPC, gateway da IA
+├── security/        # par de chaves do rag e envelope da chave de API do condomínio
 ├── exception/
 └── util/
 ```

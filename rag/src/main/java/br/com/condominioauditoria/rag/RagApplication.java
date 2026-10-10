@@ -5,9 +5,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
- * Serviço rag: recebe da fila os arquivos guardados pelo backend, lê (leitor Python), interpreta, confere e devolve
- * os dados extraídos pela fila. Não grava dados contábeis (isso é do backend); o banco dele (schema rag) guarda só o
- * índice dos documentos para a busca do assistente (ADR 0003), servida por gRPC ao backend.
+ * rag service: receives from the queue the files stored by the api, reads them (Python reader), parses, checks and
+ * returns the extracted data through the queue. It does not store accounting data (that belongs to the api); its
+ * database (schema rag) holds only the document index for the assistant search (ADR 0003), served over gRPC to the
+ * api.
  */
 @SpringBootApplication
 @ConfigurationPropertiesScan

@@ -47,79 +47,79 @@ server:
 
 rag:
   grpc:
-    porta: ${GRPC_PORTA:9091}
-  indexacao:
+    port: ${GRPC_PORTA:9091}
+  indexing:
     # Arquivos indexados ao mesmo tempo; fila própria, não disputa com a leitura contábil
-    paralelismo: ${RAG_PARALELISMO_INDEXACAO:1}
+    parallelism: ${RAG_PARALELISMO_INDEXACAO:1}
   embeddings:
     # Prazo de cada chamada ao Ollama; fora do ar = erro legível em segundos, sem travar a fila
-    timeout-conexao-segundos: ${OLLAMA_TIMEOUT_CONEXAO:5}
-    timeout-segundos: ${OLLAMA_TIMEOUT:300}
+    connect-timeout-seconds: ${OLLAMA_TIMEOUT_CONEXAO:5}
+    timeout-seconds: ${OLLAMA_TIMEOUT:300}
     # Trechos por chamada ao Ollama
-    lote: 16
-  armazenamento:
-    tipo: local
-    pasta: ${PASTA_DADOS:./dados}
-  leitor:
+    batch-size: 16
+  storage:
+    type: local
+    folder: ${PASTA_DADOS:./dados}
+  reader:
     url: ${LEITOR_URL:http://localhost:8090}
-    timeout-segundos: 300
-  assistente:
+    timeout-seconds: 300
+  assistant:
     # Par de chaves do rag (ADR 0003, Sub-decisão 4.1 A). Sem arquivo e sem permissão de gerar, o chat fica
     # indisponível: ListarProvedores vem sem chave pública e Perguntar recusa com FAILED_PRECONDITION.
-    chave-privada-arquivo: ${RAG_CHAVE_PRIVADA_ARQUIVO:}
-    gerar-chave-dev: ${RAG_GERAR_CHAVE_DEV:false}
+    private-key-file: ${RAG_CHAVE_PRIVADA_ARQUIVO:}
+    generate-dev-key: ${RAG_GERAR_CHAVE_DEV:false}
     # Provedor das respostas; um cliente novo por pergunta, com a chave do condomínio
     anthropic-url: ${RAG_ANTHROPIC_URL:https://api.anthropic.com}
-    prazo-provedor-segundos: ${RAG_PRAZO_PROVEDOR:90}
-    tentativas-provedor: ${RAG_TENTATIVAS_PROVEDOR:2}
+    provider-timeout-seconds: ${RAG_PRAZO_PROVEDOR:90}
+    provider-attempts: ${RAG_TENTATIVAS_PROVEDOR:2}
     # Sem streaming nesta versão (o fluxo manda andamento, não texto parcial)
     max-tokens: ${RAG_MAX_TOKENS:16000}
     # output_config.effort: low, medium, high, xhigh, max. Vazio = não enviar (o Haiku 4.5 não aceita effort)
-    esforco: ${RAG_ESFORCO:medium}
-    voltas-ferramentas: ${RAG_VOLTAS_FERRAMENTAS:6}
-    historico-maximo: 10
+    effort: ${RAG_ESFORCO:medium}
+    tool-rounds: ${RAG_VOLTAS_FERRAMENTAS:6}
+    max-history: 10
     # Ferramentas numéricas: gRPC Consulta do backend, com o mesmo token do usuário
-    backend-grpc: ${BACKEND_GRPC:api:9090}
-    prazo-ferramenta-segundos: ${RAG_PRAZO_FERRAMENTA:20}
+    api-grpc: ${BACKEND_GRPC:api:9090}
+    tool-timeout-seconds: ${RAG_PRAZO_FERRAMENTA:20}
     # RF-04.15 / ADR 0003 Q11: só entre aspas de citação literal
-    termos-conduta: ${RAG_TERMOS_CONDUTA:desvio,desviou,fraude,fraudou,roubo,roubou,culpa,culpado}
+    conduct-terms: ${RAG_TERMOS_CONDUTA:desvio,desviou,fraude,fraudou,roubo,roubou,culpa,culpado}
 
 # Catálogo de provedores e modelos de IA (RF-09.6, ADR 0003, Decisão 1). Só configuração: acrescentar provedor de um
 # tipo já implementado não é código. Preços em dólar por milhão de tokens, texto decimal com ponto.
 condominio:
-  ia:
-    provedores:
-      - codigo: anthropic
-        nome: "Anthropic (Claude)"
-        tipo: anthropic
-        uso: RESPOSTAS
+  ai:
+    providers:
+      - code: anthropic
+        name: "Anthropic (Claude)"
+        type: anthropic
+        function: ANSWERS
         local: false
-        precisa-chave: true
-        dimensao: 0
-        modelos:
+        requires-key: true
+        dimension: 0
+        models:
           - id: claude-sonnet-5-5
-            nome: "Claude Sonnet 5.5"
-            padrao: true
-            preco-entrada-milhao-usd: "2.00"
-            preco-saida-milhao-usd: "10.00"
+            name: "Claude Sonnet 5.5"
+            is-default: true
+            input-price-per-million-usd: "2.00"
+            output-price-per-million-usd: "10.00"
           - id: claude-haiku-4-5
-            nome: "Claude Haiku 4.5"
-            padrao: false
-            preco-entrada-milhao-usd: "1.00"
-            preco-saida-milhao-usd: "5.00"
-      - codigo: ollama-local
-        nome: "Ollama local (nesta instalação)"
-        tipo: ollama
-        uso: EMBEDDINGS
+            name: "Claude Haiku 4.5"
+            is-default: false
+            input-price-per-million-usd: "1.00"
+            output-price-per-million-usd: "5.00"
+      - code: ollama-local
+        name: "Ollama local (nesta instalação)"
+        type: ollama
+        function: EMBEDDINGS
         local: true
-        precisa-chave: false
-        dimensao: 1024
-        modelos:
+        requires-key: false
+        dimension: 1024
+        models:
           - id: bge-m3
-            nome: "BGE-M3 (multilíngue, 1024 dimensões)"
-            padrao: true
-            preco-entrada-milhao-usd: "0"
-            preco-saida-milhao-usd: "0"
+            name: "BGE-M3 (multilíngue, 1024 dimensões)"
+            is-default: true
+            input-price-per-million-usd: "0"
+            output-price-per-million-usd: "0"
 
 management:
   endpoints:

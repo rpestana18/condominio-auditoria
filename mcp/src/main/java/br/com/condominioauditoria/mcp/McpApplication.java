@@ -5,9 +5,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
- * Serviço mcp: porta de entrada de uma IA externa (no piloto, o Claude do usuário) via Model Context Protocol.
- * Não tem banco nem regra: cada ferramenta vira uma chamada gRPC ao backend, com o token do próprio usuário,
- * então a IA só vê o que o usuário pode ver.
+ * mcp service: entry point of an external AI (in the pilot, the user's Claude) through the Model Context Protocol.
+ * It has no database and no rules: each tool becomes a gRPC call to the api, with the user's own token, so the AI
+ * only sees what the user can see.
  */
 @SpringBootApplication
 @ConfigurationPropertiesScan

@@ -18,7 +18,7 @@
   |---|---|
   | `api/`, o antigo `backend/` (API, contábil, auditoria, relatórios) | `backend` |
   | `rag/` leitura e interpretação (`rag.parser`, `rag.model`) e `leitor/` | `ingestao` |
-  | `rag/` embeddings, busca e respostas | `rag` |
+  | `rag/` embeddings, busca e respostas (`rag.search`, `rag.repository`, `rag.client`, `rag.security` e as perguntas em `rag.service`) | `rag` |
   | `mcp/`, `infra/`, testes ponta a ponta e todo contrato entre serviços (`contracts/`) | `mcp` |
   | `frontend/` | `frontend` |
   | `docs/requisitos.md` | `requisitos` |

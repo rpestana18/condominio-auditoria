@@ -2,17 +2,17 @@ package br.com.condominioauditoria.rag.service;
 
 import br.com.condominioauditoria.rag.client.DocumentReaderClient;
 import br.com.condominioauditoria.rag.config.QueueConfig;
-import br.com.condominioauditoria.rag.indice.CortadorTrechos;
-import br.com.condominioauditoria.rag.indice.DocumentoCortado;
-import br.com.condominioauditoria.rag.indice.EmbeddingsIndisponiveisException;
-import br.com.condominioauditoria.rag.indice.GeradorEmbeddings;
-import br.com.condominioauditoria.rag.indice.RepositorioIndice;
-import br.com.condominioauditoria.rag.indice.RepositorioIndice.DocumentoIndexado;
-import br.com.condominioauditoria.rag.indice.TrechoCortado;
+import br.com.condominioauditoria.rag.exception.EmbeddingsUnavailableException;
 import br.com.condominioauditoria.rag.messaging.IndexFileMessage;
 import br.com.condominioauditoria.rag.messaging.IndexingResultMessage;
 import br.com.condominioauditoria.rag.messaging.MessageContract;
 import br.com.condominioauditoria.rag.model.document.ReadDocument;
+import br.com.condominioauditoria.rag.repository.IndexRepository;
+import br.com.condominioauditoria.rag.repository.IndexRepository.IndexedDocument;
+import br.com.condominioauditoria.rag.search.Chunk;
+import br.com.condominioauditoria.rag.search.ChunkedDocument;
+import br.com.condominioauditoria.rag.search.EmbeddingGenerator;
+import br.com.condominioauditoria.rag.search.TextChunker;
 import br.com.condominioauditoria.storage.Storage;
 import java.io.InputStream;
 import java.util.List;
@@ -45,11 +45,11 @@ public class FileIndexingService {
     private final RabbitTemplate rabbit;
     private final Storage storage;
     private final DocumentReaderClient reader;
-    private final GeradorEmbeddings embeddings;
-    private final RepositorioIndice repository;
+    private final EmbeddingGenerator embeddings;
+    private final IndexRepository repository;
 
     public FileIndexingService(MessageContract contract, RabbitTemplate rabbit, Storage storage,
-            DocumentReaderClient reader, GeradorEmbeddings embeddings, RepositorioIndice repository) {
+            DocumentReaderClient reader, EmbeddingGenerator embeddings, IndexRepository repository) {
         this.contract = contract;
         this.rabbit = rabbit;
         this.storage = storage;
@@ -62,7 +62,7 @@ public class FileIndexingService {
     public void onReceive(Message message) {
         IndexFileMessage request = contract.readIndexFile(message.getBody());
         if (request.operation() == IndexFileMessage.Operation.RETIRAR) {
-            boolean existed = repository.retirar(request.fileId(), request.indexingId());
+            boolean existed = repository.withdraw(request.fileId(), request.indexingId());
             log.info("Arquivo {} retirado do índice{}", request.originalName(),
                     existed ? "" : " (não estava indexado)");
             publish(IndexingResultMessage.withdrawn(request));
@@ -70,13 +70,13 @@ public class FileIndexingService {
         }
         Optional<IndexingResultMessage> alreadyDone = alreadyIndexed(request);
         if (alreadyDone.isPresent()) {
-            repository.confirmarSemReindexar(request);
+            repository.confirmUnchanged(request);
             log.info("Arquivo {} já indexado com o mesmo conteúdo, modelo e versão; só confirmado",
                     request.originalName());
             publish(alreadyDone.get());
             return;
         }
-        repository.marcarIndexando(request);
+        repository.markIndexing(request);
         publish(IndexingResultMessage.indexing(request));
         IndexingResultMessage result;
         try {
@@ -86,7 +86,7 @@ public class FileIndexingService {
         } catch (Exception error) {
             log.warn("Falha ao indexar {}: {}", request.originalName(), error.getMessage(), error);
             String reason = readableReason(error);
-            repository.marcarErro(request.fileId(), request.indexingId(), reason);
+            repository.markError(request.fileId(), request.indexingId(), reason);
             result = IndexingResultMessage.error(request, reason);
         }
         publish(result);
@@ -97,51 +97,51 @@ public class FileIndexingService {
      * on only indexes what is new or changed.
      */
     private Optional<IndexingResultMessage> alreadyIndexed(IndexFileMessage request) {
-        Optional<DocumentoIndexado> current = repository.buscar(request.fileId());
+        Optional<IndexedDocument> current = repository.find(request.fileId());
         if (current.isEmpty() || !request.sha256().equals(current.get().sha256())
-                || !CortadorTrechos.VERSAO.equals(current.get().versaoIndexador())) {
+                || !TextChunker.VERSION.equals(current.get().indexerVersion())) {
             return Optional.empty();
         }
-        DocumentoIndexado doc = current.get();
-        if ("sem_texto".equals(doc.estado())) { // sem texto não tem vetores: o modelo não importa
-            return Optional.of(IndexingResultMessage.noText(request, doc.motivo(), doc.paginas(),
-                    doc.versaoIndexador()));
+        IndexedDocument doc = current.get();
+        if ("sem_texto".equals(doc.state())) { // sem texto não tem vetores: o modelo não importa
+            return Optional.of(IndexingResultMessage.noText(request, doc.reason(), doc.pages(),
+                    doc.indexerVersion()));
         }
-        if ("indexado".equals(doc.estado()) && Objects.equals(requestedModel(request), doc.modeloEmbeddings())) {
-            return Optional.of(IndexingResultMessage.indexed(request, doc.paginas(), doc.trechos(),
-                    doc.modeloEmbeddings(), doc.versaoIndexador()));
+        if ("indexado".equals(doc.state()) && Objects.equals(requestedModel(request), doc.embeddingModel())) {
+            return Optional.of(IndexingResultMessage.indexed(request, doc.pages(), doc.chunks(),
+                    doc.embeddingModel(), doc.indexerVersion()));
         }
         return Optional.empty();
     }
 
     /** Model that will generate the vectors; null when embeddings are off for the condominium. */
     private String requestedModel(IndexFileMessage request) {
-        return request.withVectors() ? embeddings.modelo() : null;
+        return request.withVectors() ? embeddings.model() : null;
     }
 
     private IndexingResultMessage index(IndexFileMessage request) throws Exception {
-        if (request.withVectors() && !embeddings.aceita(request.embeddingModel())) {
+        if (request.withVectors() && !embeddings.accepts(request.embeddingModel())) {
             throw new IllegalArgumentException("Modelo de embeddings " + request.embeddingModel()
-                    + " não está disponível neste rag (disponível: " + embeddings.modelo() + ")");
+                    + " não está disponível neste rag (disponível: " + embeddings.model() + ")");
         }
         byte[] content;
         try (InputStream input = storage.open(request.path())) {
             content = input.readAllBytes();
         }
         ReadDocument document = reader.read(request.originalName(), content);
-        DocumentoCortado cut = CortadorTrechos.cortar(document);
-        if (cut.semTexto()) {
-            repository.substituir(request, cut, null, null);
-            return IndexingResultMessage.noText(request, cut.motivoSemTexto(), cut.paginas(),
-                    CortadorTrechos.VERSAO);
+        ChunkedDocument cut = TextChunker.chunk(document);
+        if (cut.noText()) {
+            repository.replace(request, cut, null, null);
+            return IndexingResultMessage.noText(request, cut.noTextReason(), cut.pages(),
+                    TextChunker.VERSION);
         }
         List<float[]> vectors = null;
         String model = requestedModel(request);
         String warning = null;
         if (model != null) {
             try {
-                vectors = embeddings.gerar(cut.trechos().stream().map(TrechoCortado::texto).toList());
-            } catch (EmbeddingsIndisponiveisException error) {
+                vectors = embeddings.generate(cut.chunks().stream().map(Chunk::text).toList());
+            } catch (EmbeddingsUnavailableException error) {
                 // Without vectors the file still goes into the keyword search. It is stored without a model, so the
                 // next request with Ollama up is not treated as a repeat and generates the vectors.
                 warning = truncate("Indexado só para a busca por palavra, sem busca por significado: "
@@ -150,9 +150,9 @@ public class FileIndexingService {
                 model = null;
             }
         }
-        repository.substituir(request, cut, vectors, model, warning);
-        return IndexingResultMessage.indexed(request, cut.paginas(), cut.trechos().size(), model,
-                CortadorTrechos.VERSAO, warning);
+        repository.replace(request, cut, vectors, model, warning);
+        return IndexingResultMessage.indexed(request, cut.pages(), cut.chunks().size(), model,
+                TextChunker.VERSION, warning);
     }
 
     private void publish(IndexingResultMessage result) {
@@ -163,7 +163,7 @@ public class FileIndexingService {
     }
 
     private static String readableReason(Exception error) {
-        if (error instanceof EmbeddingsIndisponiveisException) {
+        if (error instanceof EmbeddingsUnavailableException) {
             return truncate(error.getMessage());
         }
         String message = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();

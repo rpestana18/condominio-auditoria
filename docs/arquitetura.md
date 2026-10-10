@@ -140,7 +140,7 @@ ADR 0004: telas "Previsto × realizado" (todos os perfis), "De-para" e confirma�
 ADR 0005 (aprovada em 07/10/2026): menu "Análise da PO" com filtro de exercício, telas "Comparar exercícios" e "Indicadores" (Recharts, sem cálculo no frontend) e tela de rubricas para o Admin.
 
 ### 3.5 MCP (serviço `mcp`, Spring AI)
-- Expõe o sistema como **ferramentas MCP** (transporte HTTP sem sessão). Já existem: `listar_condominios`, `resumo_fundos`, `listar_arquivos`, `conferencias_do_arquivo`, `buscar_lancamentos`. Depois: `listar_achados`, `previsto_realizado` (requisito próprio, RF-08.1; fora da ADR 0004), `buscar_documentos` (RAG), `gerar_relatorio`.
+- Expõe o sistema como **ferramentas MCP** (transporte HTTP sem sessão). Já existem: `list_condominiums`, `fund_summary`, `list_files`, `file_checks`, `find_entries`. Depois: `listar_achados`, `previsto_realizado` (requisito próprio, RF-08.1; fora da ADR 0004), `search_documents` (RAG), `gerar_relatorio`.
 - Não tem banco nem regra: cada ferramenta é uma chamada **gRPC** ao backend (`contracts/grpc/query/v2`), com o token do usuário. Listas grandes chegam em fluxo (stream).
 - Serve para: uso do sistema pelo Claude Desktop/Code; e testes de integração ponta a ponta conduzidos pelo agente MCP.
 - **Papel de integração**: o agente MCP é acionado sempre que um serviço muda um contrato (OpenAPI, fila, gRPC, ferramenta), para verificar que todos os consumidores continuam funcionando.

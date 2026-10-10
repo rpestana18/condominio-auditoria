@@ -11,7 +11,7 @@
 #   leitura contábil: api ─ArquivoRecebido (rag.files-received)─▶ rag ─resultado (api.processing-results)─▶ api
 #   indexação (ADR 0003): api ─IndexarArquivo (rag.indexing)─▶ rag ─▶ leitor + ollama ─▶ schema rag no banco
 #                         rag ─ResultadoIndexacao (api.indexing-results)─▶ api (situação da indexação do arquivo na API)
-#   busca nos documentos: Claude ─buscar_documentos─▶ mcp ─gRPC Query.SearchDocuments─▶ api
+#   busca nos documentos: Claude ─search_documents─▶ mcp ─gRPC Query.SearchDocuments─▶ api
 #                         api ─gRPC Assistant.Search (rag:9091)─▶ rag (híbrida; só por palavra sem Ollama)
 #
 # Primeira subida: o passo ollama-modelo baixa o modelo bge-m3 (~1,2 GB) para o volume "ollama"; o rag só sobe

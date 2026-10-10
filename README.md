@@ -100,7 +100,7 @@ Sem o Ollama, a busca continua funcionando só por palavra para o que já foi in
 | Build para em `./gradlew ... bootJar` com `exit code: 127` (comum no Windows) | O `gradlew` foi baixado com final de linha do Windows (CRLF). Rode `git pull` e suba de novo: o Dockerfile e o `.gitattributes` já corrigem isso. Se ainda falhar, clone o projeto de novo |
 | A subida para em `ollama-modelo` (`service "ollama-modelo" didn't complete successfully`) | O modelo bge-m3 não foi baixado: sem internet ou acesso bloqueado a `registry.ollama.ai`. Veja o motivo em `docker compose logs ollama-modelo`, libere o acesso e rode `docker compose up` de novo (o download continua de onde parou). O `rag` não sobe sem o modelo |
 | Indexação do arquivo em `ERRO` com motivo sobre embeddings ou Ollama | O contêiner `ollama` está parado ou sem o modelo. Confira com `docker compose ps ollama` e `docker compose logs ollama-modelo`, suba com `docker compose up -d ollama ollama-modelo` e use **Reprocessar** no arquivo |
-| `buscar_documentos` responde "Busca nos documentos indisponível no momento" | O serviço `rag` está parado. Suba com `docker compose start rag` |
+| `search_documents` responde "Busca nos documentos indisponível no momento" | O serviço `rag` está parado. Suba com `docker compose start rag` |
 | Mudou o código e quer ver na tela | `docker compose up --build` de novo |
 
 ## Criar usuários e dar acesso a um condomínio
@@ -134,9 +134,9 @@ Nos modos `MCP_EXTERNO` e `DESLIGADO` o sistema não chama nenhuma IA externa: a
 
 ## Conectar o Claude (MCP)
 
-O serviço **mcp** deixa o Claude consultar o sistema com as permissões do seu usuário: fundos, arquivos, conferências e lançamentos (com arquivo e página de origem) e trechos dos documentos enviados. Ferramentas: `listar_condominios`, `resumo_fundos`, `listar_arquivos`, `conferencias_do_arquivo`, `buscar_lancamentos` e `buscar_documentos`.
+O serviço **mcp** deixa o Claude consultar o sistema com as permissões do seu usuário: fundos, arquivos, conferências e lançamentos (com arquivo e página de origem) e trechos dos documentos enviados. Ferramentas: `list_condominiums`, `fund_summary`, `list_files`, `file_checks`, `find_entries` e `search_documents`.
 
-`buscar_documentos` procura no texto dos documentos indexados (atas, contratos, convenção, extratos, planilhas…) e devolve cada trecho com o documento, a categoria e onde ele está no original ("página 3", "aba Plan1, linhas 2–31" ou "parágrafos 4–7"). Aceita `"frase entre aspas"`, `-palavra` para excluir, e filtros por categoria, período e arquivo. O texto dos trechos é transcrição, não conferida: para somar ou comparar valores, o Claude usa as ferramentas numéricas.
+`search_documents` procura no texto dos documentos indexados (atas, contratos, convenção, extratos, planilhas…) e devolve cada trecho com o documento, a categoria e onde ele está no original ("página 3", "aba Plan1, linhas 2–31" ou "parágrafos 4–7"). Aceita `"frase entre aspas"`, `-palavra` para excluir, e filtros por categoria, período e arquivo. O texto dos trechos é transcrição, não conferida: para somar ou comparar valores, o Claude usa as ferramentas numéricas.
 
 1. Gere um token do seu usuário (o cliente `mcp-local` dá um token de 8 horas; é só para uso local):
 

@@ -38,8 +38,8 @@ service Assistant {
   // inteira é validada ANTES de sair; o fluxo nunca traz texto parcial nesta versão (texto chegando aos poucos, se
   // vier, entra como um novo campo do oneof, sem mudar os existentes).
   //
-  // Números: o modelo nunca escreve número de dado gravado. Ele pede as ferramentas numéricas (resumo_fundos,
-  // buscar_lancamentos, listar_arquivos, conferencias_do_arquivo), que o rag executa no backend pelo gRPC
+  // Números: o modelo nunca escreve número de dado gravado. Ele pede as ferramentas numéricas (fund_summary,
+  // find_entries, list_files, file_checks), que o rag executa no backend pelo gRPC
   // contracts/grpc/query/v2 com o mesmo token deste pedido (metadado "authorization"). O bloco "nos dados gravados"
   // é montado pelo rag a partir do resultado da ferramenta; o modelo só referencia o identificador da chamada.
   //
@@ -274,7 +274,7 @@ message DocumentParagraph {
 message StoredData {
   // Identificador da chamada da ferramenta nesta pergunta (o que o modelo referencia).
   string call_id = 1;
-  // Nome da ferramenta: resumo_fundos, buscar_lancamentos, listar_arquivos ou conferencias_do_arquivo. O frontend
+  // Nome da ferramenta: fund_summary, find_entries, list_files ou file_checks. O frontend
   // escolhe a tela do link por este nome.
   string query = 2;
   // Filtros usados na consulta, na ordem em que foram passados. Ex.: {nome: "dataInicio", valor: "2026-09-01"}.

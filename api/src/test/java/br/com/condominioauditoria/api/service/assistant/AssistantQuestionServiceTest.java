@@ -170,7 +170,7 @@ public class AssistantQuestionServiceTest {
         questions.ask(A, new QuestionRequest("  e o de portaria?  ", history, new DocumentFiltersRequest(
                 List.of(FileCategory.CONTRACT), LocalDate.of(2025, 1, 1), null, List.of(contractA.getId()))));
 
-        assertThat(rag.token.get()).isEqualTo("Bearer token-usuario");
+        assertThat(rag.token.get()).isEqualTo("Bearer token-user");
         var request = rag.questions.getFirst();
         assertThat(request.getCondominiumId()).isEqualTo(A.toString());
         assertThat(request.getQuestion()).isEqualTo("e o de portaria?");
@@ -213,7 +213,7 @@ public class AssistantQuestionServiceTest {
                         .addChunkIds("t-ata"))
                 .addInDocuments(DocumentParagraph.newBuilder().setText("O contrato prevê IPCA.")
                         .addChunkIds("t-contrato").addChunkIds("t-x"))
-                .addInStoredData(StoredData.newBuilder().setCallId("c1").setQuery("resumo_fundos")
+                .addInStoredData(StoredData.newBuilder().setCallId("c1").setQuery("fund_summary")
                         .addRows(DataRow.newBuilder().setLabel("Saldo").setValue("R$ 1.234,56")))
                 .addCitedChunks(fromMinutesB).addCitedChunks(fromMinutes).addCitedChunks(fromContract)
                 .addCitedChunks(missing)
@@ -234,14 +234,14 @@ public class AssistantQuestionServiceTest {
         assertThat(response.citations().getFirst().location().description()).isEqualTo("página 3");
         assertThat(response.citations().getFirst().sha256()).isEqualTo(minutesA.getSha256());
         assertThat(response.fromStoredData()).singleElement().satisfies(d -> {
-            assertThat(d.query()).isEqualTo("resumo_fundos");
+            assertThat(d.query()).isEqualTo("fund_summary");
             assertThat(d.rows().getFirst().value()).isEqualTo("R$ 1.234,56");
             assertThat(d.comment()).isNull();
         });
         assertThat(response.suggestion()).isNull();
         assertThat(response.warning()).isEqualTo("Busca só por palavra.");
         assertThat(response.model()).isEqualTo("claude-sonnet-5-5");
-        verify(usage).recordQuestion(A, "pessoa.usuario", "anthropic", "claude-sonnet-5-5", 1200, 340, "2026-10-05.1");
+        verify(usage).recordQuestion(A, "pessoa.user", "anthropic", "claude-sonnet-5-5", 1200, 340, "2026-10-05.1");
     }
 
     @Test
@@ -261,7 +261,7 @@ public class AssistantQuestionServiceTest {
         assertThat(response.citations()).isEmpty();
         assertThat(response.fromStoredData()).isEmpty();
         assertThat(response.suggestion()).isNull();
-        verify(usage).recordQuestion(A, "pessoa.usuario", "anthropic", "claude-sonnet-5-5", 900, 100, "2026-10-05.1");
+        verify(usage).recordQuestion(A, "pessoa.user", "anthropic", "claude-sonnet-5-5", 900, 100, "2026-10-05.1");
     }
 
     @Test

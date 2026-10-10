@@ -26,10 +26,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class NumericTools {
 
-    public static final String FUND_SUMMARY = "resumo_fundos";
-    public static final String FIND_ENTRIES = "buscar_lancamentos";
-    public static final String LIST_FILES = "listar_arquivos";
-    public static final String FILE_CHECKS = "conferencias_do_arquivo";
+    public static final String FUND_SUMMARY = "fund_summary";
+    public static final String FIND_ENTRIES = "find_entries";
+    public static final String LIST_FILES = "list_files";
+    public static final String FILE_CHECKS = "file_checks";
 
     private static final int DEFAULT_ENTRY_LIMIT = 100;
     private static final int MAX_ENTRY_LIMIT = 500;
@@ -53,35 +53,35 @@ public class NumericTools {
                                 + "para listar despesas de um período, fundo ou fornecedor. O sistema calcula os "
                                 + "totais; você não precisa somar nada.",
                         Map.of("properties", Map.of(
-                                "dataInicio", Map.of("type", "string",
+                                "dateFrom", Map.of("type", "string",
                                         "description", "Data inicial em AAAA-MM-DD. Opcional."),
-                                "dataFim", Map.of("type", "string",
+                                "dateTo", Map.of("type", "string",
                                         "description", "Data final em AAAA-MM-DD. Opcional."),
-                                "fundo", Map.of("type", "string",
+                                "fund", Map.of("type", "string",
                                         "description", "Parte do nome do fundo. Opcional."),
-                                "texto", Map.of("type", "string",
+                                "text", Map.of("type", "string",
                                         "description", "Parte do histórico, do fornecedor ou da conta. Opcional."),
-                                "somenteSaidas", Map.of("type", "boolean",
+                                "outflowsOnly", Map.of("type", "boolean",
                                         "description", "Só saídas (débitos), sem transferência entre fundos."),
-                                "limite", Map.of("type", "integer",
+                                "limit", Map.of("type", "integer",
                                         "description", "Quantos lançamentos trazer; padrão 100, máximo 500.")),
                                 "required", List.of())),
                 new ToolDefinition(LIST_FILES,
                         "Arquivos enviados do condomínio, do mais recente para o mais antigo, com categoria, "
                                 + "período e estado da leitura. Use para saber o que existe ou o que falta enviar.",
                         Map.of("properties", Map.of(
-                                "categoria", Map.of("type", "string",
+                                "category", Map.of("type", "string",
                                         "description", "TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, "
                                                 + "BYLAWS ou OTHER. Opcional."),
-                                "limite", Map.of("type", "integer", "description", "Padrão 50.")),
+                                "limit", Map.of("type", "integer", "description", "Padrão 50.")),
                                 "required", List.of())),
                 new ToolDefinition(FILE_CHECKS,
                         "Conferências aritméticas de um arquivo já lido (o que fechou e o que não fechou). Use "
                                 + "quando a pergunta é sobre divergência ou confiabilidade de um documento.",
                         Map.of("properties", Map.of(
-                                "arquivoId", Map.of("type", "string",
-                                        "description", "Identificador do arquivo (vem de listar_arquivos).")),
-                                "required", List.of("arquivoId"))));
+                                "fileId", Map.of("type", "string",
+                                        "description", "Identificador do arquivo (vem de list_files).")),
+                                "required", List.of("fileId"))));
     }
 
     /**
@@ -124,24 +124,24 @@ public class NumericTools {
 
     private static QueriedData findEntries(String callId, String condominiumId,
             Map<String, Object> arguments, QueryGrpc.QueryBlockingStub api) {
-        String dateFrom = text(arguments.get("dataInicio"));
-        String dateTo = text(arguments.get("dataFim"));
-        String fund = text(arguments.get("fundo"));
-        String search = text(arguments.get("texto"));
-        boolean outflowsOnly = Boolean.TRUE.equals(arguments.get("somenteSaidas"))
-                || "true".equalsIgnoreCase(text(arguments.get("somenteSaidas")));
-        int limit = integer(arguments.get("limite"), DEFAULT_ENTRY_LIMIT);
+        String dateFrom = text(arguments.get("dateFrom"));
+        String dateTo = text(arguments.get("dateTo"));
+        String fund = text(arguments.get("fund"));
+        String search = text(arguments.get("text"));
+        boolean outflowsOnly = Boolean.TRUE.equals(arguments.get("outflowsOnly"))
+                || "true".equalsIgnoreCase(text(arguments.get("outflowsOnly")));
+        int limit = integer(arguments.get("limit"), DEFAULT_ENTRY_LIMIT);
         limit = Math.min(Math.max(1, limit), MAX_ENTRY_LIMIT);
 
         List<Param> params = new ArrayList<>();
-        append(params, "dataInicio", dateFrom);
-        append(params, "dataFim", dateTo);
-        append(params, "fundo", fund);
-        append(params, "texto", search);
+        append(params, "dateFrom", dateFrom);
+        append(params, "dateTo", dateTo);
+        append(params, "fund", fund);
+        append(params, "text", search);
         if (outflowsOnly) {
-            params.add(new Param("somenteSaidas", "sim"));
+            params.add(new Param("outflowsOnly", "sim"));
         }
-        params.add(new Param("limite", String.valueOf(limit)));
+        params.add(new Param("limit", String.valueOf(limit)));
 
         var request = ListEntriesRequest.newBuilder().setCondominiumId(condominiumId)
                 .setDateFrom(dateFrom).setDateTo(dateTo).setFund(fund).setText(search)
@@ -189,12 +189,12 @@ public class NumericTools {
 
     private static QueriedData listFiles(String callId, String condominiumId,
             Map<String, Object> arguments, QueryGrpc.QueryBlockingStub api) {
-        String category = text(arguments.get("categoria"));
-        int limit = integer(arguments.get("limite"), 0);
+        String category = text(arguments.get("category"));
+        int limit = integer(arguments.get("limit"), 0);
         List<Param> params = new ArrayList<>();
-        append(params, "categoria", category);
+        append(params, "category", category);
         if (limit > 0) {
-            params.add(new Param("limite", String.valueOf(limit)));
+            params.add(new Param("limit", String.valueOf(limit)));
         }
         var response = api.listFiles(ListFilesRequest.newBuilder().setCondominiumId(condominiumId)
                 .setCategory(category).setLimit(limit).build());
@@ -205,7 +205,7 @@ public class NumericTools {
             if (!a.getPeriodStart().isBlank()) {
                 value.append("; período ").append(a.getPeriodStart()).append(" a ").append(a.getPeriodEnd());
             }
-            value.append("; arquivoId ").append(a.getId());
+            value.append("; fileId ").append(a.getId());
             lines.add(new Row(a.getName(), value.toString()));
         });
         return new QueriedData(callId, LIST_FILES, List.copyOf(params), List.copyOf(lines));
@@ -213,7 +213,7 @@ public class NumericTools {
 
     private static QueriedData fileChecks(String callId, String condominiumId,
             Map<String, Object> arguments, QueryGrpc.QueryBlockingStub api) {
-        String fileId = text(arguments.get("arquivoId"));
+        String fileId = text(arguments.get("fileId"));
         var response = api.fileChecks(FileChecksRequest.newBuilder()
                 .setCondominiumId(condominiumId).setFileId(fileId).build());
         List<Row> lines = new ArrayList<>();
@@ -223,7 +223,7 @@ public class NumericTools {
         response.getChecksList().forEach(c -> lines.add(new Row(c.getCode() + " — " + c.getDescription(),
                 (c.getOk() ? "fechou" : "não fechou") + (c.getDetail().isBlank() ? "" : "; " + c.getDetail()))));
         return new QueriedData(callId, FILE_CHECKS,
-                List.of(new Param("arquivoId", fileId)), List.copyOf(lines));
+                List.of(new Param("fileId", fileId)), List.copyOf(lines));
     }
 
     /** Result sent back to the model: the same rows the user will see, plus the callId. */

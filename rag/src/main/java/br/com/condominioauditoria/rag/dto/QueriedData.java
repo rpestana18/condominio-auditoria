@@ -7,7 +7,7 @@ import java.util.List;
  * (RF-04.13, RF-04.14). The model never writes anything from here: it only references {@link #callId()}.
  *
  * @param callId identifier of the call in this question ("c1", "c2", ...)
- * @param query tool name (resumo_fundos, buscar_lancamentos, listar_arquivos, conferencias_do_arquivo)
+ * @param query tool name (fund_summary, find_entries, list_files, file_checks)
  * @param params filters used, in the order they were passed
  * @param rows rows ready to display; money in reais in the Brazilian format
  */

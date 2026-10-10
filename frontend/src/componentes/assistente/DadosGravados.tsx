@@ -3,10 +3,22 @@ import type { DadoGravado } from "../../api/tipos";
 
 /** Nome legível de cada consulta numérica (as ferramentas que o rag chama no backend). */
 const nomesConsultas: Record<string, string> = {
-  resumo_fundos: "Resumo dos fundos",
-  buscar_lancamentos: "Lançamentos",
-  listar_arquivos: "Arquivos enviados",
-  conferencias_do_arquivo: "Conferências do arquivo",
+  fund_summary: "Resumo dos fundos",
+  find_entries: "Lançamentos",
+  list_files: "Arquivos enviados",
+  file_checks: "Conferências do arquivo",
+};
+
+/** Nome legível de cada filtro das consultas (o rag manda os nomes do contrato, em inglês). */
+const nomesParametros: Record<string, string> = {
+  dateFrom: "data inicial",
+  dateTo: "data final",
+  fund: "fundo",
+  text: "texto",
+  outflowsOnly: "só saídas",
+  limit: "limite",
+  category: "categoria",
+  fileId: "arquivo",
 };
 
 const valorParametro = (dado: DadoGravado, ...nomes: string[]) =>
@@ -18,12 +30,12 @@ const valorParametro = (dado: DadoGravado, ...nomes: string[]) =>
  */
 function linkDaConsulta(dado: DadoGravado): { para: string; rotulo: string } | null {
   switch (dado.query) {
-    case "resumo_fundos":
+    case "fund_summary":
       return { para: "/", rotulo: "Ver saldo por fundo no Início" };
-    case "listar_arquivos":
+    case "list_files":
       return { para: "/arquivos", rotulo: "Ver em Arquivos" };
-    case "conferencias_do_arquivo": {
-      const arquivoId = valorParametro(dado, "arquivoId", "arquivo_id");
+    case "file_checks": {
+      const arquivoId = valorParametro(dado, "fileId");
       return { para: arquivoId ? `/arquivos?arquivo=${encodeURIComponent(arquivoId)}` : "/arquivos", rotulo: "Ver conferências do arquivo" };
     }
     default:
@@ -42,7 +54,7 @@ export function DadosGravados({ dados }: { dados: DadoGravado[] }) {
           <div key={i} className="dado-gravado">
             <p className="discreto">
               Consulta: <strong>{nomesConsultas[dado.query] ?? dado.query}</strong>
-              {dado.parameters.length > 0 && ` (${dado.parameters.map((p) => `${p.name}: ${p.value}`).join("; ")})`}
+              {dado.parameters.length > 0 && ` (${dado.parameters.map((p) => `${nomesParametros[p.name] ?? p.name}: ${p.value}`).join("; ")})`}
             </p>
             {dado.rows.length > 0 && (
               <table className="tabela compacta">

@@ -34,7 +34,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** Tool buscar_documentos against a fake in-memory api (in-process gRPC). */
+/** Tool search_documents against a fake in-memory api (in-process gRPC). */
 class SearchDocumentsToolTest {
 
     private static final String CONDOMINIUM = "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001";
@@ -111,7 +111,7 @@ class SearchDocumentsToolTest {
         assertThat(request.getFilters().getDateTo()).isEqualTo("2025-12-31");
         assertThat(request.getFilters().getFileIdsList()).isEmpty();
 
-        assertThat(result.modeUsed()).isEqualTo("PALAVRA");
+        assertThat(result.modeUsed()).isEqualTo("KEYWORD");
         assertThat(result.total()).isEqualTo(3);
         assertThat(result.chunks()).extracting(CondominiumTools.FoundChunk::location)
                 .containsExactly("página 3", "aba Plan1, linhas 2–31", "parágrafos 4–7");

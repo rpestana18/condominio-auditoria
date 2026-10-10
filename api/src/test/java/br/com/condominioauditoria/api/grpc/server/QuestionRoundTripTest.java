@@ -111,7 +111,7 @@ class QuestionRoundTripTest {
                         .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers))
                         .withDeadlineAfter(10, TimeUnit.SECONDS)
                         .listCondominiums(ListCondominiumsRequest.getDefaultInstance());
-                var data = StoredData.newBuilder().setCallId("c1").setQuery("listar_condominios");
+                var data = StoredData.newBuilder().setCallId("c1").setQuery("list_condominiums");
                 list.getCondominiumsList().forEach(c -> data.addRows(DataRow.newBuilder().setLabel("Condomínio")
                         .setValue(c.getName())));
                 response.onNext(AskEvent.newBuilder().setAnswer(Answer.newBuilder()

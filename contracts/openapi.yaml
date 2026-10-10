@@ -589,7 +589,7 @@ paths:
       description: |
         Só com o módulo Assistente ligado, em qualquer modo de IA (inclusive OFF, Q7). Devolve trechos citáveis
         do mais relevante para o menos relevante, sem resposta redigida. Aceita "frase entre aspas" e exclusão com -.
-        Gera o registro de uso "busca_documentos".
+        Gera o registro de uso "document_search".
       operationId: searchDocuments
       requestBody:
         required: true
@@ -1018,7 +1018,7 @@ components:
       type: object
       required: [query, parameters, rows]
       properties:
-        query: { type: string, description: "resumo_fundos, buscar_lancamentos, listar_arquivos ou conferencias_do_arquivo (a tela do link sai daqui)" }
+        query: { type: string, description: "fund_summary, find_entries, list_files ou file_checks (a tela do link sai daqui)" }
         parameters:
           type: array
           description: Filtros usados na consulta
@@ -1115,7 +1115,7 @@ components:
         disableReason: { type: [string, "null"] }
     UsageFunction:
       type: string
-      description: "busca_documentos = busca pela tela; chamada_mcp = buscar_documentos pelo MCP; indexacao = arquivo indexado; embeddings e pergunta = chat (entrega 3)"
+      description: "document_search = busca pela tela; mcp_call = search_documents pelo MCP; indexing = arquivo indexado; embeddings e question = chat (entrega 3)"
       enum: [document_search, mcp_call, indexing, embeddings, question]
     UsageTotalResponse:
       type: object

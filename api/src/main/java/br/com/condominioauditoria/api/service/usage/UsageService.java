@@ -43,7 +43,7 @@ public class UsageService {
     }
 
     /**
-     * One call to buscar_documentos through the MCP. hybridSearch = the rag used the local embeddings (LOCAL); keyword
+     * One call to search_documents through the MCP. hybridSearch = the rag used the local embeddings (LOCAL); keyword
      * only = OFF. The search model does not come in the rag's answer, so it stays null.
      */
     @Transactional

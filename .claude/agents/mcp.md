@@ -13,7 +13,7 @@ Código em inglês, com o glossário da ADR 0006. Camada primeiro, assunto dentr
 Serviço `mcp/` próprio (Spring AI, transporte HTTP sem sessão), exigindo token do Keycloak e repassando o token do usuário ao backend por gRPC (`contracts/grpc/`). No piloto (modo MCP_EXTERNO) é por aqui que o Claude do usuário usa o sistema. `docker compose up` sobe PostgreSQL, RabbitMQ, Keycloak, leitor Python, backend, rag, mcp e frontend.
 
 ## Duas funções
-1. **Servidor MCP** (serviço `mcp/`, Spring AI, que chama o backend por gRPC com o token do usuário): expõe o sistema como ferramentas para agentes de IA — `listar_arquivos`, `consultar_lancamentos`, `listar_achados`, `previsto_realizado`, `buscar_documentos`, `rodar_auditoria`, `gerar_relatorio`, `enviar_arquivo` (Gestor/Admin). Sempre via o contrato gRPC do backend, nunca acessando o banco diretamente, com autenticação e permissões do perfil.
+1. **Servidor MCP** (serviço `mcp/`, Spring AI, que chama o backend por gRPC com o token do usuário): expõe o sistema como ferramentas para agentes de IA — `list_files`, `consultar_lancamentos`, `listar_achados`, `previsto_realizado`, `search_documents`, `rodar_auditoria`, `gerar_relatorio`, `enviar_arquivo` (Gestor/Admin). Sempre via o contrato gRPC do backend, nunca acessando o banco diretamente, com autenticação e permissões do perfil.
 2. **Guardião da integração**: acionado sempre que qualquer módulo altera um contrato. Você:
    - regenera tipos a partir de `contracts/openapi.yaml` (frontend) e de `contracts/grpc/` (backend e mcp), e confere os exemplos de `contracts/mensagens/` dos dois lados da fila;
    - roda testes de contrato e o fluxo ponta a ponta (upload → ingestão → RAG → auditoria → dashboard → relatório) usando os golden files;

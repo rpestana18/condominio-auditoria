@@ -13,7 +13,7 @@ catalogo-modulos:
       includes:
         - Indexação dos arquivos enviados para a busca (fila rag.indexing), inclusive ao ligar o módulo
         - Busca nos documentos por palavra e por significado
-        - Ferramenta buscar_documentos no MCP (rpc SearchDocuments)
+        - Ferramenta search_documents no MCP (rpc SearchDocuments)
         - Tela "Assistente" com chat sobre os documentos (previsto, entrega 3)
         - Registro de uso (indexação, buscas e chamadas)
       depends-on: []

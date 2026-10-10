@@ -136,7 +136,7 @@ public class AskFlowTest {
 
     @Test
     public void happyPathWithOneToolBuildsBothBlocks() {
-        claude.respond(FakeClaude.withTool("toolu_1", "resumo_fundos", "{}", 500, 40));
+        claude.respond(FakeClaude.withTool("toolu_1", "fund_summary", "{}", 500, 40));
         claude.respond(FakeClaude.withText("""
                 {"nosDocumentos":[{"texto":"O contrato registra taxa de administração de R$ 1.234,56 por mês \
                 %s.","trechoIds":["%s"]}],
@@ -161,7 +161,7 @@ public class AskFlowTest {
         // The "nos dados gravados" block is built by the rag from the tool, not from the model's text
         assertThat(response.getInStoredDataList()).singleElement().satisfies(d -> {
             assertThat(d.getCallId()).isEqualTo("c1");
-            assertThat(d.getQuery()).isEqualTo("resumo_fundos");
+            assertThat(d.getQuery()).isEqualTo("fund_summary");
             assertThat(d.getComment()).doesNotContainPattern("\\d");
             assertThat(d.getRowsList()).anySatisfy(l -> {
                 assertThat(l.getLabel()).isEqualTo("Saldo atual");
@@ -181,8 +181,8 @@ public class AskFlowTest {
         assertThat(claude.receivedKeys).containsOnly("sk-ant-chave-do-condominio");
         assertThat(claude.requests.getFirst())
                 .contains("\"output_config\"").contains("\"effort\":\"medium\"")
-                .contains("\"resumo_fundos\"").contains("\"buscar_lancamentos\"")
-                .contains("\"listar_arquivos\"").contains("\"conferencias_do_arquivo\"")
+                .contains("\"fund_summary\"").contains("\"find_entries\"")
+                .contains("\"list_files\"").contains("\"file_checks\"")
                 .contains("nosDadosGravados").contains(CHUNK.toString())
                 .doesNotContain("\"thinking\"").doesNotContain("\"tool_choice\"");
     }

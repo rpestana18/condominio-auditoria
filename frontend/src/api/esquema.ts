@@ -864,7 +864,7 @@ export interface paths {
          * Busca por palavra nos documentos, sem IA (todos os perfis; RF-04.18)
          * @description Só com o módulo Assistente ligado, em qualquer modo de IA (inclusive OFF, Q7). Devolve trechos citáveis
          *     do mais relevante para o menos relevante, sem resposta redigida. Aceita "frase entre aspas" e exclusão com -.
-         *     Gera o registro de uso "busca_documentos".
+         *     Gera o registro de uso "document_search".
          */
         post: operations["searchDocuments"];
         delete?: never;
@@ -1328,7 +1328,7 @@ export interface components {
             model: string;
         };
         StoredDataResponse: {
-            /** @description resumo_fundos, buscar_lancamentos, listar_arquivos ou conferencias_do_arquivo (a tela do link sai daqui) */
+            /** @description fund_summary, find_entries, list_files ou file_checks (a tela do link sai daqui) */
             query: string;
             /** @description Filtros usados na consulta */
             parameters: {
@@ -1428,7 +1428,7 @@ export interface components {
             disableReason?: string | null;
         };
         /**
-         * @description busca_documentos = busca pela tela; chamada_mcp = buscar_documentos pelo MCP; indexacao = arquivo indexado; embeddings e pergunta = chat (entrega 3)
+         * @description document_search = busca pela tela; mcp_call = search_documents pelo MCP; indexing = arquivo indexado; embeddings e question = chat (entrega 3)
          * @enum {string}
          */
         UsageFunction: "document_search" | "mcp_call" | "indexing" | "embeddings" | "question";

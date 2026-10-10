@@ -30,7 +30,7 @@ service Query {
   // Lançamentos com filtros. Resposta em fluxo (stream): milhares de linhas sem montar tudo na memória.
   rpc ListEntries(ListEntriesRequest) returns (stream Entry);
 
-  // Busca trechos citáveis nos documentos do condomínio (ferramenta MCP buscar_documentos, ADR 0003, Decisão 5.3).
+  // Busca trechos citáveis nos documentos do condomínio (ferramenta MCP search_documents, ADR 0003, Decisão 5.3).
   // O backend verifica token, perfil e condomínio e repassa ao rag (contrato assistant/v2). O modo (por palavra ou
   // híbrido) é decidido pelo backend conforme a configuração de embeddings; funciona em qualquer modo de IA.
   // Erros: INVALID_ARGUMENT (texto vazio, limite negativo, data fora do formato), PERMISSION_DENIED (condomínio sem

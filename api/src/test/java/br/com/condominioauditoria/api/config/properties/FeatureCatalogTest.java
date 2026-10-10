@@ -32,7 +32,7 @@ public class FeatureCatalogTest {
         assertThat(assistant.dependsOn()).isEmpty();
         assertThat(assistant.includes()).anySatisfy(i -> assertThat(i).contains("Indexação"))
                 .anySatisfy(i -> assertThat(i).contains("Busca nos documentos"))
-                .anySatisfy(i -> assertThat(i).contains("buscar_documentos"))
+                .anySatisfy(i -> assertThat(i).contains("search_documents"))
                 .anySatisfy(i -> assertThat(i).contains("chat"));
     }
 

@@ -39,5 +39,5 @@ dependencies {
     testImplementation(libs.grpc.inprocess)
 }
 
-// Os contratos (leitor e mensagens) entram no classpath a partir de contracts/
+// Os contratos (reader e mensagens) entram no classpath a partir de contracts/
 sourceSets.main { resources.srcDir(rootProject.file("contracts")) }

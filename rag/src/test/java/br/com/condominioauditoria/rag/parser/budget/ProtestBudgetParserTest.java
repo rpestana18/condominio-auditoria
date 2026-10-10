@@ -24,7 +24,7 @@ public class ProtestBudgetParserTest {
 
     @Test
     public void recognizesAndReadsLinesWithAmountMarkAndJoinedWord() {
-        ReadDocument document = document(new Page(1, 595.32, 841.92, "texto", budgetWords()));
+        ReadDocument document = document(new Page(1, 595.32, 841.92, "text", budgetWords()));
 
         assertThat(parser.recognizes(document)).isTrue();
         Budget budget = parser.parse(document);
@@ -79,7 +79,7 @@ public class ProtestBudgetParserTest {
                 p("parte", 132, 142, 563.2), p("Seguro", 200, 213, 563.2), p("0,00", 350, 358, 563.2),
                 p("0,00", 388, 396, 563.2)));
 
-        Budget budget = parser.parse(document(new Page(1, 595, 842, "texto", words)));
+        Budget budget = parser.parse(document(new Page(1, 595, 842, "text", words)));
 
         assertThat(budget.lines()).extracting(BudgetLine::mark).containsExactly(null, BudgetLineMark.NO_AMOUNT,
                 BudgetLineMark.NEGOTIATED_EXEMPTION, BudgetLineMark.SEPARATE_APPORTIONMENT,
@@ -95,13 +95,13 @@ public class ProtestBudgetParserTest {
         List<Word> words = new ArrayList<>(header());
         words.addAll(List.of(p("Outros", 115, 135, 130), p("12,00", 350, 358, 130), p("13,00", 388, 396, 130)));
 
-        assertThatThrownBy(() -> parser.parse(document(new Page(1, 595, 842, "texto", words))))
+        assertThatThrownBy(() -> parser.parse(document(new Page(1, 595, 842, "text", words))))
                 .hasMessageContaining("Linha com valor e sem código");
     }
 
     @Test
     public void scannedBudgetFailsWithReadableReason() {
-        ReadDocument scanned = document(new Page(1, 595, 842, "sem_texto", List.of()));
+        ReadDocument scanned = document(new Page(1, 595, 842, "no_text", List.of()));
 
         assertThat(parser.recognizes(scanned)).isFalse();
         assertThat(ProtestBudgetParser.noText(scanned)).isTrue();
@@ -159,7 +159,7 @@ public class ProtestBudgetParserTest {
     }
 
     private static ReadDocument document(Page page) {
-        return new ReadDocument("1", "leitor-py", new ReadDocument.FileInfo("po.pdf", "a".repeat(64), 1), "pdf",
+        return new ReadDocument("2", "reader-py", new ReadDocument.FileInfo("po.pdf", "a".repeat(64), 1), "pdf",
                 List.of(page), List.of(), List.of());
     }
 }

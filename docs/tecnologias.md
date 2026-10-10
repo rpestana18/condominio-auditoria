@@ -7,7 +7,7 @@ Versão 0.1 · 03/10/2026 · Status: **todas as tecnologias do MVP decididas** (
 | Tema | Decisão do usuário | Data |
 |---|---|---|
 | T1 Backend | **Java + Spring Boot** (RAG, regras, auditoria, API, MCP) | 03/10/2026 |
-| T4 Leitura de documentos | **Serviço Python isolado** (`leitor/`): contêiner sem estado, sem banco e sem regra de negócio, um endpoint (arquivo → JSON). Contrato JSON Schema versionado em `contracts/`, validado pelo Java. Pode ser trocado por um leitor em Java que respeite o mesmo contrato | 03/10/2026 |
+| T4 Leitura de documentos | **Serviço Python isolado** (`reader/`): contêiner sem estado, sem banco e sem regra de negócio, um endpoint (arquivo → JSON). Contrato JSON Schema versionado em `contracts/`, validado pelo Java. Pode ser trocado por um leitor em Java que respeite o mesmo contrato | 03/10/2026 |
 | T5 Modelo de IA | **Claude via API da Anthropic** (chave no Claude Console, cobrada à parte da assinatura), atrás de uma camada única no código | 03/10/2026 |
 | Modo de IA (decidido 03/10, ver RF-09) | **Sem chave de API no MVP**: o sistema roda sem IA, que é opcional por configuração. A IA entra pelo **servidor MCP**, usado pelo Claude Desktop ou Claude Code da assinatura do usuário. Embeddings do RAG locais (pela ADR 0003, com `bge-m3` no contêiner Ollama). Chat na tela e classificação em segundo plano ficam para quando houver chave de API. **Parametrizável por condomínio** (MCP_EXTERNO, API_KEY própria criptografada, DESLIGADO), sem mudar código | 03/10/2026 |
 | T3 Banco de dados | **PostgreSQL** (+ pgvector para os vetores do RAG). Guarda só dados processados: extraídos, normalizados e enriquecidos, cada registro com caminho do arquivo, página e hash | 03/10/2026 |

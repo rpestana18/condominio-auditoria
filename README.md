@@ -91,11 +91,11 @@ Sem o Ollama, a busca continua funcionando só por palavra para o que já foi in
 |---|---|
 | `port is already allocated` | Outra coisa usa a porta. Pare o programa ou mude a porta da esquerda em `infra/docker-compose.yml` (ex.: `"8085:80"`) |
 | A tela de login não abre logo após subir | O Keycloak leva cerca de 30 s para iniciar. Aguarde e recarregue |
-| O arquivo fica em "Falhou" com "O leitor de documentos não respondeu" | Confira com `docker compose ps` se o contêiner `leitor` está de pé e use **Reprocessar** |
+| O arquivo fica em "Falhou" com "O leitor de documentos não respondeu" | Confira com `docker compose ps` se o contêiner `reader` está de pé e use **Reprocessar** |
 | O arquivo fica em "Na fila" | O serviço `rag` está parado. Suba com `docker compose start rag`: o pedido esperou na fila e é lido na hora |
 | Mensagens na fila `.error` (painel do RabbitMQ) | Uma leitura ou gravação falhou três vezes. O log do `rag` ou do `api` diz o motivo |
 | "Arquivo já enviado" | O sistema reconhece o mesmo conteúdo pelo hash. É proteção contra duplicidade |
-| Quer ver os logs | `docker compose logs -f api` (ou `rag`, `mcp`, `leitor`, `fila`, `keycloak`, `banco`) |
+| Quer ver os logs | `docker compose logs -f api` (ou `rag`, `mcp`, `reader`, `fila`, `keycloak`, `banco`) |
 | Linux: erro de permissão ao gravar ou ler em `/dados` | Backend e rag rodam com o usuário 1001. Libere a pasta: `chmod 777 dados` na raiz do projeto |
 | Build para em `./gradlew ... bootJar` com `exit code: 127` (comum no Windows) | O `gradlew` foi baixado com final de linha do Windows (CRLF). Rode `git pull` e suba de novo: o Dockerfile e o `.gitattributes` já corrigem isso. Se ainda falhar, clone o projeto de novo |
 | A subida para em `ollama-modelo` (`service "ollama-modelo" didn't complete successfully`) | O modelo bge-m3 não foi baixado: sem internet ou acesso bloqueado a `registry.ollama.ai`. Veja o motivo em `docker compose logs ollama-modelo`, libere o acesso e rode `docker compose up` de novo (o download continua de onde parou). O `rag` não sobe sem o modelo |
@@ -179,7 +179,7 @@ Outros documentos (PO, contratos, atas…) já podem ser enviados e ficam guarda
 Cada serviço roda no seu contêiner e só conversa com os outros por contrato (decisão na `docs/adr/0002-servicos-separados.md`):
 
 ```
-frontend ──REST──▶ backend ──fila (RabbitMQ)──▶ rag ──HTTP──▶ leitor (Python)
+frontend ──REST──▶ backend ──fila (RabbitMQ)──▶ rag ──HTTP──▶ reader (Python)
                      ▲  ◀──────fila──────────────┘ │
 Claude ──MCP──▶ mcp ─┘ gRPC   backend ──gRPC──▶ rag └─HTTP──▶ ollama (embeddings)
 ```
@@ -188,10 +188,10 @@ Claude ──MCP──▶ mcp ─┘ gRPC   backend ──gRPC──▶ rag └�
 |---|---|---|
 | `frontend` | telas | backend (REST, `contracts/openapi.yaml`) |
 | `backend` | API, contábil, auditoria, relatórios, registro dos arquivos; banco no schema `backend` | rag (fila), mcp (gRPC) |
-| `rag` | lê, interpreta, confere e enriquece os documentos; índice e busca nos documentos (schema `rag`) | backend (fila e gRPC), leitor (HTTP), ollama (HTTP) |
+| `rag` | lê, interpreta, confere e enriquece os documentos; índice e busca nos documentos (schema `rag`) | backend (fila e gRPC), reader (HTTP), ollama (HTTP) |
 | `ollama` | gera os embeddings (modelo bge-m3) para a busca nos documentos | — |
 | `mcp` | porta de entrada do Claude, sem banco nem regra | backend (gRPC, `contracts/grpc/`) |
-| `leitor` | Python: arquivo → JSON com posições, sem estado | — |
+| `reader` | leitor de documentos em Python: arquivo → JSON com posições, sem estado | — |
 
 ## Estrutura
 
@@ -199,12 +199,12 @@ Claude ──MCP──▶ mcp ─┘ gRPC   backend ──gRPC──▶ rag └�
 api/                serviço api, o antigo backend (Java 25 + Spring Boot)
 rag/                serviço rag: leitura, interpretação e conferência dos documentos
 mcp/                serviço mcp: ferramentas MCP que chamam o backend por gRPC
-leitor/             leitor de documentos em Python (sem estado)
+reader/             leitor de documentos em Python (sem estado)
 libs/
   storage/          interface Storage (pasta local; S3 depois), usada por backend e rag
   grpc-contract/    código gerado de contracts/grpc (usado por backend, rag e mcp)
 frontend/           React + TypeScript + Vite
-contracts/          openapi.yaml, leitor/v1, mensagens/v3 (fila; v1 e v2 são histórico) e grpc/ (.proto, v2)
+contracts/          openapi.yaml, reader/v2 (leitor; leitor/v1 é histórico), mensagens/v3 (fila; v1 e v2 são histórico) e grpc/ (.proto, v2)
 infra/              docker-compose, Dockerfile dos serviços Java e realm do Keycloak
 docs/               requisitos, arquitetura, tecnologias e ADRs
 ```
@@ -215,7 +215,7 @@ Para mexer no código com recarga rápida. Precisa de **Java 25**, **Node 22 + p
 
 ```bash
 # 1. Só a infraestrutura no Docker
-cd infra && docker compose up -d banco fila keycloak leitor ollama ollama-modelo
+cd infra && docker compose up -d banco fila keycloak reader ollama ollama-modelo
 
 # 2. Cada serviço Java no seu terminal, na raiz do projeto
 PASTA_DADOS=$(pwd)/dados ./gradlew :api:bootRun     # API na 8081, gRPC na 9090
@@ -230,8 +230,8 @@ Testes:
 
 ```bash
 ./gradlew test                                          # backend, rag, mcp e libs
-cd leitor && python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt && .venv/bin/pytest
+cd reader && python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt && .venv/bin/pytest
 cd frontend && pnpm build                               # checagem de tipos
 ```
 
-Mudou um contrato? `contracts/openapi.yaml`: rode `pnpm gerar-api` dentro de `frontend/`. `contracts/grpc/`: o Gradle gera o código de novo no build. `contracts/mensagens/`: crie uma nova versão e ajuste api e rag no mesmo PR; os exemplos em `contracts/mensagens/v3/examples/` são testados pelos dois lados. Desde a fase 2 da ADR 0006, todas as mensagens são v3 (nomes em inglês) e as versões antigas ficam só como histórico.
+Mudou um contrato? `contracts/openapi.yaml`: rode `pnpm generate-api` dentro de `frontend/`. `contracts/grpc/`: o Gradle gera o código de novo no build. `contracts/mensagens/`: crie uma nova versão e ajuste api e rag no mesmo PR; os exemplos em `contracts/mensagens/v3/examples/` são testados pelos dois lados. Desde a fase 2 da ADR 0006, todas as mensagens são v3 (nomes em inglês) e as versões antigas ficam só como histórico.

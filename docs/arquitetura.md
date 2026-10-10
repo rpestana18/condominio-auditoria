@@ -23,7 +23,7 @@ Cada parte é um **serviço próprio**, no seu contêiner, e só conversa com as
        │ MCP (HTTP)         │ fila       │ fila
    Claude do usuário        │ RabbitMQ   │ RabbitMQ
                          ┌──▼────────────┴──────┐  HTTP   ┌──────────────────────┐
-                         │         RAG          │────────▶│ LEITOR (Python)      │
+                         │         RAG          │────────▶│ READER (Python)      │
                          │ leitura · conferência│         │ arquivo → JSON       │
                          │ · enriquecimento ·   │         └──────────────────────┘
                          │ embeddings · busca   │
@@ -50,18 +50,18 @@ condominio-auditoria/
 ├── api/                        # serviço (ex-backend, ADR 0006): API REST, contábil, auditoria, orçamento, relatórios, registro dos arquivos
 ├── rag/                        # serviço: leitura, interpretação de layouts, conferência, enriquecimento, embeddings, busca
 ├── mcp/                        # serviço: ferramentas MCP; chama o backend por gRPC com o token do usuário
-├── leitor/                     # serviço Python: arquivo → JSON (sem estado)
+├── reader/                     # leitor de documentos em Python: arquivo → JSON (sem estado)
 ├── frontend/                   # React + TypeScript + Vite (pnpm); tipos gerados do OpenAPI
 ├── libs/
 │   ├── storage/                # interface Storage: pasta local (MVP) ou S3 (nuvem), por parâmetro
 │   └── grpc-contract/          # código gerado de contracts/grpc
 ├── contracts/
 │   ├── openapi.yaml            # frontend ↔ backend
-│   ├── leitor/v1/              # rag ↔ leitor (JSON Schema)
+│   ├── reader/v2/              # rag ↔ reader (JSON Schema; leitor/v1 fica como histórico)
 │   ├── mensagens/v3/           # api ↔ rag pela fila (JSON Schema + exemplos testados dos dois lados; v1 e v2 são histórico)
 │   └── grpc/query/v2/       # mcp → backend (.proto)
 ├── infra/
-│   ├── docker-compose.yml      # PostgreSQL, RabbitMQ, Keycloak, leitor, backend, rag, mcp, frontend
+│   ├── docker-compose.yml      # PostgreSQL, RabbitMQ, Keycloak, reader, api, rag, mcp, frontend
 │   ├── java.Dockerfile         # imagem dos serviços Java (o serviço vem por argumento)
 │   └── keycloak/               # realm exportado: clientes, perfis, tempos de sessão
 ├── dados/                      # arquivos originais enviados (fora do git): dados/<condominio>/<categoria>/<ano>/
@@ -97,7 +97,7 @@ Regras: um serviço **nunca importa classe de outro** nem lê o schema de banco 
 
 ## 3. Módulos
 
-### 3.1 Ingestão (serviço `rag` + `leitor`)
+### 3.1 Ingestão (serviço `rag` + `reader`)
 Responsável por transformar arquivo em dado estruturado.
 
 Pipeline por arquivo:

@@ -3,13 +3,13 @@
 #            RabbitMQ http://localhost:15672 (condominio/condominio) · MCP http://localhost:8083/mcp
 #
 # Serviços e como conversam:
-#   frontend ──REST──▶ api ──fila──▶ rag ──HTTP──▶ leitor (Python)
+#   frontend ──REST──▶ api ──fila──▶ rag ──HTTP──▶ reader (Python)
 #                        ▲   ◀──fila────┘ │
 #   Claude ──MCP──▶ mcp ─┘ gRPC           └──HTTP──▶ ollama (embeddings bge-m3)
 #
 # Fluxos:
 #   leitura contábil: api ─ArquivoRecebido (rag.files-received)─▶ rag ─resultado (api.processing-results)─▶ api
-#   indexação (ADR 0003): api ─IndexarArquivo (rag.indexing)─▶ rag ─▶ leitor + ollama ─▶ schema rag no banco
+#   indexação (ADR 0003): api ─IndexFile (rag.indexing)─▶ rag ─▶ reader + ollama ─▶ schema rag no banco
 #                         rag ─ResultadoIndexacao (api.indexing-results)─▶ api (situação da indexação do arquivo na API)
 #   busca nos documentos: Claude ─search_documents─▶ mcp ─gRPC Query.SearchDocuments─▶ api
 #                         api ─gRPC Assistant.Search (rag:9091)─▶ rag (híbrida; só por palavra sem Ollama)
@@ -61,8 +61,8 @@ services:
       interval: 5s
       retries: 40
 
-  leitor:
-    build: ../leitor
+  reader:
+    build: ../reader
     ports: ["8090:8090"]
     read_only: true
     tmpfs: [/tmp]
@@ -122,7 +122,7 @@ services:
       args: { SERVICO: rag }
     environment:
       RABBITMQ_HOST: fila
-      LEITOR_URL: http://leitor:8090
+      READER_URL: http://reader:8090
       PASTA_DADOS: /dados
       PORTA: 8080
       # Índice dos documentos no schema "rag" do mesmo PostgreSQL (o rag acrescenta currentSchema=rag,public)
@@ -149,7 +149,7 @@ services:
     depends_on:
       banco: { condition: service_healthy }
       fila: { condition: service_healthy }
-      leitor: { condition: service_started }
+      reader: { condition: service_started }
       ollama-modelo: { condition: service_completed_successfully }
 
   mcp:

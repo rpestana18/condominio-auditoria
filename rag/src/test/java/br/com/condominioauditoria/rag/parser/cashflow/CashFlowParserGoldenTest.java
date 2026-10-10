@@ -26,7 +26,7 @@ public class CashFlowParserGoldenTest {
 
     @BeforeAll
     public static void read() throws Exception {
-        Path json = Path.of(System.getProperty("golden.dir"), "privado/fluxo-caixa-2026-09.documento-lido.json");
+        Path json = Path.of(System.getProperty("golden.dir"), "privado/fluxo-caixa-2026-09.read-document.json");
         assumeTrue(Files.exists(json), "golden privado ausente");
         var document = new ReaderContract().convert(Files.readString(json));
         var parser = new CashFlowParser();

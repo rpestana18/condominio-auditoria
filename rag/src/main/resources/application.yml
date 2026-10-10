@@ -61,7 +61,7 @@ rag:
     type: local
     folder: ${PASTA_DADOS:./dados}
   reader:
-    url: ${LEITOR_URL:http://localhost:8090}
+    url: ${READER_URL:http://localhost:8090}
     timeout-seconds: 300
   assistant:
     # Par de chaves do rag (ADR 0003, Sub-decisão 4.1 A). Sem arquivo e sem permissão de gerar, o chat fica

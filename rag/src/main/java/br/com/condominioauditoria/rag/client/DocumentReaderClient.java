@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
 
-/** Calls the Python reader (file → JSON) and validates the response against the v1 contract. */
+/** Calls the Python reader (file → JSON) and validates the response against the v2 contract. */
 @Component
 public class DocumentReaderClient {
 
@@ -28,13 +28,13 @@ public class DocumentReaderClient {
 
     public ReadDocument read(String name, byte[] content) {
         var parts = new LinkedMultiValueMap<String, Object>();
-        parts.add("arquivo", new ByteArrayResource(content) {
+        parts.add("file", new ByteArrayResource(content) {
             @Override
             public String getFilename() {
                 return name;
             }
         });
-        String json = client.post().uri("/v1/ler")
+        String json = client.post().uri("/v2/read")
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(parts)
                 .retrieve()

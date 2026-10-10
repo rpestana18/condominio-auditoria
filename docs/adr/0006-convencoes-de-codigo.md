@@ -155,7 +155,7 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | achados do mês | `MonthFindings` | |
 | recálculo dos achados | `BudgetFindingRecalculationService`, `BudgetFindingRecalculationListener` | |
 | cenário de teste, PO do piloto, golden de setembro | `BudgetScenario`, `PilotBudget`, `SeptemberGolden` | só nos testes |
-| leitor (de documentos), documento lido, contrato do leitor | `reader`, `ReadDocument`, `ReaderContract` | o serviço `leitor/` mantém o nome até a fase 3 |
+| leitor (de documentos), documento lido, contrato do leitor | `reader`, `ReadDocument`, `ReaderContract` | o serviço `leitor/` virou `reader/` na fase 3 |
 | interpretador (de layout), leitura | `parser`, `Reading` | |
 | interpretador da PO da Protest, do fluxo de caixa | `ProtestBudgetParser`, `CashFlowParser` | |
 | linha (de texto da página), palavra, célula, planilha, parágrafo | `TextLine`, `Word`, `Cell`, `Sheet`, `Paragraph` | |

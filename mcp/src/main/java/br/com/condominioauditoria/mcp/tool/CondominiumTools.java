@@ -1,14 +1,14 @@
 package br.com.condominioauditoria.mcp.tool;
 
-import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ConferenciasDoArquivoRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.FiltrosDocumentos;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarArquivosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarCondominiosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarLancamentosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.LocalizacaoTrecho;
-import br.com.condominioauditoria.contratos.consulta.v1.ResumoFundosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.TrechoDocumento;
+import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsRequest;
+import br.com.condominioauditoria.contracts.query.v2.FileChecksRequest;
+import br.com.condominioauditoria.contracts.query.v2.DocumentFilters;
+import br.com.condominioauditoria.contracts.query.v2.ListFilesRequest;
+import br.com.condominioauditoria.contracts.query.v2.ListCondominiumsRequest;
+import br.com.condominioauditoria.contracts.query.v2.ListEntriesRequest;
+import br.com.condominioauditoria.contracts.query.v2.DocumentChunkLocation;
+import br.com.condominioauditoria.contracts.query.v2.FundSummaryRequest;
+import br.com.condominioauditoria.contracts.query.v2.DocumentChunk;
 import br.com.condominioauditoria.mcp.client.ApiClient;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.grpc.StatusRuntimeException;
@@ -44,9 +44,9 @@ public class CondominiumTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false))
     public List<Condominium> listCondominiums(McpTransportContext context) {
         return call(() -> api.query(context)
-                .listarCondominios(ListarCondominiosRequest.getDefaultInstance())
-                .getCondominiosList().stream()
-                .map(c -> new Condominium(c.getId(), c.getNome()))
+                .listCondominiums(ListCondominiumsRequest.getDefaultInstance())
+                .getCondominiumsList().stream()
+                .map(c -> new Condominium(c.getId(), c.getName()))
                 .toList());
     }
 
@@ -57,16 +57,16 @@ public class CondominiumTools {
     public FundSummary fundSummary(McpTransportContext context,
             @McpToolParam(description = "Id do condomínio (veja listar_condominios)") String condominioId) {
         return call(() -> {
-            var r = api.query(context).resumoFundos(
-                    ResumoFundosRequest.newBuilder().setCondominioId(condominioId).build());
-            if (!r.getTemDados()) {
+            var r = api.query(context).fundSummary(
+                    FundSummaryRequest.newBuilder().setCondominiumId(condominioId).build());
+            if (!r.getHasData()) {
                 return new FundSummary(false, null, null, null, null, null, null, null, 0, List.of());
             }
-            return new FundSummary(true, r.getArquivoNome(), r.getPeriodoInicio(), r.getPeriodoFim(),
-                    r.getSaldoAnterior(), r.getEntradas(), r.getSaidas(), r.getSaldoAtual(),
-                    r.getConferenciasComFalha(),
-                    r.getFundosList().stream().map(f -> new Fund(f.getFundo(), f.getSaldoAnterior(), f.getEntradas(),
-                            f.getSaidas(), f.getSaldoAtual())).toList());
+            return new FundSummary(true, r.getFileName(), r.getPeriodStart(), r.getPeriodEnd(),
+                    r.getOpeningBalance(), r.getInflows(), r.getOutflows(), r.getClosingBalance(),
+                    r.getFailedChecks(),
+                    r.getFundsList().stream().map(f -> new Fund(f.getFund(), f.getOpeningBalance(), f.getInflows(),
+                            f.getOutflows(), f.getClosingBalance())).toList());
         });
     }
 
@@ -75,17 +75,17 @@ public class CondominiumTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false))
     public List<FileInfo> listFiles(McpTransportContext context,
             @McpToolParam(description = "Id do condomínio") String condominioId,
-            @McpToolParam(required = false, description = "Categoria: BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, "
-                    + "COMPROVANTE, ATA, CONVENCAO_RI ou OUTROS") String categoria,
+            @McpToolParam(required = false, description = "Categoria: TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, "
+                    + "RECEIPT, MINUTES, BYLAWS ou OTHER") String categoria,
             @McpToolParam(required = false, description = "Quantos arquivos no máximo (padrão 50)") Integer limite) {
-        return call(() -> api.query(context).listarArquivos(ListarArquivosRequest.newBuilder()
-                        .setCondominioId(condominioId)
-                        .setCategoria(Objects.toString(categoria, ""))
-                        .setLimite(limite == null ? 0 : limite)
+        return call(() -> api.query(context).listFiles(ListFilesRequest.newBuilder()
+                        .setCondominiumId(condominioId)
+                        .setCategory(Objects.toString(categoria, ""))
+                        .setLimit(limite == null ? 0 : limite)
                         .build())
-                .getArquivosList().stream()
-                .map(a -> new FileInfo(a.getId(), a.getCategoria(), a.getNome(), a.getStatus(), a.getMensagem(),
-                        a.getPeriodoInicio(), a.getPeriodoFim(), a.getTotalLancamentos(), a.getEnviadoEm()))
+                .getFilesList().stream()
+                .map(a -> new FileInfo(a.getId(), a.getCategory(), a.getName(), a.getStatus(), a.getMessage(),
+                        a.getPeriodStart(), a.getPeriodEnd(), a.getEntryCount(), a.getUploadedAt()))
                 .toList());
     }
 
@@ -96,10 +96,10 @@ public class CondominiumTools {
     public List<Check> fileChecks(McpTransportContext context,
             @McpToolParam(description = "Id do condomínio") String condominioId,
             @McpToolParam(description = "Id do arquivo (veja listar_arquivos)") String arquivoId) {
-        return call(() -> api.query(context).conferenciasDoArquivo(ConferenciasDoArquivoRequest.newBuilder()
-                        .setCondominioId(condominioId).setArquivoId(arquivoId).build())
-                .getConferenciasList().stream()
-                .map(c -> new Check(c.getCodigo(), c.getDescricao(), c.getOk(), c.getDetalhe()))
+        return call(() -> api.query(context).fileChecks(FileChecksRequest.newBuilder()
+                        .setCondominiumId(condominioId).setFileId(arquivoId).build())
+                .getChecksList().stream()
+                .map(c -> new Check(c.getCode(), c.getDescription(), c.getOk(), c.getDetail()))
                 .toList());
     }
 
@@ -118,20 +118,20 @@ public class CondominiumTools {
             @McpToolParam(required = false, description = "Quantos lançamentos no máximo (padrão 500, máximo 5000)")
             Integer limite) {
         return call(() -> {
-            var request = ListarLancamentosRequest.newBuilder()
-                    .setCondominioId(condominioId)
-                    .setDataInicio(Objects.toString(dataInicio, ""))
-                    .setDataFim(Objects.toString(dataFim, ""))
-                    .setFundo(Objects.toString(fundo, ""))
-                    .setTexto(Objects.toString(texto, ""))
-                    .setSomenteSaidas(Boolean.TRUE.equals(somenteSaidas))
-                    .setLimite(limite == null ? 0 : limite)
+            var request = ListEntriesRequest.newBuilder()
+                    .setCondominiumId(condominioId)
+                    .setDateFrom(Objects.toString(dataInicio, ""))
+                    .setDateTo(Objects.toString(dataFim, ""))
+                    .setFund(Objects.toString(fundo, ""))
+                    .setText(Objects.toString(texto, ""))
+                    .setOutflowsOnly(Boolean.TRUE.equals(somenteSaidas))
+                    .setLimit(limite == null ? 0 : limite)
                     .build();
             List<LedgerEntry> list = new ArrayList<>();
-            api.query(context).listarLancamentos(request).forEachRemaining(l -> list.add(new LedgerEntry(
-                    l.getData(), l.getFundo(), l.getContaCodigo(), l.getContaNome(), l.getHistorico(), l.getCredito(),
-                    l.getDebito(), l.getFornecedor(), l.getMeioPagamento(), l.getTransferenciaEntreFundos(),
-                    l.getArquivoId(), l.getPagina())));
+            api.query(context).listEntries(request).forEachRemaining(l -> list.add(new LedgerEntry(
+                    l.getDate(), l.getFund(), l.getAccountCode(), l.getAccountName(), l.getMemo(), l.getCredit(),
+                    l.getDebit(), l.getSupplier(), l.getPaymentMethod(), l.getInterFundTransfer(),
+                    l.getFileId(), l.getPage())));
             return list;
         });
     }
@@ -151,8 +151,8 @@ public class CondominiumTools {
             @McpToolParam(description = "O que procurar, em português. Palavras soltas acham qualquer forma "
                     + "(com ou sem acento); \"frase entre aspas\" exige a frase exata; -palavra exclui trechos com "
                     + "ela. Ex.: \"reajuste da taxa\" -2023") String texto,
-            @McpToolParam(required = false, description = "Só estas categorias: BALANCETE, EXTRATO, PO, CONTRATO, "
-                    + "FOLHA, COMPROVANTE, ATA, CONVENCAO_RI ou OUTROS. Vazio = todas") List<String> categorias,
+            @McpToolParam(required = false, description = "Só estas categorias: TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, "
+                    + "PAYROLL, RECEIPT, MINUTES, BYLAWS ou OTHER. Vazio = todas") List<String> categorias,
             @McpToolParam(required = false, description = "Só documentos com competência a partir desta data, "
                     + "AAAA-MM-DD") String dataInicio,
             @McpToolParam(required = false, description = "Só documentos com competência até esta data, AAAA-MM-DD")
@@ -167,26 +167,26 @@ public class CondominiumTools {
         if (limite != null && limite < 1) {
             throw new IllegalArgumentException("O limite vai de 1 a 50; recebido " + limite);
         }
-        var filters = FiltrosDocumentos.newBuilder()
-                .addAllCategorias(withoutBlanks(categorias))
-                .setDataInicio(Objects.toString(dataInicio, "").strip())
-                .setDataFim(Objects.toString(dataFim, "").strip())
-                .addAllArquivoIds(withoutBlanks(arquivoIds))
+        var filters = DocumentFilters.newBuilder()
+                .addAllCategories(withoutBlanks(categorias))
+                .setDateFrom(Objects.toString(dataInicio, "").strip())
+                .setDateTo(Objects.toString(dataFim, "").strip())
+                .addAllFileIds(withoutBlanks(arquivoIds))
                 .build();
-        var request = BuscarDocumentosRequest.newBuilder()
-                .setCondominioId(Objects.toString(condominioId, "").strip())
-                .setTexto(texto.strip())
-                .setFiltros(filters)
-                .setLimite(limite == null ? DEFAULT_SEARCH_LIMIT : Math.min(limite, MAX_SEARCH_LIMIT))
+        var request = SearchDocumentsRequest.newBuilder()
+                .setCondominiumId(Objects.toString(condominioId, "").strip())
+                .setText(texto.strip())
+                .setFilters(filters)
+                .setLimit(limite == null ? DEFAULT_SEARCH_LIMIT : Math.min(limite, MAX_SEARCH_LIMIT))
                 .build();
         return call(() -> {
-            var r = api.query(context).buscarDocumentos(request);
-            String mode = switch (r.getModoUsado()) {
-                case MODO_BUSCA_DOCUMENTOS_PALAVRA -> "PALAVRA";
-                case MODO_BUSCA_DOCUMENTOS_HIBRIDA -> "HIBRIDA";
+            var r = api.query(context).searchDocuments(request);
+            String mode = switch (r.getModeUsed()) {
+                case DOCUMENT_SEARCH_MODE_KEYWORD -> "PALAVRA";
+                case DOCUMENT_SEARCH_MODE_HYBRID -> "HIBRIDA";
                 default -> "NAO_INFORMADO";
             };
-            List<FoundChunk> chunks = r.getTrechosList().stream().map(CondominiumTools::chunk).toList();
+            List<FoundChunk> chunks = r.getChunksList().stream().map(CondominiumTools::chunk).toList();
             return new DocumentSearchResult(mode, chunks.size(), chunks, SEARCH_WARNING);
         });
     }
@@ -201,22 +201,22 @@ public class CondominiumTools {
                 : values.stream().filter(Objects::nonNull).map(String::strip).filter(v -> !v.isEmpty()).toList();
     }
 
-    public static FoundChunk chunk(TrechoDocumento t) {
-        Integer page = t.getLocalizacao().hasPagina() ? t.getLocalizacao().getPagina().getPagina() : null;
-        return new FoundChunk(t.getNomeArquivo(), t.getArquivoId(), t.getCategoria(),
-                readableLocation(t.getLocalizacao()), page, t.getTexto(), t.getSha256(), t.getTrechoId());
+    public static FoundChunk chunk(DocumentChunk t) {
+        Integer page = t.getLocation().hasPage() ? t.getLocation().getPage().getPage() : null;
+        return new FoundChunk(t.getFileName(), t.getFileId(), t.getCategory(),
+                readableLocation(t.getLocation()), page, t.getText(), t.getSha256(), t.getChunkId());
     }
 
     /** "página 3", "aba Plan1, linhas 2–31" or "parágrafos 4–7, seção Cláusula 5". */
-    public static String readableLocation(LocalizacaoTrecho l) {
-        return switch (l.getTipoCase()) {
-            case PAGINA -> "página " + l.getPagina().getPagina();
-            case PLANILHA -> "aba " + l.getPlanilha().getAba() + ", "
-                    + range("linha", "linhas", l.getPlanilha().getLinhaInicio(), l.getPlanilha().getLinhaFim());
-            case PARAGRAFOS -> range("parágrafo", "parágrafos", l.getParagrafos().getParagrafoInicio(),
-                    l.getParagrafos().getParagrafoFim())
-                    + (l.getParagrafos().getSecao().isBlank() ? "" : ", seção " + l.getParagrafos().getSecao());
-            case TIPO_NOT_SET -> "localização não informada";
+    public static String readableLocation(DocumentChunkLocation l) {
+        return switch (l.getKindCase()) {
+            case PAGE -> "página " + l.getPage().getPage();
+            case SHEET -> "aba " + l.getSheet().getTab() + ", "
+                    + range("linha", "linhas", l.getSheet().getStartRow(), l.getSheet().getEndRow());
+            case PARAGRAPHS -> range("parágrafo", "parágrafos", l.getParagraphs().getParagraphStart(),
+                    l.getParagraphs().getParagraphEnd())
+                    + (l.getParagraphs().getSection().isBlank() ? "" : ", seção " + l.getParagraphs().getSection());
+            case KIND_NOT_SET -> "localização não informada";
         };
     }
 
@@ -238,7 +238,7 @@ public class CondominiumTools {
     }
 
     public record FundSummary(
-            @JsonProperty("temDados") boolean hasData,
+            @JsonProperty("temDados") boolean hasDate,
             @JsonProperty("arquivo") String file,
             @JsonProperty("periodoInicio") String periodStart,
             @JsonProperty("periodoFim") String periodEnd,

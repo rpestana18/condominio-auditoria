@@ -3,15 +3,15 @@ package br.com.condominioauditoria.mcp.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.BuscarDocumentosResponse;
-import br.com.condominioauditoria.contratos.consulta.v1.ConsultaGrpc;
-import br.com.condominioauditoria.contratos.consulta.v1.LocalPagina;
-import br.com.condominioauditoria.contratos.consulta.v1.LocalParagrafos;
-import br.com.condominioauditoria.contratos.consulta.v1.LocalPlanilha;
-import br.com.condominioauditoria.contratos.consulta.v1.LocalizacaoTrecho;
-import br.com.condominioauditoria.contratos.consulta.v1.ModoBuscaDocumentos;
-import br.com.condominioauditoria.contratos.consulta.v1.TrechoDocumento;
+import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsRequest;
+import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsResponse;
+import br.com.condominioauditoria.contracts.query.v2.QueryGrpc;
+import br.com.condominioauditoria.contracts.query.v2.PageLocation;
+import br.com.condominioauditoria.contracts.query.v2.ParagraphsLocation;
+import br.com.condominioauditoria.contracts.query.v2.SheetLocation;
+import br.com.condominioauditoria.contracts.query.v2.DocumentChunkLocation;
+import br.com.condominioauditoria.contracts.query.v2.DocumentSearchMode;
+import br.com.condominioauditoria.contracts.query.v2.DocumentChunk;
 import br.com.condominioauditoria.mcp.client.ApiClient;
 import br.com.condominioauditoria.mcp.config.McpConfig;
 import br.com.condominioauditoria.mcp.config.properties.McpProperties;
@@ -42,7 +42,7 @@ class SearchDocumentsToolTest {
     private static final McpTransportContext CONTEXT =
             McpTransportContext.create(Map.of(McpConfig.AUTHORIZATION, TOKEN));
 
-    private final AtomicReference<BuscarDocumentosRequest> receivedRequest = new AtomicReference<>();
+    private final AtomicReference<SearchDocumentsRequest> receivedRequest = new AtomicReference<>();
     private final AtomicReference<String> receivedToken = new AtomicReference<>();
     private final AtomicReference<Status> errorToReturn = new AtomicReference<>();
     private Server server;
@@ -52,25 +52,25 @@ class SearchDocumentsToolTest {
     @BeforeEach
     void start() throws Exception {
         String name = InProcessServerBuilder.generateName();
-        var fakeApi = new ConsultaGrpc.ConsultaImplBase() {
+        var fakeApi = new QueryGrpc.QueryImplBase() {
             @Override
-            public void buscarDocumentos(BuscarDocumentosRequest request,
-                    StreamObserver<BuscarDocumentosResponse> response) {
+            public void searchDocuments(SearchDocumentsRequest request,
+                    StreamObserver<SearchDocumentsResponse> response) {
                 receivedRequest.set(request);
                 if (errorToReturn.get() != null) {
                     response.onError(errorToReturn.get().asRuntimeException());
                     return;
                 }
-                response.onNext(BuscarDocumentosResponse.newBuilder()
-                        .setModoUsado(ModoBuscaDocumentos.MODO_BUSCA_DOCUMENTOS_PALAVRA)
-                        .addTrechos(chunk("ata-2025.pdf", "ATA", LocalizacaoTrecho.newBuilder()
-                                .setPagina(LocalPagina.newBuilder().setPagina(3)).build()))
-                        .addTrechos(chunk("previsao.xlsx", "PO", LocalizacaoTrecho.newBuilder()
-                                .setPlanilha(LocalPlanilha.newBuilder().setAba("Plan1").setLinhaInicio(2)
-                                        .setLinhaFim(31)).build()))
-                        .addTrechos(chunk("contrato.docx", "CONTRATO", LocalizacaoTrecho.newBuilder()
-                                .setParagrafos(LocalParagrafos.newBuilder().setParagrafoInicio(4)
-                                        .setParagrafoFim(7)).build()))
+                response.onNext(SearchDocumentsResponse.newBuilder()
+                        .setModeUsed(DocumentSearchMode.DOCUMENT_SEARCH_MODE_KEYWORD)
+                        .addChunks(chunk("ata-2025.pdf", "MINUTES", DocumentChunkLocation.newBuilder()
+                                .setPage(PageLocation.newBuilder().setPage(3)).build()))
+                        .addChunks(chunk("previsao.xlsx", "PO", DocumentChunkLocation.newBuilder()
+                                .setSheet(SheetLocation.newBuilder().setTab("Plan1").setStartRow(2)
+                                        .setEndRow(31)).build()))
+                        .addChunks(chunk("contrato.docx", "CONTRACT", DocumentChunkLocation.newBuilder()
+                                .setParagraphs(ParagraphsLocation.newBuilder().setParagraphStart(4)
+                                        .setParagraphEnd(7)).build()))
                         .build());
                 response.onCompleted();
             }
@@ -99,17 +99,17 @@ class SearchDocumentsToolTest {
     @Test
     void passesFiltersAndTokenAndReturnsReadableLocation() {
         var result = tools.searchDocuments(CONTEXT, CONDOMINIUM, " \"reajuste da taxa\" -2023 ",
-                List.of("ATA", " ", "CONTRATO"), "2025-01-01", "2025-12-31", null, null);
+                List.of("MINUTES", " ", "CONTRACT"), "2025-01-01", "2025-12-31", null, null);
 
         assertThat(receivedToken.get()).isEqualTo(TOKEN);
         var request = receivedRequest.get();
-        assertThat(request.getCondominioId()).isEqualTo(CONDOMINIUM);
-        assertThat(request.getTexto()).isEqualTo("\"reajuste da taxa\" -2023");
-        assertThat(request.getLimite()).isEqualTo(10);
-        assertThat(request.getFiltros().getCategoriasList()).containsExactly("ATA", "CONTRATO");
-        assertThat(request.getFiltros().getDataInicio()).isEqualTo("2025-01-01");
-        assertThat(request.getFiltros().getDataFim()).isEqualTo("2025-12-31");
-        assertThat(request.getFiltros().getArquivoIdsList()).isEmpty();
+        assertThat(request.getCondominiumId()).isEqualTo(CONDOMINIUM);
+        assertThat(request.getText()).isEqualTo("\"reajuste da taxa\" -2023");
+        assertThat(request.getLimit()).isEqualTo(10);
+        assertThat(request.getFilters().getCategoriesList()).containsExactly("MINUTES", "CONTRACT");
+        assertThat(request.getFilters().getDateFrom()).isEqualTo("2025-01-01");
+        assertThat(request.getFilters().getDateTo()).isEqualTo("2025-12-31");
+        assertThat(request.getFilters().getFileIdsList()).isEmpty();
 
         assertThat(result.modeUsed()).isEqualTo("PALAVRA");
         assertThat(result.total()).isEqualTo(3);
@@ -125,8 +125,8 @@ class SearchDocumentsToolTest {
     void limitAboveMaximumBecomesFifty() {
         tools.searchDocuments(CONTEXT, CONDOMINIUM, "elevador", null, null, null, List.of("abc"), 500);
 
-        assertThat(receivedRequest.get().getLimite()).isEqualTo(50);
-        assertThat(receivedRequest.get().getFiltros().getArquivoIdsList()).containsExactly("abc");
+        assertThat(receivedRequest.get().getLimit()).isEqualTo(50);
+        assertThat(receivedRequest.get().getFilters().getFileIdsList()).containsExactly("abc");
     }
 
     @Test
@@ -167,14 +167,14 @@ class SearchDocumentsToolTest {
 
     @Test
     void locationOfSingleRowAndSection() {
-        assertThat(CondominiumTools.readableLocation(LocalizacaoTrecho.newBuilder()
-                .setPlanilha(LocalPlanilha.newBuilder().setAba("Resumo").setLinhaInicio(5).setLinhaFim(5)).build()))
+        assertThat(CondominiumTools.readableLocation(DocumentChunkLocation.newBuilder()
+                .setSheet(SheetLocation.newBuilder().setTab("Resumo").setStartRow(5).setEndRow(5)).build()))
                 .isEqualTo("aba Resumo, linha 5");
-        assertThat(CondominiumTools.readableLocation(LocalizacaoTrecho.newBuilder()
-                .setParagrafos(LocalParagrafos.newBuilder().setParagrafoInicio(2).setParagrafoFim(2)
-                        .setSecao("Cláusula 5")).build()))
+        assertThat(CondominiumTools.readableLocation(DocumentChunkLocation.newBuilder()
+                .setParagraphs(ParagraphsLocation.newBuilder().setParagraphStart(2).setParagraphEnd(2)
+                        .setSection("Cláusula 5")).build()))
                 .isEqualTo("parágrafo 2, seção Cláusula 5");
-        assertThat(CondominiumTools.readableLocation(LocalizacaoTrecho.getDefaultInstance()))
+        assertThat(CondominiumTools.readableLocation(DocumentChunkLocation.getDefaultInstance()))
                 .isEqualTo("localização não informada");
     }
 
@@ -182,9 +182,9 @@ class SearchDocumentsToolTest {
         tools.searchDocuments(CONTEXT, CONDOMINIUM, "taxa", null, null, null, null, null);
     }
 
-    private static TrechoDocumento chunk(String name, String category, LocalizacaoTrecho location) {
-        return TrechoDocumento.newBuilder().setTrechoId("t-" + name).setArquivoId("a-" + name).setNomeArquivo(name)
-                .setCategoria(category).setLocalizacao(location).setTexto("texto de " + name).setPontuacao(1.5)
+    private static DocumentChunk chunk(String name, String category, DocumentChunkLocation location) {
+        return DocumentChunk.newBuilder().setChunkId("t-" + name).setFileId("a-" + name).setFileName(name)
+                .setCategory(category).setLocation(location).setText("texto de " + name).setScore(1.5)
                 .setSha256("abc").build();
     }
 }

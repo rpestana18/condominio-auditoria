@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 
-/** Queries on the provider catalog (configuration), used by the ListarProvedores rpc and by Perguntar. */
+/** Queries on the provider catalog (configuration), used by the ListProviders rpc and by Ask. */
 @Component
 public class ProviderCatalog {
 
@@ -29,7 +29,7 @@ public class ProviderCatalog {
 
     /**
      * Provider and model must exist in the catalog and the provider must be for answers; anything else is
-     * FAILED_PRECONDITION in Perguntar (contract assistente.proto).
+     * FAILED_PRECONDITION in Ask (contract assistant.proto).
      */
     public AiModel answerModel(String providerCode, String modelId) {
         AiProvider provider = byCode(providerCode).orElseThrow(() -> new ModelNotInCatalogException(

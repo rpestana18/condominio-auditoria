@@ -60,7 +60,7 @@ condominio-auditoria/
 │   ├── leitor/v1/              # rag ↔ leitor (JSON Schema)
 │   ├── mensagens/v1/           # backend ↔ rag pela fila (JSON Schema + exemplos testados dos dois lados)
 │   ├── mensagens/v2/           # ADR 0004: resultado-processamento v2, com a PO lida e o recebimento de cota
-│   └── grpc/consulta/v1/       # mcp → backend (.proto)
+│   └── grpc/query/v2/       # mcp → backend (.proto)
 ├── infra/
 │   ├── docker-compose.yml      # PostgreSQL, RabbitMQ, Keycloak, leitor, backend, rag, mcp, frontend
 │   ├── java.Dockerfile         # imagem dos serviços Java (o serviço vem por argumento)
@@ -119,7 +119,7 @@ Idempotente: reenviar o mesmo arquivo não duplica nada.
 - Busca **híbrida** (palavra-chave + vetorial) com filtro por categoria/período/permissão.
 - Geração com **citações obrigatórias**. Perguntas numéricas são roteadas para **ferramentas** que consultam o banco (*text-to-query* controlado ou endpoints prontos), nunca respondidas só pelo texto.
 - Também alimenta o backend: extrai cláusulas de contratos (valor, índice de reajuste, data-base, vigência) e regras da convenção (rateio, multas, fundo de reserva) para parâmetros que o admin confirma.
-- **Assistente (módulo contratável, RF-04 e RF-10). ADR 0003, aprovada pelo usuário em 03/10/2026:** índice no schema `rag` (trechos cortados por página, aba e linha, ou seção e parágrafo; vetores `vector(1024)` com pgvector; busca por palavra em português sem acento); busca híbrida com fusão de posições e filtro de condomínio antes da busca; embeddings locais (`bge-m3` no contêiner Ollama) em todos os modos; indexação pela fila `rag.indexing`, só para condomínio com o módulo ligado; chat recebido do backend por gRPC (`contracts/grpc/assistente/v1`: `Buscar`, `Perguntar` em fluxo e `ListarProvedores`), com os números buscados no backend pelo `Consulta` com o token do usuário.
+- **Assistente (módulo contratável, RF-04 e RF-10). ADR 0003, aprovada pelo usuário em 03/10/2026:** índice no schema `rag` (trechos cortados por página, aba e linha, ou seção e parágrafo; vetores `vector(1024)` com pgvector; busca por palavra em português sem acento); busca híbrida com fusão de posições e filtro de condomínio antes da busca; embeddings locais (`bge-m3` no contêiner Ollama) em todos os modos; indexação pela fila `rag.indexing`, só para condomínio com o módulo ligado; chat recebido do backend por gRPC (`contracts/grpc/assistant/v2`: `Search`, `Ask` em fluxo e `ListProviders`), com os números buscados no backend pelo `Consulta` com o token do usuário.
 
 ### 3.3 Backend (serviço `backend`)
 - **Auth e perfis** (Usuário/Gestor/Admin) aplicados em todos os endpoints.
@@ -141,14 +141,14 @@ ADR 0005 (aprovada em 07/10/2026): menu "Análise da PO" com filtro de exercíci
 
 ### 3.5 MCP (serviço `mcp`, Spring AI)
 - Expõe o sistema como **ferramentas MCP** (transporte HTTP sem sessão). Já existem: `listar_condominios`, `resumo_fundos`, `listar_arquivos`, `conferencias_do_arquivo`, `buscar_lancamentos`. Depois: `listar_achados`, `previsto_realizado` (requisito próprio, RF-08.1; fora da ADR 0004), `buscar_documentos` (RAG), `gerar_relatorio`.
-- Não tem banco nem regra: cada ferramenta é uma chamada **gRPC** ao backend (`contracts/grpc/consulta/v1`), com o token do usuário. Listas grandes chegam em fluxo (stream).
+- Não tem banco nem regra: cada ferramenta é uma chamada **gRPC** ao backend (`contracts/grpc/query/v2`), com o token do usuário. Listas grandes chegam em fluxo (stream).
 - Serve para: uso do sistema pelo Claude Desktop/Code; e testes de integração ponta a ponta conduzidos pelo agente MCP.
 - **Papel de integração**: o agente MCP é acionado sempre que um serviço muda um contrato (OpenAPI, fila, gRPC, ferramenta), para verificar que todos os consumidores continuam funcionando.
 
 ### 3.6 AI Gateway (no serviço `rag`, onde ficam as chamadas a modelos)
 Camada única para modelos de IA. **Modo por condomínio (RF-09)**: MCP_EXTERNO (piloto, o Claude do usuário via MCP), API_KEY (chave própria do condomínio, criptografada) ou DESLIGADO. Troca de provedor/modelo por configuração, cache de respostas por hash do insumo, registro de custo/tokens, *prompts* versionados, saídas estruturadas validadas por esquema. Ponto onde entra o **mascaramento LGPD** na fase de nuvem.
 
-**ADR 0003 (aprovada pelo usuário em 03/10/2026):** modo de IA também **por módulo e por função** (RF-09.6: respostas e embeddings do Assistente; sem configuração própria, herda o modo geral), com `LOCAL` previsto. O **catálogo de provedores** fica na configuração do `rag` e o backend o lê por gRPC (`ListarProvedores`). O `rag` não guarda configuração: cada pedido do backend traz modo, provedor, modelo e a chave já resolvidos; a chave vem cifrada com a chave pública do `rag` e só ele a decifra. O uso (tokens, buscas, chamadas MCP, páginas indexadas) volta ao backend em cada resposta e é gravado lá (RF-09.7).
+**ADR 0003 (aprovada pelo usuário em 03/10/2026):** modo de IA também **por módulo e por função** (RF-09.6: respostas e embeddings do Assistente; sem configuração própria, herda o modo geral), com `LOCAL` previsto. O **catálogo de provedores** fica na configuração do `rag` e o backend o lê por gRPC (`ListProviders`). O `rag` não guarda configuração: cada pedido do backend traz modo, provedor, modelo e a chave já resolvidos; a chave vem cifrada com a chave pública do `rag` e só ele a decifra. O uso (tokens, buscas, chamadas MCP, páginas indexadas) volta ao backend em cada resposta e é gravado lá (RF-09.7).
 
 ### 3.7 Módulos contratáveis por condomínio (RF-10; ADR 0003)
 - O **backend é o dono**: catálogo de módulos (configuração versionada), estado por condomínio, trilha de ativação só de inserção (períodos ativos calculados dela), configuração de IA e registro de uso. Hoje o catálogo tem só o `ASSISTENTE`, desligado por padrão em condomínio novo.

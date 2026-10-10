@@ -4,7 +4,7 @@ import br.com.condominioauditoria.rag.search.FoundChunk;
 import java.util.List;
 
 /**
- * Answer ready and already checked, the way it goes into the last event of the {@code Perguntar} stream.
+ * Answer ready and already checked, the way it goes into the last event of the {@code Ask} stream.
  *
  * @param citedChunks without repetition, in the order of first citation (the api numbers the citations in that order)
  * @param warning empty when there is nothing to warn about (model refusal, keyword-only search)

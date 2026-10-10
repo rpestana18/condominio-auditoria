@@ -3,10 +3,10 @@ package br.com.condominioauditoria.api.grpc.server;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import br.com.condominioauditoria.contratos.consulta.v1.CondominioResumo;
-import br.com.condominioauditoria.contratos.consulta.v1.ConsultaGrpc;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarCondominiosRequest;
-import br.com.condominioauditoria.contratos.consulta.v1.ListarCondominiosResponse;
+import br.com.condominioauditoria.contracts.query.v2.CondominiumSummary;
+import br.com.condominioauditoria.contracts.query.v2.QueryGrpc;
+import br.com.condominioauditoria.contracts.query.v2.ListCondominiumsRequest;
+import br.com.condominioauditoria.contracts.query.v2.ListCondominiumsResponse;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
 import io.grpc.Server;
@@ -52,13 +52,13 @@ class GrpcAuthInterceptorTest {
                 .map(p -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + p))
                 .toList());
         // Test service: returns the name of the user Spring Security sees inside the call
-        var service = new ConsultaGrpc.ConsultaImplBase() {
+        var service = new QueryGrpc.QueryImplBase() {
             @Override
-            public void listarCondominios(ListarCondominiosRequest request,
-                    StreamObserver<ListarCondominiosResponse> r) {
+            public void listCondominiums(ListCondominiumsRequest request,
+                    StreamObserver<ListCondominiumsResponse> r) {
                 String username = SecurityContextHolder.getContext().getAuthentication().getName();
-                r.onNext(ListarCondominiosResponse.newBuilder()
-                        .addCondominios(CondominioResumo.newBuilder().setNome(username)).build());
+                r.onNext(ListCondominiumsResponse.newBuilder()
+                        .addCondominiums(CondominiumSummary.newBuilder().setName(username)).build());
                 r.onCompleted();
             }
         };
@@ -77,35 +77,35 @@ class GrpcAuthInterceptorTest {
 
     @Test
     void withoutTokenIsRejected() {
-        assertThatThrownBy(() -> stub(null).listarCondominios(ListarCondominiosRequest.getDefaultInstance()))
+        assertThatThrownBy(() -> stub(null).listCondominiums(ListCondominiumsRequest.getDefaultInstance()))
                 .isInstanceOfSatisfying(StatusRuntimeException.class,
                         e -> assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED));
     }
 
     @Test
     void invalidTokenIsRejected() {
-        assertThatThrownBy(() -> stub("Bearer falso").listarCondominios(ListarCondominiosRequest.getDefaultInstance()))
+        assertThatThrownBy(() -> stub("Bearer falso").listCondominiums(ListCondominiumsRequest.getDefaultInstance()))
                 .isInstanceOfSatisfying(StatusRuntimeException.class,
                         e -> assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED));
     }
 
     @Test
     void tokenWithoutRoleIsRejected() {
-        assertThatThrownBy(() -> stub("Bearer valido-sem-perfil").listarCondominios(ListarCondominiosRequest.getDefaultInstance()))
+        assertThatThrownBy(() -> stub("Bearer valido-sem-perfil").listCondominiums(ListCondominiumsRequest.getDefaultInstance()))
                 .isInstanceOfSatisfying(StatusRuntimeException.class,
                         e -> assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.PERMISSION_DENIED));
     }
 
     @Test
     void validTokenReachesServiceWithUser() {
-        var response = stub("Bearer valido-gestor").listarCondominios(ListarCondominiosRequest.getDefaultInstance());
-        assertThat(response.getCondominios(0).getNome()).isEqualTo("gestor");
+        var response = stub("Bearer valido-gestor").listCondominiums(ListCondominiumsRequest.getDefaultInstance());
+        assertThat(response.getCondominiums(0).getName()).isEqualTo("gestor");
         // And it does not leak to the caller's thread
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
-    private ConsultaGrpc.ConsultaBlockingStub stub(String authorization) {
-        var stub = ConsultaGrpc.newBlockingStub(channel);
+    private QueryGrpc.QueryBlockingStub stub(String authorization) {
+        var stub = QueryGrpc.newBlockingStub(channel);
         if (authorization == null) {
             return stub;
         }

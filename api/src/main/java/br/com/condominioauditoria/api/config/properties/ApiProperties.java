@@ -21,9 +21,9 @@ public record ApiProperties(StorageProperties storage, ProcessingProperties proc
     }
 
     /**
-     * gRPC client of the assistant in the rag (contracts/grpc/assistente/v1): host:port address and timeouts.
-     * timeoutSeconds applies to Buscar and ListarProvedores; questionTimeoutSeconds to Perguntar (the model may take
-     * longer, with tools and a retry). The provider catalog (ListarProvedores) is kept in memory for
+     * gRPC client of the assistant in the rag (contracts/grpc/assistant/v2): host:port address and timeouts.
+     * timeoutSeconds applies to Search and ListProviders; questionTimeoutSeconds to Ask (the model may take
+     * longer, with tools and a retry). The provider catalog (ListProviders) is kept in memory for
      * catalogCacheSeconds.
      */
     public record RagProperties(String grpc, int timeoutSeconds, int questionTimeoutSeconds, int catalogCacheSeconds) {

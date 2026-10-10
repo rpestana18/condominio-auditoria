@@ -8,16 +8,16 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import br.com.condominioauditoria.contratos.assistente.v1.AssistenteGrpc;
-import br.com.condominioauditoria.contratos.assistente.v1.ConfiguracaoPergunta;
-import br.com.condominioauditoria.contratos.assistente.v1.EtapaPergunta;
-import br.com.condominioauditoria.contratos.assistente.v1.ListarProvedoresRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.PerguntarEvento;
-import br.com.condominioauditoria.contratos.assistente.v1.PerguntarRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.RespostaPergunta;
-import br.com.condominioauditoria.contratos.assistente.v1.SituacaoResposta;
-import br.com.condominioauditoria.contratos.assistente.v1.UsoProvedor;
+import br.com.condominioauditoria.contracts.assistant.v2.AssistantGrpc;
+import br.com.condominioauditoria.contracts.assistant.v2.AskConfiguration;
+import br.com.condominioauditoria.contracts.assistant.v2.AskStage;
+import br.com.condominioauditoria.contracts.assistant.v2.ListProvidersRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchMode;
+import br.com.condominioauditoria.contracts.assistant.v2.AskEvent;
+import br.com.condominioauditoria.contracts.assistant.v2.AskRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.Answer;
+import br.com.condominioauditoria.contracts.assistant.v2.AnswerOutcome;
+import br.com.condominioauditoria.contracts.assistant.v2.ProviderUsage;
 import br.com.condominioauditoria.rag.client.AiGateway;
 import br.com.condominioauditoria.rag.client.QueryClient;
 import br.com.condominioauditoria.rag.config.properties.AiProperties;
@@ -60,7 +60,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Perguntar flow end to end, with a fake HTTP server in place of Claude and a fake gRPC server in place of the api's
+ * Ask flow end to end, with a fake HTTP server in place of Claude and a fake gRPC server in place of the api's
  * Consulta: happy path with one tool, invalid answer twice becoming NOT_FOUND, model safety refusal and key rejected
  * by the provider (401) becoming PERMISSION_DENIED.
  */
@@ -79,7 +79,7 @@ public class AskFlowTest {
     private ManagedChannel queryChannel;
     private Server server;
     private ManagedChannel channel;
-    private AssistenteGrpc.AssistenteBlockingStub client;
+    private AssistantGrpc.AssistantBlockingStub client;
     private DocumentSearch search;
 
     @BeforeEach
@@ -121,7 +121,7 @@ public class AskFlowTest {
         channel = InProcessChannelBuilder.forName(name).directExecutor().build();
         var headers = new Metadata();
         headers.put(Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER), TOKEN);
-        client = AssistenteGrpc.newBlockingStub(channel)
+        client = AssistantGrpc.newBlockingStub(channel)
                 .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
     }
 
@@ -146,35 +146,35 @@ public class AskFlowTest {
         var events = events(request("Qual é a taxa de administração e o saldo?"));
 
         assertThat(stages(events)).containsSubsequence(
-                EtapaPergunta.ETAPA_PERGUNTA_BUSCANDO_TRECHOS,
-                EtapaPergunta.ETAPA_PERGUNTA_REDIGINDO,
-                EtapaPergunta.ETAPA_PERGUNTA_CONSULTANDO_DADOS,
-                EtapaPergunta.ETAPA_PERGUNTA_VALIDANDO);
-        RespostaPergunta response = last(events);
-        assertThat(response.getSituacao()).isEqualTo(SituacaoResposta.SITUACAO_RESPOSTA_RESPONDIDA);
-        assertThat(response.getNosDocumentosList()).singleElement().satisfies(p -> {
-            assertThat(p.getTexto()).contains("R$ 1.234,56").contains(MARK);
-            assertThat(p.getTrechoIdsList()).containsExactly(CHUNK.toString());
+                AskStage.ASK_STAGE_SEARCHING_CHUNKS,
+                AskStage.ASK_STAGE_DRAFTING,
+                AskStage.ASK_STAGE_QUERYING_DATA,
+                AskStage.ASK_STAGE_VALIDATING);
+        Answer response = last(events);
+        assertThat(response.getOutcome()).isEqualTo(AnswerOutcome.ANSWER_OUTCOME_ANSWERED);
+        assertThat(response.getInDocumentsList()).singleElement().satisfies(p -> {
+            assertThat(p.getText()).contains("R$ 1.234,56").contains(MARK);
+            assertThat(p.getChunkIdsList()).containsExactly(CHUNK.toString());
         });
-        assertThat(response.getTrechosCitadosList()).singleElement()
-                .satisfies(t -> assertThat(t.getNomeArquivo()).isEqualTo("contrato.pdf"));
+        assertThat(response.getCitedChunksList()).singleElement()
+                .satisfies(t -> assertThat(t.getFileName()).isEqualTo("contrato.pdf"));
         // The "nos dados gravados" block is built by the rag from the tool, not from the model's text
-        assertThat(response.getNosDadosGravadosList()).singleElement().satisfies(d -> {
-            assertThat(d.getChamadaId()).isEqualTo("c1");
-            assertThat(d.getConsulta()).isEqualTo("resumo_fundos");
-            assertThat(d.getComentario()).doesNotContainPattern("\\d");
-            assertThat(d.getLinhasList()).anySatisfy(l -> {
-                assertThat(l.getRotulo()).isEqualTo("Saldo atual");
-                assertThat(l.getValor()).isEqualTo("R$ 1.125.000,09");
+        assertThat(response.getInStoredDataList()).singleElement().satisfies(d -> {
+            assertThat(d.getCallId()).isEqualTo("c1");
+            assertThat(d.getQuery()).isEqualTo("resumo_fundos");
+            assertThat(d.getComment()).doesNotContainPattern("\\d");
+            assertThat(d.getRowsList()).anySatisfy(l -> {
+                assertThat(l.getLabel()).isEqualTo("Saldo atual");
+                assertThat(l.getValue()).isEqualTo("R$ 1.125.000,09");
             });
         });
         // Usage summed over the two calls to the provider
-        assertThat(response.getUso().getTokensEntrada()).isEqualTo(1300);
-        assertThat(response.getUso().getTokensSaida()).isEqualTo(160);
-        assertThat(response.getUso().getTentativas()).isEqualTo(1);
-        assertThat(response.getUso().getVersaoPrompt()).isEqualTo(AssistantInstructions.VERSION);
-        assertThat(response.getUso().getProvedor()).isEqualTo("anthropic");
-        assertThat(response.getUso().getModelo()).isEqualTo("claude-sonnet-5-5");
+        assertThat(response.getUsage().getInputTokens()).isEqualTo(1300);
+        assertThat(response.getUsage().getOutputTokens()).isEqualTo(160);
+        assertThat(response.getUsage().getAttempts()).isEqualTo(1);
+        assertThat(response.getUsage().getPromptVersion()).isEqualTo(AssistantInstructions.VERSION);
+        assertThat(response.getUsage().getProvider()).isEqualTo("anthropic");
+        assertThat(response.getUsage().getModel()).isEqualTo("claude-sonnet-5-5");
         // The tool ran in the api with the SAME token as the request
         assertThat(query.receivedTokens).containsExactly(TOKEN);
         // The request to the provider carries the output schema, the effort, the four tools and the condominium's key
@@ -197,13 +197,13 @@ public class AskFlowTest {
 
         var events = events(request("O síndico desviou dinheiro?"));
 
-        assertThat(stages(events)).contains(EtapaPergunta.ETAPA_PERGUNTA_NOVA_TENTATIVA);
-        RespostaPergunta response = last(events);
-        assertThat(response.getSituacao()).isEqualTo(SituacaoResposta.SITUACAO_RESPOSTA_NAO_ENCONTRADA);
-        assertThat(response.getNosDocumentosList()).isEmpty();
-        assertThat(response.getNosDadosGravadosList()).isEmpty();
-        assertThat(response.getTrechosCitadosList()).isEmpty();
-        assertThat(response.getUso().getTentativas()).isEqualTo(2);
+        assertThat(stages(events)).contains(AskStage.ASK_STAGE_RETRYING);
+        Answer response = last(events);
+        assertThat(response.getOutcome()).isEqualTo(AnswerOutcome.ANSWER_OUTCOME_NOT_FOUND);
+        assertThat(response.getInDocumentsList()).isEmpty();
+        assertThat(response.getInStoredDataList()).isEmpty();
+        assertThat(response.getCitedChunksList()).isEmpty();
+        assertThat(response.getUsage().getAttempts()).isEqualTo(2);
         // The second call carries the reason for the rejection
         assertThat(claude.requests).hasSize(2);
         assertThat(claude.requests.get(1)).contains("fora de aspas de citação literal");
@@ -213,12 +213,12 @@ public class AskFlowTest {
     public void modelSafetyRefusalBecomesNotFoundWithWarningAndNoRetry() {
         claude.respond(FakeClaude.withRefusal());
 
-        RespostaPergunta response = last(events(request("pergunta qualquer")));
+        Answer response = last(events(request("pergunta qualquer")));
 
-        assertThat(response.getSituacao()).isEqualTo(SituacaoResposta.SITUACAO_RESPOSTA_NAO_ENCONTRADA);
-        assertThat(response.getAviso()).contains("recusou responder");
+        assertThat(response.getOutcome()).isEqualTo(AnswerOutcome.ANSWER_OUTCOME_NOT_FOUND);
+        assertThat(response.getWarning()).contains("recusou responder");
         assertThat(claude.requests).hasSize(1);
-        assertThat(response.getUso().getTentativas()).isEqualTo(1);
+        assertThat(response.getUsage().getAttempts()).isEqualTo(1);
     }
 
     @Test
@@ -248,9 +248,9 @@ public class AskFlowTest {
 
     @Test
     public void noTokenInMetadataIsRejectedBeforeAnyCall() {
-        var withoutToken = AssistenteGrpc.newBlockingStub(channel);
+        var withoutToken = AssistantGrpc.newBlockingStub(channel);
 
-        assertThatThrownBy(() -> withoutToken.perguntar(request("qual o saldo?")).next())
+        assertThatThrownBy(() -> withoutToken.ask(request("qual o saldo?")).next())
                 .isInstanceOf(StatusRuntimeException.class)
                 .satisfies(error -> assertThat(((StatusRuntimeException) error).getStatus().getCode())
                         .isEqualTo(Status.Code.UNAUTHENTICATED));
@@ -270,19 +270,19 @@ public class AskFlowTest {
     @Test
     public void noEncryptedKeyOrModelNotInCatalogIsFailedPrecondition() {
         var withoutKey = request("qual o saldo?").toBuilder()
-                .setConfiguracao(configuration().toBuilder().clearChaveCifrada()).build();
+                .setConfiguration(configuration().toBuilder().clearEncryptedKey()).build();
         assertThatThrownBy(() -> events(withoutKey))
                 .satisfies(error -> assertThat(((StatusRuntimeException) error).getStatus().getCode())
                         .isEqualTo(Status.Code.FAILED_PRECONDITION));
 
         var otherModel = request("qual o saldo?").toBuilder()
-                .setConfiguracao(configuration().toBuilder().setModelo("claude-inexistente")).build();
+                .setConfiguration(configuration().toBuilder().setModel("claude-inexistente")).build();
         assertThatThrownBy(() -> events(otherModel))
                 .satisfies(error -> assertThat(((StatusRuntimeException) error).getStatus().getDescription())
                         .contains("não está no catálogo"));
 
         var embeddingsProvider = request("qual o saldo?").toBuilder()
-                .setConfiguracao(configuration().toBuilder().setProvedor("ollama-local").setModelo("bge-m3")).build();
+                .setConfiguration(configuration().toBuilder().setProvider("ollama-local").setModel("bge-m3")).build();
         assertThatThrownBy(() -> events(embeddingsProvider))
                 .satisfies(error -> assertThat(((StatusRuntimeException) error).getStatus().getDescription())
                         .contains("não serve para redigir respostas"));
@@ -291,8 +291,8 @@ public class AskFlowTest {
     @Test
     public void undecryptableKeyIsFailedPreconditionWithoutTechnicalDetail() {
         var tampered = request("qual o saldo?").toBuilder()
-                .setConfiguracao(configuration().toBuilder()
-                        .setChaveCifrada(ByteString.copyFrom(new byte[] { 1, 0, 8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+                .setConfiguration(configuration().toBuilder()
+                        .setEncryptedKey(ByteString.copyFrom(new byte[] { 1, 0, 8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
                             12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 })))
                 .build();
 
@@ -307,31 +307,31 @@ public class AskFlowTest {
 
     @Test
     public void providerCatalogComesWithPublicPemKey() {
-        var response = client.listarProvedores(ListarProvedoresRequest.getDefaultInstance());
+        var response = client.listProviders(ListProvidersRequest.getDefaultInstance());
 
-        assertThat(response.getChavePublicaPem()).startsWith("-----BEGIN PUBLIC KEY-----");
-        assertThat(response.getProvedoresList()).extracting("codigo").containsExactly("anthropic", "ollama-local");
-        var anthropic = response.getProvedores(0);
-        assertThat(anthropic.getUso()).isEqualTo(UsoProvedor.USO_PROVEDOR_RESPOSTAS);
-        assertThat(anthropic.getPrecisaChave()).isTrue();
+        assertThat(response.getPublicKeyPem()).startsWith("-----BEGIN PUBLIC KEY-----");
+        assertThat(response.getProvidersList()).extracting("code").containsExactly("anthropic", "ollama-local");
+        var anthropic = response.getProviders(0);
+        assertThat(anthropic.getUsage()).isEqualTo(ProviderUsage.PROVIDER_USAGE_ANSWERS);
+        assertThat(anthropic.getRequiresKey()).isTrue();
         assertThat(anthropic.getLocal()).isFalse();
-        assertThat(anthropic.getModelosList()).extracting("id", "padrao", "precoEntradaMilhaoUsd",
-                "precoSaidaMilhaoUsd")
+        assertThat(anthropic.getModelsList()).extracting("id", "isDefault", "inputPricePerMillionUsd",
+                "outputPricePerMillionUsd")
                 .containsExactly(
                         org.assertj.core.groups.Tuple.tuple("claude-sonnet-5-5", true, "2.00", "10.00"),
                         org.assertj.core.groups.Tuple.tuple("claude-haiku-4-5", false, "1.00", "5.00"));
-        var ollama = response.getProvedores(1);
-        assertThat(ollama.getUso()).isEqualTo(UsoProvedor.USO_PROVEDOR_EMBEDDINGS);
+        var ollama = response.getProviders(1);
+        assertThat(ollama.getUsage()).isEqualTo(ProviderUsage.PROVIDER_USAGE_EMBEDDINGS);
         assertThat(ollama.getLocal()).isTrue();
-        assertThat(ollama.getDimensao()).isEqualTo(1024);
-        assertThat(ollama.getModelos(0).getPrecoEntradaMilhaoUsd()).isEqualTo("0");
+        assertThat(ollama.getDimension()).isEqualTo(1024);
+        assertThat(ollama.getModels(0).getInputPricePerMillionUsd()).isEqualTo("0");
     }
 
     @Test
     public void listProvidersWithoutTokenIsRejected() {
-        var withoutToken = AssistenteGrpc.newBlockingStub(channel);
+        var withoutToken = AssistantGrpc.newBlockingStub(channel);
 
-        assertThatThrownBy(() -> withoutToken.listarProvedores(ListarProvedoresRequest.getDefaultInstance()))
+        assertThatThrownBy(() -> withoutToken.listProviders(ListProvidersRequest.getDefaultInstance()))
                 .satisfies(error -> assertThat(((StatusRuntimeException) error).getStatus().getCode())
                         .isEqualTo(Status.Code.UNAUTHENTICATED));
     }
@@ -344,47 +344,47 @@ public class AskFlowTest {
                 "{\"nosDocumentos\":[],\"nosDadosGravados\":[],\"naoEncontrado\":true,"
                         + "\"sugestao\":\"não há extrato de setembro de 2026 enviado\"}", 50, 5));
 
-        RespostaPergunta response = last(events(request("qual o saldo?")));
+        Answer response = last(events(request("qual o saldo?")));
 
-        assertThat(response.getSituacao()).isEqualTo(SituacaoResposta.SITUACAO_RESPOSTA_NAO_ENCONTRADA);
-        assertThat(response.getAviso()).contains("busca por significado está indisponível");
-        assertThat(response.getSugestao()).isEqualTo("não há extrato de setembro de 2026 enviado");
+        assertThat(response.getOutcome()).isEqualTo(AnswerOutcome.ANSWER_OUTCOME_NOT_FOUND);
+        assertThat(response.getWarning()).contains("busca por significado está indisponível");
+        assertThat(response.getSuggestion()).isEqualTo("não há extrato de setembro de 2026 enviado");
     }
 
     // -----------------------------------------------------------------------------------------------------------
 
-    private List<PerguntarEvento> events(PerguntarRequest request) {
-        List<PerguntarEvento> events = new ArrayList<>();
-        Iterator<PerguntarEvento> stream = client.perguntar(request);
+    private List<AskEvent> events(AskRequest request) {
+        List<AskEvent> events = new ArrayList<>();
+        Iterator<AskEvent> stream = client.ask(request);
         while (stream.hasNext()) {
             events.add(stream.next());
         }
         return events;
     }
 
-    private static List<EtapaPergunta> stages(List<PerguntarEvento> events) {
-        return events.stream().filter(PerguntarEvento::hasAndamento).map(e -> e.getAndamento().getEtapa()).toList();
+    private static List<AskStage> stages(List<AskEvent> events) {
+        return events.stream().filter(AskEvent::hasProgress).map(e -> e.getProgress().getStage()).toList();
     }
 
-    private static RespostaPergunta last(List<PerguntarEvento> events) {
-        assertThat(events.getLast().hasResposta()).isTrue();
-        return events.getLast().getResposta();
+    private static Answer last(List<AskEvent> events) {
+        assertThat(events.getLast().hasAnswer()).isTrue();
+        return events.getLast().getAnswer();
     }
 
-    private static PerguntarRequest request(String question) {
-        return PerguntarRequest.newBuilder()
-                .setCondominioId(CONDOMINIUM)
-                .setPergunta(question)
-                .setConfiguracao(configuration())
+    private static AskRequest request(String question) {
+        return AskRequest.newBuilder()
+                .setCondominiumId(CONDOMINIUM)
+                .setQuestion(question)
+                .setConfiguration(configuration())
                 .build();
     }
 
-    private static ConfiguracaoPergunta configuration() {
-        return ConfiguracaoPergunta.newBuilder()
-                .setProvedor("anthropic")
-                .setModelo("claude-sonnet-5-5")
-                .setModoBusca(ModoBusca.MODO_BUSCA_HIBRIDA)
-                .setChaveCifrada(ByteString.copyFrom(encrypt("sk-ant-chave-do-condominio", keyPair.getPublic())))
+    private static AskConfiguration configuration() {
+        return AskConfiguration.newBuilder()
+                .setProvider("anthropic")
+                .setModel("claude-sonnet-5-5")
+                .setSearchMode(SearchMode.SEARCH_MODE_HYBRID)
+                .setEncryptedKey(ByteString.copyFrom(encrypt("sk-ant-chave-do-condominio", keyPair.getPublic())))
                 .build();
     }
 
@@ -407,7 +407,7 @@ public class AskFlowTest {
         return new RagProperties(null, null, null, null, null, assistant);
     }
 
-    /** Same envelope as the api (assistente.proto); here only so the test has a really encrypted key. */
+    /** Same envelope as the api (assistant.proto); here only so the test has a really encrypted key. */
     private static byte[] encrypt(String key, PublicKey publicKey) {
         try {
             KeyGenerator generator = KeyGenerator.getInstance("AES");

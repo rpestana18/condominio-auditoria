@@ -12,7 +12,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Envelope of the condominium's API key (ADR 0003, Sub-decision 4.1 A; byte-by-byte format in
- * contracts/grpc/assistente/v1/assistente.proto). The api encrypts it with the rag's public key and can never read
+ * contracts/grpc/assistant/v2/assistant.proto). The api encrypts it with the rag's public key and can never read
  * it; only the rag decrypts it, at the time of the call to the provider.
  *
  * <pre>

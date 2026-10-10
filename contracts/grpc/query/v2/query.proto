@@ -1,0 +1,233 @@
+// Contrato gRPC de consulta do backend. Quem chama: o serviço mcp (e, no futuro, outros serviços internos).
+// O token do usuário (Keycloak) vai no metadado "authorization: Bearer ...": o backend aplica perfil e condomínio
+// em toda chamada, do mesmo jeito que na API REST.
+//
+// Dinheiro é texto com duas casas ("1234.56"): protobuf não tem decimal exato e nunca usamos ponto flutuante.
+// Datas são texto ISO ("2026-09-30").
+//
+// v2 (ADR 0006, fase 2): igual à v1, com nomes de serviço, rpcs, mensagens, campos e códigos em inglês.
+syntax = "proto3";
+
+package condominio.query.v2;
+
+option java_multiple_files = true;
+option java_package = "br.com.condominioauditoria.contracts.query.v2";
+option java_outer_classname = "QueryProto";
+
+service Query {
+  // Condomínios que o usuário do token pode ver.
+  rpc ListCondominiums(ListCondominiumsRequest) returns (ListCondominiumsResponse);
+
+  // Saldos por fundo no fluxo de caixa mais recente (o mesmo número da tela inicial).
+  rpc FundSummary(FundSummaryRequest) returns (FundSummaryResponse);
+
+  // Arquivos enviados, do mais recente para o mais antigo.
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+
+  // Conferências aritméticas de um arquivo lido.
+  rpc FileChecks(FileChecksRequest) returns (FileChecksResponse);
+
+  // Lançamentos com filtros. Resposta em fluxo (stream): milhares de linhas sem montar tudo na memória.
+  rpc ListEntries(ListEntriesRequest) returns (stream Entry);
+
+  // Busca trechos citáveis nos documentos do condomínio (ferramenta MCP buscar_documentos, ADR 0003, Decisão 5.3).
+  // O backend verifica token, perfil e condomínio e repassa ao rag (contrato assistant/v2). O modo (por palavra ou
+  // híbrido) é decidido pelo backend conforme a configuração de embeddings; funciona em qualquer modo de IA.
+  // Erros: INVALID_ARGUMENT (texto vazio, limite negativo, data fora do formato), PERMISSION_DENIED (condomínio sem
+  // acesso), FAILED_PRECONDITION (a partir da entrega 2: "módulo Assistente não contratado para este condomínio"),
+  // UNAVAILABLE (rag fora do ar).
+  //
+  // Acréscimo compatível na v1 (03/10/2026): só entram um rpc e mensagens novas; nenhum campo, número ou rpc
+  // existente muda. Clientes gerados com a versão anterior continuam funcionando, e um backend antigo responde
+  // UNIMPLEMENTED a este rpc, o que o mcp trata como "busca indisponível". Por isso não foi aberta uma v2.
+  // As mensagens abaixo são próprias deste pacote (sem importar assistant.proto) para os dois contratos
+  // evoluírem de forma independente; o formato é o mesmo de assistant.v2.IndexedChunk.
+  rpc SearchDocuments(SearchDocumentsRequest) returns (SearchDocumentsResponse);
+}
+
+message ListCondominiumsRequest {}
+
+message ListCondominiumsResponse {
+  repeated CondominiumSummary condominiums = 1;
+}
+
+message CondominiumSummary {
+  string id = 1;
+  string name = 2;
+}
+
+message FundSummaryRequest {
+  string condominium_id = 1;
+}
+
+message FundSummaryResponse {
+  // Vazio quando ainda não há fluxo de caixa lido.
+  bool has_data = 1;
+  string file_id = 2;
+  string file_name = 3;
+  string period_start = 4;
+  string period_end = 5;
+  string opening_balance = 6;
+  string inflows = 7;
+  string outflows = 8;
+  string closing_balance = 9;
+  int32 failed_checks = 10;
+  repeated FundInPeriod funds = 11;
+}
+
+message FundInPeriod {
+  string fund = 1;
+  string opening_balance = 2;
+  string inflows = 3;
+  string outflows = 4;
+  string closing_balance = 5;
+}
+
+message ListFilesRequest {
+  string condominium_id = 1;
+  // Opcional: TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER.
+  string category = 2;
+  // Opcional: padrão 50.
+  int32 limit = 3;
+}
+
+message ListFilesResponse {
+  repeated FileSummary files = 1;
+}
+
+message FileSummary {
+  string id = 1;
+  string category = 2;
+  string name = 3;
+  string status = 4;
+  string message = 5;
+  string period_start = 6;
+  string period_end = 7;
+  int32 entry_count = 8;
+  string uploaded_by = 9;
+  string uploaded_at = 10;
+}
+
+message FileChecksRequest {
+  string condominium_id = 1;
+  string file_id = 2;
+}
+
+message FileChecksResponse {
+  repeated FileCheck checks = 1;
+}
+
+message FileCheck {
+  string code = 1;
+  string description = 2;
+  bool ok = 3;
+  string detail = 4;
+}
+
+message ListEntriesRequest {
+  string condominium_id = 1;
+  // Todos os filtros abaixo são opcionais.
+  string date_from = 2;
+  string date_to = 3;
+  // Parte do nome do fundo, sem diferenciar maiúsculas.
+  string fund = 4;
+  // Parte do histórico, do fornecedor ou da conta.
+  string text = 5;
+  // Só saídas (débitos), sem transferências entre fundos.
+  bool outflows_only = 6;
+  // Padrão 500, máximo 5000.
+  int32 limit = 7;
+}
+
+message Entry {
+  string date = 1;
+  string fund = 2;
+  string account_code = 3;
+  string account_name = 4;
+  string document = 5;
+  string memo = 6;
+  string credit = 7;
+  string debit = 8;
+  string balance = 9;
+  string supplier = 10;
+  string invoice_number = 11;
+  string payment_method = 12;
+  bool inter_fund_transfer = 13;
+  // Origem: arquivo e página, para o usuário conferir no PDF.
+  string file_id = 14;
+  int32 page = 15;
+}
+
+message SearchDocumentsRequest {
+  string condominium_id = 1;
+  // Texto da busca. Obrigatório. Aceita "frase entre aspas" e exclusão com -.
+  string text = 2;
+  // Opcional: sem filtros = todos os documentos indexados do condomínio.
+  DocumentFilters filters = 3;
+  // Opcional: 0 = padrão 10. Acima de 50 é reduzido a 50.
+  int32 limit = 4;
+}
+
+// Todos opcionais, aplicados antes da busca.
+message DocumentFilters {
+  // TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER. Vazio = todas.
+  repeated string categories = 1;
+  // Documentos cuja competência cruza o intervalo; qualquer um dos dois pode ficar vazio.
+  string date_from = 2;
+  string date_to = 3;
+  // Só estes arquivos. Vazio = todos.
+  repeated string file_ids = 4;
+}
+
+message SearchDocumentsResponse {
+  // Do mais relevante para o menos relevante.
+  repeated DocumentChunk chunks = 1;
+  // Modo usado de fato: "KEYWORD" ou "HYBRID".
+  DocumentSearchMode mode_used = 2;
+}
+
+enum DocumentSearchMode {
+  DOCUMENT_SEARCH_MODE_UNSPECIFIED = 0;
+  DOCUMENT_SEARCH_MODE_KEYWORD = 1;
+  DOCUMENT_SEARCH_MODE_HYBRID = 2;
+}
+
+message DocumentChunk {
+  string chunk_id = 1;
+  string file_id = 2;
+  string file_name = 3;
+  string category = 4;
+  DocumentChunkLocation location = 5;
+  // Texto como está no documento. Valores citados são transcrição literal, não conferidos.
+  string text = 6;
+  // Só para ordenar; maior = mais relevante. Não é dinheiro.
+  double score = 7;
+  // sha256 do arquivo original.
+  string sha256 = 8;
+}
+
+// Onde o trecho está no original: página (PDF), aba e linhas (Excel) ou parágrafos e seção (Word).
+message DocumentChunkLocation {
+  oneof kind {
+    PageLocation page = 1;
+    SheetLocation sheet = 2;
+    ParagraphsLocation paragraphs = 3;
+  }
+}
+
+message PageLocation {
+  int32 page = 1;
+}
+
+message SheetLocation {
+  string tab = 1;
+  int32 start_row = 2;
+  int32 end_row = 3;
+}
+
+message ParagraphsLocation {
+  int32 paragraph_start = 1;
+  int32 paragraph_end = 2;
+  // Opcional: vazio até existir contracts/leitor/v2.
+  string section = 3;
+}

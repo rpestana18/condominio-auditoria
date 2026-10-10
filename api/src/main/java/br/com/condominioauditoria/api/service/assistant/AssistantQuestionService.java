@@ -19,13 +19,13 @@ import br.com.condominioauditoria.api.service.ai.AiConfigurationService;
 import br.com.condominioauditoria.api.service.ai.AiConfigurationService.Effective;
 import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.api.service.usage.UsageService;
-import br.com.condominioauditoria.contratos.assistente.v1.ConfiguracaoPergunta;
-import br.com.condominioauditoria.contratos.assistente.v1.FiltrosBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.PerguntarRequest;
-import br.com.condominioauditoria.contratos.assistente.v1.RespostaPergunta;
-import br.com.condominioauditoria.contratos.assistente.v1.Trecho;
-import br.com.condominioauditoria.contratos.assistente.v1.UsoPergunta;
+import br.com.condominioauditoria.contracts.assistant.v2.AskConfiguration;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchFilters;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchMode;
+import br.com.condominioauditoria.contracts.assistant.v2.AskRequest;
+import br.com.condominioauditoria.contracts.assistant.v2.Answer;
+import br.com.condominioauditoria.contracts.assistant.v2.IndexedChunk;
+import br.com.condominioauditoria.contracts.assistant.v2.AskUsage;
 import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -107,10 +107,10 @@ public class AssistantQuestionService {
         if (question.length() > QUESTION_MAX_LENGTH) {
             throw new InvalidRequestException("A pergunta passa de " + QUESTION_MAX_LENGTH + " caracteres");
         }
-        PerguntarRequest ragRequest = buildRequest(condominiumId, question, request, config);
+        AskRequest ragRequest = buildRequest(condominiumId, question, request, config);
         String authorization = access.bearerToken().orElseThrow(() -> new IllegalStateException("Token ausente"));
 
-        RespostaPergunta response;
+        Answer response;
         try {
             response = rag.ask(ragRequest, authorization);
         } catch (StatusRuntimeException error) {
@@ -118,12 +118,12 @@ public class AssistantQuestionService {
         }
 
         AssistantAnswerResponse output = filter(condominiumId, response, config);
-        UsoPergunta questionUsage = response.getUso();
+        AskUsage questionUsage = response.getUsage();
         usage.recordQuestion(condominiumId, access.username(),
-                questionUsage.getProvedor().isBlank() ? config.answers().provider() : questionUsage.getProvedor(),
-                questionUsage.getModelo().isBlank() ? config.answers().model() : questionUsage.getModelo(),
-                        questionUsage.getTokensEntrada(),
-                questionUsage.getTokensSaida(), questionUsage.getVersaoPrompt());
+                questionUsage.getProvider().isBlank() ? config.answers().provider() : questionUsage.getProvider(),
+                questionUsage.getModel().isBlank() ? config.answers().model() : questionUsage.getModel(),
+                        questionUsage.getInputTokens(),
+                questionUsage.getOutputTokens(), questionUsage.getPromptVersion());
         return output;
     }
 
@@ -141,28 +141,28 @@ public class AssistantQuestionService {
         }
     }
 
-    PerguntarRequest buildRequest(UUID condominiumId, String question, QuestionRequest request, Effective config) {
+    AskRequest buildRequest(UUID condominiumId, String question, QuestionRequest request, Effective config) {
         var r = config.answers();
         var e = config.embeddings();
-        var builder = PerguntarRequest.newBuilder()
-                .setCondominioId(condominiumId.toString())
-                .setPergunta(question)
-                .setConfiguracao(ConfiguracaoPergunta.newBuilder()
-                        .setProvedor(r.provider())
-                        .setModelo(Objects.requireNonNullElse(r.model(), ""))
-                        .setChaveCifrada(ByteString.copyFrom(r.encryptedKey()))
-                        .setModeloEmbeddings(e.mode() == AiMode.LOCAL ? Objects.requireNonNullElse(e.model(), "") : "")
-                        .setModoBusca(e.mode() == AiMode.OFF ? ModoBusca.MODO_BUSCA_PALAVRA
-                                : ModoBusca.MODO_BUSCA_HIBRIDA));
+        var builder = AskRequest.newBuilder()
+                .setCondominiumId(condominiumId.toString())
+                .setQuestion(question)
+                .setConfiguration(AskConfiguration.newBuilder()
+                        .setProvider(r.provider())
+                        .setModel(Objects.requireNonNullElse(r.model(), ""))
+                        .setEncryptedKey(ByteString.copyFrom(r.encryptedKey()))
+                        .setEmbeddingModel(e.mode() == AiMode.LOCAL ? Objects.requireNonNullElse(e.model(), "") : "")
+                        .setSearchMode(e.mode() == AiMode.OFF ? SearchMode.SEARCH_MODE_KEYWORD
+                                : SearchMode.SEARCH_MODE_HYBRID));
         List<ConversationTurnRequest> history = RagRequests.orEmpty(request.history()).stream().filter(Objects::nonNull).toList();
         for (ConversationTurnRequest t : history.subList(Math.max(0, history.size() - historyTurns), history.size())) {
-            builder.addHistorico(br.com.condominioauditoria.contratos.assistente.v1.TrocaConversa.newBuilder()
-                    .setPergunta(Objects.requireNonNullElse(t.question(), ""))
-                    .setResposta(Objects.requireNonNullElse(t.answer(), "")));
+            builder.addHistory(br.com.condominioauditoria.contracts.assistant.v2.PreviousTurn.newBuilder()
+                    .setQuestion(Objects.requireNonNullElse(t.question(), ""))
+                    .setAnswer(Objects.requireNonNullElse(t.answer(), "")));
         }
-        FiltrosBusca filters = RagRequests.filters(request.filters());
+        SearchFilters filters = RagRequests.filters(request.filters());
         if (filters != null) {
-            builder.setFiltros(filters);
+            builder.setFilters(filters);
         }
         return builder.build();
     }
@@ -172,57 +172,57 @@ public class AssistantQuestionService {
      * (1, 2, ... in the order of the cited chunks), removes a paragraph left without a citation and, if nothing is
      * left, answers NOT_FOUND.
      */
-    AssistantAnswerResponse filter(UUID condominiumId, RespostaPergunta response, Effective config) {
-        String model = !response.getUso().getModelo().isBlank() ? response.getUso().getModelo()
+    AssistantAnswerResponse filter(UUID condominiumId, Answer response, Effective config) {
+        String model = !response.getUsage().getModel().isBlank() ? response.getUsage().getModel()
                 : Objects.requireNonNullElse(config.answers().model(), "");
-        String suggestion = blankToNull(response.getSugestao());
-        String warning = blankToNull(response.getAviso());
-        if (response.getSituacao() != br.com.condominioauditoria.contratos.assistente.v1.SituacaoResposta
-                .SITUACAO_RESPOSTA_RESPONDIDA) {
+        String suggestion = blankToNull(response.getSuggestion());
+        String warning = blankToNull(response.getWarning());
+        if (response.getOutcome() != br.com.condominioauditoria.contracts.assistant.v2.AnswerOutcome
+                .ANSWER_OUTCOME_ANSWERED) {
             return notFound(suggestion, warning, model);
         }
 
-        Set<String> visible = barrier.visibleIds(condominiumId, response.getTrechosCitadosList());
-        Map<String, Trecho> allowed = new LinkedHashMap<>();
-        for (Trecho t : response.getTrechosCitadosList()) {
+        Set<String> visible = barrier.visibleIds(condominiumId, response.getCitedChunksList());
+        Map<String, IndexedChunk> allowed = new LinkedHashMap<>();
+        for (IndexedChunk t : response.getCitedChunksList()) {
             if (FileAccessBarrier.isAllowed(t, visible)) {
-                allowed.putIfAbsent(t.getTrechoId(), t);
+                allowed.putIfAbsent(t.getChunkId(), t);
             }
         }
         // Only the chunks some paragraph cites, in the order of trechos_citados
         Set<String> citedByParagraph = new java.util.HashSet<>();
-        response.getNosDocumentosList().forEach(p -> citedByParagraph.addAll(p.getTrechoIdsList()));
+        response.getInDocumentsList().forEach(p -> citedByParagraph.addAll(p.getChunkIdsList()));
         Map<String, Integer> numbers = new LinkedHashMap<>();
         List<DocumentCitationResponse> citations = new ArrayList<>();
-        for (Trecho t : allowed.values()) {
-            if (citedByParagraph.contains(t.getTrechoId())) {
+        for (IndexedChunk t : allowed.values()) {
+            if (citedByParagraph.contains(t.getChunkId())) {
                 int number = numbers.size() + 1;
-                numbers.put(t.getTrechoId(), number);
+                numbers.put(t.getChunkId(), number);
                 citations.add(AssistantMapper.toCitation(number, t));
             }
         }
         List<DocumentParagraphResponse> paragraphs = new ArrayList<>();
         int dropped = 0;
-        for (var p : response.getNosDocumentosList()) {
-            List<Integer> nums = p.getTrechoIdsList().stream().map(numbers::get).filter(Objects::nonNull).distinct()
+        for (var p : response.getInDocumentsList()) {
+            List<Integer> nums = p.getChunkIdsList().stream().map(numbers::get).filter(Objects::nonNull).distinct()
                     .sorted().toList();
             if (nums.isEmpty()) {
                 dropped++;
             } else {
-                paragraphs.add(new DocumentParagraphResponse(p.getTexto(), nums));
+                paragraphs.add(new DocumentParagraphResponse(p.getText(), nums));
             }
         }
-        if (dropped > 0 || allowed.size() < response.getTrechosCitadosCount()) {
+        if (dropped > 0 || allowed.size() < response.getCitedChunksCount()) {
             log.warn("Pergunta ao assistente: {} trecho(s) e {} parágrafo(s) descartados pela segunda barreira"
-                    + " (condomínio {})", response.getTrechosCitadosCount() - allowed.size(), dropped,
+                    + " (condomínio {})", response.getCitedChunksCount() - allowed.size(), dropped,
                     condominiumId);
         }
-        List<StoredDataResponse> data = response.getNosDadosGravadosList().stream()
-                .map(d -> new StoredDataResponse(d.getConsulta(),
-                        d.getParametrosList().stream().map(x -> new QueryParameterResponse(x.getNome(),
-                                x.getValor())).toList(),
-                        d.getLinhasList().stream().map(x -> new DataRowResponse(x.getRotulo(), x.getValor())).toList(),
-                        blankToNull(d.getComentario())))
+        List<StoredDataResponse> data = response.getInStoredDataList().stream()
+                .map(d -> new StoredDataResponse(d.getQuery(),
+                        d.getParametersList().stream().map(x -> new QueryParameterResponse(x.getName(),
+                                x.getValue())).toList(),
+                        d.getRowsList().stream().map(x -> new DataRowResponse(x.getLabel(), x.getValue())).toList(),
+                        blankToNull(d.getComment())))
                 .toList();
         if (paragraphs.isEmpty() && data.isEmpty()) {
             // The suggestion was written for the dropped answer; it no longer applies

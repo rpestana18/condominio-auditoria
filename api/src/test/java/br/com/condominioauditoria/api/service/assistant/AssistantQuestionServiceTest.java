@@ -30,18 +30,18 @@ import br.com.condominioauditoria.api.service.ai.AiConfigurationService.Effectiv
 import br.com.condominioauditoria.api.service.ai.AiConfigurationService.Embeddings;
 import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.api.service.usage.UsageService;
-import br.com.condominioauditoria.contratos.assistente.v1.Andamento;
-import br.com.condominioauditoria.contratos.assistente.v1.DadoGravado;
-import br.com.condominioauditoria.contratos.assistente.v1.EtapaPergunta;
-import br.com.condominioauditoria.contratos.assistente.v1.LinhaDado;
-import br.com.condominioauditoria.contratos.assistente.v1.LocalPagina;
-import br.com.condominioauditoria.contratos.assistente.v1.Localizacao;
-import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.ParagrafoDocumentos;
-import br.com.condominioauditoria.contratos.assistente.v1.PerguntarEvento;
-import br.com.condominioauditoria.contratos.assistente.v1.RespostaPergunta;
-import br.com.condominioauditoria.contratos.assistente.v1.Trecho;
-import br.com.condominioauditoria.contratos.assistente.v1.UsoPergunta;
+import br.com.condominioauditoria.contracts.assistant.v2.Progress;
+import br.com.condominioauditoria.contracts.assistant.v2.StoredData;
+import br.com.condominioauditoria.contracts.assistant.v2.AskStage;
+import br.com.condominioauditoria.contracts.assistant.v2.DataRow;
+import br.com.condominioauditoria.contracts.assistant.v2.PageLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.ChunkLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchMode;
+import br.com.condominioauditoria.contracts.assistant.v2.DocumentParagraph;
+import br.com.condominioauditoria.contracts.assistant.v2.AskEvent;
+import br.com.condominioauditoria.contracts.assistant.v2.Answer;
+import br.com.condominioauditoria.contracts.assistant.v2.IndexedChunk;
+import br.com.condominioauditoria.contracts.assistant.v2.AskUsage;
 import io.grpc.Status;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -161,9 +161,9 @@ public class AssistantQuestionServiceTest {
 
     @Test
     void sendsResolvedConfigurationTokenFiltersAndLastSixTurns() {
-        respond(RespostaPergunta.newBuilder().setSituacao(
-                br.com.condominioauditoria.contratos.assistente.v1.SituacaoResposta.SITUACAO_RESPOSTA_NAO_ENCONTRADA)
-                .setUso(questionUsage(10, 2)).build());
+        respond(Answer.newBuilder().setOutcome(
+                br.com.condominioauditoria.contracts.assistant.v2.AnswerOutcome.ANSWER_OUTCOME_NOT_FOUND)
+                .setUsage(questionUsage(10, 2)).build());
         List<ConversationTurnRequest> history = IntStream.rangeClosed(1, 8)
                 .mapToObj(i -> new ConversationTurnRequest("p" + i, "r" + i)).toList();
 
@@ -172,53 +172,53 @@ public class AssistantQuestionServiceTest {
 
         assertThat(rag.token.get()).isEqualTo("Bearer token-usuario");
         var request = rag.questions.getFirst();
-        assertThat(request.getCondominioId()).isEqualTo(A.toString());
-        assertThat(request.getPergunta()).isEqualTo("e o de portaria?");
-        assertThat(request.getHistoricoList()).extracting(t -> t.getPergunta())
+        assertThat(request.getCondominiumId()).isEqualTo(A.toString());
+        assertThat(request.getQuestion()).isEqualTo("e o de portaria?");
+        assertThat(request.getHistoryList()).extracting(t -> t.getQuestion())
                 .containsExactly("p3", "p4", "p5", "p6", "p7", "p8");
-        assertThat(request.getConfiguracao().getProvedor()).isEqualTo("anthropic");
-        assertThat(request.getConfiguracao().getModelo()).isEqualTo("claude-sonnet-5-5");
-        assertThat(request.getConfiguracao().getChaveCifrada().toByteArray()).isEqualTo(ENCRYPTED_KEY);
-        assertThat(request.getConfiguracao().getModeloEmbeddings()).isEqualTo("bge-m3");
-        assertThat(request.getConfiguracao().getModoBusca()).isEqualTo(ModoBusca.MODO_BUSCA_HIBRIDA);
-        assertThat(request.getFiltros().getCategoriasList()).containsExactly("CONTRACT");
-        assertThat(request.getFiltros().getDataInicio()).isEqualTo("2025-01-01");
-        assertThat(request.getFiltros().getDataFim()).isEmpty();
-        assertThat(request.getFiltros().getArquivoIdsList()).containsExactly(contractA.getId().toString());
+        assertThat(request.getConfiguration().getProvider()).isEqualTo("anthropic");
+        assertThat(request.getConfiguration().getModel()).isEqualTo("claude-sonnet-5-5");
+        assertThat(request.getConfiguration().getEncryptedKey().toByteArray()).isEqualTo(ENCRYPTED_KEY);
+        assertThat(request.getConfiguration().getEmbeddingModel()).isEqualTo("bge-m3");
+        assertThat(request.getConfiguration().getSearchMode()).isEqualTo(SearchMode.SEARCH_MODE_HYBRID);
+        assertThat(request.getFilters().getCategoriesList()).containsExactly("CONTRACT");
+        assertThat(request.getFilters().getDateFrom()).isEqualTo("2025-01-01");
+        assertThat(request.getFilters().getDateTo()).isEmpty();
+        assertThat(request.getFilters().getFileIdsList()).containsExactly(contractA.getId().toString());
     }
 
     @Test
     void embeddingsOffAskForWordSearch() {
         configure(AiMode.API_KEY, ENCRYPTED_KEY, AiMode.OFF);
-        respond(RespostaPergunta.newBuilder().setSituacao(
-                br.com.condominioauditoria.contratos.assistente.v1.SituacaoResposta.SITUACAO_RESPOSTA_NAO_ENCONTRADA)
+        respond(Answer.newBuilder().setOutcome(
+                br.com.condominioauditoria.contracts.assistant.v2.AnswerOutcome.ANSWER_OUTCOME_NOT_FOUND)
                 .build());
 
         questions.ask(A, request("x"));
 
-        assertThat(rag.questions.getFirst().getConfiguracao().getModoBusca()).isEqualTo(ModoBusca.MODO_BUSCA_PALAVRA);
-        assertThat(rag.questions.getFirst().getConfiguracao().getModeloEmbeddings()).isEmpty();
+        assertThat(rag.questions.getFirst().getConfiguration().getSearchMode()).isEqualTo(SearchMode.SEARCH_MODE_KEYWORD);
+        assertThat(rag.questions.getFirst().getConfiguration().getEmbeddingModel()).isEmpty();
     }
 
     @Test
     void secondBarrierDropsOtherCondominiumFileRenumbersAndRemovesUncitedParagraph() {
-        Trecho fromMinutesB = chunk("t-b", minutesB, 2);
-        Trecho fromMinutes = chunk("t-ata", minutesA, 3);
-        Trecho fromContract = chunk("t-contrato", contractA, 4);
-        Trecho missing = Trecho.newBuilder().setTrechoId("t-x").setArquivoId(UUID.randomUUID().toString()).build();
-        respond(RespostaPergunta.newBuilder()
-                .setSituacao(br.com.condominioauditoria.contratos.assistente.v1.SituacaoResposta.SITUACAO_RESPOSTA_RESPONDIDA)
-                .addNosDocumentos(ParagrafoDocumentos.newBuilder().setTexto("Só do B.").addTrechoIds("t-b"))
-                .addNosDocumentos(ParagrafoDocumentos.newBuilder().setTexto("A ata aprovou.").addTrechoIds("t-b")
-                        .addTrechoIds("t-ata"))
-                .addNosDocumentos(ParagrafoDocumentos.newBuilder().setTexto("O contrato prevê IPCA.")
-                        .addTrechoIds("t-contrato").addTrechoIds("t-x"))
-                .addNosDadosGravados(DadoGravado.newBuilder().setChamadaId("c1").setConsulta("resumo_fundos")
-                        .addLinhas(LinhaDado.newBuilder().setRotulo("Saldo").setValor("R$ 1.234,56")))
-                .addTrechosCitados(fromMinutesB).addTrechosCitados(fromMinutes).addTrechosCitados(fromContract)
-                .addTrechosCitados(missing)
-                .setSugestao("").setAviso("Busca só por palavra.")
-                .setUso(questionUsage(1200, 340))
+        IndexedChunk fromMinutesB = chunk("t-b", minutesB, 2);
+        IndexedChunk fromMinutes = chunk("t-ata", minutesA, 3);
+        IndexedChunk fromContract = chunk("t-contrato", contractA, 4);
+        IndexedChunk missing = IndexedChunk.newBuilder().setChunkId("t-x").setFileId(UUID.randomUUID().toString()).build();
+        respond(Answer.newBuilder()
+                .setOutcome(br.com.condominioauditoria.contracts.assistant.v2.AnswerOutcome.ANSWER_OUTCOME_ANSWERED)
+                .addInDocuments(DocumentParagraph.newBuilder().setText("Só do B.").addChunkIds("t-b"))
+                .addInDocuments(DocumentParagraph.newBuilder().setText("A ata aprovou.").addChunkIds("t-b")
+                        .addChunkIds("t-ata"))
+                .addInDocuments(DocumentParagraph.newBuilder().setText("O contrato prevê IPCA.")
+                        .addChunkIds("t-contrato").addChunkIds("t-x"))
+                .addInStoredData(StoredData.newBuilder().setCallId("c1").setQuery("resumo_fundos")
+                        .addRows(DataRow.newBuilder().setLabel("Saldo").setValue("R$ 1.234,56")))
+                .addCitedChunks(fromMinutesB).addCitedChunks(fromMinutes).addCitedChunks(fromContract)
+                .addCitedChunks(missing)
+                .setSuggestion("").setWarning("Busca só por palavra.")
+                .setUsage(questionUsage(1200, 340))
                 .build());
 
         var response = questions.ask(A, request("a troca do portão foi aprovada e quanto foi pago?"));
@@ -246,12 +246,12 @@ public class AssistantQuestionServiceTest {
 
     @Test
     void nothingLeftBecomesNotFoundAndStillRecordsUsage() {
-        respond(RespostaPergunta.newBuilder()
-                .setSituacao(br.com.condominioauditoria.contratos.assistente.v1.SituacaoResposta.SITUACAO_RESPOSTA_RESPONDIDA)
-                .addNosDocumentos(ParagrafoDocumentos.newBuilder().setTexto("Do B.").addTrechoIds("t-b"))
-                .addTrechosCitados(chunk("t-b", minutesB, 1))
-                .setSugestao("não há ata de 2025 enviada")
-                .setUso(questionUsage(900, 100))
+        respond(Answer.newBuilder()
+                .setOutcome(br.com.condominioauditoria.contracts.assistant.v2.AnswerOutcome.ANSWER_OUTCOME_ANSWERED)
+                .addInDocuments(DocumentParagraph.newBuilder().setText("Do B.").addChunkIds("t-b"))
+                .addCitedChunks(chunk("t-b", minutesB, 1))
+                .setSuggestion("não há ata de 2025 enviada")
+                .setUsage(questionUsage(900, 100))
                 .build());
 
         var response = questions.ask(A, request("o portão foi aprovado?"));
@@ -266,9 +266,9 @@ public class AssistantQuestionServiceTest {
 
     @Test
     void ragNotFoundPassesWithSuggestion() {
-        respond(RespostaPergunta.newBuilder()
-                .setSituacao(br.com.condominioauditoria.contratos.assistente.v1.SituacaoResposta.SITUACAO_RESPOSTA_NAO_ENCONTRADA)
-                .setSugestao("não há contrato de jardinagem enviado").setUso(questionUsage(500, 50)).build());
+        respond(Answer.newBuilder()
+                .setOutcome(br.com.condominioauditoria.contracts.assistant.v2.AnswerOutcome.ANSWER_OUTCOME_NOT_FOUND)
+                .setSuggestion("não há contrato de jardinagem enviado").setUsage(questionUsage(500, 50)).build());
 
         var response = questions.ask(A, request("qual a empresa de jardinagem?"));
 
@@ -322,25 +322,25 @@ public class AssistantQuestionServiceTest {
         when(aiConfiguration.read(A)).thenReturn(new Effective(AiMode.EXTERNAL_MCP, answers, embeddings, null, null));
     }
 
-    private void respond(RespostaPergunta response) {
+    private void respond(Answer response) {
         rag.onAsk = (p, r) -> {
-            r.onNext(PerguntarEvento.newBuilder().setAndamento(Andamento.newBuilder()
-                    .setEtapa(EtapaPergunta.ETAPA_PERGUNTA_BUSCANDO_TRECHOS).setTentativa(1)).build());
-            r.onNext(PerguntarEvento.newBuilder().setResposta(response).build());
+            r.onNext(AskEvent.newBuilder().setProgress(Progress.newBuilder()
+                    .setStage(AskStage.ASK_STAGE_SEARCHING_CHUNKS).setAttempt(1)).build());
+            r.onNext(AskEvent.newBuilder().setAnswer(response).build());
             r.onCompleted();
         };
     }
 
-    private static UsoPergunta questionUsage(long input, long output) {
-        return UsoPergunta.newBuilder().setTokensEntrada(input).setTokensSaida(output).setProvedor("anthropic")
-                .setModelo("claude-sonnet-5-5").setVersaoPrompt("2026-10-05.1").setTentativas(1).build();
+    private static AskUsage questionUsage(long input, long output) {
+        return AskUsage.newBuilder().setInputTokens(input).setOutputTokens(output).setProvider("anthropic")
+                .setModel("claude-sonnet-5-5").setPromptVersion("2026-10-05.1").setAttempts(1).build();
     }
 
-    private static Trecho chunk(String id, SourceFile file, int page) {
-        return Trecho.newBuilder().setTrechoId(id).setArquivoId(file.getId().toString())
-                .setNomeArquivo(file.getOriginalName()).setCategoria(file.getCategory().name())
-                .setLocalizacao(Localizacao.newBuilder().setPagina(LocalPagina.newBuilder().setPagina(page)))
-                .setTexto("texto de " + file.getOriginalName()).setSha256(file.getSha256()).build();
+    private static IndexedChunk chunk(String id, SourceFile file, int page) {
+        return IndexedChunk.newBuilder().setChunkId(id).setFileId(file.getId().toString())
+                .setFileName(file.getOriginalName()).setCategory(file.getCategory().name())
+                .setLocation(ChunkLocation.newBuilder().setPage(PageLocation.newBuilder().setPage(page)))
+                .setText("texto de " + file.getOriginalName()).setSha256(file.getSha256()).build();
     }
 
     private static QuestionRequest request(String text) {

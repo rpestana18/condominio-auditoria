@@ -1,9 +1,9 @@
 // Contrato gRPC do assistente (ADR 0003, Decisões 3 e 5). Quem chama: o backend. Quem atende: o rag.
 // O token do usuário (Keycloak) vai no metadado "authorization: Bearer ...", como no contrato de consulta. O backend já
-// verificou perfil, condomínio e módulo antes de chamar; o rag valida o token e filtra tudo pelo condominio_id recebido.
+// verificou perfil, condomínio e módulo antes de chamar; o rag valida o token e filtra tudo pelo condominium_id recebido.
 // O backend ainda descarta, na volta, trechos de arquivos que o usuário não pode ver (segunda barreira).
 //
-// Entrega 1: Buscar. Entrega 3 (05/10/2026): Perguntar e ListarProvedores.
+// Entrega 1: Search. Entrega 3 (05/10/2026): Ask e ListProviders.
 //
 // Acréscimo compatível na v1 (entrega 3): só entram rpcs, mensagens e enums novos; nenhum campo, número ou rpc
 // existente muda. Um rag antigo responde UNIMPLEMENTED aos rpcs novos, e o backend trata como "assistente
@@ -11,24 +11,26 @@
 //
 // Datas são texto ISO ("2026-09-30"). Valores que aparecem nos trechos são transcrição literal do documento, não
 // conferidos; nenhum número sai daqui como dado contábil.
+//
+// v2 (ADR 0006, fase 2): igual à v1, com nomes de serviço, rpcs, mensagens, campos e códigos em inglês.
 syntax = "proto3";
 
-package condominio.assistente.v1;
+package condominio.assistant.v2;
 
 option java_multiple_files = true;
-option java_package = "br.com.condominioauditoria.contratos.assistente.v1";
-option java_outer_classname = "AssistenteProto";
+option java_package = "br.com.condominioauditoria.contracts.assistant.v2";
+option java_outer_classname = "AssistantProto";
 
-service Assistente {
+service Assistant {
   // Busca trechos citáveis nos documentos indexados do condomínio. Só documentos vigentes e não retirados.
-  // PALAVRA: busca por palavra do PostgreSQL em português, sem IA (aceita "frase entre aspas" e exclusão com -).
-  // HIBRIDA: palavra + vetores (embeddings), unidas por fusão de posições (RRF, k = 60). Determinística para o mesmo
+  // KEYWORD: busca por palavra do PostgreSQL em português, sem IA (aceita "frase entre aspas" e exclusão com -).
+  // HYBRID: palavra + vetores (embeddings), unidas por fusão de posições (RRF, k = 60). Determinística para o mesmo
   // índice e o mesmo texto.
   // Erros: INVALID_ARGUMENT (texto vazio, limite negativo, data fora do formato), UNAUTHENTICATED (sem token).
-  rpc Buscar(BuscarRequest) returns (BuscarResponse);
+  rpc Search(SearchRequest) returns (SearchResponse);
 
   // Responde uma pergunta em linguagem natural com citações dos documentos e números das ferramentas de consulta
-  // (RF-04.8 a 04.16). Só no modo de respostas API_KEY: o backend já recusou MCP_EXTERNO, DESLIGADO e LOCAL antes
+  // (RF-04.8 a 04.16). Só no modo de respostas API_KEY: o backend já recusou EXTERNAL_MCP, OFF e LOCAL antes
   // de chamar, e manda a configuração resolvida (provedor, modelo e chave cifrada) em cada pedido; o rag não guarda
   // configuração.
   //
@@ -38,7 +40,7 @@ service Assistente {
   //
   // Números: o modelo nunca escreve número de dado gravado. Ele pede as ferramentas numéricas (resumo_fundos,
   // buscar_lancamentos, listar_arquivos, conferencias_do_arquivo), que o rag executa no backend pelo gRPC
-  // contracts/grpc/consulta/v1 com o mesmo token deste pedido (metadado "authorization"). O bloco "nos dados gravados"
+  // contracts/grpc/query/v2 com o mesmo token deste pedido (metadado "authorization"). O bloco "nos dados gravados"
   // é montado pelo rag a partir do resultado da ferramenta; o modelo só referencia o identificador da chamada.
   //
   // O que o rag valida antes de devolver (RF-04.2, 04.12 a 04.15):
@@ -49,146 +51,146 @@ service Assistente {
   //   - nenhum termo de conduta (lista configurável no rag; inicial: desvio, fraude, roubo, culpa) fora de aspas de
   //     citação literal;
   //   - todo identificador de chamada em "nos dados gravados" existe entre as chamadas feitas nesta pergunta.
-  // Falhou a validação: uma nova tentativa com o motivo. Falhou de novo: situação NAO_ENCONTRADA ("Não encontrei nos
-  // documentos."), sem citação. Recusa de segurança do modelo (stop_reason = refusal): NAO_ENCONTRADA com aviso, sem
+  // Falhou a validação: uma nova tentativa com o motivo. Falhou de novo: situação NOT_FOUND ("Não encontrei nos
+  // documentos."), sem citação. Recusa de segurança do modelo (stop_reason = refusal): NOT_FOUND com aviso, sem
   // nova tentativa.
   //
   // Prazo: o backend chama com prazo (deadline) de 120 s (RAG_GRPC_PRAZO_PERGUNTA_SEGUNDOS no backend). Prazo
   // estourado = DEADLINE_EXCEEDED; o rag cancela a chamada ao provedor e às ferramentas.
   //
   // Erros (mensagens em português, nunca com a chave nem com pedaço dela):
-  //   INVALID_ARGUMENT: pergunta vazia ou acima de 2000 caracteres, condominio_id ou filtro fora do formato,
-  //     limite_trechos negativo;
+  //   INVALID_ARGUMENT: pergunta vazia ou acima de 2000 caracteres, condominium_id ou filtro fora do formato,
+  //     chunk_limit negativo;
   //   UNAUTHENTICATED: sem token;
   //   FAILED_PRECONDITION: sem chave cifrada, chave que não decifra (par de chaves do rag trocado: cadastrar de novo),
-  //     rag sem chave privada, provedor ou modelo fora do catálogo ou de uso diferente de RESPOSTAS;
+  //     rag sem chave privada, provedor ou modelo fora do catálogo ou de uso diferente de ANSWERS;
   //   PERMISSION_DENIED: chave recusada pelo provedor (HTTP 401 ou 403);
   //   RESOURCE_EXHAUSTED: limite de uso do provedor (HTTP 429);
-  //   UNAVAILABLE: provedor fora do ar ou HTTP 5xx depois das tentativas do cliente, ou backend (Consulta) fora do ar.
-  rpc Perguntar(PerguntarRequest) returns (stream PerguntarEvento);
+  //   UNAVAILABLE: provedor fora do ar ou HTTP 5xx depois das tentativas do cliente, ou backend (Query) fora do ar.
+  rpc Ask(AskRequest) returns (stream AskEvent);
 
   // Catálogo de provedores e modelos de IA, mantido na configuração do rag (RF-09.6, ADR 0003), e a chave pública com
   // que o backend cifra a chave do condomínio. Não exige condomínio; exige token (UNAUTHENTICATED sem ele).
-  rpc ListarProvedores(ListarProvedoresRequest) returns (ListarProvedoresResponse);
+  rpc ListProviders(ListProvidersRequest) returns (ListProvidersResponse);
 }
 
-enum ModoBusca {
-  MODO_BUSCA_NAO_INFORMADO = 0; // tratado como HIBRIDA
-  MODO_BUSCA_PALAVRA = 1;
-  MODO_BUSCA_HIBRIDA = 2;
+enum SearchMode {
+  SEARCH_MODE_UNSPECIFIED = 0; // tratado como HYBRID
+  SEARCH_MODE_KEYWORD = 1;
+  SEARCH_MODE_HYBRID = 2;
 }
 
-message BuscarRequest {
-  string condominio_id = 1;
+message SearchRequest {
+  string condominium_id = 1;
   // Texto da busca ou da pergunta. Obrigatório.
-  string texto = 2;
-  ModoBusca modo = 3;
+  string text = 2;
+  SearchMode mode = 3;
   // Opcional: sem filtros = todos os documentos indexados do condomínio.
-  FiltrosBusca filtros = 4;
+  SearchFilters filters = 4;
   // Opcional: 0 = padrão 10. Acima de 50 é reduzido a 50.
-  int32 limite = 5;
+  int32 limit = 5;
   // Opcional, reservado para a entrega 2 (configuração de IA por condomínio): modelo de embeddings resolvido pelo
   // backend. Vazio = modelo padrão do rag (bge-m3, 1024 dimensões).
-  string modelo_embeddings = 6;
+  string embedding_model = 6;
 }
 
 // Todos os filtros são opcionais e aplicados antes da busca (no WHERE), nunca depois.
-message FiltrosBusca {
-  // Categorias do arquivo (BALANCETE, EXTRATO, PO, CONTRATO, FOLHA, COMPROVANTE, ATA, CONVENCAO_RI, OUTROS).
+message SearchFilters {
+  // Categorias do arquivo (TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, RECEIPT, MINUTES, BYLAWS, OTHER).
   // Vazio = todas.
-  repeated string categorias = 1;
+  repeated string categories = 1;
   // Período: documentos cuja competência cruza o intervalo. Documento sem competência não entra quando há filtro de
   // data. Qualquer um dos dois pode ficar vazio (intervalo aberto).
-  string data_inicio = 2;
-  string data_fim = 3;
+  string date_from = 2;
+  string date_to = 3;
   // Só estes arquivos. Vazio = todos.
-  repeated string arquivo_ids = 4;
+  repeated string file_ids = 4;
 }
 
-message BuscarResponse {
+message SearchResponse {
   // Do mais relevante para o menos relevante.
-  repeated Trecho trechos = 1;
-  // Modo realmente usado. Ex.: pedido HIBRIDA, mas o serviço de embeddings fora do ar = PALAVRA.
-  ModoBusca modo_usado = 2;
+  repeated IndexedChunk chunks = 1;
+  // Modo realmente usado. Ex.: pedido HYBRID, mas o serviço de embeddings fora do ar = KEYWORD.
+  SearchMode mode_used = 2;
 }
 
-message Trecho {
+message IndexedChunk {
   // Identificador estável do trecho no índice; é o que as citações do chat referenciam.
-  string trecho_id = 1;
-  string arquivo_id = 2;
-  string nome_arquivo = 3;
-  string categoria = 4;
-  Localizacao localizacao = 5;
+  string chunk_id = 1;
+  string file_id = 2;
+  string file_name = 3;
+  string category = 4;
+  ChunkLocation location = 5;
   // Texto do trecho como está no documento.
-  string texto = 6;
+  string text = 6;
   // Só para ordenar (relevância ou fusão de posições); maior = mais relevante. Não é dinheiro nem é comparável entre
   // buscas diferentes.
-  double pontuacao = 7;
+  double score = 7;
   // sha256 do arquivo original, para o usuário conferir que é o mesmo documento.
   string sha256 = 8;
 }
 
 // Onde o trecho está no original (ADR 0003, Q9). Um trecho nunca atravessa página, aba ou seção.
-message Localizacao {
-  oneof tipo {
-    LocalPagina pagina = 1;          // PDF
-    LocalPlanilha planilha = 2;      // Excel
-    LocalParagrafos paragrafos = 3;  // Word
+message ChunkLocation {
+  oneof kind {
+    PageLocation page = 1;          // PDF
+    SheetLocation sheet = 2;      // Excel
+    ParagraphsLocation paragraphs = 3;  // Word
   }
 }
 
-message LocalPagina {
+message PageLocation {
   // A partir de 1.
-  int32 pagina = 1;
+  int32 page = 1;
 }
 
-message LocalPlanilha {
-  string aba = 1;
+message SheetLocation {
+  string tab = 1;
   // Linhas da planilha, a partir de 1, inclusive.
-  int32 linha_inicio = 2;
-  int32 linha_fim = 3;
+  int32 start_row = 2;
+  int32 end_row = 3;
 }
 
-message LocalParagrafos {
+message ParagraphsLocation {
   // Parágrafos, a partir de 1, inclusive.
-  int32 paragrafo_inicio = 1;
-  int32 paragrafo_fim = 2;
+  int32 paragraph_start = 1;
+  int32 paragraph_end = 2;
   // Opcional: título da seção. Vazio até existir contracts/leitor/v2 (estilo do parágrafo no Word).
-  string secao = 3;
+  string section = 3;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Perguntar (entrega 3)
+// Ask (entrega 3)
 // ---------------------------------------------------------------------------------------------------------------------
 
-message PerguntarRequest {
-  string condominio_id = 1;
+message AskRequest {
+  string condominium_id = 1;
   // Obrigatória, de 1 a 2000 caracteres (depois de tirar espaços das pontas).
-  string pergunta = 2;
+  string question = 2;
   // Trocas anteriores da conversa, da mais antiga para a mais recente. O histórico só existe no frontend (RF-04.11,
   // Q10); o backend manda as últimas 6. O rag usa no máximo as últimas 10 e ignora o resto. Vazio = conversa nova.
-  repeated TrocaConversa historico = 3;
+  repeated PreviousTurn history = 3;
   // Opcional: os mesmos filtros da busca (RF-04.10), aplicados antes da busca dos trechos.
-  FiltrosBusca filtros = 4;
+  SearchFilters filters = 4;
   // Configuração de IA resolvida pelo backend para este condomínio (modo de respostas API_KEY). Obrigatória.
-  ConfiguracaoPergunta configuracao = 5;
+  AskConfiguration configuration = 5;
   // Opcional: quantos trechos recuperar para o modelo. 0 = padrão 8. Acima de 20 é reduzido a 20.
-  int32 limite_trechos = 6;
+  int32 chunk_limit = 6;
 }
 
 // Uma troca anterior da conversa: o texto como foi mostrado ao usuário (o frontend junta os blocos da resposta).
-message TrocaConversa {
-  string pergunta = 1;
-  string resposta = 2;
+message PreviousTurn {
+  string question = 1;
+  string answer = 2;
 }
 
 // Configuração resolvida pelo backend (ADR 0003, Sub-decisão 4.1 A). Nada aqui é lido de banco pelo rag.
-message ConfiguracaoPergunta {
-  // Código do provedor de respostas no catálogo (ListarProvedores), uso RESPOSTAS. Ex.: "anthropic".
-  string provedor = 1;
+message AskConfiguration {
+  // Código do provedor de respostas no catálogo (ListProviders), uso ANSWERS. Ex.: "anthropic".
+  string provider = 1;
   // Id do modelo no catálogo daquele provedor. Ex.: "claude-sonnet-5-5".
-  string modelo = 2;
-  // Chave de API do condomínio cifrada com a chave pública do rag (chave_publica_pem de ListarProvedores). O backend
+  string model = 2;
+  // Chave de API do condomínio cifrada com a chave pública do rag (public_key_pem de ListProviders). O backend
   // guarda estes bytes como recebeu ao cifrar e nunca consegue ler a chave; só o rag decifra, na hora da chamada, e
   // nunca grava nem registra em log a chave aberta.
   //
@@ -203,159 +205,159 @@ message ConfiguracaoPergunta {
   //                       bits, sem dados adicionais). O texto aberto é a chave de API em UTF-8.
   // Versão diferente de 0x01, tamanho incoerente ou tag inválida = FAILED_PRECONDITION ("a chave de IA deste
   // condomínio não pôde ser lida; cadastre de novo"). Só biblioteca padrão do Java dos dois lados.
-  bytes chave_cifrada = 3;
-  // Modelo de embeddings resolvido pelo backend (mesma regra de BuscarRequest.modelo_embeddings). Vazio = padrão do
+  bytes encrypted_key = 3;
+  // Modelo de embeddings resolvido pelo backend (mesma regra de SearchRequest.embedding_model). Vazio = padrão do
   // rag (bge-m3).
-  string modelo_embeddings = 4;
-  // Modo da busca dos trechos: PALAVRA quando os embeddings do assistente estão DESLIGADO; HIBRIDA (ou não
-  // informado) nos outros casos. Pedido HIBRIDA com o serviço de embeddings fora do ar cai para PALAVRA, como no Buscar.
-  ModoBusca modo_busca = 5;
+  string embedding_model = 4;
+  // Modo da busca dos trechos: KEYWORD quando os embeddings do assistente estão OFF; HYBRID (ou não
+  // informado) nos outros casos. Pedido HYBRID com o serviço de embeddings fora do ar cai para KEYWORD, como no Search.
+  SearchMode search_mode = 5;
 }
 
-message PerguntarEvento {
-  oneof evento {
+message AskEvent {
+  oneof event {
     // Etapa em que a pergunta está (para a tela mostrar "buscando nos documentos...").
-    Andamento andamento = 1;
+    Progress progress = 1;
     // Último evento do fluxo, sempre exatamente um quando não há erro.
-    RespostaPergunta resposta = 2;
+    Answer answer = 2;
   }
 }
 
-enum EtapaPergunta {
-  ETAPA_PERGUNTA_NAO_INFORMADA = 0;
-  ETAPA_PERGUNTA_BUSCANDO_TRECHOS = 1;    // busca nos documentos indexados
-  ETAPA_PERGUNTA_CONSULTANDO_DADOS = 2;   // executando ferramenta numérica no backend
-  ETAPA_PERGUNTA_REDIGINDO = 3;           // esperando o modelo
-  ETAPA_PERGUNTA_VALIDANDO = 4;           // conferindo citações, números e termos de conduta
-  ETAPA_PERGUNTA_NOVA_TENTATIVA = 5;      // a validação falhou e o modelo vai tentar de novo com o motivo
+enum AskStage {
+  ASK_STAGE_UNSPECIFIED = 0;
+  ASK_STAGE_SEARCHING_CHUNKS = 1;    // busca nos documentos indexados
+  ASK_STAGE_QUERYING_DATA = 2;   // executando ferramenta numérica no backend
+  ASK_STAGE_DRAFTING = 3;           // esperando o modelo
+  ASK_STAGE_VALIDATING = 4;           // conferindo citações, números e termos de conduta
+  ASK_STAGE_RETRYING = 5;      // a validação falhou e o modelo vai tentar de novo com o motivo
 }
 
-message Andamento {
-  EtapaPergunta etapa = 1;
+message Progress {
+  AskStage stage = 1;
   // Tentativa atual, a partir de 1.
-  int32 tentativa = 2;
+  int32 attempt = 2;
 }
 
-enum SituacaoResposta {
-  SITUACAO_RESPOSTA_NAO_INFORMADA = 0;
-  // Há ao menos um parágrafo em nos_documentos ou um bloco em nos_dados_gravados.
-  SITUACAO_RESPOSTA_RESPONDIDA = 1;
-  // "Não encontrei nos documentos." (RF-04.12): nos_documentos e nos_dados_gravados vazios, sem citação.
-  SITUACAO_RESPOSTA_NAO_ENCONTRADA = 2;
+enum AnswerOutcome {
+  ANSWER_OUTCOME_UNSPECIFIED = 0;
+  // Há ao menos um parágrafo em in_documents ou um bloco em in_stored_data.
+  ANSWER_OUTCOME_ANSWERED = 1;
+  // "Não encontrei nos documentos." (RF-04.12): in_documents e in_stored_data vazios, sem citação.
+  ANSWER_OUTCOME_NOT_FOUND = 2;
 }
 
-message RespostaPergunta {
-  SituacaoResposta situacao = 1;
-  // Bloco "Nos documentos", na ordem de leitura. Cada parágrafo já validado (ver Perguntar).
-  repeated ParagrafoDocumentos nos_documentos = 2;
+message Answer {
+  AnswerOutcome outcome = 1;
+  // Bloco "Nos documentos", na ordem de leitura. Cada parágrafo já validado (ver Ask).
+  repeated DocumentParagraph in_documents = 2;
   // Bloco "Nos dados gravados", montado pelo rag a partir das ferramentas (nunca escrito pelo modelo).
-  repeated DadoGravado nos_dados_gravados = 3;
-  // Os trechos citados em nos_documentos, sem repetição, na ordem da primeira citação. O backend numera as citações
+  repeated StoredData in_stored_data = 3;
+  // Os trechos citados em in_documents, sem repetição, na ordem da primeira citação. O backend numera as citações
   // (1, 2, ...) nessa ordem e descarta os de arquivos que o usuário não pode ver ou que foram excluídos.
-  repeated Trecho trechos_citados = 4;
+  repeated IndexedChunk cited_chunks = 4;
   // Opcional: categoria de documento que faltaria (RF-04.12). Ex.: "não há extrato de setembro de 2026 enviado".
-  string sugestao = 5;
+  string suggestion = 5;
   // Opcional: aviso para o usuário. Ex.: recusa de segurança do modelo, busca só por palavra (embeddings fora do ar).
-  string aviso = 6;
+  string warning = 6;
   // Uso desta pergunta, para o backend gravar o registro de uso "pergunta" (RF-09.7).
-  UsoPergunta uso = 7;
+  AskUsage usage = 7;
 }
 
-message ParagrafoDocumentos {
+message DocumentParagraph {
   // Texto do parágrafo. Números transcritos do documento já vêm com "(conforme o documento, não conferido)".
-  string texto = 1;
-  // Trechos que sustentam o parágrafo (ao menos um), cada um presente em trechos_citados.
-  repeated string trecho_ids = 2;
+  string text = 1;
+  // Trechos que sustentam o parágrafo (ao menos um), cada um presente em cited_chunks.
+  repeated string chunk_ids = 2;
 }
 
 // Resultado de uma ferramenta numérica, formatado pelo rag a partir dos valores exatos do contrato de consulta.
-message DadoGravado {
+message StoredData {
   // Identificador da chamada da ferramenta nesta pergunta (o que o modelo referencia).
-  string chamada_id = 1;
+  string call_id = 1;
   // Nome da ferramenta: resumo_fundos, buscar_lancamentos, listar_arquivos ou conferencias_do_arquivo. O frontend
   // escolhe a tela do link por este nome.
-  string consulta = 2;
+  string query = 2;
   // Filtros usados na consulta, na ordem em que foram passados. Ex.: {nome: "dataInicio", valor: "2026-09-01"}.
-  repeated ParametroConsulta parametros = 3;
+  repeated QueryParameter parameters = 3;
   // Linhas para exibir, já formatadas. Dinheiro em reais no padrão brasileiro ("R$ 1.234,56"), montado do texto
   // decimal exato do contrato de consulta, sem ponto flutuante.
-  repeated LinhaDado linhas = 4;
+  repeated DataRow rows = 4;
   // Opcional: comentário do modelo sobre o dado, sem número (validado como os parágrafos, sem termos de conduta).
-  string comentario = 5;
+  string comment = 5;
 }
 
-message ParametroConsulta {
-  string nome = 1;
-  string valor = 2;
+message QueryParameter {
+  string name = 1;
+  string value = 2;
 }
 
-message LinhaDado {
-  string rotulo = 1;
-  string valor = 2;
+message DataRow {
+  string label = 1;
+  string value = 2;
 }
 
-message UsoPergunta {
+message AskUsage {
   // Somados em todas as tentativas e chamadas ao provedor desta pergunta.
-  int64 tokens_entrada = 1;
-  int64 tokens_saida = 2;
-  // Provedor e modelo realmente usados (os do pedido).
-  string provedor = 3;
-  string modelo = 4;
+  int64 input_tokens = 1;
+  int64 output_tokens = 2;
+  // Provider e modelo realmente usados (os do pedido).
+  string provider = 3;
+  string model = 4;
   // Versão das instruções do assistente (prompt) usada, para rastrear mudança de comportamento. Ex.: "2026-10-05.1".
-  string versao_prompt = 5;
+  string prompt_version = 5;
   // Tentativas feitas (1 ou 2).
-  int32 tentativas = 6;
+  int32 attempts = 6;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// ListarProvedores (entrega 3)
+// ListProviders (entrega 3)
 // ---------------------------------------------------------------------------------------------------------------------
 
-message ListarProvedoresRequest {}
+message ListProvidersRequest {}
 
-message ListarProvedoresResponse {
+message ListProvidersResponse {
   // Na ordem do catálogo do rag.
-  repeated Provedor provedores = 1;
+  repeated Provider providers = 1;
   // Chave pública RSA (3072 bits) do rag em PEM, formato X.509 SubjectPublicKeyInfo ("-----BEGIN PUBLIC KEY-----").
-  // É com ela que o backend monta o envelope de ConfiguracaoPergunta.chave_cifrada ao salvar a chave do condomínio.
+  // É com ela que o backend monta o envelope de AskConfiguration.encrypted_key ao salvar a chave do condomínio.
   // Vazia = o rag está sem par de chaves (sem RAG_CHAVE_PRIVADA_ARQUIVO e sem permissão de gerar): o backend recusa
-  // salvar chave, e Perguntar responde FAILED_PRECONDITION.
-  string chave_publica_pem = 2;
+  // salvar chave, e Ask responde FAILED_PRECONDITION.
+  string public_key_pem = 2;
 }
 
-enum UsoProvedor {
-  USO_PROVEDOR_NAO_INFORMADO = 0;
-  USO_PROVEDOR_RESPOSTAS = 1;    // chat (Perguntar)
-  USO_PROVEDOR_EMBEDDINGS = 2;   // busca por significado e indexação
+enum ProviderUsage {
+  PROVIDER_USAGE_UNSPECIFIED = 0;
+  PROVIDER_USAGE_ANSWERS = 1;    // chat (Ask)
+  PROVIDER_USAGE_EMBEDDINGS = 2;   // busca por significado e indexação
 }
 
-message Provedor {
+message Provider {
   // Código estável, usado na configuração do condomínio. Ex.: "anthropic", "ollama-local".
-  string codigo = 1;
+  string code = 1;
   // Nome para a tela. Ex.: "Anthropic (Claude)".
-  string nome = 2;
+  string name = 2;
   // Implementação usada pelo rag. Ex.: "anthropic", "ollama".
-  string tipo = 3;
-  UsoProvedor uso = 4;
-  // Roda na infraestrutura do sistema ou do cliente, sem enviar texto para fora. Nos modos MCP_EXTERNO e DESLIGADO
+  string type = 3;
+  ProviderUsage usage = 4;
+  // Roda na infraestrutura do sistema ou do cliente, sem enviar texto para fora. Nos modos EXTERNAL_MCP e OFF
   // só provedor local é aceito para embeddings (Q12).
   bool local = 5;
   // Exige chave de API do condomínio.
-  bool precisa_chave = 6;
+  bool requires_key = 6;
   // Só embeddings: dimensão dos vetores (ex.: 1024). 0 nos provedores de respostas.
-  int32 dimensao = 7;
-  repeated ModeloProvedor modelos = 8;
+  int32 dimension = 7;
+  repeated ProviderModel models = 8;
 }
 
-message ModeloProvedor {
+message ProviderModel {
   // Id enviado ao provedor. Ex.: "claude-sonnet-5-5".
   string id = 1;
   // Nome para a tela. Ex.: "Claude Sonnet 5.5".
-  string nome = 2;
+  string name = 2;
   // Modelo sugerido por padrão no provedor (um por provedor).
-  bool padrao = 3;
+  bool is_default = 3;
   // Preços em dólar (US$) por milhão de tokens, como texto decimal com ponto ("2.00", "0.80"): protobuf não tem
   // decimal exato. "0" ou "0.00" para modelo local. Só servem para o custo estimado do relatório de uso.
-  string preco_entrada_milhao_usd = 4;
-  string preco_saida_milhao_usd = 5;
+  string input_price_per_million_usd = 4;
+  string output_price_per_million_usd = 5;
 }

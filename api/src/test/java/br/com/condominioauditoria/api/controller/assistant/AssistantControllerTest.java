@@ -35,11 +35,11 @@ import br.com.condominioauditoria.api.service.assistant.FileAccessBarrier;
 import br.com.condominioauditoria.api.service.condominium.CondominiumService;
 import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.api.service.usage.UsageService;
-import br.com.condominioauditoria.contratos.assistente.v1.BuscarResponse;
-import br.com.condominioauditoria.contratos.assistente.v1.LocalPlanilha;
-import br.com.condominioauditoria.contratos.assistente.v1.Localizacao;
-import br.com.condominioauditoria.contratos.assistente.v1.ModoBusca;
-import br.com.condominioauditoria.contratos.assistente.v1.Trecho;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchResponse;
+import br.com.condominioauditoria.contracts.assistant.v2.SheetLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.ChunkLocation;
+import br.com.condominioauditoria.contracts.assistant.v2.SearchMode;
+import br.com.condominioauditoria.contracts.assistant.v2.IndexedChunk;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -126,13 +126,13 @@ class AssistantControllerTest {
     @Test
     void allRolesSearchByWordInOwnCondominiumAndRecordUsage() {
         rag.onSearch = (p, r) -> {
-            r.onNext(BuscarResponse.newBuilder().setModoUsado(ModoBusca.MODO_BUSCA_PALAVRA)
-                    .addTrechos(Trecho.newBuilder().setTrechoId("t1").setArquivoId(workbook.getId().toString())
-                            .setNomeArquivo("po.xlsx").setCategoria("PO").setTexto("Portão 12.000,00")
+            r.onNext(SearchResponse.newBuilder().setModeUsed(SearchMode.SEARCH_MODE_KEYWORD)
+                    .addChunks(IndexedChunk.newBuilder().setChunkId("t1").setFileId(workbook.getId().toString())
+                            .setFileName("po.xlsx").setCategory("PO").setText("Portão 12.000,00")
                             .setSha256(workbook.getSha256())
-                            .setLocalizacao(Localizacao.newBuilder().setPlanilha(LocalPlanilha.newBuilder()
-                                    .setAba("Junho").setLinhaInicio(10).setLinhaFim(14))))
-                    .addTrechos(Trecho.newBuilder().setTrechoId("t2").setArquivoId(UUID.randomUUID().toString()))
+                            .setLocation(ChunkLocation.newBuilder().setSheet(SheetLocation.newBuilder()
+                                    .setTab("Junho").setStartRow(10).setEndRow(14))))
+                    .addChunks(IndexedChunk.newBuilder().setChunkId("t2").setFileId(UUID.randomUUID().toString()))
                     .build());
             r.onCompleted();
         };
@@ -147,9 +147,9 @@ class AssistantControllerTest {
             verify(usage).recordDocumentSearch(A, "pessoa." + role.toLowerCase());
         }
         assertThat(rag.searches).allSatisfy(b -> {
-            assertThat(b.getModo()).isEqualTo(ModoBusca.MODO_BUSCA_PALAVRA);
-            assertThat(b.getTexto()).isEqualTo("portão");
-            assertThat(b.getLimite()).isEqualTo(10);
+            assertThat(b.getMode()).isEqualTo(SearchMode.SEARCH_MODE_KEYWORD);
+            assertThat(b.getText()).isEqualTo("portão");
+            assertThat(b.getLimit()).isEqualTo(10);
         });
     }
 
@@ -227,6 +227,6 @@ class AssistantControllerTest {
                 .content("{\"texto\":\"portão\",\"filtros\":{\"categorias\":[\"PO\"]}}"))
                 .andExpect(status().isOk());
         assertThat(rag.searches).singleElement()
-                .satisfies(b -> assertThat(b.getFiltros().getCategoriasList()).containsExactly("PO"));
+                .satisfies(b -> assertThat(b.getFilters().getCategoriesList()).containsExactly("PO"));
     }
 }

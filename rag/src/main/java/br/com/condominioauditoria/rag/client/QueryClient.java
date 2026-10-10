@@ -1,6 +1,6 @@
 package br.com.condominioauditoria.rag.client;
 
-import br.com.condominioauditoria.contratos.consulta.v1.ConsultaGrpc;
+import br.com.condominioauditoria.contracts.query.v2.QueryGrpc;
 import br.com.condominioauditoria.rag.config.properties.RagProperties;
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
@@ -15,9 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Client of the api's gRPC {@code contracts/grpc/consulta/v1}, used by the chat's numeric tools (ADR 0003,
+ * Client of the api's gRPC {@code contracts/grpc/query/v2}, used by the chat's numeric tools (ADR 0003,
  * Decision 5.2: "o rag chama as ferramentas no backend com o token do próprio usuário"). The same token that arrived
- * in the {@code authorization} metadata of {@code Perguntar} is passed on; the api applies role and condominium as it
+ * in the {@code authorization} metadata of {@code Ask} is passed on; the api applies role and condominium as it
  * does for the mcp.
  *
  * A single channel for the service (address {@code BACKEND_GRPC}); the deadline is per call, so the chat never hangs.
@@ -48,10 +48,10 @@ public class QueryClient {
     }
 
     /** Stub with the token of the user of this question and the deadline of one call. */
-    public ConsultaGrpc.ConsultaBlockingStub withToken(String authorization) {
+    public QueryGrpc.QueryBlockingStub withToken(String authorization) {
         var headers = new Metadata();
         headers.put(AUTHORIZATION, authorization);
-        return ConsultaGrpc.newBlockingStub(channel)
+        return QueryGrpc.newBlockingStub(channel)
                 .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers))
                 .withDeadlineAfter(timeoutSeconds, TimeUnit.SECONDS);
     }

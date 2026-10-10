@@ -11,8 +11,8 @@
 #   leitura contábil: api ─ArquivoRecebido (rag.files-received)─▶ rag ─resultado (api.processing-results)─▶ api
 #   indexação (ADR 0003): api ─IndexarArquivo (rag.indexing)─▶ rag ─▶ leitor + ollama ─▶ schema rag no banco
 #                         rag ─ResultadoIndexacao (api.indexing-results)─▶ api (situação da indexação do arquivo na API)
-#   busca nos documentos: Claude ─buscar_documentos─▶ mcp ─gRPC Consulta.BuscarDocumentos─▶ api
-#                         api ─gRPC Assistente.Buscar (rag:9091)─▶ rag (híbrida; só por palavra sem Ollama)
+#   busca nos documentos: Claude ─buscar_documentos─▶ mcp ─gRPC Query.SearchDocuments─▶ api
+#                         api ─gRPC Assistant.Search (rag:9091)─▶ rag (híbrida; só por palavra sem Ollama)
 #
 # Primeira subida: o passo ollama-modelo baixa o modelo bge-m3 (~1,2 GB) para o volume "ollama"; o rag só sobe
 # depois que ele termina. Nas próximas subidas o modelo já está no volume e o passo termina em segundos.
@@ -102,7 +102,7 @@ services:
       KEYCLOAK_CHAVES: http://keycloak:8080/realms/condominio/protocol/openid-connect/certs
       PASTA_DADOS: /dados
       PORTA: 8080
-      # Busca nos documentos (rpc BuscarDocumentos) repassada ao rag
+      # Busca nos documentos (rpc SearchDocuments) repassada ao rag
       RAG_GRPC: rag:9091
       RAG_GRPC_PRAZO_SEGUNDOS: 30
       # Pergunta do chat (Claude + ferramentas + validação) demora mais que a busca
@@ -133,7 +133,7 @@ services:
       OLLAMA_MODELO_EMBEDDINGS: bge-m3
       # O modelo vem do passo ollama-modelo; o rag nunca baixa sozinho
       OLLAMA_BAIXAR_MODELO: never
-      # gRPC do assistente (Assistente.Buscar), só na rede interna; quem chama é o api
+      # gRPC do assistente (Assistant.Search), só na rede interna; quem chama é o api
       GRPC_PORTA: 9091
       RAG_PARALELISMO_INDEXACAO: 1
       # Chat do Assistente (ADR 0003, entrega 3). O par de chaves do rag cifra as chaves de API dos condomínios: só o

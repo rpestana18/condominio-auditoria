@@ -87,9 +87,9 @@ condominio:
   rag:
     grpc: ${RAG_GRPC:localhost:9091}
     timeout-seconds: ${RAG_GRPC_PRAZO_SEGUNDOS:30}
-    # Perguntar (chat): o modelo pode chamar ferramentas e tentar de novo; prazo estourado = 504 na API
+    # Ask (chat): o modelo pode chamar ferramentas e tentar de novo; prazo estourado = 504 na API
     question-timeout-seconds: ${RAG_GRPC_PRAZO_PERGUNTA_SEGUNDOS:120}
-    # Catálogo de provedores e chave pública do rag (ListarProvedores), guardado em memória por este tempo
+    # Catálogo de provedores e chave pública do rag (ListProviders), guardado em memória por este tempo
     catalog-cache-seconds: ${RAG_CATALOGO_CACHE_SEGUNDOS:300}
   assistente:
     # Trocas anteriores da conversa mandadas ao rag em cada pergunta (o histórico só existe na tela, Q10)

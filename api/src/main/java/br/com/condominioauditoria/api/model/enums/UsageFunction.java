@@ -8,7 +8,7 @@ import java.util.Arrays;
 public enum UsageFunction {
     /** Document search made from the screen (the assistant's REST API, from delivery 3 on). */
     DOCUMENT_SEARCH("document_search", "Busca nos documentos (tela)"),
-    /** buscar_documentos called by the MCP (rpc BuscarDocumentos). */
+    /** buscar_documentos called by the MCP (rpc SearchDocuments). */
     MCP_CALL("mcp_call", "Busca pelo MCP"),
     /** One indexed file (files = 1, pages read). */
     INDEXING("indexing", "Indexação de arquivos"),

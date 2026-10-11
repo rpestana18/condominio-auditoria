@@ -155,7 +155,7 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | achados do mês | `MonthFindings` | |
 | recálculo dos achados | `BudgetFindingRecalculationService`, `BudgetFindingRecalculationListener` | |
 | cenário de teste, PO do piloto, golden de setembro | `BudgetScenario`, `PilotBudget`, `SeptemberGolden` | só nos testes |
-| leitor (de documentos), documento lido, contrato do leitor | `reader`, `ReadDocument`, `ReaderContract` | o serviço `leitor/` mantém o nome até a fase 3 |
+| leitor (de documentos), documento lido, contrato do leitor | `reader`, `ReadDocument`, `ReaderContract` | o serviço `leitor/` virou `reader/` na fase 3 |
 | interpretador (de layout), leitura | `parser`, `Reading` | |
 | interpretador da PO da Protest, do fluxo de caixa | `ProtestBudgetParser`, `CashFlowParser` | |
 | linha (de texto da página), palavra, célula, planilha, parágrafo | `TextLine`, `Word`, `Cell`, `Sheet`, `Paragraph` | |
@@ -406,3 +406,12 @@ Feita num PR só, a pedido do usuário. As escolhas abaixo seguiram a opção re
 - **Keycloak:** perfis `USER`, `MANAGER` e `ADMIN`; a claim e o atributo do usuário passam a ser `condominiums`. Um Keycloak já criado precisa ser recriado para importar o realm novo.
 - **MCP e chat:** ferramentas, parâmetros e campos JSON em inglês (`list_condominiums`, `fund_summary`, `list_files`, `file_checks`, `find_entries`, `search_documents`); as descrições continuam em português.
 - **Fica para a fase 3:** o contrato do leitor (`contracts/leitor/v1`, com `sem_texto`, `texto` etc.), o `leitor/` e os nomes do código do frontend. As rotas e os textos da tela continuam em português.
+
+## Fase 3 (10/10/2026)
+
+Feita num PR só, como a fase 2:
+
+- **Leitor:** o serviço Python `leitor/` virou `reader/` (pasta, contêiner do docker compose e variável `READER_URL`), com código em inglês e endpoints `POST /v2/read` (parte `file`) e `GET /health`. O contrato novo é `contracts/reader/v2/read-document.schema.json`: o mesmo conteúdo da v1, com nomes em inglês (`pages`, `words`, `sheets`, `cells`, `paragraphs`, métodos `text`/`no_text`, tipos de célula `text`/`number`/`date`/`boolean`). A `contracts/leitor/v1` fica como histórico. O rag lê a v2 sem `@JsonProperty`. Os JSON do golden (`*.read-document.json`) foram gerados de novo, com páginas idênticas às da v1.
+- **Frontend:** pastas, arquivos, componentes, tipos, hooks, variáveis, classes e variáveis CSS e comentários em inglês (`pages/`, `components/`, `api/queries.ts`, `api/schema.ts`). O script `pnpm gerar-api` virou `pnpm generate-api`.
+- **Continua em português:** textos da tela, mensagens de erro, rotas e parâmetros de URL do frontend (`/previsoes`, `?periodo=acumulado`), nomes de arquivos baixados e as variáveis de ambiente e os serviços de infraestrutura (`banco`, `fila`, `VITE_KEYCLOAK_CLIENTE`, `PASTA_DADOS`).
+- **Fora desta fase:** o formato da resposta estruturada pedida ao modelo no Assistente (`nosDocumentos`, `trechoIds` etc., em `rag.service.ResponseSchema`) faz parte do texto das instruções em português e não mudou.

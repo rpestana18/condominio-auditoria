@@ -73,7 +73,7 @@ public class TextChunkerTest {
 
     @Test
     public void pdfSkipsPageWithoutTextAndNumbersInOrder() {
-        var scanned = new Page(1, 595, 842, "sem_texto", List.of());
+        var scanned = new Page(1, 595, 842, "no_text", List.of());
         var withText = page(2, List.of(new Word("Ata", 10, 30, 10, 20)));
 
         ChunkedDocument chunked = TextChunker.chunk(pdf(scanned, withText));
@@ -87,8 +87,8 @@ public class TextChunkerTest {
 
     @Test
     public void pdfWithNoTextHasReason() {
-        var p1 = new Page(1, 595, 842, "sem_texto", List.of());
-        var p2 = new Page(2, 595, 842, "sem_texto", List.of());
+        var p1 = new Page(1, 595, 842, "no_text", List.of());
+        var p2 = new Page(2, 595, 842, "no_text", List.of());
 
         ChunkedDocument chunked = TextChunker.chunk(pdf(p1, p2));
 
@@ -110,11 +110,11 @@ public class TextChunkerTest {
     @Test
     public void excelBlocksOfThirtyRowsRepeatingHeader() {
         var cells = new ArrayList<Cell>();
-        cells.add(new Cell(1, 1, "Data", "texto"));
-        cells.add(new Cell(1, 2, "Valor", "texto"));
+        cells.add(new Cell(1, 1, "Data", "text"));
+        cells.add(new Cell(1, 2, "Valor", "text"));
         for (int line = 2; line <= 71; line++) { // 70 data rows
-            cells.add(new Cell(line, 2, "%d.00".formatted(line), "numero")); // fora de ordem de coluna
-            cells.add(new Cell(line, 1, "2026-09-%02d".formatted(line % 28 + 1), "data"));
+            cells.add(new Cell(line, 2, "%d.00".formatted(line), "number")); // out of column order
+            cells.add(new Cell(line, 1, "2026-09-%02d".formatted(line % 28 + 1), "date"));
         }
 
         ChunkedDocument chunked = TextChunker.chunk(xlsx(new Sheet("Despesas", cells)));
@@ -131,9 +131,9 @@ public class TextChunkerTest {
 
     @Test
     public void excelNeverJoinsTabsAndSkipsEmptyTab() {
-        var a = new Sheet("Janeiro", List.of(new Cell(1, 1, "Item", "texto"), new Cell(2, 1, "Água", "texto")));
-        var empty = new Sheet("Vazia", List.of(new Cell(1, 1, "  ", "texto")));
-        var b = new Sheet("Fevereiro", List.of(new Cell(3, 1, "Só cabeçalho", "texto")));
+        var a = new Sheet("Janeiro", List.of(new Cell(1, 1, "Item", "text"), new Cell(2, 1, "Água", "text")));
+        var empty = new Sheet("Vazia", List.of(new Cell(1, 1, "  ", "text")));
+        var b = new Sheet("Fevereiro", List.of(new Cell(3, 1, "Só cabeçalho", "text")));
 
         ChunkedDocument chunked = TextChunker.chunk(xlsx(a, empty, b));
 
@@ -199,7 +199,7 @@ public class TextChunkerTest {
     // ---------------------------------------------------------------- helpers
 
     private static Page page(int number, List<Word> words) {
-        return new Page(number, 595, 842, "texto", words);
+        return new Page(number, 595, 842, "text", words);
     }
 
     private static ReadDocument pdf(Page... pages) {

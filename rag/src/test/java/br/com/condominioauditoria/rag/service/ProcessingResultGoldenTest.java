@@ -45,7 +45,7 @@ public class ProcessingResultGoldenTest {
 
     private void checkOrWrite(String name, UUID fileId, String category) throws Exception {
         Path privateDir = Path.of(System.getProperty("golden.dir"), "privado");
-        Path read = privateDir.resolve(name + ".documento-lido.json");
+        Path read = privateDir.resolve(name + ".read-document.json");
         assumeTrue(Files.exists(read), "golden privado ausente");
         String sha = "0".repeat(64);
         var file = new FileReceivedMessage(3, fileId, fileId, CONDOMINIUM, category, name + ".pdf",

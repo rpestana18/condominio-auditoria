@@ -49,7 +49,7 @@ public class FileProcessingServiceTest {
     @Test
     public void realBudgetAndCashFlowByContent() throws Exception {
         Path privateDir = Path.of(System.getProperty("golden.dir"), "privado");
-        Path budget = privateDir.resolve("po-2026-2027.documento-lido.json");
+        Path budget = privateDir.resolve("po-2026-2027.read-document.json");
         if (Files.exists(budget)) {
             ProcessingResultMessage r = service.parse(file("PO"),
                     new ReaderContract().convert(Files.readString(budget)));
@@ -60,7 +60,7 @@ public class FileProcessingServiceTest {
             assertThat(new String(new MessageContract().write(r), java.nio.charset.StandardCharsets.UTF_8))
                     .contains("\"version\":3").contains("\"budgeted\":\"1585.14\"");
         }
-        Path cashFlow = privateDir.resolve("fluxo-caixa-2026-09.documento-lido.json");
+        Path cashFlow = privateDir.resolve("fluxo-caixa-2026-09.read-document.json");
         if (Files.exists(cashFlow)) {
             ProcessingResultMessage r = service.parse(file("TRIAL_BALANCE"),
                     new ReaderContract().convert(Files.readString(cashFlow)));
@@ -73,8 +73,8 @@ public class FileProcessingServiceTest {
     }
 
     private static ReadDocument scanned() {
-        return new ReadDocument("1", "leitor-py", new ReadDocument.FileInfo("x.pdf", "a".repeat(64), 10), "pdf",
-                List.of(new Page(1, 595, 842, "sem_texto", List.of())), List.of(), List.of());
+        return new ReadDocument("2", "reader-py", new ReadDocument.FileInfo("x.pdf", "a".repeat(64), 10), "pdf",
+                List.of(new Page(1, 595, 842, "no_text", List.of())), List.of(), List.of());
     }
 
     private static FileReceivedMessage file(String category) {

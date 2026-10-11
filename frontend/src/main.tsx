@@ -2,21 +2,21 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
-import { iniciarLogin } from "./autenticacao/keycloak";
-import "./estilos.css";
+import { startLogin } from "./auth/keycloak";
+import "./styles.css";
 
-const consultas = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
-const raiz = createRoot(document.getElementById("raiz")!);
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
+const root = createRoot(document.getElementById("root")!);
 
-// Nada aparece antes do login: o Keycloak redireciona para a tela de entrada e volta com o token
-iniciarLogin()
+// Nothing shows up before login: Keycloak redirects to its sign-in page and comes back with the token
+startLogin()
   .then(() =>
-    raiz.render(
+    root.render(
       <StrictMode>
-        <QueryClientProvider client={consultas}>
+        <QueryClientProvider client={queryClient}>
           <App />
         </QueryClientProvider>
       </StrictMode>,
     ),
   )
-  .catch(() => raiz.render(<p className="aviso erro">Não foi possível conectar ao serviço de login.</p>));
+  .catch(() => root.render(<p className="notice error">Não foi possível conectar ao serviço de login.</p>));

@@ -9,7 +9,6 @@ import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
 import java.util.List;
 import tools.jackson.databind.DeserializationFeature;
-import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -18,11 +17,10 @@ import tools.jackson.databind.json.JsonMapper;
  */
 public final class ReaderContract {
 
-    private static final String SCHEMA = "classpath:leitor/v1/documento-lido.schema.json";
+    private static final String SCHEMA = "classpath:reader/v2/read-document.schema.json";
 
     private final Schema schema;
     private final JsonMapper mapper = JsonMapper.builder()
-            .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build();
 
@@ -41,7 +39,7 @@ public final class ReaderContract {
 
     public static class InvalidContractException extends RuntimeException {
         public InvalidContractException(List<String> errors) {
-            super("Saída do leitor fora do contrato v1: " + String.join("; ", errors));
+            super("Saída do leitor fora do contrato v2: " + String.join("; ", errors));
         }
     }
 }

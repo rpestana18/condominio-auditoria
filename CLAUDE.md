@@ -6,10 +6,10 @@
 - O usuário tem a **decisão final sobre tecnologias**. Nenhuma biblioteca ou serviço novo entra sem ADR aprovada (`docs/adr/`).
 - Dinheiro é sempre `BigDecimal` com 2 casas (Java) e nunca `double`. Cálculos são determinísticos e testados.
 - Arquivos originais nunca vão para o banco e nunca são alterados. O banco guarda só dados processados, sempre com arquivo, página e hash de origem.
-- Serviços separados (ADR 0002): `api` (o antigo `backend`), `rag`, `mcp`, `leitor` e `frontend`, cada um no seu contêiner. Um serviço nunca importa classe de outro nem lê o schema de banco de outro: só conversa por contrato em `contracts/` (REST, fila, gRPC). Código compartilhado só em `libs/` (técnico, sem regra de negócio).
-- O leitor Python (`leitor/`) não tem regra de negócio nem banco. Mudou a saída? Mude o contrato em `contracts/leitor/` (nova versão) e o rag.
+- Serviços separados (ADR 0002): `api` (o antigo `backend`), `rag`, `mcp`, `reader` (o leitor de documentos) e `frontend`, cada um no seu contêiner. Um serviço nunca importa classe de outro nem lê o schema de banco de outro: só conversa por contrato em `contracts/` (REST, fila, gRPC). Código compartilhado só em `libs/` (técnico, sem regra de negócio).
+- O leitor Python (`reader/`) não tem regra de negócio nem banco. Mudou a saída? Mude o contrato em `contracts/reader/` (nova versão) e o rag.
 - Mensagens da fila seguem `contracts/mensagens/v3`; o gRPC segue `contracts/grpc/` (v2). Mudou? Nova versão e os dois lados no mesmo PR.
-- O contrato da API é `contracts/openapi.yaml`. Mudou a API? Atualize o contrato e rode `pnpm gerar-api` no frontend.
+- O contrato da API é `contracts/openapi.yaml`. Mudou a API? Atualize o contrato e rode `pnpm generate-api` no frontend.
 - Toda mudança em leitor ou regra roda contra `data/golden/` e não pode piorar nenhum caso.
 - O sistema aponta indícios com evidência; nunca escreve conclusões acusatórias.
 - Agentes especialistas em `.claude/agents/`. Dono de cada parte:
@@ -17,7 +17,7 @@
   | Parte | Agente |
   |---|---|
   | `api/`, o antigo `backend/` (API, contábil, auditoria, relatórios) | `backend` |
-  | `rag/` leitura e interpretação (`rag.parser`, `rag.model`) e `leitor/` | `ingestao` |
+  | `rag/` leitura e interpretação (`rag.parser`, `rag.model`) e `reader/` | `ingestao` |
   | `rag/` embeddings, busca e respostas (`rag.search`, `rag.repository`, `rag.client`, `rag.security` e as perguntas em `rag.service`) | `rag` |
   | `mcp/`, `infra/`, testes ponta a ponta e todo contrato entre serviços (`contracts/`) | `mcp` |
   | `frontend/` | `frontend` |
@@ -30,7 +30,7 @@
 
 ```bash
 ./gradlew test                                      # testes de api, rag, mcp e libs (Java 25)
-cd leitor && pytest                                # testes do leitor
+cd reader && pytest                                # testes do leitor
 cd frontend && pnpm build                           # checagem de tipos + build
 cd infra && docker compose up --build               # sistema inteiro
 ```

@@ -31,7 +31,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Real 2026/2027 budget of the pilot (RF-03.1.1, RF-03.1.2 and RF-03.1.15). The reader's output for the PDF is real
- * data and stays out of git (data/golden/privado/po-2026-2027.documento-lido.json); without it, the test is skipped.
+ * data and stays out of git (data/golden/privado/po-2026-2027.read-document.json); without it, the test is skipped.
  */
 public class ProtestBudgetParserGoldenTest {
 
@@ -41,7 +41,7 @@ public class ProtestBudgetParserGoldenTest {
 
     @BeforeAll
     public static void read() throws Exception {
-        Path json = Path.of(System.getProperty("golden.dir"), "privado/po-2026-2027.documento-lido.json");
+        Path json = Path.of(System.getProperty("golden.dir"), "privado/po-2026-2027.read-document.json");
         assumeTrue(Files.exists(json), "golden privado ausente");
         document = new ReaderContract().convert(Files.readString(json));
         var parser = new ProtestBudgetParser();
@@ -53,7 +53,7 @@ public class ProtestBudgetParserGoldenTest {
     @Test
     public void recognitionByContent() throws Exception {
         assertThat(new CashFlowParser().recognizes(document)).isFalse();
-        Path cashFlow = Path.of(System.getProperty("golden.dir"), "privado/fluxo-caixa-2026-09.documento-lido.json");
+        Path cashFlow = Path.of(System.getProperty("golden.dir"), "privado/fluxo-caixa-2026-09.read-document.json");
         if (Files.exists(cashFlow)) {
             assertThat(new ProtestBudgetParser().recognizes(new ReaderContract().convert(Files.readString(cashFlow))))
                     .isFalse();

@@ -6,7 +6,7 @@ carrega a planilha do de-para e confirma as contas, abre o mês, exporta PDF e E
 reprocessa o fluxo para mostrar que nenhum número muda.
 
 Os arquivos de entrada são parâmetros (os reais ficam em data/golden/privado, fora do git). Só biblioteca padrão do
-Python; se o pdfplumber estiver instalado (venv do leitor), o texto do PDF também é conferido.
+Python; se o pdfplumber estiver instalado (venv do reader/), o texto do PDF também é conferido.
 
 Uso:
   python3 scripts/e2e-previsto-realizado.py \

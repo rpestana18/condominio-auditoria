@@ -11,7 +11,7 @@ public sealed interface Location {
     record Sheet(String tab, int startRow, int endRow) implements Location {
     }
 
-    /** Word; paragraphs from 1, inclusive. Empty section until contracts/leitor/v2 exists. */
+    /** Word; paragraphs from 1, inclusive. Empty section until the reader contract carries sections. */
     record Paragraphs(int start, int end, String section) implements Location {
     }
 }

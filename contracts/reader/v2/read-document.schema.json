@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://condominio-auditoria/contracts/reader/v2/read-document.schema.json",
+  "title": "ReadDocument v2",
+  "description": "Saída do leitor de documentos (reader). Só conteúdo bruto com posição; nenhuma regra de negócio. A v2 tem o mesmo conteúdo da v1 (contracts/leitor/v1), com nomes em inglês (ADR 0006, fase 3).",
+  "type": "object",
+  "required": ["contractVersion", "file", "type", "pages", "sheets", "paragraphs"],
+  "additionalProperties": false,
+  "properties": {
+    "contractVersion": { "const": "2" },
+    "reader": { "type": "string", "description": "Nome e versão do leitor que gerou o JSON" },
+    "file": {
+      "type": "object",
+      "required": ["name", "sha256", "sizeBytes"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "sizeBytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "type": { "enum": ["pdf", "xlsx", "docx"] },
+    "pages": {
+      "description": "PDF: uma entrada por página, com as palavras e suas coordenadas (pontos, origem no canto superior esquerdo)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["number", "width", "height", "method", "words"],
+        "additionalProperties": false,
+        "properties": {
+          "number": { "type": "integer", "minimum": 1 },
+          "width": { "type": "number" },
+          "height": { "type": "number" },
+          "method": { "enum": ["text", "no_text"], "description": "no_text = página escaneada; OCR entra numa versão futura" },
+          "words": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["text", "x0", "x1", "top", "bottom"],
+              "additionalProperties": false,
+              "properties": {
+                "text": { "type": "string" },
+                "x0": { "type": "number" },
+                "x1": { "type": "number" },
+                "top": { "type": "number" },
+                "bottom": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sheets": {
+      "description": "XLSX: uma entrada por aba, com as células não vazias (valores já calculados)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "cells"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "cells": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["row", "column", "value"],
+              "additionalProperties": false,
+              "properties": {
+                "row": { "type": "integer", "minimum": 1 },
+                "column": { "type": "integer", "minimum": 1 },
+                "value": { "type": "string", "description": "Valor como texto; números com ponto decimal, sem separador de milhar" },
+                "type": { "enum": ["text", "number", "date", "boolean"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "paragraphs": {
+      "description": "DOCX: parágrafos e linhas de tabela na ordem do documento",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sequence", "text"],
+        "additionalProperties": false,
+        "properties": {
+          "sequence": { "type": "integer", "minimum": 1 },
+          "text": { "type": "string" },
+          "table": { "type": "integer", "description": "Índice da tabela quando o parágrafo é uma linha de tabela (células separadas por TAB)" }
+        }
+      }
+    }
+  }
+}

@@ -108,9 +108,9 @@ Sem o Ollama, a busca continua funcionando só por palavra para o que já foi in
 1. Entre em http://localhost:8180 com `admin` / `admin` e escolha o realm **condominio**.
 2. Em **Users → Add user**, crie o usuário. Na aba **Credentials**, defina a senha.
 3. Na aba **Role mapping**, atribua `USER`, `MANAGER` ou `ADMIN`.
-4. Na aba **Attributes**, preencha `condominios` com o id do condomínio. O do piloto é `6f1d2c1e-3b4a-4c8e-9a51-2815a0000001`.
+4. Na aba **Attributes**, preencha `condominiums` com o id do condomínio (não precisa para `ADMIN`, que vê todos). O do piloto é `6f1d2c1e-3b4a-4c8e-9a51-2815a0000001`.
 
-Os usuários de exemplo e as regras de sessão (token de 5 min, sessão que cai após 30 min sem uso) estão em `infra/keycloak/realm-condominio.json`. Esse arquivo só é importado quando o Keycloak sobe com o banco dele vazio.
+Para testar logo, o realm já traz os usuários `admin`/`admin` (ADMIN), `gestor`/`gestor` (MANAGER) e `usuario`/`usuario` (USER); entre com eles em http://localhost:8080. Os usuários de exemplo e as regras de sessão (token de 5 min, sessão que cai após 30 min sem uso) estão em `infra/keycloak/realm-condominio.json`. Esse arquivo só é importado quando o Keycloak sobe com o banco dele vazio.
 
 ## Assistente na tela (chat sobre os documentos)
 

@@ -474,7 +474,7 @@ Termos usados abaixo:
   - Dado um condomínio que ainda não confirmou o fundo ordinário, quando o Gestor ou o Admin abre a tela inicial, então o lugar do cartão "Saldo acumulado" mostra a sugestão ("Este é o fundo ordinário? CONDOMÍNIO") com os botões confirmar e trocar; para o Usuário, o cartão não aparece.
   - Dado um fundo ordinário confirmado que não aparece no relatório do mês, quando o usuário abre a tela inicial, então o cartão mostra o aviso discreto "Fundo ordinário não encontrado neste relatório", sem valor.
   - Dado um saldo acumulado negativo, quando a tela mostra o cartão, então o valor aparece em vermelho, sem outro texto.
-- RF-05.2 Gráficos: evolução mensal de receitas/despesas, despesas por rubrica, previsto × realizado, histórico anual, projeção. Os gráficos da PO estão na tela "Indicadores" (RF-11.10 a RF-11.14).
+- RF-05.2 Gráficos: evolução mensal de receitas/despesas, despesas por rubrica, previsto × realizado, histórico anual, projeção. Os gráficos da PO estão na tela "Indicadores" (RF-11.10 a RF-11.14). A evolução mês a mês da cota ordinária e das concessionárias fica na tela inicial (RF-12).
 - RF-05.3 **Indicador discreto em um canto**, em todas as telas: "Último arquivo: <nome> · <categoria> · <data>".
 - RF-05.4 **Tela de arquivos**: separada por categorias (abas ou filtro), **ordenada da data mais recente para a mais antiga**, com busca, status e download do original.
 - RF-05.5 Tela de achados de auditoria com filtros e detalhe da evidência (abre o documento na página certa).
@@ -662,6 +662,56 @@ Termos usados abaixo (os demais estão no RF-03.1):
 
 Nenhum achado novo: os achados de cada exercício são os do RF-03.1 (regra dos 20%, conta sem linha da PO e teto do fundo de reserva).
 
+### RF-12 Evolução mês a mês no dashboard: cota ordinária e concessionárias (pedido do usuário, 13/10/2026)
+Origem: pedido do usuário de 13/10/2026: *"gráficos nos dashboards mostrando a evolução mês a mês da cota ordinária, das contas das concessionárias para indicar aumento ou redução"*. Detalha o RF-05.2 ("evolução mensal"). Não mexe no menu "Análise da PO" nem nas regras da PO (RF-03.1 e RF-11): o usuário deixou o módulo da PO para depois.
+
+Situação atual (13/10/2026, main em `29d612d`):
+- A tela inicial mostra um mês só: os cartões (RF-05.1 e RF-05.1a) e o gráfico de entradas e saídas dos fundos com mais movimento.
+- Cada lançamento já é gravado com fundo, data, conta, histórico, página e arquivo de origem, e os recibos de cota já são marcados como arrecadação (Q25).
+- No piloto só existe o fluxo de setembro/2026 (P5 em aberto). Com um mês só, os gráficos mostram um ponto e nenhuma variação.
+
+O que o fluxo do piloto traz (conferido no fluxo de setembro/2026):
+
+| Concessionária | Conta do fluxo | Fundo onde é paga | Setembro/2026 |
+|---|---|---|---|
+| Água e esgoto (Iguá) | 1896 AGUA/ESGOTO - PG | AGUA/ESGOTO | 2 contas, ref. 08/2026: 48.962,57 + 95.129,74 = **144.092,31** |
+| Energia (Light) | 1894 ENERGIA ELETRICA - PGTO | ENERGIA ELETRICA | 2 contas, ref. 08/2026: 8.913,65 + 14.807,59 = **23.721,24** |
+| Gás (CEG) | 3611 GÁS | LOCAÇÃO ESPAÇO COMUM | 2 débitos automáticos, ref. 08/2026: 807,17 + 1.746,00 = **2.553,17** |
+
+Surpresas: as contas vêm em mais de um boleto por mês (por bloco ou por medidor); o histórico traz o mês de consumo ("REF. 08/2026"), diferente do mês do pagamento; o gás é pago pelo fundo "Locação espaço comum", não por um fundo próprio; os ajustes da conta 3775 "Outros débitos concessionárias" são transferências entre fundos, não contas de consumo. O fluxo não traz o valor da cota por unidade, só o que foi recebido.
+
+Premissas (padrões adotados; o usuário pode mudar):
+1. O mês de cada valor é o mês do lançamento no fluxo (caixa, Q18). A tabela mostra também o mês de referência da conta quando o histórico o traz.
+2. Mês sem fluxo carregado aparece "sem fluxo carregado", **nunca zero** (como RF-03.1.10). Mês com fluxo e sem pagamento da concessionária aparece "nenhum pagamento no mês", sem ponto em zero.
+3. A variação é só fato: valor, diferença em R$ e em %, com seta para cima ou para baixo em cor neutra. Nenhum texto explica causa ou tendência e nenhuma cor de alerta é usada (§3.3, como RF-11.13).
+4. Os gráficos não calculam nada: mostram números que o backend entrega já somados.
+
+Termos:
+- **Concessionária**: serviço público cobrado por consumo (água e esgoto, energia, gás). Cada condomínio liga uma ou mais contas do fluxo a cada concessionária, porque código e nome da conta mudam de uma administradora para outra.
+- **Cota ordinária recebida**: soma, no mês, dos recibos de cota (Q25) que entram no fundo ordinário (RF-05.1b).
+
+Requisitos:
+- RF-12.1 **Contas de cada concessionária**: quando os fluxos do condomínio são lidos, o sistema sugere, pelo nome da conta, quais contas são de água e esgoto, energia e gás. O Gestor ou o Admin confirma, troca ou remove cada sugestão em Administração, e só contas confirmadas entram nos gráficos. A confirmação fica na trilha de auditoria (RF-07.4).
+  - Dado o fluxo de setembro/2026 do piloto, quando o Admin abre a tela, então vê sugeridas 1896 para água e esgoto, 1894 para energia e 3611 para gás, e a conta 3775 não aparece como sugestão.
+  - Dado uma conta de concessionária ainda não confirmada, quando qualquer perfil abre a tela inicial, então o gráfico dela não aparece; para o Gestor e o Admin aparece o aviso "Confirme as contas das concessionárias" com o link para a tela.
+- RF-12.2 **Gráfico "Cota ordinária recebida"** na tela inicial, abaixo dos cartões: os últimos 12 meses até o mês do relatório mostrado, um valor por mês. Exige o fundo ordinário confirmado (RF-05.1b); sem ele, mostra o mesmo aviso do cartão "Saldo acumulado".
+  - Dado só setembro/2026 carregado, quando o usuário abre a tela inicial, então setembro mostra o valor recebido e os 11 meses anteriores aparecem "sem fluxo carregado", sem barra e sem ponto em zero.
+  - Dado agosto e setembro carregados, quando o usuário abre a tela inicial, então setembro mostra a diferença para agosto em R$ e em %, com a seta da direção.
+- RF-12.3 **Gráfico "Concessionárias"** na tela inicial: uma série por concessionária confirmada, nos mesmos 12 meses, com a soma de todas as contas daquela concessionária no mês, em qualquer fundo.
+  - Dado o fluxo de setembro/2026, quando o gráfico é exibido, então setembro mostra água e esgoto 144.092,31, energia 23.721,24 e gás 2.553,17.
+  - Dado duas contas de energia pagas no mesmo mês, quando o gráfico é exibido, então o mês mostra a soma, e a tabela lista as duas com o mês de referência de cada uma.
+- RF-12.4 **Variação mês a mês**: cada gráfico tem a tabela alternativa (como RF-11.10) com mês, valor, diferença para o mês anterior (R$ e %) e diferença para o mesmo mês do ano anterior (R$ e %), quando os dois meses têm fluxo carregado. Sem um dos meses, a célula mostra "sem base de comparação".
+  - Dado agosto sem fluxo e setembro carregado, quando o usuário abre a tabela, então a variação de setembro mostra "sem base de comparação", nunca 100%.
+  - Dado um mês de teste em que a energia passa de 20.000,00 para 23.721,24, quando a tabela é exibida, então mostra +3.721,24 e +18,6%, com seta para cima em cor neutra e sem nenhum texto de explicação.
+- RF-12.5 **Do gráfico à evidência** (RNF-04): clicar num mês abre os lançamentos que compõem o valor, com arquivo, página e histórico.
+  - Dado o gráfico de concessionárias de setembro/2026, quando o usuário clica em água e esgoto, então vê os dois lançamentos da conta 1896 (48.962,57 e 95.129,74) e abre o fluxo na página de cada um.
+- RF-12.6 **Perfis**: todos veem os gráficos; só Gestor e Admin confirmam contas (RF-12.1).
+- RF-12.7 **Caso de aceite** (RNF-10): o golden de setembro/2026 ganha os três valores das concessionárias do RF-12.3 e o valor da cota ordinária recebida no fundo ordinário. Quando os fluxos de maio a agosto/2026 chegarem (P5), entra o caso com variação real.
+
+Fora deste requisito: valor da cota emitida por unidade (o fluxo não traz; depende do relatório de emissão de boletos ou da fração ideal, Q38); consumo em m³ ou kWh (o fluxo só traz o valor pago); previsão das contas; exportação em PDF ou Excel destes gráficos (como Q36); telefone e internet (Q39).
+
+**Matriz de regras deste bloco**: nenhuma regra de auditoria nova e nenhum achado. Os gráficos mostram fatos; alerta por aumento só entra com limite e fonte definidos pelo usuário como parâmetro do condomínio.
+
 ---
 
 ## 7. Requisitos não funcionais
@@ -755,6 +805,9 @@ Nenhum achado novo: os achados de cada exercício são os do RF-03.1 (regra dos 
 | Q35 | ✔ Sim (usuário, 06/10/2026). Os 7 indicadores do RF-11.11, com cor de alerta só para o excesso acima de 20%? **Sim (recomendado)** / Ajustar a lista ou os limites | Usuário |
 | Q36 | ✔ Sim, e por enquanto sem exportação em PDF ou Excel da comparação e dos indicadores (usuário, 06/10/2026). Gráficos só na tela, com tabelas e barras em CSS no PDF, sem biblioteca nova? **Sim (recomendado)** / Não (gráfico no PDF, com Batik, por ADR) (RF-11.14) | Usuário |
 | Q37 | ✔ Linhas (usuário, 08/10/2026): "soma das linhas mesmo, é o mais correto". Previsto do mês da coluna "Orçado anterior" = 441.525,22 (o 1.6 impresso 18.525,42 × soma 18.746,25 vira aviso). Linha nova, sem correspondente na PO anterior, entra pela soma na nova (caso comum quando entram linhas novas). (RF-11.5, RF-11.6, RF-11.8) | Usuário |
+| Q38 | Cota ordinária no gráfico: **valor recebido no mês no fundo ordinário (recomendado)**, que o fluxo já traz / valor da cota emitida por unidade, que exige o relatório de emissão de boletos (RF-12.2) | Usuário |
+| Q39 | Concessionárias no gráfico: **água, energia e gás (recomendado)** / incluir também telefone e internet (RF-12.3) | Usuário |
+| Q40 | Comparação na tabela: **mês anterior e mesmo mês do ano anterior (recomendado)** / só mês anterior (RF-12.4) | Usuário |
 | T* | Decisões de tecnologia (ver 03-tecnologias.md) | Usuário |
 
 ---

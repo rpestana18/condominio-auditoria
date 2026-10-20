@@ -5,6 +5,7 @@ import type { Dashboard } from "../api/types";
 import { NumberCard } from "../components/NumberCard";
 import { FiscalYearBudgetVsActualCard } from "../components/FiscalYearBudgetVsActualCard";
 import { CumulativeBalanceCard } from "../components/CumulativeBalanceCard";
+import { BalanceOriginCard } from "../components/BalanceOriginCard";
 import { MonthlyEvolutionSection } from "../components/evolution/MonthlyEvolutionSection";
 import { useSession } from "../context";
 import { formatDate, formatMoney, formatMoneyShort, formatPeriod } from "../format";
@@ -63,6 +64,8 @@ function MonthDashboard({ dashboard }: { dashboard: Dashboard }) {
         />
         <NumberCard title="Saldo no fim do mês" value={dashboard.closingBalance} />
         <CumulativeBalanceCard dashboard={dashboard} />
+        {/* RF-13.7: the balance origin right next to "Saldo acumulado" */}
+        <BalanceOriginCard dashboard={dashboard} />
         <FiscalYearBudgetVsActualCard />
       </div>
 

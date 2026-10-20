@@ -423,6 +423,16 @@ public final class BudgetScenario {
     public SourceFile cashFlow(String name, LocalDate start, LocalDate end, int entries) {
         SourceFile a = file(FileCategory.TRIAL_BALANCE, name);
         a.complete(FileStatus.COMPLETED, "Todas as conferências passaram", "fluxo-protest", start, end, entries);
+        // Sent after the period ended: a complete cash flow, whatever today's date is (RF-13.10)
+        org.springframework.test.util.ReflectionTestUtils.setField(a, "uploadedAt",
+                end.plusDays(1).atStartOfDay(SourceFile.ZONE).plusHours(9).toInstant());
+        return a;
+    }
+
+    /** Cash flow sent "now" (the upload instant of the entity), as in production. */
+    public SourceFile cashFlowSentNow(String name, LocalDate start, LocalDate end, int entries) {
+        SourceFile a = file(FileCategory.TRIAL_BALANCE, name);
+        a.complete(FileStatus.COMPLETED, "Todas as conferências passaram", "fluxo-protest", start, end, entries);
         return a;
     }
 

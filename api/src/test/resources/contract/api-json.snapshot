@@ -478,6 +478,7 @@ GET /api/condominiums/{}/budget-vs-actual
       month: string
       overrun: number
       overrunPercentage: number
+      partialUntil: LocalDate
       planned: number
       status: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
     }]

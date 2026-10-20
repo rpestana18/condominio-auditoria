@@ -4,7 +4,7 @@ import { budgetStatusLabel } from "../components/budgetVsActual/labels";
 import { useSession } from "../context";
 import { formatDateTime, formatMonth, formatMoney } from "../format";
 
-/** The condominium's budgets read, from the most recent to the oldest (as they come from the API). */
+/** "PO aprovada" (RF-13.2): the condominium's budgets read, from the most recent to the oldest (as they come from the API). */
 export function Budgets() {
   const { condominiumId } = useSession();
   const navigate = useNavigate();
@@ -13,7 +13,7 @@ export function Budgets() {
   return (
     <>
       <header className="page-title">
-        <h1>Previsões orçamentárias (PO)</h1>
+        <h1>PO aprovada</h1>
       </header>
       {isLoading && <p className="notice">Carregando…</p>}
       {error && <p className="notice error">{error.message}</p>}

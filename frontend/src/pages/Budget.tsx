@@ -32,6 +32,11 @@ export function Budget() {
       <header className="page-title">
         <h1>{budget.title ?? "Previsão orçamentária"}</h1>
         <span className={budget.status === "CONFIRMED" ? "badge ok" : "badge warning"}>{budgetStatusLabel[budget.status]}</span>
+        {(budget.status === "CONFIRMED" || budget.status === "SUPERSEDED") && (
+          <Link className="link-button" to={`/previsoes/${budget.id}/tipos`}>
+            Tipos de linha
+          </Link>
+        )}
         <Link className="link-button" to="/previsoes">
           Todas as POs
         </Link>
@@ -50,7 +55,12 @@ export function Budget() {
       <BudgetEvents budgetId={budget.id} />
       {/* Budget items only exist after confirmation (RF-11.7); the list is for everyone, editing is Admin only */}
       {(budget.status === "CONFIRMED" || budget.status === "SUPERSEDED") && <BudgetItemsSection budget={budget} />}
-      <BudgetLines lines={detail.lines} previousBudgetedColumn={detail.previousBudgetedColumn} budgetedColumn={detail.budgetedColumn} />
+      <BudgetLines
+        lines={detail.lines}
+        previousBudgetedColumn={detail.previousBudgetedColumn}
+        budgetedColumn={detail.budgetedColumn}
+        repeatedLineIds={detail.repeatedCodes.flatMap((r) => r.lines.map((l) => l.lineId))}
+      />
     </>
   );
 }

@@ -1,5 +1,5 @@
 import type { FiscalYear, Fund, BudgetVsActualMonth, BudgetSummary } from "../../api/types";
-import { formatMonth } from "../../format";
+import { formatDayMonth, formatMonth } from "../../format";
 import { FiscalYearSelector } from "./FiscalYearSelector";
 import { FundSelector } from "./FundSelector";
 
@@ -41,6 +41,8 @@ export function BudgetVsActualFilters(props: Props) {
             <option key={m.month} value={m.month}>
               {formatMonth(m.month)}
               {monthStatus[m.status]}
+              {/* Partial month (RF-13.10): numbers up to the date, outside the cumulative and the 20% rule */}
+              {m.partialUntil ? ` · parcial até ${formatDayMonth(m.partialUntil)}` : ""}
               {m.extended ? " · prorrogado" : ""}
             </option>
           ))}

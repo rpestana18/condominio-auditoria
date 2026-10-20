@@ -159,6 +159,9 @@ export function useReloadBudget() {
     const keys = [
       "budgets", "budget", "budget-events", "account-mappings", "account-mapping-events", "budget-vs-actual", "evidence", "dashboard",
       "reallocations", "findings", "fiscal-years", "fiscal-year-comparison", "printed-column", "budget-items", "budget-line-items", "budget-item-events", "indicators",
+      // RF-13: tracking grid, balance bridge, fund movements, spending profiles and partial months
+      "budget-tracking", "balance-bridge", "fund-movements", "spending-profiles", "spending-profile-events", "partial-months",
+      "partial-month-events", "monthly-evolution",
     ];
     for (const key of keys) {
       void client.invalidateQueries({ queryKey: [key] });

@@ -103,3 +103,10 @@ export function formatSignedPercentage(value: number | null | undefined): string
   if (value === null || value === undefined) return "—";
   return value > 0 ? `+${formatPercentage(value)}` : formatPercentage(value);
 }
+
+/** "2026-10-20" becomes "20/10" (e.g. "parcial até 20/10", RF-13.10). */
+export function formatDayMonth(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const [, month, day] = iso.slice(0, 10).split("-");
+  return `${day}/${month}`;
+}

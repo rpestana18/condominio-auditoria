@@ -393,3 +393,67 @@ code { font-family: ui-monospace, monospace; font-size: 0.85em; background: var(
 .evolution-entries { margin-top: 1rem; }
 .evolution-entries-header { display: flex; justify-content: space-between; align-items: center; }
 .evolution-entries h4 { margin: 0.75rem 0 0.25rem; }
+
+/* Reformulated "Análise da PO" (RF-13): tracking grid, balance bridge and funds.
+   Neutral highlights only (RF-11.13): red (--critical) stays for the excess above 20%. */
+:root {
+  --cell-above-background: #e6ebf3; --cell-above-text: #34506e;
+  --cell-below-background: #ecf1e8; --cell-below-text: #46603a;
+  --cell-partial-background: #f3f1ea;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cell-above-background: #26303d; --cell-above-text: #a9c3de;
+    --cell-below-background: #27301f; --cell-below-text: #b8cfa3;
+    --cell-partial-background: #2b2a24;
+  }
+}
+.menu nav a.menu-section-link { display: block; padding: 0; margin: 16px 12px 2px; color: var(--text-muted); text-decoration: none; }
+.menu nav a.menu-section-link:hover { color: var(--primary); }
+.tracking-scroll { max-height: 75vh; overflow: auto; }
+.tracking-grid { font-size: 0.8rem; }
+.tracking-grid thead th { position: sticky; top: 0; background: var(--surface); z-index: 2; vertical-align: bottom; }
+.tracking-grid .sticky-column { position: sticky; left: 0; background: var(--surface); z-index: 1; white-space: nowrap; }
+.tracking-grid thead th.sticky-column { z-index: 3; }
+.tracking-grid tr.group-row td, .tracking-grid tr.group-row .sticky-column { font-weight: 600; background: var(--background); }
+.tracking-grid tfoot th, .tracking-grid tfoot td { font-weight: 600; background: var(--background); }
+.month-column { min-width: 104px; }
+.month-note { display: block; font-size: 0.7rem; font-weight: 400; color: var(--text-muted); white-space: nowrap; }
+.month-note.partial { color: var(--warning); }
+.tracking-cell small, .cell-content small { display: block; font-size: 0.72rem; color: var(--text-muted); }
+.cell-content { display: inline-flex; flex-direction: column; align-items: flex-end; }
+.cell-button {
+  background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: right;
+  display: inline-flex; flex-direction: column; align-items: flex-end; font-variant-numeric: tabular-nums;
+}
+.cell-button:hover span { text-decoration: underline dotted; text-underline-offset: 3px; }
+.cell-above { background: var(--cell-above-background); color: var(--cell-above-text); }
+.cell-above small { color: var(--cell-above-text); }
+.cell-below { background: var(--cell-below-background); color: var(--cell-below-text); }
+.cell-below small { color: var(--cell-below-text); }
+.cell-partial { font-style: italic; background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--cell-partial-background) 6px 12px); }
+.tracking-cell.emphasis { font-weight: 700; outline: 1px solid var(--border); }
+.tracking-cell.empty { color: var(--text-muted); }
+.notes-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile { display: inline-flex; flex-direction: column; }
+.tracking-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 0.8rem; margin: 0 0 10px; }
+.legend-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border); vertical-align: middle; margin-right: -8px; }
+.filter-group { display: flex; gap: 8px; align-items: center; }
+.filters .inline-field { flex-basis: auto; }
+.bridge-table tr.bridge-unexplained td, .tracking-grid tr.bridge-unexplained th, .tracking-grid tr.bridge-unexplained td,
+.bridge-card-list li.bridge-unexplained { background: var(--warning-background); color: var(--warning); font-weight: 600; }
+.wide-card { grid-column: span 2; }
+@media (max-width: 700px) { .wide-card { grid-column: auto; } }
+.bridge-card-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 0.8rem; }
+.bridge-card-list li { display: flex; justify-content: space-between; gap: 10px; }
+.bridge-card-list .number { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fund-table td { white-space: nowrap; }
+.fund-table .badge.neutral { font-size: 0.7rem; padding: 1px 6px; }
+.fund-balances { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 4px 20px; font-size: 0.85rem; }
+.fund-balances li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--border); padding: 3px 0; }
+.fund-balances .number { font-variant-numeric: tabular-nums; }
+.compact-notice { display: inline-block; padding: 2px 8px; font-size: 0.78rem; white-space: normal; }
+.partial-form { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; }
+.partial-form .field { min-width: 160px; }
+.card-actions.wrap { flex-wrap: wrap; }
+.checks li.info > span { color: var(--text-muted); }

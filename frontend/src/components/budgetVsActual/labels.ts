@@ -11,6 +11,9 @@ import type {
   BudgetItemSource,
   BudgetVsActual,
   MappingTargetType,
+  SpendingProfile,
+  SpendingProfileStatus,
+  PartialMonthEvent,
 } from "../../api/types";
 
 export const budgetStatusLabel: Record<BudgetStatus, string> = {
@@ -89,4 +92,24 @@ export const budgetItemActionLabel: Record<BudgetItemEvent["action"], string> = 
   CONFIRMED: "confirmado",
   REJECTED: "recusado",
   CHANGED: "alterado",
+};
+
+// Spending profile of the line (RF-13.3) and partial month (RF-13.10)
+export const spendingProfileLabel: Record<SpendingProfile, string> = {
+  MONTHLY: "mensal",
+  PROVISION: "provisão",
+  ANNUAL: "anual ou esporádica",
+  SEPARATE_APPORTIONMENT: "rateio à parte",
+};
+
+export const spendingProfileStatusLabel: Record<SpendingProfileStatus, string> = {
+  SUGGESTED: "sugerido",
+  CONFIRMED: "confirmado",
+};
+
+export const partialMonthActionLabel: Record<PartialMonthEvent["action"], string> = {
+  MARKED_PARTIAL: "marcado como parcial",
+  MARKED_COMPLETE: "marcado como completo",
+  AUTOMATIC: "voltou à regra automática",
+  SUPERSEDED: "substituído pelo extrato completo",
 };

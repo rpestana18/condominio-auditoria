@@ -52,7 +52,7 @@ public final class FundView {
         List<BudgetVsActualWarningResponse> warnings = r.warnings().stream().filter(a -> !OPERATING_FUND_WARNINGS.contains(a.code())).toList();
         List<FiscalYearMonthResponse> months = r.months().stream().map(m -> new FiscalYearMonthResponse(m.month(),
                 m.status(), m.cashFlows(),
-                null, null, null, null, null, m.extended())).toList();
+                null, null, null, null, null, m.extended(), m.partialUntil())).toList();
         return new Calculation(new BudgetVsActualResponse(r.calculationVersion(), r.period(), r.status(), r.message(),
                 r.budget(),
                 months, r.summedMonths(), r.monthsWithoutCashFlow(), r.monthsWithTwoCashFlows(), null, false, null,

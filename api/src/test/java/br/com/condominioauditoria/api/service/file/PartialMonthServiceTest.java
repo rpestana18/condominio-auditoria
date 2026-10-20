@@ -27,7 +27,8 @@ class PartialMonthServiceTest {
     @Test
     void cashFlowUploadedBeforeTheEndOfItsPeriodIsPartial() {
         // Uploaded now, period ending in the future: partial until the upload date
-        SourceFile open = scenario.cashFlow("fluxo-futuro.pdf", LocalDate.of(2099, 1, 1), LocalDate.of(2099, 1, 31), 1);
+        SourceFile open = scenario.cashFlowSentNow("fluxo-futuro.pdf", LocalDate.of(2099, 1, 1),
+                LocalDate.of(2099, 1, 31), 1);
         // Period ended before the upload: complete
         SourceFile closed = scenario.cashFlow("fluxo-2026-09.pdf", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30),
                 1);

@@ -1,6 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { BudgetVsActualMonth } from "../../api/types";
-import { formatMonth, formatMonthShort, formatMoney, formatMoneyShort } from "../../format";
+import { formatDayMonth, formatMonth, formatMonthShort, formatMoney, formatMoneyShort } from "../../format";
 
 const statusNote: Record<BudgetVsActualMonth["status"], string> = {
   WITH_CASH_FLOW: "",
@@ -19,8 +19,9 @@ interface Props {
  */
 export function MonthsChart({ months, onChooseMonth }: Props) {
   const data = months.map((m) => {
-    // Second axis line: the month status and, after the 12 months, the extended mark (RF-11.3)
-    const mark = [statusNote[m.status], m.extended ? "prorrogado" : ""].filter(Boolean).join(" · ");
+    // Second axis line: the month status, the partial mark (RF-13.10) and, after the 12 months, the extended mark (RF-11.3)
+    const partial = m.partialUntil ? `parcial até ${formatDayMonth(m.partialUntil)}` : "";
+    const mark = [statusNote[m.status], partial, m.extended ? "prorrogado" : ""].filter(Boolean).join(" · ");
     return {
       month: m.month,
       label: mark ? `${formatMonthShort(m.month)}\n${mark}` : formatMonthShort(m.month),

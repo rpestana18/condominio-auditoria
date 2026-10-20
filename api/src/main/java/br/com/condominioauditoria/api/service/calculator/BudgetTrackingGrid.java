@@ -341,6 +341,6 @@ public final class BudgetTrackingGrid {
             BudgetVsActualCalculator.Period period) {
         return new BudgetVsActualCalculator.Input(e.budget(), e.budgetFileName(), e.lines(), e.mappings(),
                 e.fundByLine(), e.fundNames(), e.operatingFundId(), e.cashFlows(), e.entries(), e.reallocations(),
-                e.overrunLimitPercentage(), e.budgetWarnings(), period);
+                e.overrunLimitPercentage(), e.budgetWarnings(), period, e.partialUntil());
     }
 }

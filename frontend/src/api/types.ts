@@ -139,3 +139,36 @@ export type MonthlyEntry = MonthlyPoint["entries"][number];
 export type MonthlyVariation = Schemas["MonthlyVariation"];
 export type UtilityType = Schemas["UtilityType"];
 export type UtilityAccount = Schemas["UtilityAccountResponse"];
+
+// "Análise da PO" reformulated (RF-13, ADR 0007): budget tracking grid, balance bridge, fund movements,
+// spending profile of each line and partial month. Every number comes ready from the backend.
+export type SpendingProfile = Schemas["SpendingProfile"];
+export type SpendingProfileStatus = Schemas["SpendingProfileStatus"];
+export type TrackingMonthStatus = Schemas["TrackingMonthStatus"];
+export type CalculationWarning = Schemas["CalculationWarning"];
+export type BudgetBrief = Schemas["BudgetBrief"];
+export type BudgetTracking = Schemas["BudgetTrackingResponse"];
+export type TrackingMonth = Schemas["TrackingMonthResponse"];
+export type TrackingCell = Schemas["TrackingCellResponse"];
+export type TrackingGroup = Schemas["TrackingGroupResponse"];
+export type TrackingLine = Schemas["TrackingLineResponse"];
+export type TrackingCumulative = Schemas["TrackingCumulativeResponse"];
+export type TrackingBlock = Schemas["TrackingBlockResponse"];
+export type TrackingBlocks = Schemas["TrackingBlocksResponse"];
+export type BalanceBridgeItemCode = Schemas["BalanceBridgeItemCode"];
+export type BalanceBridge = Schemas["BalanceBridgeResponse"];
+export type BridgeItem = Schemas["BridgeItemResponse"];
+export type BridgePart = Schemas["BridgePartResponse"];
+export type BridgeLine = Schemas["BridgeLineResponse"];
+export type BridgeMonth = Schemas["BridgeMonthResponse"];
+export type FundMovements = Schemas["FundMovementsResponse"];
+export type FundMonthSummary = Schemas["FundMonthSummaryResponse"];
+export type FundMovement = Schemas["FundMovementResponse"];
+export type FundMonthMovement = Schemas["FundMonthMovementResponse"];
+export type SpendingProfiles = Schemas["SpendingProfilesResponse"];
+export type SpendingProfileLine = Schemas["SpendingProfileLineResponse"];
+export type SpendingProfileBatchRequest = Schemas["SpendingProfileBatchRequest"];
+export type SpendingProfileEvent = Schemas["SpendingProfileEventResponse"];
+export type PartialMonth = Schemas["PartialMonthResponse"];
+export type PartialMonthRequest = Schemas["PartialMonthRequest"];
+export type PartialMonthEvent = Schemas["PartialMonthEventResponse"];

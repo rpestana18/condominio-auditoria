@@ -26,18 +26,25 @@ export function Layout() {
           <NavLink to="/indicadores">Indicadores</NavLink>
           <NavLink to="/previsoes">PO</NavLink>
           <NavLink to="/depara">De-para</NavLink>
-          {/* Only hides the menu: the backend refuses (403) anyone who is not ADMIN */}
-          {can("ADMIN") && (
+          {/* Only hides the menu: the backend refuses (403) anyone without the role */}
+          {can("MANAGER", "ADMIN") && (
             <>
               <span className="menu-section" id="administration-menu">
                 Administração
               </span>
-              <NavLink to="/administracao/modulos" aria-describedby="administration-menu">
-                Módulos
+              <NavLink to="/concessionarias" aria-describedby="administration-menu">
+                Concessionárias
               </NavLink>
-              <NavLink to="/administracao/ia" aria-describedby="administration-menu">
-                IA do condomínio
-              </NavLink>
+              {can("ADMIN") && (
+                <>
+                  <NavLink to="/administracao/modulos" aria-describedby="administration-menu">
+                    Módulos
+                  </NavLink>
+                  <NavLink to="/administracao/ia" aria-describedby="administration-menu">
+                    IA do condomínio
+                  </NavLink>
+                </>
+              )}
             </>
           )}
         </nav>

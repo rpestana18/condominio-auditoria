@@ -5,6 +5,7 @@ import type { Dashboard } from "../api/types";
 import { NumberCard } from "../components/NumberCard";
 import { FiscalYearBudgetVsActualCard } from "../components/FiscalYearBudgetVsActualCard";
 import { CumulativeBalanceCard } from "../components/CumulativeBalanceCard";
+import { MonthlyEvolutionSection } from "../components/evolution/MonthlyEvolutionSection";
 import { useSession } from "../context";
 import { formatDate, formatMoney, formatMoneyShort, formatPeriod } from "../format";
 
@@ -64,6 +65,8 @@ function MonthDashboard({ dashboard }: { dashboard: Dashboard }) {
         <CumulativeBalanceCard dashboard={dashboard} />
         <FiscalYearBudgetVsActualCard />
       </div>
+
+      <MonthlyEvolutionSection />
 
       <section className="block">
         <h2>Entradas e saídas dos fundos com mais movimento</h2>

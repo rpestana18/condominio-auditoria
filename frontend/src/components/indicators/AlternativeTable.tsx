@@ -27,6 +27,8 @@ export interface Cell {
   onOpen?: () => void;
   /** Only the overrun above the 20% rule limit (RF-11.13), when the API flags `aboveLimit`. */
   alert?: boolean;
+  /** Tooltip of the link; by default, the budget vs actual one. */
+  openTitle?: string;
 }
 
 /** The table, inside a "Ver tabela" the person opens when they want. */
@@ -66,7 +68,7 @@ function CellText({ cell }: { cell: Cell }) {
   const className = cell.alert ? "critical-text" : undefined;
   if (!cell.onOpen) return <span className={className}>{cell.text}</span>;
   return (
-    <button type="button" className={`sourced-value ${className ?? ""}`} onClick={cell.onOpen} title="Abrir no previsto × realizado, com os lançamentos">
+    <button type="button" className={`sourced-value ${className ?? ""}`} onClick={cell.onOpen} title={cell.openTitle ?? "Abrir no previsto × realizado, com os lançamentos"}>
       {cell.text}
     </button>
   );

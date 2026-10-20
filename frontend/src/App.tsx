@@ -15,6 +15,7 @@ import { Home } from "./pages/Home";
 import { Budget } from "./pages/Budget";
 import { Budgets } from "./pages/Budgets";
 import { BudgetVsActual } from "./pages/BudgetVsActual";
+import { UtilityAccounts } from "./pages/UtilityAccounts";
 
 export function App() {
   const { data: user, error } = useCurrentUser();
@@ -39,6 +40,7 @@ export function App() {
             <Route element={<Layout />}>
               <Route index element={<Home />} />
               <Route path="arquivos" element={<Files />} />
+              <Route path="concessionarias" element={<UtilityAccounts />} />
               <Route path="previsto-realizado" element={<BudgetVsActual />} />
               <Route path="comparar-exercicios" element={<CompareFiscalYears />} />
               <Route path="indicadores" element={<Indicators />} />

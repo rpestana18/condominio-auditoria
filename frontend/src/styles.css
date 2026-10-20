@@ -388,3 +388,8 @@ code { font-family: ui-monospace, monospace; font-size: 0.85em; background: var(
 .muted-warnings { margin: 0 0 16px; padding-left: 18px; color: var(--text-muted); font-size: 0.82rem; }
 .indicator-not-applicable { margin-bottom: 20px; }
 .indicator-not-applicable h2 { color: var(--text-muted); }
+
+/* Month-by-month evolution on the home screen (RF-12) */
+.evolution-entries { margin-top: 1rem; }
+.evolution-entries-header { display: flex; justify-content: space-between; align-items: center; }
+.evolution-entries h4 { margin: 0.75rem 0 0.25rem; }

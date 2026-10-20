@@ -19,6 +19,9 @@ import type {
   DocumentChunk,
   PeriodUsage,
   CurrentUser,
+  MonthlyEvolution,
+  UtilityAccount,
+  UtilityType,
 } from "./types";
 
 /** Processing or indexing still running: the screen keeps asking every 3 seconds. */
@@ -77,6 +80,8 @@ function useReloadFiles() {
     void client.invalidateQueries({ queryKey: ["files"] });
     void client.invalidateQueries({ queryKey: ["file"] });
     void client.invalidateQueries({ queryKey: ["dashboard"] });
+    void client.invalidateQueries({ queryKey: ["monthly-evolution"] });
+    void client.invalidateQueries({ queryKey: ["utility-accounts"] });
   };
 }
 
@@ -114,7 +119,40 @@ export function useConfirmOperatingFund(condominiumId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (fundId: string) => put(`/condominiums/${condominiumId}/operating-fund`, { fundId }),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ["dashboard", condominiumId] }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["dashboard", condominiumId] });
+      void client.invalidateQueries({ queryKey: ["monthly-evolution", condominiumId] });
+    },
+  });
+}
+
+// ---- Month-by-month evolution (RF-12) ----
+
+/** The 12 months up to the last month with a cash flow. Null while no cash flow was read (204). */
+export function useMonthlyEvolution(condominiumId: string) {
+  return useQuery({
+    queryKey: ["monthly-evolution", condominiumId],
+    queryFn: () => getJson<MonthlyEvolution>(`/condominiums/${condominiumId}/dashboard/monthly-evolution`),
+  });
+}
+
+export function useUtilityAccounts(condominiumId: string) {
+  return useQuery({
+    queryKey: ["utility-accounts", condominiumId],
+    queryFn: () => getJson<UtilityAccount[]>(`/condominiums/${condominiumId}/utility-accounts`),
+  });
+}
+
+/** Confirms the account as a utility, or rejects it with null (RF-12.1). The charts reload. */
+export function useDecideUtilityAccount(condominiumId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ accountCode, utilityType }: { accountCode: string; utilityType: UtilityType | null }) =>
+      put(`/condominiums/${condominiumId}/utility-accounts/${encodeURIComponent(accountCode)}`, { utilityType }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["utility-accounts", condominiumId] });
+      void client.invalidateQueries({ queryKey: ["monthly-evolution", condominiumId] });
+    },
   });
 }
 

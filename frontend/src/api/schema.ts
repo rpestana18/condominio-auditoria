@@ -176,6 +176,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominiums/{condominiumId}/dashboard/monthly-evolution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        /** Evolução mês a mês da cota ordinária recebida e das concessionárias, nos 12 meses até "until" (RF-12) */
+        get: operations["monthlyEvolution"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/utility-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        /** Contas do fluxo com saídas, com a sugestão e a decisão de concessionária (RF-12.1). Qualquer perfil */
+        get: operations["utilityAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/utility-accounts/{accountCode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                accountCode: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Confirma a conta como de uma concessionária, ou recusa com utilityType nulo (MANAGER ou ADMIN) */
+        put: operations["decideUtilityAccount"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/condominiums/{condominiumId}/operating-fund": {
         parameters: {
             query?: never;
@@ -1597,6 +1655,83 @@ export interface components {
             }[];
         };
         /**
+         * @description WATER (água e esgoto), ELECTRICITY (energia) e GAS (gás)
+         * @enum {string}
+         */
+        UtilityType: "WATER" | "ELECTRICITY" | "GAS";
+        UtilityAccountResponse: {
+            accountCode: string;
+            accountName: string | null;
+            /** @description Soma das saídas reais da conta em todos os fluxos lidos */
+            debits: number;
+            /**
+             * @description SUGGESTED (só sugestão, fora dos gráficos), CONFIRMED, REJECTED (não é de concessionária) e NONE
+             * @enum {string}
+             */
+            status: "SUGGESTED" | "CONFIRMED" | "REJECTED" | "NONE";
+            /** @description Sugestão pelo nome da conta */
+            suggested: null | components["schemas"]["UtilityType"];
+            /** @description Só com status CONFIRMED */
+            utilityType: null | components["schemas"]["UtilityType"];
+            decidedBy: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+        };
+        /** @description Diferença para o mês comparado. Nula quando um dos dois meses não tem valor ("sem base de comparação") */
+        MonthlyVariation: null | {
+            amount: number;
+            /** @description Uma casa decimal. Nula quando o valor comparado é zero */
+            percentage: number | null;
+        };
+        MonthlyPoint: {
+            /** @description AAAA-MM */
+            month: string;
+            /**
+             * @description LOADED (um fluxo no mês), NO_CASH_FLOW (sem fluxo carregado), TWO_CASH_FLOWS (dois fluxos no mês, sem valor)
+             *     e NO_ENTRY (fluxo carregado sem lançamento da série no mês). Só LOADED tem valor: nunca zero.
+             * @enum {string}
+             */
+            status: "LOADED" | "NO_CASH_FLOW" | "TWO_CASH_FLOWS" | "NO_ENTRY";
+            amount: number | null;
+            previousMonth: components["schemas"]["MonthlyVariation"];
+            previousYear: components["schemas"]["MonthlyVariation"];
+            /** @description Lançamentos que somam o valor (RF-12.5) */
+            entries: {
+                /** Format: uuid */
+                entryId: string;
+                /** Format: date */
+                date: string;
+                fund: string | null;
+                account: string | null;
+                accountName: string | null;
+                memo: string | null;
+                amount: number;
+                /** @description Mês de consumo do histórico ("REF. 08/2026" vira 2026-08) */
+                referenceMonth: string | null;
+                /** Format: uuid */
+                fileId: string;
+                fileName: string | null;
+                page: number;
+            }[];
+        };
+        MonthlySeries: {
+            /** @description CONDO_FEE ou o UtilityType */
+            key: string;
+            label: string;
+            points: components["schemas"]["MonthlyPoint"][];
+        };
+        MonthlyEvolutionResponse: {
+            months: string[];
+            until: string;
+            operatingFund: string | null;
+            /** @description Nula enquanto o fundo ordinário não está confirmado (RF-05.1b) */
+            condoFee: null | components["schemas"]["MonthlySeries"];
+            /** @description Uma série por concessionária com conta confirmada */
+            utilities: components["schemas"]["MonthlySeries"][];
+            /** @description Contas sugeridas ainda sem decisão */
+            pendingUtilityAccounts: number;
+        };
+        /**
          * @description READ (aguarda confirmação), READ_WITH_DISCREPANCY (soma que não bate além da tolerância de arredondamento),
          *     CONFIRMED (vale para os meses do exercício) e SUPERSEDED (trocada por reaprovação a partir de um mês).
          * @enum {string}
@@ -2955,6 +3090,108 @@ export interface operations {
             };
             /** @description Ainda não há fluxo de caixa processado */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    monthlyEvolution: {
+        parameters: {
+            query?: {
+                /** @description Último mês (AAAA-MM). Sem ele */
+                until?: string;
+            };
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthlyEvolutionResponse"];
+                };
+            };
+            /** @description Ainda não há fluxo de caixa processado */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Mês inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    utilityAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UtilityAccountResponse"][];
+                };
+            };
+        };
+    };
+    decideUtilityAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                accountCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    utilityType: null | components["schemas"]["UtilityType"];
+                };
+            };
+        };
+        responses: {
+            /** @description Decidido */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Perfil sem permissão */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conta não encontrada nos fluxos */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

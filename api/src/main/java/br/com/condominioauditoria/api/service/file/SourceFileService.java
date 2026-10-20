@@ -6,6 +6,7 @@ import br.com.condominioauditoria.api.dto.response.file.SourceFileResponse;
 import br.com.condominioauditoria.api.event.FileIndexRequested;
 import br.com.condominioauditoria.api.event.FileReadRequested;
 import br.com.condominioauditoria.api.exception.DuplicateFileException;
+import br.com.condominioauditoria.api.exception.StorageWriteDeniedException;
 import br.com.condominioauditoria.api.mapper.SourceFileMapper;
 import br.com.condominioauditoria.api.model.accounting.Fund;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
@@ -21,6 +22,7 @@ import br.com.condominioauditoria.api.service.feature.FeatureService;
 import br.com.condominioauditoria.storage.Storage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.DigestInputStream;
@@ -34,6 +36,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -49,6 +53,8 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @Service
 public class SourceFileService {
+
+    private static final Logger log = LoggerFactory.getLogger(SourceFileService.class);
 
     private final SourceFileRepository files;
     private final Storage storage;
@@ -159,6 +165,10 @@ public class SourceFileService {
             if (!storage.exists(path)) {
                 try (InputStream input = Files.newInputStream(tempFile)) {
                     storage.store(path, input);
+                } catch (AccessDeniedException e) {
+                    log.error("The data folder does not accept writes ({}); check the owner of the mounted folder"
+                            + " (Docker on Linux: DADOS_UID in infra/.env)", e.getMessage());
+                    throw new StorageWriteDeniedException(e);
                 }
             }
             var newFile = new SourceFile(condominiumId, category, name, path, sha256, Files.size(tempFile),

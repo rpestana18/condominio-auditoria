@@ -16,6 +16,14 @@
 #
 # Primeira subida: o passo ollama-modelo baixa o modelo bge-m3 (~1,2 GB) para o volume "ollama"; o rag só sobe
 # depois que ele termina. Nas próximas subidas o modelo já está no volume e o passo termina em segundos.
+# Sem acesso a registry.ollama.ai o passo avisa no log e termina sem erro: o rag sobe do mesmo jeito (a leitura
+# contábil não usa embeddings) e os arquivos entram no índice sem vetores (busca só por palavra) até o modelo existir.
+#
+# Linux: a pasta ../dados entra no api como está, com o dono da sua máquina, e o api grava nela com o usuário
+# DADOS_UID (padrão 1001, o da imagem). Se o seu usuário não é o 1001, grave o seu em infra/.env (fora do controle de
+# versão):   echo "DADOS_UID=$(id -u)" > infra/.env
+# Sem isso o envio de arquivo responde 503 "a pasta de dados do servidor não aceita gravação". No Docker Desktop
+# (Windows e macOS) não precisa.
 name: condominio-auditoria
 
 services:
@@ -80,12 +88,19 @@ services:
       retries: 30
 
   # Passo de inicialização: baixa o bge-m3 para o volume do ollama e termina. Se o modelo já está lá, não baixa de
-  # novo (e a subida funciona sem internet).
+  # novo (e a subida funciona sem internet). Se o download falha, avisa e termina com sucesso mesmo assim: o rag não
+  # pode deixar de subir por causa dos embeddings (a leitura contábil não depende deles).
   ollama-modelo:
     image: ollama/ollama:0.35.1
     environment:
       OLLAMA_HOST: http://ollama:11434
-    entrypoint: ["/bin/sh", "-c", "ollama show bge-m3 > /dev/null 2>&1 || ollama pull bge-m3"]
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        ollama show bge-m3 > /dev/null 2>&1 || ollama pull bge-m3 ||
+        echo "AVISO: não foi possível baixar o modelo bge-m3. O sistema sobe sem ele e a busca nos documentos fica só
+        por palavra até o modelo existir: suba de novo com acesso a registry.ollama.ai e reprocesse os arquivos."
     restart: "no"
     depends_on:
       ollama: { condition: service_healthy }
@@ -107,6 +122,8 @@ services:
       RAG_GRPC_PRAZO_SEGUNDOS: 30
       # Pergunta do chat (Claude + ferramentas + validação) demora mais que a busca
       RAG_GRPC_PRAZO_PERGUNTA_SEGUNDOS: 120
+    # Dono dos originais gravados em ../dados: no Linux precisa ser o dono da pasta (DADOS_UID em infra/.env)
+    user: "${DADOS_UID:-1001}"
     volumes: [../dados:/dados]
     # 8081 = API REST (tela); 9090 = gRPC (só para depuração local, o mcp usa a rede interna)
     ports: ["8081:8080", "9090:9090"]

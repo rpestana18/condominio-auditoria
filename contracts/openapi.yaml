@@ -53,6 +53,7 @@ paths:
         "202": { description: Recebido e na fila, content: { application/json: { schema: { $ref: "#/components/schemas/SourceFileResponse" } } } }
         "403": { description: Perfil sem permissão }
         "409": { description: Arquivo já enviado (mesmo conteúdo), content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+        "503": { description: A pasta de dados do servidor não aceita gravação; nada foi salvo, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
   /condominiums/{condominiumId}/files/latest:
     parameters: [{ $ref: "#/components/parameters/CondominiumId" }]
     get:

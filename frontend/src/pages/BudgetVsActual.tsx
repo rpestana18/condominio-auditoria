@@ -19,7 +19,7 @@ import { BudgetVsActualSummary } from "../components/budgetVsActual/BudgetVsActu
 import { NoNumbers } from "../components/budgetVsActual/NoNumbers";
 import { BudgetVsActualTable } from "../components/budgetVsActual/BudgetVsActualTable";
 import { useSession } from "../context";
-import { formatMonth } from "../format";
+import { formatDayMonth, formatMonth } from "../format";
 
 /**
  * "Previsto × realizado" screen (RF-03.1.13 and RF-11.4), for every role. The filters live in the address
@@ -47,6 +47,8 @@ export function BudgetVsActual() {
   // Without `po` in the address, the fiscal year shown is the one the API picked (the current one)
   const shownBudget = budgetId ?? cumulative.data?.budget?.id ?? null;
   const fiscalYear = fiscalYears.find((f) => f.type === "PO" && f.budgetId === shownBudget);
+  // Partial month (RF-13.10), as the API marks it in the months of the cumulative view
+  const partialUntil = cumulative.data?.months.find((m) => m.month === period)?.partialUntil;
 
   /** Changes a filter in the address. The evidence opened through the link (?alvo=) closes along with it. */
   const change = (changes: Record<string, string | null>) =>
@@ -64,6 +66,11 @@ export function BudgetVsActual() {
     <>
       <header className="page-title">
         <h1>Previsto × realizado{period && period !== "cumulative" ? ` · ${formatMonth(period)}` : " · acumulado"}</h1>
+        {partialUntil && (
+          <span className="badge warning" title="Números até a data, fora do acumulado e da regra dos 20%">
+            parcial até {formatDayMonth(partialUntil)}
+          </span>
+        )}
         {period && query.data?.status === "CALCULATED" && <ExportButtons period={period} budgetId={budgetId} fundId={fundId} />}
       </header>
       <BudgetVsActualFilters

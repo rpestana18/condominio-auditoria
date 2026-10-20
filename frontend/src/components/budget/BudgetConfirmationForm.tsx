@@ -7,8 +7,8 @@ import { useSession } from "../../context";
 import { formatDate, formatMoney } from "../../format";
 
 /**
- * Budget confirmation by the Admin (RF-03.1.3): fiscal year, minutes (or "sem ata"), a distinct code for the lines
- * with a repeated code and the link of each 1.9.x line to a cash flow fund (RF-03.1.9). The values read are not
+ * Budget confirmation by the Admin (RF-03.1.3): fiscal year, minutes (or "sem ata"), an optional display label for the
+ * lines with a repeated item (RF-13.2: never required, the line is identified by its position) and the link of each 1.9.x line to a cash flow fund (RF-03.1.9). The values read are not
  * edited. The backend validates everything; the screen only shows the reasons for a refusal.
  */
 export function BudgetConfirmationForm({ detail }: { detail: BudgetDetail }) {
@@ -103,14 +103,16 @@ export function BudgetConfirmationForm({ detail }: { detail: BudgetDetail }) {
 
       {detail.repeatedCodes.length > 0 && (
         <fieldset>
-          <legend>Códigos repetidos na PO</legend>
-          <p className="muted">Dê um código distinto a uma das linhas. Nenhuma linha é descartada nem somada à outra.</p>
+          <legend>Itens repetidos na PO (só aviso)</legend>
+          <p className="muted">
+            O item repetido não impede a confirmação: cada linha fica separada, com os próprios valores. Se quiser, informe um rótulo de
+            exibição; deixar como impresso também vale.
+          </p>
           {detail.repeatedCodes.map((r) =>
             r.lines.map((l) => (
               <label key={l.lineId} className="field">
-                {r.printedCode} · {l.description}
+                {r.printedCode} · {l.description} (rótulo opcional)
                 <input
-                  required
                   value={codes[l.lineId] ?? ""}
                   onChange={(e) => setCodes((current) => ({ ...current, [l.lineId]: e.target.value }))}
                 />

@@ -467,8 +467,10 @@ export interface paths {
         put?: never;
         /**
          * Confirma a PO e o exercício (só ADMIN, RF-03.1.3; ciente da divergência, Q29)
-         * @description Registra exercício, ata (ou "sem ata"), código efetivo das linhas com código impresso repetido e a ligação de
-         *     cada linha de fundo (1.9.x) a um fundo do fluxo. Os valores lidos nunca são editados. PO lida com divergência
+         * @description Registra exercício, ata (ou "sem ata"), rótulos de exibição opcionais (effectiveCodes) e a ligação de
+         *     cada linha de fundo (1.9.x) a um fundo do fluxo. Código impresso repetido não impede a confirmação (RF-13.1;
+         *     ADR 0007): cada linha é identificada pelo id, e o aviso REPEATED_CODE é só informativo. Na confirmação, o tipo
+         *     de gasto de cada linha de despesa é sugerido (SUGGESTED, RF-13.3). Os valores lidos nunca são editados. PO lida com divergência
          *     de soma só é confirmada com cienteDivergencia e justificativa. Só uma PO vale para cada mês: sobreposição com
          *     PO confirmada exige reaprovacao (a anterior passa a SUPERSEDED a partir do início da nova).
          *     Fundo de reserva acima do teto (Conv. 20.1) gera achado WARNING; aprovação fora do 1º trimestre gera só aviso.
@@ -799,6 +801,9 @@ export interface paths {
          *     linha da PO à parte; transferências entre fundos fora. Previsto do mês = soma das linhas 1.1 a 1.8 (Q30).
          *     Fundos ligados às linhas 1.9: arrecadação (recebimento de cota) × previsto. Mês sem fluxo, com dois fluxos,
          *     sem PO, com PO não confirmada ou sem fundo ordinário: situacao diz o porquê e os números ficam nulos.
+         *     Mês parcial (RF-13.10): no acumulado, aparece com partialUntil e seus números, mas fora da soma e da regra dos
+         *     20%; no mês, os números sem a regra dos 20%. Extrato parcial substituído por um completo dos mesmos meses
+         *     não entra.
          */
         get: operations["budgetVsActual"];
         put?: never;
@@ -1222,6 +1227,197 @@ export interface paths {
          *     OPEN. Estados marcados por pessoa (RF-02.8) não mudam pelo recálculo.
          */
         get: operations["listFindings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/budget-tracking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Acompanhamento da PO mês a mês, linha por linha (todos os perfis, RF-13.4)
+         * @description Calculado na consulta pela função pura BudgetTrackingGrid (calculationVersion), que chama o cálculo do
+         *     previsto × realizado (budgetVsActualVersion) mês a mês; nada é gravado. Os números de cada mês são exatamente
+         *     os do previsto × realizado do mês. O acumulado e o saldo da linha somam só os meses completos com fluxo
+         *     (inCumulative); mês parcial (RF-13.10) aparece com partialUntil e fica fora do acumulado e da regra dos 20%.
+         *     Avisos: PARTIAL_MONTH, MONTHS_WITHOUT_CASH_FLOW, TWO_CASH_FLOWS, PROFILE_NOT_CONFIRMED.
+         */
+        get: operations["budgetTracking"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/balance-bridge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Origem da variação do saldo (ponte do saldo) no período (todos os perfis, RF-13.6)
+         * @description Calculado na consulta pela função pura BalanceBridge (calculationVersion). Saldo inicial = saldo final impresso
+         *     do mês anterior (quando carregado) ou o saldo inicial impresso do primeiro mês; o total soma só meses completos.
+         *     UNEXPLAINED = variação − soma dos itens; diferente de zero gera o aviso BRIDGE_DOES_NOT_CLOSE. Cada mês tem a
+         *     própria coluna (months). Outros avisos: MONTHS_WITHOUT_CASH_FLOW, BALANCE_NOT_PRINTED, PARTIAL_MONTH,
+         *     PROFILE_NOT_CONFIRMED. Sem fundo ordinário: status NO_OPERATING_FUND e números nulos.
+         */
+        get: operations["balanceBridge"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/funds/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Movimento de cada fundo mês a mês (todos os perfis, RF-13.5)
+         * @description Calculado na consulta pela função pura FundMovements (calculationVersion). Créditos separados em cota
+         *     (recebimento de cota), outras receitas, transferências recebidas e outros créditos; débitos em despesas,
+         *     transferências enviadas e outros débitos. Saldo final conferido com o impresso (tolerância R$ 0,01). Fundos
+         *     ligados às linhas 1.9: arrecadação × previsto. Avisos: FUND_BALANCE_MISMATCH, UNCLASSIFIED_CREDITS,
+         *     CASH_FLOW_SPANS_MONTHS, TWO_CASH_FLOWS. Período de no máximo 36 meses.
+         */
+        get: operations["fundMovements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/budgets/{budgetId}/spending-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Tipo de gasto de cada linha de despesa da PO (todos os perfis, RF-13.3)
+         * @description Sugerido na confirmação da PO pela função pura SpendingProfileSuggestion (version) e confirmado pelo Admin.
+         *     PO confirmada antes da sugestão existir: a sugestão é calculada na consulta e aparece como SUGGESTED.
+         *     Só o tipo CONFIRMED muda a leitura do acompanhamento e da ponte; SUGGESTED vale como MONTHLY (effectiveProfile).
+         */
+        get: operations["listSpendingProfiles"];
+        /**
+         * Confirma ou muda o tipo de gasto de linhas da PO (só ADMIN), com trilha
+         * @description profile nulo = confirma a sugestão. Linha sem mudança é ignorada. Cada mudança grava um evento só de inserção.
+         */
+        put: operations["confirmSpendingProfiles"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/budgets/{budgetId}/spending-profiles/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        /** Trilha do tipo de gasto das linhas desta PO (todos os perfis), só de inserção */
+        get: operations["spendingProfileEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/partial-months": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Extratos lidos e se cada um é de mês parcial (todos os perfis, RF-13.10)
+         * @description Regra automática: parcial quando a data do envio (America/Sao_Paulo) é até o fim do período do extrato
+         *     (parcial até a data do envio). Gestor e Admin podem marcar à mão. Extrato parcial substituído por um completo
+         *     dos mesmos meses traz supersededById e sai dos cálculos.
+         */
+        get: operations["listPartialMonths"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/files/{fileId}/partial-month": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Marca o extrato como mês parcial ou completo, ou volta à regra automática (Gestor e Admin), com trilha */
+        put: operations["markPartialMonth"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/files/{fileId}/partial-month/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        /** Trilha do mês parcial do extrato (todos os perfis), só de inserção */
+        get: operations["partialMonthEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2132,7 +2328,7 @@ export interface components {
             /** @enum {string} */
             type: "TOTAL" | "GROUP" | "LINE";
             printedCode: string;
-            /** @description Igual ao impresso; o Admin muda só quando o código se repete */
+            /** @description Rótulo de exibição; igual ao impresso quando o Admin não deu rótulo. Não é chave (use id) */
             effectiveCode: string;
             account?: string | null;
             accountText?: string | null;
@@ -2156,7 +2352,7 @@ export interface components {
             ok: boolean;
             detail?: string | null;
             /**
-             * @description OK; ROUNDING (diferença até a tolerância, só aviso); DISCREPANCY; REPEATED_CODE (pendência)
+             * @description OK; ROUNDING (diferença até a tolerância, só aviso); DISCREPANCY; REPEATED_CODE (só informativo, RF-13.1)
              * @enum {string}
              */
             classification: "OK" | "ROUNDING" | "DISCREPANCY" | "REPEATED_CODE";
@@ -2184,7 +2380,7 @@ export interface components {
              * @description Data da assembleia; obrigatória com ata
              */
             approvalDate?: string | null;
-            /** @description Código distinto para linhas cujo código impresso se repete (mesmo grupo, ex. 1.3.2 → 1.3.25) */
+            /** @description Rótulo de exibição opcional de qualquer linha, no formato do mesmo grupo (ex. 1.3.2 → 1.3.25); vazio volta ao código impresso. Não precisa ser único */
             effectiveCodes?: {
                 /** Format: uuid */
                 lineId: string;
@@ -2493,6 +2689,11 @@ export interface components {
                 aboveLimit?: boolean | null;
                 /** @description Mês depois do exercício em que a PO vale por prorrogação (marca "PO prorrogada") */
                 extended?: boolean;
+                /**
+                 * Format: date
+                 * @description Mês parcial (RF-13.10) com lançamentos até esta data: mostra os números do mês, mas fica fora do acumulado (summedMonths) e da regra dos 20% (aboveLimit nulo); nulo = completo
+                 */
+                partialUntil?: string | null;
             }[];
             summedMonths: string[];
             /** @description Meses sem fluxo antes do último mês com fluxo */
@@ -2575,7 +2776,7 @@ export interface components {
                 credits?: number | null;
                 debits?: number | null;
             }[];
-            /** @description Inclui BUDGET_EXTENDED (mês prorrogado) e EXTENDED_MONTHS (acumulado com meses fora da soma) */
+            /** @description Inclui BUDGET_EXTENDED (mês prorrogado), EXTENDED_MONTHS (acumulado com meses fora da soma) e PARTIAL_MONTH (mês parcial fora do acumulado e da regra dos 20%; no mês, regra não avaliada e rule20 nulo) */
             warnings: {
                 code: string;
                 text: string;
@@ -2774,6 +2975,395 @@ export interface components {
             reasons?: string[];
             /** @description Em recusa do chat pelo modo (409): modo de respostas efetivo */
             aiMode?: components["schemas"]["AiMode"];
+        };
+        /**
+         * @description Tipo de gasto da linha (RF-13.3; ADR 0007). MONTHLY = mensal; PROVISION = provisão (férias, 13º, rescisão:
+         *     o previsto não gasto fica reservado); ANNUAL = anual (gasto concentrado em um mês); SEPARATE_APPORTIONMENT =
+         *     rateio à parte.
+         * @enum {string}
+         */
+        SpendingProfile: "MONTHLY" | "PROVISION" | "ANNUAL" | "SEPARATE_APPORTIONMENT";
+        /**
+         * @description SUGGESTED = sugerido pelas regras (vale como MONTHLY); CONFIRMED = confirmado pelo Admin
+         * @enum {string}
+         */
+        SpendingProfileStatus: "SUGGESTED" | "CONFIRMED";
+        /** @enum {string} */
+        TrackingMonthStatus: "WITH_CASH_FLOW" | "NO_CASH_FLOW" | "TWO_CASH_FLOWS";
+        /**
+         * @description Por que não há números quando diferente de CALCULATED
+         * @enum {string}
+         */
+        CalculationStatus: "CALCULATED" | "NO_BUDGET" | "BUDGET_NOT_CONFIRMED" | "NO_OPERATING_FUND" | "NO_CASH_FLOW" | "TWO_CASH_FLOWS";
+        CalculationWarning: {
+            code: string;
+            text: string;
+        };
+        BudgetBrief: {
+            /** Format: uuid */
+            id: string;
+            version?: number | null;
+            status: components["schemas"]["BudgetStatus"];
+            /** Format: uuid */
+            fileId: string;
+            fileName?: string | null;
+            sha256: string;
+            fiscalYearStart?: string | null;
+            fiscalYearEnd?: string | null;
+        };
+        BudgetTrackingResponse: {
+            /** @description Versão do BudgetTrackingGrid */
+            calculationVersion: string;
+            /** @description Versão do cálculo do previsto × realizado usado em cada mês */
+            budgetVsActualVersion: string;
+            status: components["schemas"]["CalculationStatus"];
+            message?: string | null;
+            budget?: null | components["schemas"]["BudgetBrief"];
+            /** @description Os meses do exercício */
+            months: components["schemas"]["TrackingMonthResponse"][];
+            /** @description Meses que entram no acumulado (completos e com um fluxo) */
+            cumulativeMonths: string[];
+            groups: components["schemas"]["TrackingGroupResponse"][];
+            cumulative?: null | components["schemas"]["TrackingCumulativeResponse"];
+            blocks?: null | components["schemas"]["TrackingBlocksResponse"];
+            warnings: components["schemas"]["CalculationWarning"][];
+        };
+        TrackingMonthResponse: {
+            /** @description AAAA-MM */
+            month: string;
+            status: components["schemas"]["TrackingMonthStatus"];
+            /**
+             * Format: date
+             * @description Mês parcial (RF-13.10) com lançamentos até esta data; nulo = completo
+             */
+            partialUntil?: string | null;
+            inCumulative: boolean;
+            cashFlows: components["schemas"]["UsedCashFlowResponse"][];
+            planned?: number | null;
+            actualInLines?: number | null;
+            actualExpense?: number | null;
+            difference?: number | null;
+            /** @description Soma do excesso das linhas acima do previsto */
+            overrun?: number | null;
+            linesAbove?: number | null;
+            overrunPercentage?: number | null;
+            /** @description Regra dos 20%; nula em mês parcial */
+            aboveLimit?: boolean | null;
+        };
+        TrackingCellResponse: {
+            month: string;
+            planned?: number | null;
+            /** @description Nulo em mês sem números */
+            actual?: number | null;
+            difference?: number | null;
+            entries?: number | null;
+        };
+        TrackingGroupResponse: {
+            /** Format: uuid */
+            lineId: string;
+            code: string;
+            description: string;
+            cells: components["schemas"]["TrackingCellResponse"][];
+            cumulativePlanned?: number | null;
+            cumulativeActual?: number | null;
+            /** @description Previsto acumulado − realizado acumulado */
+            balance?: number | null;
+            lines: components["schemas"]["TrackingLineResponse"][];
+        };
+        TrackingLineResponse: {
+            /**
+             * Format: uuid
+             * @description Chave da linha (o código pode se repetir
+             */
+            lineId: string;
+            position: number;
+            /** @description Rótulo de exibição (o código impresso quando não há rótulo) */
+            code: string;
+            printedCode: string;
+            description: string;
+            account?: string | null;
+            /** @enum {string|null} */
+            mark?: "SEPARATE_APPORTIONMENT" | "NEGOTIATED_EXEMPTION" | "NO_AMOUNT" | "FIXED_AMOUNT_NO_REFERENCE" | null;
+            notes?: string | null;
+            page: number;
+            spendingProfile?: null | components["schemas"]["SpendingProfile"];
+            spendingProfileStatus?: null | components["schemas"]["SpendingProfileStatus"];
+            effectiveProfile: components["schemas"]["SpendingProfile"];
+            monthlyPlanned?: number | null;
+            /** @description Contas do fluxo ligadas pelo de-para */
+            cashFlowAccounts: string[];
+            cells: components["schemas"]["TrackingCellResponse"][];
+            cumulativePlanned?: number | null;
+            cumulativeActual?: number | null;
+            balance?: number | null;
+            monthsAbove: number;
+        };
+        TrackingCumulativeResponse: {
+            months: number;
+            planned?: number | null;
+            actualInLines?: number | null;
+            actualExpense?: number | null;
+            balance?: number | null;
+        };
+        TrackingBlockCellResponse: {
+            month: string;
+            amount?: number | null;
+            entries?: number | null;
+        };
+        TrackingBlockResponse: {
+            cells: components["schemas"]["TrackingBlockCellResponse"][];
+            cumulative?: number | null;
+            cumulativeEntries: number;
+        };
+        TrackingBlocksResponse: {
+            adjustments: components["schemas"]["TrackingBlockResponse"];
+            toReallocate: components["schemas"]["TrackingBlockResponse"];
+            withoutBudgetLine: components["schemas"]["TrackingBlockResponse"];
+            /** @description Linhas de rateio à parte */
+            separateApportionment: components["schemas"]["TrackingBlockResponse"];
+        };
+        /** @enum {string} */
+        BalanceBridgeItemCode: "LINE_SAVINGS" | "PROVISIONS_RESERVED" | "SEPARATE_APPORTIONMENT" | "INCOME_VS_PLANNED" | "FUND_PLANNED_COLLECTION" | "FUND_EXPENSES" | "OUTSIDE_BUDGET" | "INTER_FUND_TRANSFERS" | "UNEXPLAINED";
+        BalanceBridgeResponse: {
+            calculationVersion: string;
+            status: components["schemas"]["CalculationStatus"];
+            message?: string | null;
+            /**
+             * Format: uuid
+             * @description Nulo com fund=all
+             */
+            fundId?: string | null;
+            fundName?: string | null;
+            allFunds: boolean;
+            /** @description AAAA-MM */
+            from: string;
+            /** @description AAAA-MM */
+            to: string;
+            budget?: null | components["schemas"]["BudgetBrief"];
+            openingBalance?: number | null;
+            /** @description De onde veio o saldo inicial (ex.: "saldo final do extrato de 08/2026") */
+            openingSource?: string | null;
+            closingBalance?: number | null;
+            variation?: number | null;
+            /** @description UNEXPLAINED igual a zero */
+            closes?: boolean | null;
+            items: components["schemas"]["BridgeItemResponse"][];
+            months: components["schemas"]["BridgeMonthResponse"][];
+            warnings: components["schemas"]["CalculationWarning"][];
+        };
+        BridgeItemResponse: {
+            code: components["schemas"]["BalanceBridgeItemCode"];
+            label: string;
+            amount: number;
+            percentageOfVariation?: number | null;
+            /** @description Partes do item (ex.: CONDO_FEE, OTHER_INCOME, PLANNED; ADJUSTMENTS, TO_REALLOCATE, WITHOUT_BUDGET_LINE; RECEIVED, SENT) */
+            parts: components["schemas"]["BridgePartResponse"][];
+            /** @description Linhas da PO que compõem o item */
+            lines: components["schemas"]["BridgeLineResponse"][];
+        };
+        BridgePartResponse: {
+            code: string;
+            label: string;
+            amount: number;
+        };
+        BridgeLineResponse: {
+            /** Format: uuid */
+            lineId: string;
+            code: string;
+            description: string;
+            effectiveProfile: components["schemas"]["SpendingProfile"];
+            amount: number;
+        };
+        BridgeMonthResponse: {
+            month: string;
+            status: components["schemas"]["TrackingMonthStatus"];
+            /** Format: date */
+            partialUntil?: string | null;
+            /** @description Mês completo que entra no total da ponte */
+            inTotal: boolean;
+            openingBalance?: number | null;
+            closingBalance?: number | null;
+            variation?: number | null;
+            items: components["schemas"]["BridgeMonthItemResponse"][];
+        };
+        BridgeMonthItemResponse: {
+            code: components["schemas"]["BalanceBridgeItemCode"];
+            amount: number;
+        };
+        FundMovementsResponse: {
+            calculationVersion: string;
+            from: string;
+            to: string;
+            /** Format: uuid */
+            operatingFundId?: string | null;
+            months: components["schemas"]["FundMonthSummaryResponse"][];
+            funds: components["schemas"]["FundMovementResponse"][];
+            warnings: components["schemas"]["CalculationWarning"][];
+        };
+        FundMonthSummaryResponse: {
+            month: string;
+            status: components["schemas"]["TrackingMonthStatus"];
+            /** Format: date */
+            partialUntil?: string | null;
+            cashFlows: components["schemas"]["UsedCashFlowResponse"][];
+            /** @description Fundos presentes no mês */
+            funds: number;
+            totalClosingBalance?: number | null;
+        };
+        FundMovementResponse: {
+            /** Format: uuid */
+            fundId: string;
+            name: string;
+            operatingFund: boolean;
+            /**
+             * Format: uuid
+             * @description Linha 1.9 ligada ao fundo
+             */
+            budgetLineId?: string | null;
+            budgetLineCode?: string | null;
+            months: components["schemas"]["FundMonthMovementResponse"][];
+        };
+        FundMonthMovementResponse: {
+            month: string;
+            /** @description O fundo aparece no fluxo do mês */
+            present: boolean;
+            openingBalance?: number | null;
+            /** @description Créditos de recebimento de cota */
+            condoFee?: number | null;
+            otherIncome?: number | null;
+            transfersIn?: number | null;
+            /** @description Créditos sem classificação (aviso UNCLASSIFIED_CREDITS) */
+            otherCredits?: number | null;
+            credits?: number | null;
+            expenses?: number | null;
+            transfersOut?: number | null;
+            otherDebits?: number | null;
+            debits?: number | null;
+            /** @description Saldo final impresso */
+            closingBalance?: number | null;
+            printedCredits?: number | null;
+            printedDebits?: number | null;
+            calculatedClosingBalance?: number | null;
+            balanceMatches?: boolean | null;
+            /** @description Previsto da linha 1.9 ligada (fundo ordinário = previsto do mês) */
+            planned?: number | null;
+            collected?: number | null;
+            entries: number;
+        };
+        SpendingProfilesResponse: {
+            /** Format: uuid */
+            budgetId: string;
+            /** @description Versão da PO */
+            version: number | null;
+            confirmed: number;
+            suggested: number;
+            lines: components["schemas"]["SpendingProfileLineResponse"][];
+        };
+        SpendingProfileLineResponse: {
+            /** Format: uuid */
+            lineId: string;
+            position: number;
+            groupCode?: string | null;
+            code: string;
+            printedCode: string;
+            description: string;
+            account?: string | null;
+            /** @enum {string|null} */
+            mark?: "SEPARATE_APPORTIONMENT" | "NEGOTIATED_EXEMPTION" | "NO_AMOUNT" | "FIXED_AMOUNT_NO_REFERENCE" | null;
+            notes?: string | null;
+            budgeted: number;
+            profile: components["schemas"]["SpendingProfile"];
+            status: components["schemas"]["SpendingProfileStatus"];
+            effectiveProfile: components["schemas"]["SpendingProfile"];
+            suggestedProfile: components["schemas"]["SpendingProfile"];
+            suggestionReason?: string | null;
+            reason?: string | null;
+            changedBy?: string | null;
+            /** Format: date-time */
+            changedAt?: string | null;
+        };
+        SpendingProfileBatchRequest: {
+            items: {
+                /** Format: uuid */
+                lineId: string;
+                /** @description Nulo = confirma a sugestão */
+                profile?: null | components["schemas"]["SpendingProfile"];
+            }[];
+            reason?: string | null;
+        };
+        SpendingProfileEventResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            lineId: string;
+            lineCode?: string | null;
+            lineDescription?: string | null;
+            action: components["schemas"]["SpendingProfileStatus"];
+            username: string;
+            /** Format: date-time */
+            occurredAt: string;
+            previousProfile?: null | components["schemas"]["SpendingProfile"];
+            previousStatus?: null | components["schemas"]["SpendingProfileStatus"];
+            newProfile: components["schemas"]["SpendingProfile"];
+            newStatus: components["schemas"]["SpendingProfileStatus"];
+            reason?: string | null;
+        };
+        PartialMonthResponse: {
+            /** Format: uuid */
+            fileId: string;
+            name: string;
+            /** Format: date */
+            periodStart?: string | null;
+            /** Format: date */
+            periodEnd?: string | null;
+            /** Format: date-time */
+            uploadedAt?: string | null;
+            uploadedBy?: string | null;
+            /** @description Situação efetiva */
+            partial: boolean;
+            /** @description Sem marca manual (vale a regra automática) */
+            automatic: boolean;
+            /** @description O que a regra automática diria */
+            automaticallyPartial: boolean;
+            /** Format: date */
+            partialUntil?: string | null;
+            reason?: string | null;
+            changedBy?: string | null;
+            /** Format: date-time */
+            changedAt?: string | null;
+            /**
+             * Format: uuid
+             * @description Extrato completo que substituiu este parcial
+             */
+            supersededById?: string | null;
+        };
+        PartialMonthRequest: {
+            /** @description true = parcial; false = completo; nulo = volta à regra automática */
+            partial?: boolean | null;
+            /**
+             * Format: date
+             * @description Com partial = true
+             */
+            until?: string | null;
+            reason?: string | null;
+        };
+        PartialMonthEventResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            fileId: string;
+            /** @enum {string} */
+            action: "MARKED_PARTIAL" | "MARKED_COMPLETE" | "AUTOMATIC" | "SUPERSEDED";
+            previousPartial: boolean;
+            newPartial: boolean;
+            /** Format: date */
+            partialUntil?: string | null;
+            /** Format: uuid */
+            supersededById?: string | null;
+            username: string;
+            /** Format: date-time */
+            occurredAt: string;
+            reason?: string | null;
         };
     };
     responses: never;
@@ -5268,6 +5858,392 @@ export interface operations {
             };
             /** @description Sem acesso ao condomínio */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    budgetTracking: {
+        parameters: {
+            query?: {
+                /** @description Versão da PO; sem ela */
+                budget?: string;
+            };
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetTrackingResponse"];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio ou PO não encontrados */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    balanceBridge: {
+        parameters: {
+            query?: {
+                /** @description Id de um fundo, "all" (todos os fundos) ou vazio (fundo ordinário) */
+                fund?: string;
+                /** @description AAAA-MM; sem from/to */
+                from?: string;
+                /** @description AAAA-MM */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceBridgeResponse"];
+                };
+            };
+            /** @description Período ou fundo inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio ou fundo não encontrados */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    fundMovements: {
+        parameters: {
+            query?: {
+                /** @description AAAA-MM; sem from/to */
+                from?: string;
+                /** @description AAAA-MM */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundMovementsResponse"];
+                };
+            };
+            /** @description Período inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listSpendingProfiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpendingProfilesResponse"];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    confirmSpendingProfiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpendingProfileBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpendingProfilesResponse"];
+                };
+            };
+            /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Lista vazia ou linha que não é de despesa desta PO */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    spendingProfileEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpendingProfileEventResponse"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listPartialMonths: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartialMonthResponse"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    markPartialMonth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartialMonthRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartialMonthResponse"];
+                };
+            };
+            /** @description Usuário (só consulta) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Arquivo não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Arquivo não é extrato lido com período */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    partialMonthEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartialMonthEventResponse"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Arquivo não encontrado */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -16,6 +16,10 @@ import { Budget } from "./pages/Budget";
 import { Budgets } from "./pages/Budgets";
 import { BudgetVsActual } from "./pages/BudgetVsActual";
 import { UtilityAccounts } from "./pages/UtilityAccounts";
+import { BudgetTracking } from "./pages/BudgetTracking";
+import { BalanceOrigin } from "./pages/BalanceOrigin";
+import { FundMovementsPage } from "./pages/FundMovementsPage";
+import { SpendingProfilesPage } from "./pages/SpendingProfilesPage";
 
 export function App() {
   const { data: user, error } = useCurrentUser();
@@ -41,12 +45,16 @@ export function App() {
               <Route index element={<Home />} />
               <Route path="arquivos" element={<Files />} />
               <Route path="concessionarias" element={<UtilityAccounts />} />
+              <Route path="acompanhamento-po" element={<BudgetTracking />} />
+              <Route path="origem-do-saldo" element={<BalanceOrigin />} />
+              <Route path="fundos" element={<FundMovementsPage />} />
               <Route path="previsto-realizado" element={<BudgetVsActual />} />
               <Route path="comparar-exercicios" element={<CompareFiscalYears />} />
               <Route path="indicadores" element={<Indicators />} />
               <Route path="depara" element={<AccountMapping />} />
               <Route path="previsoes" element={<Budgets />} />
               <Route path="previsoes/:budgetId" element={<Budget />} />
+              <Route path="previsoes/:budgetId/tipos" element={<SpendingProfilesPage />} />
               <Route path="assistente" element={<Assistant />} />
               <Route path="administracao/modulos" element={<FeatureAdministration />} />
               <Route path="administracao/ia" element={<AiAdministration />} />

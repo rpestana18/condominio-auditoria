@@ -146,13 +146,102 @@ class BalanceBridgeTest {
             assertThat(m.partialUntil()).isEqualTo(LocalDate.of(2026, 10, 20));
             assertThat(m.variation()).isEqualByComparingTo("1000.00");
         });
-        assertThat(r.warnings()).anySatisfy(w -> assertThat(w.code()).isEqualTo("PARTIAL_MONTH"));
+        assertThat(r.warnings()).anySatisfy(w -> {
+            assertThat(w.code()).isEqualTo("PARTIAL_MONTH");
+            assertThat(w.text()).isEqualTo("10/2026 parcial: aparece na sua coluna, fora do total (lançamentos até"
+                    + " 20/10/2026; variação de R$ 1.000,00 à parte); o total vai até 30/09/2026");
+        });
+        // D4: the date the total closes, the effective period and the partial month apart
+        assertThat(r.from()).isEqualTo("2026-09");
+        assertThat(r.to()).isEqualTo("2026-10");
+        assertThat(r.effectiveFrom()).isEqualTo("2026-09");
+        assertThat(r.effectiveTo()).isEqualTo("2026-09");
+        assertThat(r.openingDate()).isEqualTo(LocalDate.of(2026, 8, 31));
+        assertThat(r.closingDate()).isEqualTo(LocalDate.of(2026, 9, 30));
+        assertThat(r.partialMonth()).isNotNull();
+        assertThat(r.partialMonth().month()).isEqualTo("2026-10");
+        assertThat(r.partialMonth().partialUntil()).isEqualTo(LocalDate.of(2026, 10, 20));
+        assertThat(r.partialMonth().openingBalance()).isEqualByComparingTo("297514.48");
+        assertThat(r.partialMonth().closingBalance()).isEqualByComparingTo("298514.48");
+        assertThat(r.partialMonth().variation()).isEqualByComparingTo("1000.00");
+    }
+
+    @Test
+    void fiscalYearPeriodSaysWhereTheTotalReallyStartsAndEnds() {
+        // Default period of the screen: the whole fiscal year, with only September loaded
+        BalanceBridgeResponse r = bridge(OPERATING, YearMonth.of(2026, 5), YearMonth.of(2027, 4));
+
+        assertThat(r.from()).isEqualTo("2026-05");
+        assertThat(r.to()).isEqualTo("2027-04");
+        assertThat(r.effectiveFrom()).isEqualTo("2026-09");
+        assertThat(r.effectiveTo()).isEqualTo("2026-09");
+        assertThat(r.openingDate()).isEqualTo(LocalDate.of(2026, 8, 31));
+        assertThat(r.closingDate()).isEqualTo(LocalDate.of(2026, 9, 30));
+        assertThat(r.closingBalance()).isEqualByComparingTo("297514.48");
+        assertThat(r.partialMonth()).isNull();
+        assertThat(r.closes()).isTrue();
+    }
+
+    @Test
+    void openingFromThePreviousMonthStartsTheEffectivePeriodAtFrom() {
+        UUID august = UUID.randomUUID();
+        YearMonth aug = YearMonth.of(2026, 8);
+        s.cashFlows.add(SyntheticSeptember.cashFlow(august, aug, aug.atEndOfMonth()));
+        s.balances.add(SyntheticSeptember.balance(august, aug, OPERATING, "CONDOMÍNIO", "300000.00", "10735.05",
+                "0.00", "310735.05"));
+
+        BalanceBridgeResponse r = bridge(OPERATING, SEPTEMBER, SEPTEMBER);
+
+        assertThat(r.effectiveFrom()).isEqualTo("2026-09");
+        assertThat(r.openingDate()).isEqualTo(LocalDate.of(2026, 8, 31));
+        assertThat(r.closingDate()).isEqualTo(LocalDate.of(2026, 9, 30));
+    }
+
+    @Test
+    void accountsWithoutConfirmedMappingAreWarnedWithTheirAmount() {
+        // D6: debits of the operating fund in two accounts without any mapping
+        s.entries.add(s.entry(s.septemberFile, OPERATING, "9001", "0.00", "700.00", false, false,
+                SEPTEMBER.atDay(10)));
+        s.entries.add(s.entry(s.septemberFile, OPERATING, "9002", "0.00", "50.00", false, false,
+                SEPTEMBER.atDay(11)));
+        s.entries.add(s.entry(s.septemberFile, OPERATING, "9001", "0.00", "300.00", false, false,
+                SEPTEMBER.atDay(12)));
+
+        BalanceBridgeResponse r = bridge(OPERATING, SEPTEMBER, SEPTEMBER);
+
+        assertThat(item(r, BalanceBridgeItemCode.OUTSIDE_BUDGET).parts())
+                .filteredOn(p -> p.code().equals("WITHOUT_BUDGET_LINE")).singleElement()
+                .satisfies(p -> assertThat(p.amount()).isEqualByComparingTo("-1050.00"));
+        assertThat(r.warnings()).filteredOn(w -> w.code().equals("NO_CONFIRMED_MAPPING")).singleElement()
+                .satisfies(w -> assertThat(w.text()).isEqualTo("2 contas sem de-para confirmado no total da ponte:"
+                        + " R$ 1.050,00 em \"sem linha da PO\", fora das linhas da PO; ficam em \"Fora da PO\" e"
+                        + " \"Economia nas linhas\" pode incluir o previsto dessas despesas. Contas: 9001 CONTA 9001"
+                        + " R$ 1.000,00; 9002 CONTA 9002 R$ 50,00"));
+        // Another fund alone: the operating fund's accounts are not part of its bridge
+        assertThat(bridge(RESERVE, SEPTEMBER, SEPTEMBER).warnings())
+                .noneMatch(w -> w.code().equals("NO_CONFIRMED_MAPPING"));
+        assertThat(bridge(null, SEPTEMBER, SEPTEMBER).warnings())
+                .anyMatch(w -> w.code().equals("NO_CONFIRMED_MAPPING"));
+    }
+
+    @Test
+    void accountsWithoutMappingOnlyInThePartialMonthAreNotInTheTotalWarning() {
+        UUID october = UUID.randomUUID();
+        s.cashFlows.add(SyntheticSeptember.cashFlow(october, OCTOBER, OCTOBER.atEndOfMonth()));
+        s.partialUntil.put(october, LocalDate.of(2026, 10, 20));
+        s.entries.add(s.entry(october, OPERATING, "9001", "0.00", "700.00", false, false, OCTOBER.atDay(5)));
+        s.balances.add(SyntheticSeptember.balance(october, OCTOBER, OPERATING, "CONDOMÍNIO", "297514.48", "0.00",
+                "700.00", "296814.48"));
+
+        BalanceBridgeResponse r = bridge(OPERATING, SEPTEMBER, OCTOBER);
+
+        assertThat(r.warnings()).noneMatch(w -> w.code().equals("NO_CONFIRMED_MAPPING"));
     }
 
     private BalanceBridgeResponse bridge(UUID fund, YearMonth from, YearMonth to) {
-        var grid = s.grid(s.confirmedProfiles()).result();
+        var grid = s.grid(s.confirmedProfiles());
         var funds = FundMovements.calculate(s.funds(from.minusMonths(1), to));
-        return BalanceBridge.calculate(new BalanceBridge.Input(grid, funds, fund, OPERATING, from, to));
+        return BalanceBridge.calculate(BalanceBridge.Input.of(grid, funds, fund, OPERATING, from, to));
     }
 
     static BridgeItemResponse item(BalanceBridgeResponse r, BalanceBridgeItemCode code) {

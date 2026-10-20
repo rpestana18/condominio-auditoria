@@ -145,6 +145,43 @@ class BudgetTrackingGridTest {
         assertThat(r.warnings()).anySatisfy(w -> assertThat(w.text()).startsWith("10/2026 parcial até 20/10"));
     }
 
+    @Test
+    void accountsWithoutConfirmedMappingAreWarnedWithTheAccountsAndTheAmount() {
+        // D6: as in the budget vs. actual (NO_CONFIRMED_MAPPING), over the cumulative of the grid
+        s.entries.add(s.entry(s.septemberFile, OPERATING, "9001", "0.00", "700.00", false, false,
+                SEPTEMBER.atDay(10)));
+        s.entries.add(s.entry(s.septemberFile, OPERATING, "9002", "0.00", "50.00", false, false,
+                SEPTEMBER.atDay(11)));
+        s.entries.add(s.entry(s.septemberFile, OPERATING, "9001", "0.00", "300.00", false, false,
+                SEPTEMBER.atDay(12)));
+
+        BudgetTrackingResponse r = s.grid(s.confirmedProfiles()).result();
+
+        assertThat(r.blocks().withoutBudgetLine().cumulative()).isEqualByComparingTo("1050.00");
+        assertThat(r.blocks().withoutBudgetLine().accounts())
+                .extracting(a -> a.account() + "=" + a.amount().toPlainString() + "/" + a.entries())
+                .containsExactly("9001=1000.00/2", "9002=50.00/1");
+        assertThat(r.blocks().withoutBudgetLine().accounts().getFirst().detail()).isEqualTo("sem de-para");
+        assertThat(r.blocks().separateApportionment().accounts()).isEmpty();
+        assertThat(r.warnings()).filteredOn(w -> w.code().equals("NO_CONFIRMED_MAPPING")).singleElement()
+                .satisfies(w -> assertThat(w.text()).isEqualTo("2 contas sem de-para confirmado no acumulado:"
+                        + " R$ 1.050,00 em \"sem linha da PO\", fora das linhas da PO; o previsto das linhas dessas"
+                        + " despesas fica como saldo da linha. Contas: 9001 CONTA 9001 R$ 1.000,00; 9002 CONTA 9002"
+                        + " R$ 50,00"));
+        // The budget vs. actual of the month counts the same accounts
+        var month = BudgetVsActualCalculator.calculate(BudgetTrackingGrid.withPeriod(s.base(), new Month(SEPTEMBER)))
+                .result();
+        assertThat(month.mapping().withoutConfirmedMapping()).isEqualTo(2);
+    }
+
+    @Test
+    void withEveryAccountMappedThereIsNoMappingWarning() {
+        BudgetTrackingResponse r = s.grid(s.confirmedProfiles()).result();
+
+        assertThat(r.warnings()).noneMatch(w -> w.code().equals("NO_CONFIRMED_MAPPING"));
+        assertThat(r.blocks().withoutBudgetLine().accounts()).isEmpty();
+    }
+
     static TrackingMonthResponse month(BudgetTrackingResponse r, String month) {
         return r.months().stream().filter(m -> m.month().equals(month)).findFirst().orElseThrow();
     }

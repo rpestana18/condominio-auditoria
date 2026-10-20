@@ -26,18 +26,22 @@ import br.com.condominioauditoria.api.model.enums.SpendingProfileStatus;
 import br.com.condominioauditoria.api.service.calculator.BudgetVsActualCalculator.Calculation;
 import br.com.condominioauditoria.api.service.calculator.BudgetVsActualCalculator.Cumulative;
 import br.com.condominioauditoria.api.service.calculator.BudgetVsActualCalculator.Month;
+import br.com.condominioauditoria.api.util.MoneyFormatter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Tracking grid of the budget (RF-13.4 and RF-13.10; ADR 0007, Decision 3). <b>Pure function</b>: calls
@@ -253,6 +257,10 @@ public final class BudgetTrackingGrid {
             warnings.add(new BudgetVsActualWarningResponse("MONTHS_WITHOUT_CASH_FLOW",
                     BudgetVsActualCalculator.monthList(missing) + " sem extrato carregado"));
         }
+        unmappedWarning(unmapped(months.stream().filter(GridMonth::complete)
+                .map(m -> m.calculation().result().withoutBudgetLine()).toList()),
+                " no acumulado", "o previsto das linhas dessas despesas fica como saldo da linha")
+                .ifPresent(warnings::add);
         partialMonths.forEach(t -> warnings.add(new BudgetVsActualWarningResponse("PARTIAL_MONTH", t
                 + ": aparece com os números até a data, fora do acumulado, do saldo das linhas e da regra dos 20%")));
         months.stream().filter(m -> m.calculation().result().status() == BudgetVsActualStatus.TWO_CASH_FLOWS)
@@ -296,6 +304,7 @@ public final class BudgetTrackingGrid {
     private static TrackingBlockResponse block(List<GridMonth> months,
             Function<BudgetVsActualResponse, EntryBlockResponse> of) {
         List<TrackingBlockCellResponse> cells = new ArrayList<>();
+        List<EntryBlockResponse> complete = new ArrayList<>();
         BigDecimal cumulative = ZERO;
         int entries = 0;
         for (GridMonth gm : months) {
@@ -308,9 +317,10 @@ public final class BudgetTrackingGrid {
             if (gm.complete()) {
                 cumulative = cumulative.add(b.total());
                 entries += b.entries();
+                complete.add(b);
             }
         }
-        return new TrackingBlockResponse(List.copyOf(cells), cumulative, entries);
+        return new TrackingBlockResponse(List.copyOf(cells), cumulative, entries, merge(complete));
     }
 
     private static TrackingBlockResponse separate(List<GridMonth> months, List<BigDecimal> amounts,
@@ -319,7 +329,77 @@ public final class BudgetTrackingGrid {
         for (int i = 0; i < months.size(); i++) {
             cells.add(new TrackingBlockCellResponse(months.get(i).month().toString(), amounts.get(i), entries.get(i)));
         }
-        return new TrackingBlockResponse(List.copyOf(cells), cumulative, cumulativeEntries);
+        return new TrackingBlockResponse(List.copyOf(cells), cumulative, cumulativeEntries, List.of());
+    }
+
+    /**
+     * Accounts of the operating fund without a confirmed mapping (the "sem linha da PO" block of the budget vs. actual),
+     * merged over some months. {@code accounts}: largest amount first, the entries without an account last (account
+     * null). {@code count}: accounts with a code, as in the NO_CONFIRMED_MAPPING warning of the budget vs. actual.
+     */
+    public record UnmappedAccounts(List<BlockAccountResponse> accounts, BigDecimal total, int entries) {
+
+        public long count() {
+            return accounts.stream().filter(a -> a.account() != null).count();
+        }
+    }
+
+    /** The "sem linha da PO" block of each month with numbers (complete or partial), for the balance bridge. */
+    public static Map<YearMonth, EntryBlockResponse> withoutBudgetLineByMonth(List<GridMonth> months) {
+        Map<YearMonth, EntryBlockResponse> byMonth = new LinkedHashMap<>();
+        months.stream().filter(GridMonth::hasNumbers)
+                .forEach(m -> byMonth.put(m.month(), m.calculation().result().withoutBudgetLine()));
+        return byMonth;
+    }
+
+    /** Merges "sem linha da PO" blocks of several months. */
+    public static UnmappedAccounts unmapped(List<EntryBlockResponse> blocks) {
+        BigDecimal total = ZERO;
+        int entries = 0;
+        for (EntryBlockResponse b : blocks) {
+            total = total.add(b.total());
+            entries += b.entries();
+        }
+        return new UnmappedAccounts(merge(blocks), total, entries);
+    }
+
+    /**
+     * Warning NO_CONFIRMED_MAPPING (RF-03.1.10) with the accounts and the amount, as in the budget vs. actual.
+     * {@code where}: the period of the amount (" no acumulado"); {@code effect}: what it means on that screen.
+     */
+    public static Optional<BudgetVsActualWarningResponse> unmappedWarning(UnmappedAccounts u, String where,
+            String effect) {
+        long count = u.count();
+        if (count == 0) {
+            return Optional.empty();
+        }
+        String accounts = u.accounts().stream()
+                .map(a -> (a.account() == null ? "lançamentos sem conta"
+                        : a.account() + (a.name() == null || a.name().isBlank() ? "" : " " + a.name()))
+                        + " R$ " + MoneyFormatter.format(a.amount()))
+                .collect(Collectors.joining("; "));
+        return Optional.of(new BudgetVsActualWarningResponse("NO_CONFIRMED_MAPPING", count
+                + (count == 1 ? " conta" : " contas") + " sem de-para confirmado" + where + ": R$ "
+                + MoneyFormatter.format(u.total()) + " em \"sem linha da PO\", fora das linhas da PO; " + effect
+                + ". Contas: " + accounts));
+    }
+
+    /** Merges the accounts of several blocks by account code: amounts and entries added, largest amount first. */
+    static List<BlockAccountResponse> merge(List<EntryBlockResponse> blocks) {
+        Map<String, BlockAccountResponse> byAccount = new LinkedHashMap<>();
+        for (EntryBlockResponse b : blocks) {
+            for (BlockAccountResponse a : b.accounts()) {
+                byAccount.merge(Objects.requireNonNullElse(a.account(), ""), a,
+                        (x, y) -> new BlockAccountResponse(x.account(), x.name() == null ? y.name() : x.name(),
+                                x.detail() == null ? y.detail() : x.detail(), x.amount().add(y.amount()),
+                                x.entries() + y.entries()));
+            }
+        }
+        return byAccount.values().stream()
+                .sorted(Comparator.comparing((BlockAccountResponse a) -> a.account() == null)
+                        .thenComparing(BlockAccountResponse::amount, Comparator.reverseOrder())
+                        .thenComparing(a -> Objects.requireNonNullElse(a.account(), "")))
+                .toList();
     }
 
     /** Accounts of a block, merged over the complete months (for the bridge parts). */

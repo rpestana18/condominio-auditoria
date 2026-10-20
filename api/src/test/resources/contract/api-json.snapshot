@@ -191,6 +191,9 @@ GET /api/condominiums/{}/balance-bridge
     calculationVersion: string
     closes: boolean
     closingBalance: number
+    closingDate: LocalDate
+    effectiveFrom: string
+    effectiveTo: string
     from: string
     fundId: UUID
     fundName: string
@@ -227,7 +230,15 @@ GET /api/condominiums/{}/balance-bridge
       variation: number
     }]
     openingBalance: number
+    openingDate: LocalDate
     openingSource: string
+    partialMonth: {
+      closingBalance: number
+      month: string
+      openingBalance: number
+      partialUntil: LocalDate
+      variation: number
+    }
     status: enum[CALCULATED, NO_BUDGET, BUDGET_NOT_CONFIRMED, NO_OPERATING_FUND, NO_CASH_FLOW, TWO_CASH_FLOWS]
     to: string
     variation: number
@@ -254,6 +265,13 @@ GET /api/condominiums/{}/budget-tracking
   returns: {
     blocks: {
       adjustments: {
+        accounts: [{
+          account: string
+          amount: number
+          detail: string
+          entries: integer
+          name: string
+        }]
         cells: [{
           amount: number
           entries: integer
@@ -263,6 +281,13 @@ GET /api/condominiums/{}/budget-tracking
         cumulativeEntries: integer
       }
       separateApportionment: {
+        accounts: [{
+          account: string
+          amount: number
+          detail: string
+          entries: integer
+          name: string
+        }]
         cells: [{
           amount: number
           entries: integer
@@ -272,6 +297,13 @@ GET /api/condominiums/{}/budget-tracking
         cumulativeEntries: integer
       }
       toReallocate: {
+        accounts: [{
+          account: string
+          amount: number
+          detail: string
+          entries: integer
+          name: string
+        }]
         cells: [{
           amount: number
           entries: integer
@@ -281,6 +313,13 @@ GET /api/condominiums/{}/budget-tracking
         cumulativeEntries: integer
       }
       withoutBudgetLine: {
+        accounts: [{
+          account: string
+          amount: number
+          detail: string
+          entries: integer
+          name: string
+        }]
         cells: [{
           amount: number
           entries: integer

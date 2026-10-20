@@ -67,12 +67,18 @@ public class BalanceBridgeService {
         YearMonth[] period = fundMovements.period(condominiumId, from, to);
         Budget budget = query.chooseBudget(condominiumId, from == null || from.isBlank() ? new Cumulative()
                 : new Month(period[0]), null).orElse(null);
-        var grid = tracking.calculate(condominiumId, budget == null ? null : budget.getId()).result();
+        if (budget == null) {
+            // No budget valid in "from" (e.g. a month before the fiscal year): the grid uses the most recent confirmed
+            // budget, so the period is checked against its fiscal year
+            budget = query.chooseBudget(condominiumId, new Cumulative(), null).orElse(null);
+        }
+        var gridResult = tracking.calculate(condominiumId, budget == null ? null : budget.getId());
+        var grid = gridResult.result();
         if (!all && fundId == null) {
             return new BalanceBridgeResponse(BalanceBridge.VERSION, BudgetVsActualStatus.NO_OPERATING_FUND,
                     "Confirme o fundo ordinário (fundo Condomínio) para calcular a origem do saldo", null, null, false,
                     period[0].toString(), period[1].toString(), grid.budget(), null, null, null, null, null, List.of(),
-                    List.of(), List.of());
+                    List.of(), List.of(), null, null, null, null, null);
         }
         BudgetValidity validity = budget == null ? null : BudgetValidity.of(budget).orElse(null);
         if (validity != null && (period[0].isBefore(validity.start()) || period[1].isAfter(validity.end()))) {
@@ -81,7 +87,7 @@ public class BalanceBridgeService {
                     + validity.end() + ")");
         }
         var funds = fundMovements.calculate(condominiumId, period[0].minusMonths(1), period[1]);
-        return BalanceBridge.calculate(new BalanceBridge.Input(grid, funds, all ? null : fundId,
+        return BalanceBridge.calculate(BalanceBridge.Input.of(gridResult, funds, all ? null : fundId,
                 condominium.getOperatingFundId(), period[0], period[1]));
     }
 }

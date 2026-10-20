@@ -9,10 +9,12 @@ import br.com.condominioauditoria.api.dto.response.budget.BridgeItemResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeLineResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeMonthItemResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeMonthResponse;
+import br.com.condominioauditoria.api.dto.response.budget.BridgePartialMonthResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgePartResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetBriefResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetTrackingResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetVsActualWarningResponse;
+import br.com.condominioauditoria.api.dto.response.budget.EntryBlockResponse;
 import br.com.condominioauditoria.api.dto.response.budget.TrackingBlockCellResponse;
 import br.com.condominioauditoria.api.dto.response.budget.TrackingBlockResponse;
 import br.com.condominioauditoria.api.dto.response.budget.TrackingCellResponse;
@@ -24,7 +26,9 @@ import br.com.condominioauditoria.api.model.enums.MonthStatus;
 import br.com.condominioauditoria.api.util.MoneyFormatter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -60,19 +64,30 @@ public final class BalanceBridge {
 
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2);
     private static final BigDecimal HUNDRED = new BigDecimal("100");
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /**
      * @param fundId chosen fund; null = all funds
      * @param funds fund movements from the month before {@code from} to {@code to}
+     * @param withoutBudgetLine "sem linha da PO" block of the operating fund by month (accounts without a confirmed
+     *        mapping; {@link BudgetTrackingGrid#withoutBudgetLineByMonth}), for the NO_CONFIRMED_MAPPING warning
      */
     public record Input(BudgetTrackingResponse grid, FundMovementsResponse funds, UUID fundId, UUID operatingFundId,
-            YearMonth from, YearMonth to) {
+            YearMonth from, YearMonth to, Map<YearMonth, EntryBlockResponse> withoutBudgetLine) {
 
         public Input {
             Objects.requireNonNull(grid, "grid");
             Objects.requireNonNull(funds, "funds");
             Objects.requireNonNull(from, "from");
             Objects.requireNonNull(to, "to");
+            withoutBudgetLine = withoutBudgetLine == null ? Map.of() : Map.copyOf(withoutBudgetLine);
+        }
+
+        /** Input from the whole grid: the response and the "sem linha da PO" block of each month. */
+        public static Input of(BudgetTrackingGrid.Grid grid, FundMovementsResponse funds, UUID fundId,
+                UUID operatingFundId, YearMonth from, YearMonth to) {
+            return new Input(grid.result(), funds, fundId, operatingFundId, from, to,
+                    BudgetTrackingGrid.withoutBudgetLineByMonth(grid.months()));
         }
     }
 
@@ -103,7 +118,9 @@ public final class BalanceBridge {
         BigDecimal opening = null;
         String openingSource = null;
         BigDecimal closing = null;
+        YearMonth firstInTotal = null;
         YearMonth lastInTotal = null;
+        List<EntryBlockResponse> unmappedBlocks = new ArrayList<>();
         List<String> gaps = new ArrayList<>();
         YearMonth previous = in.from().minusMonths(1);
         FundMonthSummaryResponse before = summaries.get(previous.toString());
@@ -112,6 +129,7 @@ public final class BalanceBridge {
             if (b != null) {
                 opening = b;
                 openingSource = "saldo final do extrato de " + BudgetVsActualCalculator.mmyyyy(previous);
+                firstInTotal = in.from();
             }
         }
         for (YearMonth m = in.from(); !m.isAfter(in.to()); m = m.plusMonths(1)) {
@@ -143,6 +161,13 @@ public final class BalanceBridge {
                     opening = o;
                     openingSource = "saldo inicial impresso no extrato de " + BudgetVsActualCalculator.mmyyyy(m);
                 }
+                if (firstInTotal == null) {
+                    firstInTotal = m;
+                }
+                EntryBlockResponse unmapped = in.withoutBudgetLine().get(m);
+                if (withOperating && unmapped != null) {
+                    unmappedBlocks.add(unmapped);
+                }
                 total.add(t);
                 closing = c;
                 lastInTotal = m;
@@ -159,7 +184,7 @@ public final class BalanceBridge {
                     ? "Nenhum mês completo com extrato no período" : in.grid().message());
             return new BalanceBridgeResponse(e.calculationVersion(), e.status(), e.message(), e.fundId(),
                     e.fundName(), e.allFunds(), e.from(), e.to(), budget, null, null, null, null, null, List.of(),
-                    List.copyOf(months), List.of());
+                    List.copyOf(months), List.of(), null, null, null, null, partialMonth(months));
         }
         BigDecimal variation = opening == null || closing == null ? null : closing.subtract(opening);
         total.unexplained = variation == null ? null : variation.subtract(total.sum());
@@ -176,16 +201,27 @@ public final class BalanceBridge {
             warnings.add(new BudgetVsActualWarningResponse("BRIDGE_DOES_NOT_CLOSE", "a ponte não fecha: R$ "
                     + MoneyFormatter.format(total.unexplained) + " não explicado"));
         }
+        LocalDate closingDate = lastInTotal.atEndOfMonth();
         months.stream().filter(m -> m.partialUntil() != null).forEach(m -> warnings.add(
                 new BudgetVsActualWarningResponse("PARTIAL_MONTH", BudgetVsActualCalculator.mmyyyy(
-                        YearMonth.parse(m.month())) + " parcial: aparece na sua coluna, fora do total")));
+                        YearMonth.parse(m.month())) + " parcial: aparece na sua coluna, fora do total"
+                        + " (lançamentos até " + DAY.format(m.partialUntil())
+                        + (m.variation() == null ? "" : "; variação de R$ " + MoneyFormatter.format(m.variation())
+                                + " à parte") + "); o total vai até " + DAY.format(closingDate))));
+        if (withOperating) {
+            BudgetTrackingGrid.unmappedWarning(BudgetTrackingGrid.unmapped(unmappedBlocks), " no total da ponte",
+                    "ficam em \"Fora da PO\" e \"Economia nas linhas\" pode incluir o previsto dessas despesas")
+                    .ifPresent(warnings::add);
+        }
         if (in.grid().warnings().stream().anyMatch(w -> w.code().equals("PROFILE_NOT_CONFIRMED")) && withOperating) {
             warnings.add(new BudgetVsActualWarningResponse("PROFILE_NOT_CONFIRMED",
                     "Há linhas com tipo não confirmado: valem \"mensal\" e entram em \"economia nas linhas\""));
         }
         return new BalanceBridgeResponse(VERSION, BudgetVsActualStatus.CALCULATED, null, in.fundId(), fundName, all,
                 in.from().toString(), in.to().toString(), budget, opening, openingSource, closing, variation, closes,
-                total.items(withOperating, withOthers, variation), List.copyOf(months), List.copyOf(warnings));
+                total.items(withOperating, withOthers, variation), List.copyOf(months), List.copyOf(warnings),
+                firstInTotal.toString(), lastInTotal.toString(), firstInTotal.minusMonths(1).atEndOfMonth(),
+                closingDate, partialMonth(months));
     }
 
     /** Operating fund items of a month: line balances by profile, income, outside the budget and transfers. */
@@ -280,7 +316,16 @@ public final class BalanceBridge {
     private static BalanceBridgeResponse empty(Input in, boolean all, String fundName, BudgetVsActualStatus status,
             String message) {
         return new BalanceBridgeResponse(VERSION, status, message, in.fundId(), fundName, all, in.from().toString(),
-                in.to().toString(), in.grid().budget(), null, null, null, null, null, List.of(), List.of(), List.of());
+                in.to().toString(), in.grid().budget(), null, null, null, null, null, List.of(), List.of(), List.of(),
+                null, null, null, null, null);
+    }
+
+    /** The last partial month of the period (RF-13.10), apart from the total; null without one. */
+    private static BridgePartialMonthResponse partialMonth(List<BridgeMonthResponse> months) {
+        return months.stream().filter(m -> m.partialUntil() != null).reduce((a, b) -> b)
+                .map(m -> new BridgePartialMonthResponse(m.month(), m.partialUntil(), m.openingBalance(),
+                        m.closingBalance(), m.variation()))
+                .orElse(null);
     }
 
     public static BigDecimal percentage(BigDecimal amount, BigDecimal variation) {

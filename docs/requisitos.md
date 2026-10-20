@@ -899,7 +899,7 @@ Nenhum achado novo: estouro de linha continua entrando só pela regra dos 20% (R
 | Q45 | ✔ Sim (usuário, 20/10/2026). Rateio à parte (luz, água, gás, seguro predial) em bloco separado, nunca como estouro (RF-13.4) | Usuário |
 | Q46 | ✔ Sim (usuário, 20/10/2026). Estouro do mês e acumulado lado a lado; para linhas anuais e "pela média", o destaque é o saldo do exercício (RF-13.4) | Usuário |
 | Q47 | ✔ Sim (usuário, 20/10/2026). A origem do saldo separa economia nas linhas, provisões, receita acima do previsto, fora da PO, transferências e saldo inicial do exercício (RF-13.6) | Usuário |
-| Q48 | ✔ Opcional (usuário, 20/10/2026). Enviar a planilha original `PO-2026-2027 - Final.xlsx`, se houver; não bloqueia | Usuário |
+| Q48 | ✔ Não precisa (usuário, 20/10/2026): "o arquivo de PO que compartilhei já é o final". O PDF enviado é a PO final e é a fonte da leitura; a planilha original não será enviada | Usuário |
 | P8 | Enviar o extrato consolidado de abril/2026, para o saldo inicial do exercício 2026/2027 (30/04/2026) na ponte do saldo (RF-13.6, RF-13.9) | Usuário |
 | T* | Decisões de tecnologia (ver 03-tecnologias.md) | Usuário |
 

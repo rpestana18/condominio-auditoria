@@ -53,10 +53,11 @@ public class ProcessingResultService {
     private final TotalsCheckRepository totalsChecks;
     private final BudgetImportService budgets;
     private final ApplicationEventPublisher events;
+    private final PartialMonthService partialMonths;
 
     ProcessingResultService(SourceFileRepository files, FundRepository funds, LedgerEntryRepository entries,
             FundBalanceRepository balances, TotalsCheckRepository totalsChecks, BudgetImportService budgets,
-            ApplicationEventPublisher publisher) {
+            ApplicationEventPublisher publisher, PartialMonthService partialMonths) {
         this.files = files;
         this.funds = funds;
         this.entries = entries;
@@ -64,6 +65,7 @@ public class ProcessingResultService {
         this.totalsChecks = totalsChecks;
         this.budgets = budgets;
         this.events = publisher;
+        this.partialMonths = partialMonths;
     }
 
     @Transactional
@@ -120,6 +122,8 @@ public class ProcessingResultService {
         file.complete(failures == 0 ? FileStatus.COMPLETED : FileStatus.NEEDS_REVIEW,
                 failures == 0 ? "Todas as conferências passaram" : failures + " conferência(s) não bateram",
                 result.parser(), cashFlow.periodStart(), cashFlow.periodEnd(), cashFlow.entryCount());
+        // RF-13.10: a complete cash flow replaces the partial one of the same month, with the replacement in the trail
+        partialMonths.recordReplacements(file.getCondominiumId());
         log.info("Arquivo {} gravado: {} lançamentos", file.getOriginalName(), cashFlow.entryCount());
     }
 

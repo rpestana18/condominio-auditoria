@@ -171,6 +171,72 @@ GET /api/condominiums/{}/ai
     updatedBy: string
   }
 
+GET /api/condominiums/{}/balance-bridge
+  path: UUID
+  query fund?: string
+  query from?: string
+  query to?: string
+  returns: {
+    allFunds: boolean
+    budget: {
+      fileId: UUID
+      fileName: string
+      fiscalYearEnd: string
+      fiscalYearStart: string
+      id: UUID
+      sha256: string
+      status: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+      version: integer
+    }
+    calculationVersion: string
+    closes: boolean
+    closingBalance: number
+    from: string
+    fundId: UUID
+    fundName: string
+    items: [{
+      amount: number
+      code: enum[LINE_SAVINGS, PROVISIONS_RESERVED, SEPARATE_APPORTIONMENT, INCOME_VS_PLANNED, FUND_PLANNED_COLLECTION, FUND_EXPENSES, OUTSIDE_BUDGET, INTER_FUND_TRANSFERS, UNEXPLAINED]
+      label: string
+      lines: [{
+        amount: number
+        code: string
+        description: string
+        effectiveProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+        lineId: UUID
+      }]
+      parts: [{
+        amount: number
+        code: string
+        label: string
+      }]
+      percentageOfVariation: number
+    }]
+    message: string
+    months: [{
+      closingBalance: number
+      inTotal: boolean
+      items: [{
+        amount: number
+        code: enum[LINE_SAVINGS, PROVISIONS_RESERVED, SEPARATE_APPORTIONMENT, INCOME_VS_PLANNED, FUND_PLANNED_COLLECTION, FUND_EXPENSES, OUTSIDE_BUDGET, INTER_FUND_TRANSFERS, UNEXPLAINED]
+      }]
+      month: string
+      openingBalance: number
+      partialUntil: LocalDate
+      status: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+      variation: number
+    }]
+    openingBalance: number
+    openingSource: string
+    status: enum[CALCULATED, NO_BUDGET, BUDGET_NOT_CONFIRMED, NO_OPERATING_FUND, NO_CASH_FLOW, TWO_CASH_FLOWS]
+    to: string
+    variation: number
+    warnings: [{
+      code: string
+      text: string
+    }]
+  }
+
 GET /api/condominiums/{}/budget-items
   path: UUID
   returns: [{
@@ -181,6 +247,141 @@ GET /api/condominiums/{}/budget-items
     name: string
     sourceLineId: UUID
   }]
+
+GET /api/condominiums/{}/budget-tracking
+  path: UUID
+  query budget?: UUID
+  returns: {
+    blocks: {
+      adjustments: {
+        cells: [{
+          amount: number
+          entries: integer
+          month: string
+        }]
+        cumulative: number
+        cumulativeEntries: integer
+      }
+      separateApportionment: {
+        cells: [{
+          amount: number
+          entries: integer
+          month: string
+        }]
+        cumulative: number
+        cumulativeEntries: integer
+      }
+      toReallocate: {
+        cells: [{
+          amount: number
+          entries: integer
+          month: string
+        }]
+        cumulative: number
+        cumulativeEntries: integer
+      }
+      withoutBudgetLine: {
+        cells: [{
+          amount: number
+          entries: integer
+          month: string
+        }]
+        cumulative: number
+        cumulativeEntries: integer
+      }
+    }
+    budget: {
+      fileId: UUID
+      fileName: string
+      fiscalYearEnd: string
+      fiscalYearStart: string
+      id: UUID
+      sha256: string
+      status: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+      version: integer
+    }
+    budgetVsActualVersion: string
+    calculationVersion: string
+    cumulative: {
+      actualExpense: number
+      actualInLines: number
+      balance: number
+      months: integer
+      planned: number
+    }
+    cumulativeMonths: [string]
+    groups: [{
+      balance: number
+      cells: [{
+        actual: number
+        difference: number
+        entries: integer
+        month: string
+        planned: number
+      }]
+      code: string
+      cumulativeActual: number
+      cumulativePlanned: number
+      description: string
+      lineId: UUID
+      lines: [{
+        account: string
+        balance: number
+        cashFlowAccounts: [string]
+        cells: [{
+          actual: number
+          difference: number
+          entries: integer
+          month: string
+          planned: number
+        }]
+        code: string
+        cumulativeActual: number
+        cumulativePlanned: number
+        description: string
+        effectiveProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+        lineId: UUID
+        mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+        monthlyPlanned: number
+        monthsAbove: integer
+        notes: string
+        page: integer
+        position: integer
+        printedCode: string
+        spendingProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+        spendingProfileStatus: enum[SUGGESTED, CONFIRMED]
+      }]
+    }]
+    message: string
+    months: [{
+      aboveLimit: boolean
+      actualExpense: number
+      actualInLines: number
+      cashFlows: [{
+        fileId: UUID
+        name: string
+        periodEnd: LocalDate
+        periodStart: LocalDate
+        sha256: string
+        uploadedAt: Instant
+        uploadedBy: string
+      }]
+      difference: number
+      inCumulative: boolean
+      linesAbove: integer
+      month: string
+      overrun: number
+      overrunPercentage: number
+      partialUntil: LocalDate
+      planned: number
+      status: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+    }]
+    status: enum[CALCULATED, NO_BUDGET, BUDGET_NOT_CONFIRMED, NO_OPERATING_FUND, NO_CASH_FLOW, TWO_CASH_FLOWS]
+    warnings: [{
+      code: string
+      text: string
+    }]
+  }
 
 GET /api/condominiums/{}/budget-vs-actual
   path: UUID
@@ -666,6 +867,54 @@ GET /api/condominiums/{}/budgets/{}/printed-column
     warnings: [string]
   }
 
+GET /api/condominiums/{}/budgets/{}/spending-profiles
+  path: UUID
+  path: UUID
+  returns: {
+    budgetId: UUID
+    confirmed: integer
+    lines: [{
+      account: string
+      budgeted: number
+      changedAt: Instant
+      changedBy: string
+      code: string
+      description: string
+      effectiveProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      groupCode: string
+      lineId: UUID
+      mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+      notes: string
+      position: integer
+      printedCode: string
+      profile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      reason: string
+      status: enum[SUGGESTED, CONFIRMED]
+      suggestedProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      suggestionReason: string
+    }]
+    suggested: integer
+    version: integer
+  }
+
+GET /api/condominiums/{}/budgets/{}/spending-profiles/events
+  path: UUID
+  path: UUID
+  returns: [{
+    action: enum[SUGGESTED, CONFIRMED]
+    id: UUID
+    lineCode: string
+    lineDescription: string
+    lineId: UUID
+    newProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+    newStatus: enum[SUGGESTED, CONFIRMED]
+    occurredAt: Instant
+    previousProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+    previousStatus: enum[SUGGESTED, CONFIRMED]
+    reason: string
+    username: string
+  }]
+
 GET /api/condominiums/{}/context
   path: UUID
   returns: {
@@ -921,6 +1170,22 @@ GET /api/condominiums/{}/files/{}/content
   path: UUID
   returns: InputStreamResource
 
+GET /api/condominiums/{}/files/{}/partial-month/events
+  path: UUID
+  path: UUID
+  returns: [{
+    action: enum[MARKED_PARTIAL, MARKED_COMPLETE, AUTOMATIC, SUPERSEDED]
+    fileId: UUID
+    id: UUID
+    newPartial: boolean
+    occurredAt: Instant
+    partialUntil: LocalDate
+    previousPartial: boolean
+    reason: string
+    supersededById: UUID
+    username: string
+  }]
+
 GET /api/condominiums/{}/findings
   path: UUID
   query referenceMonth?: string
@@ -1123,6 +1388,66 @@ GET /api/condominiums/{}/funds
     operating: boolean
   }]
 
+GET /api/condominiums/{}/funds/movements
+  path: UUID
+  query from?: string
+  query to?: string
+  returns: {
+    calculationVersion: string
+    from: string
+    funds: [{
+      budgetLineCode: string
+      budgetLineId: UUID
+      fundId: UUID
+      months: [{
+        balanceMatches: boolean
+        calculatedClosingBalance: number
+        closingBalance: number
+        collected: number
+        condoFee: number
+        credits: number
+        debits: number
+        entries: integer
+        expenses: number
+        month: string
+        openingBalance: number
+        otherCredits: number
+        otherDebits: number
+        otherIncome: number
+        planned: number
+        present: boolean
+        printedCredits: number
+        printedDebits: number
+        transfersIn: number
+        transfersOut: number
+      }]
+      name: string
+      operatingFund: boolean
+    }]
+    months: [{
+      cashFlows: [{
+        fileId: UUID
+        name: string
+        periodEnd: LocalDate
+        periodStart: LocalDate
+        sha256: string
+        uploadedAt: Instant
+        uploadedBy: string
+      }]
+      funds: integer
+      month: string
+      partialUntil: LocalDate
+      status: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+      totalClosingBalance: number
+    }]
+    operatingFundId: UUID
+    to: string
+    warnings: [{
+      code: string
+      text: string
+    }]
+  }
+
 GET /api/condominiums/{}/indicators
   path: UUID
   query budget?: UUID
@@ -1221,6 +1546,25 @@ GET /api/condominiums/{}/indicators
     start: string
     warnings: [string]
   }
+
+GET /api/condominiums/{}/partial-months
+  path: UUID
+  returns: [{
+    automatic: boolean
+    automaticallyPartial: boolean
+    changedAt: Instant
+    changedBy: string
+    fileId: UUID
+    name: string
+    partial: boolean
+    partialUntil: LocalDate
+    periodEnd: LocalDate
+    periodStart: LocalDate
+    reason: string
+    supersededById: UUID
+    uploadedAt: Instant
+    uploadedBy: string
+  }]
 
 GET /api/condominiums/{}/reallocations
   path: UUID
@@ -2023,6 +2367,43 @@ PUT /api/condominiums/{}/budgets/{}/funds
     }]
   }
 
+PUT /api/condominiums/{}/budgets/{}/spending-profiles
+  path: UUID
+  path: UUID
+  body: {
+    items: [{
+      lineId: UUID
+      profile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+    }]
+    reason: string
+  }
+  returns: {
+    budgetId: UUID
+    confirmed: integer
+    lines: [{
+      account: string
+      budgeted: number
+      changedAt: Instant
+      changedBy: string
+      code: string
+      description: string
+      effectiveProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      groupCode: string
+      lineId: UUID
+      mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+      notes: string
+      position: integer
+      printedCode: string
+      profile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      reason: string
+      status: enum[SUGGESTED, CONFIRMED]
+      suggestedProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      suggestionReason: string
+    }]
+    suggested: integer
+    version: integer
+  }
+
 PUT /api/condominiums/{}/features/{}
   path: UUID
   path: string
@@ -2066,6 +2447,31 @@ PUT /api/condominiums/{}/files/{}/category
     processedAt: Instant
     sizeBytes: integer
     status: enum[PENDING, PROCESSING, COMPLETED, NEEDS_REVIEW, FAILED]
+    uploadedAt: Instant
+    uploadedBy: string
+  }
+
+PUT /api/condominiums/{}/files/{}/partial-month
+  path: UUID
+  path: UUID
+  body: {
+    partial: boolean
+    reason: string
+    until: LocalDate
+  }
+  returns: {
+    automatic: boolean
+    automaticallyPartial: boolean
+    changedAt: Instant
+    changedBy: string
+    fileId: UUID
+    name: string
+    partial: boolean
+    partialUntil: LocalDate
+    periodEnd: LocalDate
+    periodStart: LocalDate
+    reason: string
+    supersededById: UUID
     uploadedAt: Instant
     uploadedBy: string
   }

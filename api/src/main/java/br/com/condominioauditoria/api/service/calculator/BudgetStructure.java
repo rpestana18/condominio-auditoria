@@ -5,7 +5,9 @@ import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -100,6 +102,55 @@ public record BudgetStructure(BudgetLine total, List<Group> groups, List<BudgetL
         String account = group.getAccountText() == null ? "" : normalize(group.getAccountText());
         return account.startsWith("fundos")
                 || (!account.startsWith("subtotal") && normalize(group.getDescription()).startsWith("fundos"));
+    }
+
+    /**
+     * Informational warnings of item numbers printed more than once (RF-13.2), never a reason to reject the confirmation:
+     * "item repetido na PO: 1.3.2 (linhas 2 e 25 do grupo 1.3)". The line number is the position inside the group (1 =
+     * first line after the subtotal). The lines stay separate, each with its own amounts.
+     */
+    public List<String> repeatedItemWarnings() {
+        Map<String, List<String>> where = new LinkedHashMap<>();
+        Map<String, List<String>> groupOf = new LinkedHashMap<>();
+        for (Group g : groups) {
+            for (int i = 0; i < g.lines().size(); i++) {
+                BudgetLine l = g.lines().get(i);
+                where.computeIfAbsent(l.getPrintedCode(), k -> new ArrayList<>()).add(String.valueOf(i + 1));
+                groupOf.computeIfAbsent(l.getPrintedCode(), k -> new ArrayList<>()).add(g.line().getPrintedCode());
+            }
+        }
+        for (BudgetLine l : ungrouped) {
+            where.computeIfAbsent(l.getPrintedCode(), k -> new ArrayList<>()).add("ordem " + l.getPosition());
+            groupOf.computeIfAbsent(l.getPrintedCode(), k -> new ArrayList<>()).add(null);
+        }
+        List<String> warnings = new ArrayList<>();
+        where.forEach((code, numbers) -> {
+            if (numbers.size() < 2) {
+                return;
+            }
+            List<String> groupCodes = groupOf.get(code);
+            boolean sameGroup = groupCodes.stream().distinct().count() == 1 && groupCodes.getFirst() != null;
+            String detail;
+            if (sameGroup) {
+                detail = "linhas " + join(numbers) + " do grupo " + groupCodes.getFirst();
+            } else {
+                List<String> parts = new ArrayList<>();
+                for (int i = 0; i < numbers.size(); i++) {
+                    parts.add(groupCodes.get(i) == null ? numbers.get(i)
+                            : "linha " + numbers.get(i) + " do grupo " + groupCodes.get(i));
+                }
+                detail = join(parts);
+            }
+            warnings.add("item repetido na PO: " + code + " (" + detail + ")");
+        });
+        return List.copyOf(warnings);
+    }
+
+    private static String join(List<String> parts) {
+        if (parts.size() == 1) {
+            return parts.getFirst();
+        }
+        return String.join(", ", parts.subList(0, parts.size() - 1)) + " e " + parts.getLast();
     }
 
     public static String normalize(String text) {

@@ -38,7 +38,8 @@ class ProcessingResultServiceCategoryTest {
     private final FundBalanceRepository balances = mock(FundBalanceRepository.class);
     private final TotalsCheckRepository totalsChecks = mock(TotalsCheckRepository.class);
     private final ProcessingResultService service = new ProcessingResultService(files, mock(FundRepository.class),
-            entries, balances, totalsChecks, mock(BudgetImportService.class), event -> { });
+            entries, balances, totalsChecks, mock(BudgetImportService.class), event -> { },
+            mock(PartialMonthService.class));
 
     @Test
     void cashFlowInAnotherCategoryDeletesExtractionAndSavesNoEntries() {

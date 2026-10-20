@@ -2,17 +2,21 @@ package br.com.condominioauditoria.api.model.budget;
 
 import br.com.condominioauditoria.api.model.enums.BudgetLineMark;
 import br.com.condominioauditoria.api.model.enums.BudgetLineType;
+import br.com.condominioauditoria.api.model.enums.SpendingProfile;
+import br.com.condominioauditoria.api.model.enums.SpendingProfileStatus;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
  * Budget line as printed, with source file, page and hash (RF-03.1.1). "%" and Observações are read text and do not
- * enter calculations. The id is the account mapping target; the effective code only differs from the printed one when
- * the code repeats.
+ * enter calculations. The line is identified by its id, in the order of {@code position} (ADR 0007, Decision 1): the
+ * id is the account mapping, reallocation and budget item target. The effective code is only a display label; when the
+ * Admin gives none, it is the printed code. Nothing in the calculations uses the code as a key.
  */
 @Entity
 public class BudgetLine {
@@ -38,6 +42,14 @@ public class BudgetLine {
     private BigDecimal budgeted;
     private String percentageText;
     private String notes;
+    /** RF-13.3: null = no suggestion stored yet (the query suggests on the fly). Only CONFIRMED is used. */
+    @Enumerated(EnumType.STRING)
+    private SpendingProfile spendingProfile;
+    @Enumerated(EnumType.STRING)
+    private SpendingProfileStatus spendingProfileStatus;
+    private String spendingProfileReason;
+    private String spendingProfileChangedBy;
+    private Instant spendingProfileChangedAt;
 
     protected BudgetLine() {
     }
@@ -65,9 +77,41 @@ public class BudgetLine {
         this.notes = notes;
     }
 
-    /** Distinct code for the line whose printed code repeats (RF-03.1.2). The read value does not change. */
+    /**
+     * Optional display label (RF-13.2). Blank or null = the printed code. The read value does not change.
+     */
     public void setEffectiveCode(String code) {
-        this.effectiveCode = code;
+        this.effectiveCode = code == null || code.isBlank() ? printedCode : code.trim();
+    }
+
+    /** Spending profile suggested or confirmed (RF-13.3). Never changes the planned amount. */
+    public void setSpendingProfile(SpendingProfile profile, SpendingProfileStatus status, String reason,
+            String username, Instant at) {
+        this.spendingProfile = profile;
+        this.spendingProfileStatus = status;
+        this.spendingProfileReason = reason;
+        this.spendingProfileChangedBy = username;
+        this.spendingProfileChangedAt = at;
+    }
+
+    public SpendingProfile getSpendingProfile() {
+        return spendingProfile;
+    }
+
+    public SpendingProfileStatus getSpendingProfileStatus() {
+        return spendingProfileStatus;
+    }
+
+    public String getSpendingProfileReason() {
+        return spendingProfileReason;
+    }
+
+    public String getSpendingProfileChangedBy() {
+        return spendingProfileChangedBy;
+    }
+
+    public Instant getSpendingProfileChangedAt() {
+        return spendingProfileChangedAt;
     }
 
     public UUID getId() {

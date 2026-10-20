@@ -39,6 +39,18 @@ public class FundBalance {
         this.closingBalance = p.closingBalance();
     }
 
+    public UUID getId() {
+        return id;
+    }
+
+    public UUID getCondominiumId() {
+        return condominiumId;
+    }
+
+    public UUID getFileId() {
+        return fileId;
+    }
+
     public UUID getFundId() {
         return fundId;
     }

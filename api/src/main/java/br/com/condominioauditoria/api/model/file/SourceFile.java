@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.UUID;
 import org.hibernate.annotations.DynamicUpdate;
 
@@ -58,6 +59,17 @@ public class SourceFile {
     private Instant indexingQueuedAt;
     private int indexingAttempts;
     private Instant indexingUpdatedAt;
+
+    // Partial month (RF-13.10; ADR 0007, Decision 5 A). Null override = the automatic rule (uploaded on or before the
+    // last day of the period); true = marked partial; false = marked complete, by the Manager or the Admin.
+    private Boolean partialOverride;
+    private LocalDate partialUntil;
+    private String partialReason;
+    private String partialChangedBy;
+    private Instant partialChangedAt;
+
+    /** Dates of the upload as the condominium sees them (the same zone as the evidence dates). */
+    public static final ZoneId ZONE = ZoneId.of("America/Sao_Paulo");
 
     protected SourceFile() {
     }
@@ -171,6 +183,68 @@ public class SourceFile {
         status = FileStatus.FAILED;
         message = reason;
         processedAt = Instant.now();
+    }
+
+    /** Upload date in the condominium's zone. */
+    public LocalDate uploadDate() {
+        return uploadedAt == null ? null : uploadedAt.atZone(ZONE).toLocalDate();
+    }
+
+    /** Automatic rule (Decision 5 A): a cash flow uploaded on or before the last day of its period is partial. */
+    public boolean automaticallyPartial() {
+        LocalDate uploaded = uploadDate();
+        return periodEnd != null && uploaded != null && !uploaded.isAfter(periodEnd);
+    }
+
+    /** Partial by the manual mark, or by the automatic rule when there is no mark. */
+    public boolean isPartial() {
+        return partialOverride != null ? partialOverride : automaticallyPartial();
+    }
+
+    /**
+     * Last day with entries of a partial cash flow ("parcial até DD/MM"): the date given in the mark or, without it, the
+     * upload date, never after the period end. Null when the file is not partial.
+     */
+    public LocalDate effectivePartialUntil() {
+        if (!isPartial()) {
+            return null;
+        }
+        LocalDate until = partialUntil != null ? partialUntil : uploadDate();
+        if (until == null || (periodEnd != null && until.isAfter(periodEnd))) {
+            return periodEnd;
+        }
+        return until;
+    }
+
+    /**
+     * Manual mark (Manager or Admin). {@code partial} null = back to the automatic rule.
+     */
+    public void markPartial(Boolean partial, LocalDate until, String reason, String username, Instant at) {
+        this.partialOverride = partial;
+        this.partialUntil = Boolean.TRUE.equals(partial) ? until : null;
+        this.partialReason = reason;
+        this.partialChangedBy = username;
+        this.partialChangedAt = at;
+    }
+
+    public Boolean getPartialOverride() {
+        return partialOverride;
+    }
+
+    public LocalDate getPartialUntil() {
+        return partialUntil;
+    }
+
+    public String getPartialReason() {
+        return partialReason;
+    }
+
+    public String getPartialChangedBy() {
+        return partialChangedBy;
+    }
+
+    public Instant getPartialChangedAt() {
+        return partialChangedAt;
     }
 
     public UUID getId() {

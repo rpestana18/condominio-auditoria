@@ -55,10 +55,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Budget confirmation by the Admin (RF-03.1.3; RF-03.1.2 and Q29; ADR 0004, Decision 8). Rejects with every reason at
- * once. The read values are never edited: confirmation only records the fiscal year, minutes, effective codes of the
- * repeated lines, the fund links and, when the budget was read with a sum discrepancy, the acknowledgement with a
- * justification.
+ * Budget confirmation by the Admin (RF-03.1.3; RF-03.1.2, RF-13.2 and Q29; ADR 0004, Decision 8; ADR 0007, Decision
+ * 1). Rejects with every reason at once. The read values are never edited: confirmation only records the fiscal year,
+ * minutes, optional display labels, the fund links and, when the budget was read with a sum discrepancy, the
+ * acknowledgement with a justification. A repeated item number is an informational warning, never a rejection.
  */
 @Service
 public class BudgetConfirmationService {
@@ -77,13 +77,15 @@ public class BudgetConfirmationService {
     private final BudgetReserveFundService reserveFund;
     private final FindingSyncService findings;
     private final BudgetItemService budgetItems;
+    private final SpendingProfileService spendingProfiles;
     private final ApplicationEventPublisher publisher;
 
     public BudgetConfirmationService(CondominiumRepository condominiums, BudgetRepository budgets,
             BudgetLineRepository lines, BudgetFundLinkRepository fundLinks, BudgetEventRepository events,
             SourceFileRepository files, FundRepository funds, BudgetQueryService query,
                     BudgetReserveFundService reserveFund,
-            FindingSyncService findings, BudgetItemService rubricas, ApplicationEventPublisher publisher) {
+            FindingSyncService findings, BudgetItemService rubricas, SpendingProfileService spendingProfiles,
+            ApplicationEventPublisher publisher) {
         this.condominiums = condominiums;
         this.budgets = budgets;
         this.lines = lines;
@@ -95,6 +97,7 @@ public class BudgetConfirmationService {
         this.reserveFund = reserveFund;
         this.findings = findings;
         this.budgetItems = rubricas;
+        this.spendingProfiles = spendingProfiles;
         this.publisher = publisher;
     }
 
@@ -121,6 +124,7 @@ public class BudgetConfirmationService {
         SourceFile minutes = validateMinutes(condominiumId, request, reasons);
         validateDiscrepancy(budget, request, assessment, reasons);
         Map<UUID, String> newCodes = validateCodes(budgetLines, request.effectiveCodes(), reasons);
+        List<String> repeatedItems = structure.repeatedItemWarnings();
         Map<BudgetLine, Fund> links = validateFunds(condominium, structure, request.funds(), reasons);
         if (!reasons.isEmpty()) {
             throw new BudgetConfirmationRejectedException(HttpStatus.UNPROCESSABLE_CONTENT, reasons);
@@ -142,10 +146,14 @@ public class BudgetConfirmationService {
         List<String> changes = new ArrayList<>();
         newCodes.forEach((id, code) -> {
             BudgetLine l = byId.get(id);
-            changes.add("%s (ordem %d, %s) → %s".formatted(l.getPrintedCode(), l.getPosition(), l.getDescription(),
-                    code));
+            if (!code.equals(l.getEffectiveCode())) {
+                changes.add("%s (ordem %d, %s) → %s".formatted(l.getPrintedCode(), l.getPosition(),
+                        l.getDescription(), code));
+            }
             l.setEffectiveCode(code);
         });
+        // RF-13.3: the spending profile of each expense line is suggested now; the Admin confirms it later
+        spendingProfiles.suggestOnConfirmation(budget, structure, username, now);
         lines.saveAll(budgetLines);
         links.forEach((line, fund) -> fundLinks.save(new BudgetFundLink(budget.getId(), line.getId(), fund.getId())));
 
@@ -156,7 +164,7 @@ public class BudgetConfirmationService {
                 acknowledged, justification, username, now);
         budgets.save(budget);
         events.save(new BudgetEvent(budget, BudgetEvent.CONFIRMED, username, now, justification,
-                eventDetail(budget, minutes, changes, links, assessment, supersededBudgets)));
+                eventDetail(budget, minutes, changes, repeatedItems, links, assessment, supersededBudgets)));
 
         shortenExtensions(budget, start, end, version, supersededBudgets, username, now);
         recordReserveFundFinding(budget, structure);
@@ -224,44 +232,31 @@ public class BudgetConfirmationService {
     }
 
     /**
-     * Effective codes: only for lines whose printed code repeats, in the same group and with the same number of levels.
-     * Once applied, no effective code may repeat.
+     * Display labels (RF-13.2; ADR 0007, Decision 1): optional, on any line, never required. A repeated, out of sequence
+     * or missing item number does not reject the confirmation: it is only the informational warning "item repetido na
+     * PO". A label must look like an item code of the same group (e.g. 1.3.25 for a 1.3 line); a blank label goes back
+     * to the printed code. The line is identified by its id, never by the code.
      */
     private static Map<UUID, String> validateCodes(List<BudgetLine> budgetLines, List<EffectiveCodeRequest> requests,
             List<String> reasons) {
         Map<UUID, BudgetLine> byId = budgetLines.stream().collect(Collectors.toMap(BudgetLine::getId,
                 Function.identity()));
-        Map<String, Long> printedCodes = budgetLines.stream()
-                .collect(Collectors.groupingBy(BudgetLine::getPrintedCode, Collectors.counting()));
         Map<UUID, String> effectiveByLine = new LinkedHashMap<>();
-        for (EffectiveCodeRequest c : requests) {
+        for (EffectiveCodeRequest c : requests == null ? List.<EffectiveCodeRequest>of() : requests) {
             BudgetLine l = c.lineId() == null ? null : byId.get(c.lineId());
             String code = c.code() == null ? "" : c.code().trim();
             if (l == null) {
-                reasons.add("Código efetivo para uma linha que não é desta PO.");
-            } else if (printedCodes.get(l.getPrintedCode()) < 2) {
-                reasons.add("O código da linha " + l.getPrintedCode() + " não se repete e não pode ser trocado.");
-            } else if (!CODE_PATTERN.matcher(code).matches() || !sameGroup(l.getPrintedCode(), code)) {
-                reasons.add("Código efetivo \"" + code + "\" inválido para a linha " + l.getPrintedCode()
+                reasons.add("Rótulo de exibição para uma linha que não é desta PO.");
+            } else if (!code.isEmpty() && (!CODE_PATTERN.matcher(code).matches() || !sameGroup(l.getPrintedCode(),
+                    code))) {
+                reasons.add("Rótulo \"" + code + "\" inválido para a linha " + l.getPrintedCode()
                         + " (ordem " + l.getPosition() + "): use um código do mesmo grupo, como "
-                        + parent(l.getPrintedCode()) + ".N.");
-            } else if (effectiveByLine.put(l.getId(), code) != null) {
-                reasons.add("Mais de um código efetivo para a linha " + l.getPrintedCode() + " (ordem "
+                        + parent(l.getPrintedCode()) + ".N, ou deixe em branco.");
+            } else if (effectiveByLine.put(l.getId(), code.isEmpty() ? l.getPrintedCode() : code) != null) {
+                reasons.add("Mais de um rótulo para a linha " + l.getPrintedCode() + " (ordem "
                         + l.getPosition() + ").");
             }
         }
-        Map<String, List<BudgetLine>> linesByCode = new LinkedHashMap<>();
-        budgetLines.forEach(l -> linesByCode.computeIfAbsent(effectiveByLine.getOrDefault(l.getId(),
-                l.getEffectiveCode()),
-                k -> new ArrayList<>()).add(l));
-        linesByCode.forEach((code, sameCode) -> {
-            if (sameCode.size() > 1) {
-                reasons.add("Código repetido sem código efetivo distinto: " + code + " (ordens " + sameCode.stream()
-                        .map(l -> String.valueOf(l.getPosition())).collect(Collectors.joining(", "))
-                        + "). Informe um código distinto para a linha repetida; código repetido não é divergência de"
-                        + " soma.");
-            }
-        });
         return effectiveByLine;
     }
 
@@ -396,13 +391,16 @@ public class BudgetConfirmationService {
     }
 
     private static String eventDetail(Budget budget, SourceFile minutes, List<String> changes,
-            Map<BudgetLine, Fund> links, BudgetReadingAssessment.Result assessment,
+            List<String> repeatedItems, Map<BudgetLine, Fund> links, BudgetReadingAssessment.Result assessment,
             List<Budget> supersededBudgets) {
         List<String> parts = new ArrayList<>();
         parts.add("Exercício " + budget.getFiscalYearStart() + " a " + budget.getFiscalYearEnd() + "; versão " + budget.getVersion());
         parts.add(minutes == null ? "Sem ata (pendência de implantação)"
                 : "Ata: " + minutes.getOriginalName() + " (" + minutes.getSha256() + "), aprovada em " + budget.getApprovalDate());
-        parts.add("Códigos efetivos: " + (changes.isEmpty() ? "nenhuma troca" : String.join("; ", changes)));
+        parts.add("Rótulos de exibição: " + (changes.isEmpty() ? "nenhuma troca" : String.join("; ", changes)));
+        if (!repeatedItems.isEmpty()) {
+            parts.add("Avisos informativos: " + String.join("; ", repeatedItems));
+        }
         parts.add("Fundos: " + (links.isEmpty() ? "nenhuma linha de fundo" : links.entrySet().stream()
                 .map(e -> e.getKey().getPrintedCode() + " " + e.getKey().getDescription() + " → " + e.getValue().getName())
                 .collect(Collectors.joining("; "))));

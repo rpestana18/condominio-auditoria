@@ -141,29 +141,55 @@ class BudgetConfirmationServiceTest {
                 .satisfies(a -> assertThat(a.text()).contains("teto não cadastrado"));
     }
 
+    /** RF-13.2 (replaces the repeated code rule of RF-03.1.2): a repeated item number is only a warning. */
     @Test
-    void repeatedCodeWithoutEffectiveCodeRejectsConfirmation() {
+    void repeatedItemWithoutLabelIsConfirmedWithInformationalWarning() {
         Budget budget = scenario.readBudget(PilotBudget.defaults());
         var p = scenario.pilotRequest(budget);
-        var withoutCode = new BudgetConfirmationRequest(p.fiscalYearStart(), p.fiscalYearEnd(), p.minutesFileId(),
+        var withoutLabel = new BudgetConfirmationRequest(p.fiscalYearStart(), p.fiscalYearEnd(), p.minutesFileId(),
                 false,
                 p.approvalDate(), List.of(), p.funds(), false, false, null);
 
-        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), withoutCode,
-                "admin"))
-                .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class, e -> {
-                    assertThat(e.status()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
-                    assertThat(e.reasons()).singleElement().asString()
-                            .startsWith("Código repetido sem código efetivo distinto: 1.3.2 (ordens 8, 12)");
-                });
-        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.READ);
-        assertThat(scenario.line(budget, "1.3.2", 1).getEffectiveCode()).isEqualTo("1.3.2");
-        assertThat(scenario.budgetEvents).isEmpty();
-        assertThat(scenario.fundLinks).isEmpty();
+        var detail = scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), withoutLabel, "admin");
+
+        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.CONFIRMED);
+        // The two lines stay separate, each with its own amounts, identified by id (ADR 0007, Decision 1)
+        var bombas = scenario.line(budget, "1.3.2", 0);
+        var caixa = scenario.line(budget, "1.3.2", 1);
+        assertThat(bombas.getId()).isNotEqualTo(caixa.getId());
+        assertThat(bombas.getEffectiveCode()).isEqualTo("1.3.2");
+        assertThat(caixa.getEffectiveCode()).isEqualTo("1.3.2");
+        assertThat(bombas.getBudgeted()).isEqualByComparingTo("3000.00");
+        assertThat(caixa.getBudgeted()).isEqualByComparingTo("1518.93");
+        assertThat(detail.warnings()).filteredOn(a -> a.code() == BudgetWarningCode.REPEATED_CODE).singleElement()
+                .satisfies(a -> assertThat(a.text()).isEqualTo("item repetido na PO: 1.3.2 (linhas 1 e 5 do grupo 1.3)"));
+        assertThat(scenario.budgetEvents).singleElement().satisfies(e -> assertThat(e.getDetail())
+                .contains("Avisos informativos: item repetido na PO: 1.3.2 (linhas 1 e 5 do grupo 1.3)"));
+        // Monthly planned from the lines: the repeated line is neither dropped nor summed into the other one
+        assertThat(budget.getMonthlyPlanned()).isEqualByComparingTo("451620.13");
+    }
+
+    /** Both 1.3.2 lines receive their own debits: the account mapping target is the line id. */
+    @Test
+    void repeatedItemLinesAreSeparateMappingTargets() {
+        Budget budget = scenario.readBudget(PilotBudget.defaults());
+        var p = scenario.pilotRequest(budget);
+        scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), new BudgetConfirmationRequest(
+                p.fiscalYearStart(), p.fiscalYearEnd(), p.minutesFileId(), false, p.approvalDate(), List.of(),
+                p.funds(), false, false, null), "admin");
+        var caixa = scenario.line(budget, "1.3.2", 1);
+
+        var mapped = scenario.accountMapping.setTarget(scenario.condominiumId, budget.getId(), "1624",
+                new br.com.condominioauditoria.api.dto.request.budget.MappingTargetRequest(
+                        br.com.condominioauditoria.api.model.enums.MappingTargetType.BUDGET_LINE, caixa.getId(), null,
+                        true),
+                "admin");
+
+        assertThat(mapped.target().lineId()).isEqualTo(caixa.getId());
     }
 
     @Test
-    void effectiveCodeOutsideGroupOrOnNonRepeatedLineIsRejected() {
+    void labelOutsideGroupIsRejectedAndLabelOnAnyLineIsAccepted() {
         Budget budget = scenario.readBudget(PilotBudget.defaults());
         var p = scenario.pilotRequest(budget);
         var request = new BudgetConfirmationRequest(p.fiscalYearStart(), p.fiscalYearEnd(), p.minutesFileId(), false,
@@ -175,23 +201,29 @@ class BudgetConfirmationServiceTest {
         assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), request,
                 "admin"))
                 .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class,
-                        e -> assertThat(e.reasons()).anySatisfy(
-                        m -> assertThat(m).contains("\"1.7.25\" inválido")).anySatisfy(
-                        m -> assertThat(m).contains("1.3.20 não se repete")));
+                        e -> assertThat(e.reasons()).singleElement().asString().contains("\"1.7.25\" inválido"));
+
+        // A label on a line that does not repeat is allowed (RF-13.2: optional, never required)
+        var accepted = new BudgetConfirmationRequest(p.fiscalYearStart(), p.fiscalYearEnd(), p.minutesFileId(), false,
+                p.approvalDate(), List.of(new EffectiveCodeRequest(scenario.line(budget, "1.3.20", 0).getId(),
+                        "1.3.26")), p.funds(), false, false, null);
+        scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), accepted, "admin");
+        assertThat(scenario.line(budget, "1.3.20", 0).getEffectiveCode()).isEqualTo("1.3.26");
+        assertThat(scenario.line(budget, "1.3.20", 0).getPrintedCode()).isEqualTo("1.3.20");
     }
 
     @Test
-    void effectiveCodeEqualToAnotherCodeIsStillRepeated() {
+    void labelEqualToAnotherCodeDoesNotRejectConfirmation() {
         Budget budget = scenario.readBudget(PilotBudget.defaults());
         var p = scenario.pilotRequest(budget);
         var request = new BudgetConfirmationRequest(p.fiscalYearStart(), p.fiscalYearEnd(), p.minutesFileId(), false,
                 p.approvalDate(), List.of(new EffectiveCodeRequest(scenario.line(budget, "1.3.2", 1).getId(),
                         "1.3.20")), p.funds(), false, false, null);
 
-        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), request,
-                "admin"))
-                .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class, e -> assertThat(e.reasons())
-                        .anySatisfy(m -> assertThat(m).startsWith("Código repetido sem código efetivo distinto: 1.3.20")));
+        scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), request, "admin");
+
+        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.CONFIRMED);
+        assertThat(scenario.line(budget, "1.3.2", 1).getEffectiveCode()).isEqualTo("1.3.20");
     }
 
     @Test
@@ -233,19 +265,17 @@ class BudgetConfirmationServiceTest {
     }
 
     @Test
-    void acknowledgedDoesNotWaiveEffectiveCode() {
+    void acknowledgedWithoutLabelIsConfirmed() {
         Budget budget = scenario.readBudget(PilotBudget.defaults().withStaffSubtotal("69193.00"));
         var p = scenario.pilotRequest(budget);
         var acknowledgedWithoutCode = new BudgetConfirmationRequest(p.fiscalYearStart(), p.fiscalYearEnd(),
                 p.minutesFileId(), false,
                 p.approvalDate(), List.of(), p.funds(), false, true, "Erro de soma no documento");
 
-        assertThatThrownBy(() -> scenario.confirmation.confirm(scenario.condominiumId, budget.getId(),
-                acknowledgedWithoutCode, "admin"))
-                .isInstanceOfSatisfying(BudgetConfirmationRejectedException.class,
-                        e -> assertThat(e.reasons()).singleElement()
-                        .asString().contains("código repetido não é divergência de soma"));
-        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.READ_WITH_DISCREPANCY);
+        scenario.confirmation.confirm(scenario.condominiumId, budget.getId(), acknowledgedWithoutCode, "admin");
+
+        assertThat(budget.getStatus()).isEqualTo(BudgetStatus.CONFIRMED);
+        assertThat(budget.isDiscrepancyAcknowledged()).isTrue();
     }
 
     @Test

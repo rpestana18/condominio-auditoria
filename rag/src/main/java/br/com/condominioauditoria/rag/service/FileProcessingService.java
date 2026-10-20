@@ -12,6 +12,7 @@ import br.com.condominioauditoria.rag.parser.budget.ProtestBudgetParser;
 import br.com.condominioauditoria.rag.parser.cashflow.CashFlowParser;
 import br.com.condominioauditoria.rag.service.calculator.BudgetCheck;
 import br.com.condominioauditoria.rag.service.calculator.CashFlowCheck;
+import br.com.condominioauditoria.rag.service.calculator.ZeroFundPositions;
 import br.com.condominioauditoria.storage.Storage;
 import java.io.InputStream;
 import org.slf4j.Logger;
@@ -88,8 +89,10 @@ public class FileProcessingService {
         int pages = document.pages().size();
         if (cashFlowParser.recognizes(document)) {
             CashFlow cashFlow = cashFlowParser.parse(document);
-            return ProcessingResultMessage.completed(file, CASH_FLOW_PARSER, pages, cashFlow,
-                    CashFlowCheck.check(cashFlow));
+            // The checks see the Posição as printed; the message also carries the 0,00 line of the funds where nothing
+            // happened, explained by the notice of the FUND_CLOSING_BALANCE check.
+            return ProcessingResultMessage.completed(file, CASH_FLOW_PARSER, pages,
+                    ZeroFundPositions.complete(cashFlow), CashFlowCheck.check(cashFlow));
         }
         if (budgetParser.recognizes(document)) {
             Budget budget = budgetParser.parse(document);

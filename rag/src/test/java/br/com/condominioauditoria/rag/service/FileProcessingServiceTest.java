@@ -9,7 +9,10 @@ import br.com.condominioauditoria.rag.messaging.ProcessingResultMessage.Status;
 import br.com.condominioauditoria.rag.model.document.ReadDocument;
 import br.com.condominioauditoria.rag.model.document.ReadDocument.Page;
 import br.com.condominioauditoria.rag.parser.ReaderContract;
+import br.com.condominioauditoria.rag.model.TotalsCheck;
+import br.com.condominioauditoria.rag.model.cashflow.FundPosition;
 import br.com.condominioauditoria.rag.parser.budget.ProtestBudgetParser;
+import br.com.condominioauditoria.rag.parser.cashflow.CashFlowParserTest;
 import br.com.condominioauditoria.rag.parser.cashflow.CashFlowParser;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,6 +25,24 @@ public class FileProcessingServiceTest {
 
     private final FileProcessingService service = new FileProcessingService(new MessageContract(), null, null, null,
             new CashFlowParser(), new ProtestBudgetParser());
+
+    /**
+     * D2: the message carries the closing balance 0,00 of the fund where nothing happened and the Posição left out;
+     * the FUND_CLOSING_BALANCE check passes with a notice that says so.
+     */
+    @Test
+    public void emptyZeroFundGetsPositionLineAndNotice() {
+        ProcessingResultMessage r = service.parse(file("TRIAL_BALANCE"),
+                CashFlowParserTest.withEmptyFundOutsidePosition().document());
+
+        assertThat(r.status()).isEqualTo(Status.COMPLETED);
+        assertThat(r.cashFlow().financialPosition()).extracting(FundPosition::fund)
+                .containsExactly("CONDOMÍNIO", "OBRAS");
+        assertThat(r.cashFlow().financialPosition().get(1).closingBalance()).isEqualByComparingTo("0.00");
+        assertThat(r.totalsChecks()).allMatch(TotalsCheck::ok);
+        assertThat(r.totalsChecks().get(2).detail()).contains("Aviso: OBRAS não aparece na Posição Financeira");
+        assertThat(new MessageContract().write(r)).isNotEmpty();
+    }
 
     @Test
     public void scannedBudgetFailsWithReadableReason() {

@@ -106,8 +106,12 @@ public class AccountMappingService {
     }
 
     /** Budget, lines and possible targets, loaded once per request. */
+    /**
+     * {@code targets}: every line that receives debits, by id (ADR 0007, Decision 1). {@code targetsByCode}: only the
+     * codes that appear once among them, for the inputs that name a line by its code (sheet, previous version copy).
+     */
     private record Context(Budget budget, List<BudgetLine> lines, BudgetStructure structure,
-            Map<UUID, BudgetLine> byId, Map<String, BudgetLine> targetsByCode) {
+            Map<UUID, BudgetLine> byId, Map<UUID, BudgetLine> targets, Map<String, BudgetLine> targetsByCode) {
     }
 
     @Transactional(readOnly = true)
@@ -145,7 +149,7 @@ public class AccountMappingService {
         MappingTarget target;
         if (request.type() == MappingTargetType.BUDGET_LINE) {
             BudgetLine l = request.lineId() == null ? null : ctx.byId().get(request.lineId());
-            if (l == null || !ctx.targetsByCode().containsValue(l)) {
+            if (l == null || !ctx.targets().containsKey(l.getId())) {
                 throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, l == null
                         ? "A linha informada não é desta PO"
                         : "A linha " + l.getEffectiveCode() + " não recebe débitos: as linhas 1.9 são comparadas com"
@@ -288,7 +292,7 @@ public class AccountMappingService {
             String username) {
         Context ctx = writeContext(condominiumId, budgetId);
         List<BudgetLine> fundLines = ctx.structure().funds().map(BudgetStructure.Group::lines).orElse(List.of());
-        var reading = AccountMappingSheet.read(content, List.copyOf(ctx.targetsByCode().values()), fundLines);
+        var reading = AccountMappingSheet.read(content, List.copyOf(ctx.targets().values()), fundLines);
         Map<String, CashFlowAccount> cashFlowAccount = cashFlowAccounts(ctx.budget());
         Map<String,
                 AccountMapping> existing = byAccount(mappings.findByBudgetIdOrderByAccountCode(ctx.budget().getId()));
@@ -386,9 +390,14 @@ public class AccountMappingService {
         BudgetStructure structure = BudgetStructure.of(readLines);
         Map<UUID, BudgetLine> byId = readLines.stream().collect(Collectors.toMap(BudgetLine::getId,
                 Function.identity()));
-        Map<String, BudgetLine> targets = new LinkedHashMap<>();
-        debitTargets(structure).forEach(l -> targets.putIfAbsent(l.getEffectiveCode(), l));
-        return new Context(budget, readLines, structure, byId, targets);
+        Map<UUID, BudgetLine> targets = new LinkedHashMap<>();
+        debitTargets(structure).forEach(l -> targets.put(l.getId(), l));
+        Map<String, Long> count = targets.values().stream()
+                .collect(Collectors.groupingBy(BudgetLine::getEffectiveCode, Collectors.counting()));
+        Map<String, BudgetLine> byCode = new LinkedHashMap<>();
+        targets.values().stream().filter(l -> count.get(l.getEffectiveCode()) == 1)
+                .forEach(l -> byCode.put(l.getEffectiveCode(), l));
+        return new Context(budget, readLines, structure, byId, targets, byCode);
     }
 
     /** Lines that can receive a debit: lines of the expense groups (1.1 to 1.8), never total, group or fund. */

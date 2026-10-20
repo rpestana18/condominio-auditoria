@@ -36,16 +36,19 @@ import br.com.condominioauditoria.api.service.calculator.BudgetVsActualCalculato
 import br.com.condominioauditoria.api.service.calculator.BudgetVsActualCalculator.Month;
 import br.com.condominioauditoria.api.service.calculator.BudgetVsActualCalculator.Period;
 import br.com.condominioauditoria.api.service.calculator.FundView;
+import br.com.condominioauditoria.api.service.calculator.PartialCashFlows;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -140,9 +143,18 @@ public class BudgetVsActualQueryService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
         Period period = period(periodText);
         Budget budget = chooseBudget(condominiumId, period, budgetId).orElse(null);
+        return BudgetVsActualCalculator.calculate(input(condominium, budget, period));
+    }
+
+    /**
+     * Input of the calculation for the budget and period ({@code budget} null = no budget). The cumulative period loads
+     * the entries of the whole fiscal year and of the extended months.
+     */
+    public Input input(Condominium condominium, Budget budget, Period period) {
+        UUID condominiumId = condominium.getId();
         if (budget == null) {
-            return BudgetVsActualCalculator.calculate(new Input(null, null, null, null, null, null,
-                    condominium.getOperatingFundId(), null, null, null, null, null, period));
+            return new Input(null, null, null, null, null, null, condominium.getOperatingFundId(), null, null, null,
+                    null, null, period);
         }
         List<BudgetLine> readChecks = lines.findByBudgetIdOrderByPosition(budget.getId());
         Map<UUID, UUID> fundByLine = fundLinks.findByBudgetId(budget.getId()).stream()
@@ -179,21 +191,45 @@ public class BudgetVsActualQueryService {
         // Active reallocations of this budget version (RF-03.1.7), reattached to the entries by the stable key
         List<BudgetVsActualCalculator.ReallocatedEntry> active = reallocations.findByBudgetIdAndUndoneAtIsNull(budget.getId())
                 .stream().map(Reallocation::forCalculation).toList();
-        return BudgetVsActualCalculator.calculate(new Input(budget, fileName, readChecks,
+        return new Input(budget, fileName, readChecks,
                 mappings.findByBudgetIdOrderByAccountCode(budget.getId()), fundByLine, names,
-                condominium.getOperatingFundId(), cashFlows, ofPeriod, active, limit, budgetWarnings, period));
+                condominium.getOperatingFundId(), cashFlows, ofPeriod, active, limit, budgetWarnings, period);
     }
 
-    /** The condominium's read cash flows with a period (trial balances completed or to review). */
+    /**
+     * The condominium's read cash flows with a period (trial balances completed or to review), without the partial ones
+     * replaced by a complete cash flow of the same month (RF-13.10).
+     */
     public List<CashFlowFile> cashFlows(UUID condominiumId) {
-        return files.findByCondominiumIdAndCategoryAndStatusIn(condominiumId, FileCategory.TRIAL_BALANCE, READ_CASH_FLOW)
-                .stream().filter(a -> a.getPeriodStart() != null && a.getPeriodEnd() != null)
+        return selectCashFlows(condominiumId).effective();
+    }
+
+    /** Read cash flows with the partial ones marked and the superseded ones apart (RF-13.10). */
+    public PartialCashFlows selectCashFlows(UUID condominiumId) {
+        List<SourceFile> read = files.findByCondominiumIdAndCategoryAndStatusIn(condominiumId,
+                        FileCategory.TRIAL_BALANCE, READ_CASH_FLOW)
+                .stream().filter(a -> a.getPeriodStart() != null && a.getPeriodEnd() != null).toList();
+        Map<UUID, LocalDate> partial = new HashMap<>();
+        read.stream().filter(SourceFile::isPartial).forEach(a -> partial.put(a.getId(), a.effectivePartialUntil()));
+        List<CashFlowFile> all = read.stream()
                 .map(a -> new CashFlowFile(a.getId(), a.getOriginalName(), a.getSha256(), a.getPeriodStart(),
                         a.getPeriodEnd(), a.getUploadedAt(), a.getUploadedBy()))
                 .sorted(Comparator.comparing(CashFlowFile::fileId)).toList();
+        return PartialCashFlows.select(all, partial);
     }
 
-    private Optional<Budget> chooseBudget(UUID condominiumId, Period period, UUID budgetId) {
+    /** Months covered by an effective partial cash flow: no finding is created or changed in them (RF-13.10). */
+    public Set<YearMonth> partialMonths(UUID condominiumId) {
+        PartialCashFlows selection = selectCashFlows(condominiumId);
+        Set<YearMonth> months = new TreeSet<>();
+        selection.effective().stream().filter(f -> selection.partialUntil().containsKey(f.fileId()))
+                .forEach(f -> months.addAll(BudgetVsActualCalculator.months(YearMonth.from(f.periodStart()),
+                        YearMonth.from(f.periodEnd()))));
+        return months;
+    }
+
+    /** The given budget (404 if not of this condominium), the one valid in the month or the latest confirmed one. */
+    public Optional<Budget> chooseBudget(UUID condominiumId, Period period, UUID budgetId) {
         if (budgetId != null) {
             return Optional.of(budgets.findByIdAndCondominiumId(budgetId, condominiumId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada")));

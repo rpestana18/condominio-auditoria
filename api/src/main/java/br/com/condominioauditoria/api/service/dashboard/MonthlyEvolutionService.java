@@ -5,12 +5,14 @@ import br.com.condominioauditoria.api.model.accounting.Fund;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
+import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.service.calculator.BudgetVsActualCalculator.CashFlowFile;
 import br.com.condominioauditoria.api.service.calculator.MonthlyEvolution;
+import br.com.condominioauditoria.api.service.calculator.PartialCashFlows;
 import java.time.YearMonth;
 import java.util.EnumSet;
 import java.util.List;
@@ -52,12 +54,15 @@ public class MonthlyEvolutionService {
      */
     @Transactional(readOnly = true)
     public Optional<MonthlyEvolutionResponse> evolution(UUID condominiumId, YearMonth until) {
-        List<CashFlowFile> cashFlows = files.findByCondominiumIdAndCategoryAndStatusIn(condominiumId,
-                        FileCategory.TRIAL_BALANCE, READ).stream()
-                .filter(f -> f.getPeriodStart() != null && f.getPeriodEnd() != null)
+        var read = files.findByCondominiumIdAndCategoryAndStatusIn(condominiumId, FileCategory.TRIAL_BALANCE, READ)
+                .stream().filter(f -> f.getPeriodStart() != null && f.getPeriodEnd() != null).toList();
+        Map<UUID, java.time.LocalDate> partial = new java.util.HashMap<>();
+        read.stream().filter(SourceFile::isPartial).forEach(f -> partial.put(f.getId(), f.effectivePartialUntil()));
+        // RF-13.10: a partial cash flow replaced by the complete one of the same month is left out
+        List<CashFlowFile> cashFlows = PartialCashFlows.select(read.stream()
                 .map(f -> new CashFlowFile(f.getId(), f.getOriginalName(), f.getSha256(), f.getPeriodStart(),
                         f.getPeriodEnd(), f.getUploadedAt(), f.getUploadedBy()))
-                .toList();
+                .toList(), partial).effective();
         if (cashFlows.isEmpty()) {
             return Optional.empty();
         }

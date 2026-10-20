@@ -45,7 +45,13 @@ public final class AccountMappingSheet {
      */
     public static Reading read(String content, List<BudgetLine> targets, List<BudgetLine> fundLines) {
         Map<String, BudgetLine> byCode = new HashMap<>();
-        targets.forEach(l -> byCode.put(l.getEffectiveCode(), l));
+        // RF-13.2: an item code printed more than once without a distinct label names no line (never the first one)
+        java.util.Set<String> ambiguous = new java.util.HashSet<>();
+        targets.forEach(l -> {
+            if (byCode.put(l.getEffectiveCode(), l) != null) {
+                ambiguous.add(l.getEffectiveCode());
+            }
+        });
         Map<String, BudgetLine> funds = new HashMap<>();
         fundLines.forEach(l -> funds.put(l.getEffectiveCode(), l));
 
@@ -83,7 +89,10 @@ public final class AccountMappingSheet {
             String targetText = columns[1].trim();
             if (LINE_CODE.matcher(targetText).matches()) {
                 BudgetLine l = byCode.get(targetText);
-                if (l != null) {
+                if (ambiguous.contains(targetText)) {
+                    rejections.add(new Rejection(number, raw, "o item " + targetText + " aparece mais de uma vez na PO:"
+                            + " escolha a linha na tela do de-para ou dê um rótulo distinto a uma delas"));
+                } else if (l != null) {
                     items.add(new Item(number, account, MappingTarget.line(l)));
                 } else if (funds.containsKey(targetText)) {
                     rejections.add(new Rejection(number, raw, "a linha " + targetText + " é de fundo: as linhas 1.9 são"

@@ -286,8 +286,10 @@ paths:
     post:
       summary: Confirma a PO e o exercício (só ADMIN, RF-03.1.3; ciente da divergência, Q29)
       description: |
-        Registra exercício, ata (ou "sem ata"), código efetivo das linhas com código impresso repetido e a ligação de
-        cada linha de fundo (1.9.x) a um fundo do fluxo. Os valores lidos nunca são editados. PO lida com divergência
+        Registra exercício, ata (ou "sem ata"), rótulos de exibição opcionais (effectiveCodes) e a ligação de
+        cada linha de fundo (1.9.x) a um fundo do fluxo. Código impresso repetido não impede a confirmação (RF-13.1;
+        ADR 0007): cada linha é identificada pelo id, e o aviso REPEATED_CODE é só informativo. Na confirmação, o tipo
+        de gasto de cada linha de despesa é sugerido (SUGGESTED, RF-13.3). Os valores lidos nunca são editados. PO lida com divergência
         de soma só é confirmada com cienteDivergencia e justificativa. Só uma PO vale para cada mês: sobreposição com
         PO confirmada exige reaprovacao (a anterior passa a SUPERSEDED a partir do início da nova).
         Fundo de reserva acima do teto (Conv. 20.1) gera achado WARNING; aprovação fora do 1º trimestre gera só aviso.
@@ -896,6 +898,142 @@ paths:
           content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/FindingResponse" } } } }
         "400": { description: Competência inválida }
         "403": { description: Sem acesso ao condomínio }
+  /condominiums/{condominiumId}/budget-tracking:
+    parameters: [{ $ref: "#/components/parameters/CondominiumId" }]
+    get:
+      summary: Acompanhamento da PO mês a mês, linha por linha (todos os perfis, RF-13.4)
+      description: |
+        Calculado na consulta pela função pura BudgetTrackingGrid (calculationVersion), que chama o cálculo do
+        previsto × realizado (budgetVsActualVersion) mês a mês; nada é gravado. Os números de cada mês são exatamente
+        os do previsto × realizado do mês. O acumulado e o saldo da linha somam só os meses completos com fluxo
+        (inCumulative); mês parcial (RF-13.10) aparece com partialUntil e fica fora do acumulado e da regra dos 20%.
+        Avisos: PARTIAL_MONTH, MONTHS_WITHOUT_CASH_FLOW, TWO_CASH_FLOWS, PROFILE_NOT_CONFIRMED.
+      operationId: budgetTracking
+      parameters:
+        - { name: budget, in: query, required: false, description: Versão da PO; sem ela, a confirmada mais recente, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetTrackingResponse" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Condomínio ou PO não encontrados }
+  /condominiums/{condominiumId}/balance-bridge:
+    parameters: [{ $ref: "#/components/parameters/CondominiumId" }]
+    get:
+      summary: Origem da variação do saldo (ponte do saldo) no período (todos os perfis, RF-13.6)
+      description: |
+        Calculado na consulta pela função pura BalanceBridge (calculationVersion). Saldo inicial = saldo final impresso
+        do mês anterior (quando carregado) ou o saldo inicial impresso do primeiro mês; o total soma só meses completos.
+        UNEXPLAINED = variação − soma dos itens; diferente de zero gera o aviso BRIDGE_DOES_NOT_CLOSE. Cada mês tem a
+        própria coluna (months). Outros avisos: MONTHS_WITHOUT_CASH_FLOW, BALANCE_NOT_PRINTED, PARTIAL_MONTH,
+        PROFILE_NOT_CONFIRMED. Sem fundo ordinário: status NO_OPERATING_FUND e números nulos.
+      operationId: balanceBridge
+      parameters:
+        - { name: fund, in: query, required: false, description: 'Id de um fundo, "all" (todos os fundos) ou vazio (fundo ordinário)', schema: { type: string } }
+        - { name: from, in: query, required: false, description: AAAA-MM; sem from/to, o exercício da PO confirmada mais recente, schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
+        - { name: to, in: query, required: false, description: AAAA-MM, schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BalanceBridgeResponse" } } } }
+        "400": { description: Período ou fundo inválido, período fora do exercício da PO ou sem PO confirmada para o período padrão }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Condomínio ou fundo não encontrados }
+  /condominiums/{condominiumId}/funds/movements:
+    parameters: [{ $ref: "#/components/parameters/CondominiumId" }]
+    get:
+      summary: Movimento de cada fundo mês a mês (todos os perfis, RF-13.5)
+      description: |
+        Calculado na consulta pela função pura FundMovements (calculationVersion). Créditos separados em cota
+        (recebimento de cota), outras receitas, transferências recebidas e outros créditos; débitos em despesas,
+        transferências enviadas e outros débitos. Saldo final conferido com o impresso (tolerância R$ 0,01). Fundos
+        ligados às linhas 1.9: arrecadação × previsto. Avisos: FUND_BALANCE_MISMATCH, UNCLASSIFIED_CREDITS,
+        CASH_FLOW_SPANS_MONTHS, TWO_CASH_FLOWS. Período de no máximo 36 meses.
+      operationId: fundMovements
+      parameters:
+        - { name: from, in: query, required: false, description: AAAA-MM; sem from/to, o exercício da PO confirmada mais recente, schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
+        - { name: to, in: query, required: false, description: AAAA-MM, schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/FundMovementsResponse" } } } }
+        "400": { description: Período inválido, maior que 36 meses ou sem PO confirmada para o período padrão }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Condomínio não encontrado }
+  /condominiums/{condominiumId}/budgets/{budgetId}/spending-profiles:
+    parameters: [{ $ref: "#/components/parameters/CondominiumId" }, { $ref: "#/components/parameters/BudgetId" }]
+    get:
+      summary: Tipo de gasto de cada linha de despesa da PO (todos os perfis, RF-13.3)
+      description: |
+        Sugerido na confirmação da PO pela função pura SpendingProfileSuggestion (version) e confirmado pelo Admin.
+        PO confirmada antes da sugestão existir: a sugestão é calculada na consulta e aparece como SUGGESTED.
+        Só o tipo CONFIRMED muda a leitura do acompanhamento e da ponte; SUGGESTED vale como MONTHLY (effectiveProfile).
+      operationId: listSpendingProfiles
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SpendingProfilesResponse" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+    put:
+      summary: Confirma ou muda o tipo de gasto de linhas da PO (só ADMIN), com trilha
+      description: |
+        profile nulo = confirma a sugestão. Linha sem mudança é ignorada. Cada mudança grava um evento só de inserção.
+      operationId: confirmSpendingProfiles
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/SpendingProfileBatchRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SpendingProfilesResponse" } } } }
+        "403": { description: Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+        "422": { description: Lista vazia ou linha que não é de despesa desta PO, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+  /condominiums/{condominiumId}/budgets/{budgetId}/spending-profiles/events:
+    parameters: [{ $ref: "#/components/parameters/CondominiumId" }, { $ref: "#/components/parameters/BudgetId" }]
+    get:
+      summary: Trilha do tipo de gasto das linhas desta PO (todos os perfis), só de inserção
+      operationId: spendingProfileEvents
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SpendingProfileEventResponse" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+  /condominiums/{condominiumId}/partial-months:
+    parameters: [{ $ref: "#/components/parameters/CondominiumId" }]
+    get:
+      summary: Extratos lidos e se cada um é de mês parcial (todos os perfis, RF-13.10)
+      description: |
+        Regra automática: parcial quando a data do envio (America/Sao_Paulo) é até o fim do período do extrato
+        (parcial até a data do envio). Gestor e Admin podem marcar à mão. Extrato parcial substituído por um completo
+        dos mesmos meses traz supersededById e sai dos cálculos.
+      operationId: listPartialMonths
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PartialMonthResponse" } } } }
+        "403": { description: Sem acesso ao condomínio }
+  /condominiums/{condominiumId}/files/{fileId}/partial-month:
+    parameters:
+      - { $ref: "#/components/parameters/CondominiumId" }
+      - { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      summary: Marca o extrato como mês parcial ou completo, ou volta à regra automática (Gestor e Admin), com trilha
+      operationId: markPartialMonth
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PartialMonthRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PartialMonthResponse" } } } }
+        "403": { description: Usuário (só consulta) ou sem acesso ao condomínio }
+        "404": { description: Arquivo não encontrado }
+        "422": { description: Arquivo não é extrato lido com período, ou data fora do período, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+  /condominiums/{condominiumId}/files/{fileId}/partial-month/events:
+    parameters:
+      - { $ref: "#/components/parameters/CondominiumId" }
+      - { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Trilha do mês parcial do extrato (todos os perfis), só de inserção
+      operationId: partialMonthEvents
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PartialMonthEventResponse" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Arquivo não encontrado }
 components:
   securitySchemes:
     bearer: { type: http, scheme: bearer, bearerFormat: JWT }
@@ -1885,7 +2023,7 @@ components:
         page: { type: integer }
         type: { type: string, enum: [TOTAL, GROUP, LINE] }
         printedCode: { type: string }
-        effectiveCode: { type: string, description: Igual ao impresso; o Admin muda só quando o código se repete }
+        effectiveCode: { type: string, description: Rótulo de exibição; igual ao impresso quando o Admin não deu rótulo. Não é chave (use id) }
         account: { type: [string, "null"] }
         accountText: { type: [string, "null"] }
         mark: { type: [string, "null"], enum: [SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE, null] }
@@ -1907,7 +2045,7 @@ components:
         detail: { type: [string, "null"] }
         classification:
           type: string
-          description: OK; ROUNDING (diferença até a tolerância, só aviso); DISCREPANCY; REPEATED_CODE (pendência)
+          description: OK; ROUNDING (diferença até a tolerância, só aviso); DISCREPANCY; REPEATED_CODE (só informativo, RF-13.1)
           enum: [OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
         explanation: { type: [string, "null"], description: Quando falhou, as duas somas }
     BudgetWarningResponse:
@@ -1929,7 +2067,7 @@ components:
         approvalDate: { type: [string, "null"], format: date, description: Data da assembleia; obrigatória com ata }
         effectiveCodes:
           type: array
-          description: Código distinto para linhas cujo código impresso se repete (mesmo grupo, ex. 1.3.2 → 1.3.25)
+          description: Rótulo de exibição opcional de qualquer linha, no formato do mesmo grupo (ex. 1.3.2 → 1.3.25); vazio volta ao código impresso. Não precisa ser único
           items:
             type: object
             required: [lineId, code]
@@ -2509,3 +2647,366 @@ components:
         feature: { type: string, description: "Em recusa por módulo não contratado (403): código do módulo" }
         reasons: { type: array, items: { type: string }, description: "Motivos da recusa (confirmação da PO, configuração de IA)" }
         aiMode: { $ref: "#/components/schemas/AiMode", description: "Em recusa do chat pelo modo (409): modo de respostas efetivo" }
+    SpendingProfile:
+      type: string
+      description: |
+        Tipo de gasto da linha (RF-13.3; ADR 0007). MONTHLY = mensal; PROVISION = provisão (férias, 13º, rescisão:
+        o previsto não gasto fica reservado); ANNUAL = anual (gasto concentrado em um mês); SEPARATE_APPORTIONMENT =
+        rateio à parte.
+      enum: [MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+    SpendingProfileStatus:
+      type: string
+      description: SUGGESTED = sugerido pelas regras (vale como MONTHLY); CONFIRMED = confirmado pelo Admin
+      enum: [SUGGESTED, CONFIRMED]
+    TrackingMonthStatus:
+      type: string
+      enum: [WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+    CalculationStatus:
+      type: string
+      description: Por que não há números quando diferente de CALCULATED
+      enum: [CALCULATED, NO_BUDGET, BUDGET_NOT_CONFIRMED, NO_OPERATING_FUND, NO_CASH_FLOW, TWO_CASH_FLOWS]
+    CalculationWarning:
+      type: object
+      required: [code, text]
+      properties: { code: { type: string }, text: { type: string } }
+    BudgetBrief:
+      type: object
+      required: [id, status, fileId, sha256]
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: [integer, "null"] }
+        status: { $ref: "#/components/schemas/BudgetStatus" }
+        fileId: { type: string, format: uuid }
+        fileName: { type: [string, "null"] }
+        sha256: { type: string }
+        fiscalYearStart: { type: [string, "null"] }
+        fiscalYearEnd: { type: [string, "null"] }
+    BudgetTrackingResponse:
+      type: object
+      required: [calculationVersion, budgetVsActualVersion, status, months, cumulativeMonths, groups, warnings]
+      properties:
+        calculationVersion: { type: string, description: Versão do BudgetTrackingGrid }
+        budgetVsActualVersion: { type: string, description: Versão do cálculo do previsto × realizado usado em cada mês }
+        status: { $ref: "#/components/schemas/CalculationStatus" }
+        message: { type: [string, "null"] }
+        budget: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BudgetBrief" }] }
+        months: { type: array, items: { $ref: "#/components/schemas/TrackingMonthResponse" }, description: Os meses do exercício, em ordem }
+        cumulativeMonths: { type: array, items: { type: string }, description: Meses que entram no acumulado (completos e com um fluxo) }
+        groups: { type: array, items: { $ref: "#/components/schemas/TrackingGroupResponse" } }
+        cumulative: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/TrackingCumulativeResponse" }] }
+        blocks: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/TrackingBlocksResponse" }] }
+        warnings: { type: array, items: { $ref: "#/components/schemas/CalculationWarning" } }
+    TrackingMonthResponse:
+      type: object
+      required: [month, status, inCumulative, cashFlows]
+      properties:
+        month: { type: string, description: AAAA-MM }
+        status: { $ref: "#/components/schemas/TrackingMonthStatus" }
+        partialUntil: { type: [string, "null"], format: date, description: Mês parcial (RF-13.10) com lançamentos até esta data; nulo = completo }
+        inCumulative: { type: boolean }
+        cashFlows: { type: array, items: { $ref: "#/components/schemas/UsedCashFlowResponse" } }
+        planned: { type: [number, "null"] }
+        actualInLines: { type: [number, "null"] }
+        actualExpense: { type: [number, "null"] }
+        difference: { type: [number, "null"] }
+        overrun: { type: [number, "null"], description: Soma do excesso das linhas acima do previsto }
+        linesAbove: { type: [integer, "null"] }
+        overrunPercentage: { type: [number, "null"] }
+        aboveLimit: { type: [boolean, "null"], description: Regra dos 20%; nula em mês parcial }
+    TrackingCellResponse:
+      type: object
+      required: [month]
+      properties:
+        month: { type: string }
+        planned: { type: [number, "null"] }
+        actual: { type: [number, "null"], description: Nulo em mês sem números }
+        difference: { type: [number, "null"] }
+        entries: { type: [integer, "null"] }
+    TrackingGroupResponse:
+      type: object
+      required: [lineId, code, description, cells, lines]
+      properties:
+        lineId: { type: string, format: uuid }
+        code: { type: string }
+        description: { type: string }
+        cells: { type: array, items: { $ref: "#/components/schemas/TrackingCellResponse" } }
+        cumulativePlanned: { type: [number, "null"] }
+        cumulativeActual: { type: [number, "null"] }
+        balance: { type: [number, "null"], description: Previsto acumulado − realizado acumulado }
+        lines: { type: array, items: { $ref: "#/components/schemas/TrackingLineResponse" } }
+    TrackingLineResponse:
+      type: object
+      required: [lineId, position, code, printedCode, description, page, effectiveProfile, cashFlowAccounts, cells, monthsAbove]
+      properties:
+        lineId: { type: string, format: uuid, description: Chave da linha (o código pode se repetir, RF-13.1) }
+        position: { type: integer }
+        code: { type: string, description: Rótulo de exibição (o código impresso quando não há rótulo) }
+        printedCode: { type: string }
+        description: { type: string }
+        account: { type: [string, "null"] }
+        mark: { type: [string, "null"], enum: [SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE, null] }
+        notes: { type: [string, "null"] }
+        page: { type: integer }
+        spendingProfile: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/SpendingProfile" }] }
+        spendingProfileStatus: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/SpendingProfileStatus" }] }
+        effectiveProfile: { $ref: "#/components/schemas/SpendingProfile" }
+        monthlyPlanned: { type: [number, "null"] }
+        cashFlowAccounts: { type: array, items: { type: string }, description: Contas do fluxo ligadas pelo de-para }
+        cells: { type: array, items: { $ref: "#/components/schemas/TrackingCellResponse" } }
+        cumulativePlanned: { type: [number, "null"] }
+        cumulativeActual: { type: [number, "null"] }
+        balance: { type: [number, "null"] }
+        monthsAbove: { type: integer }
+    TrackingCumulativeResponse:
+      type: object
+      required: [months]
+      properties:
+        months: { type: integer }
+        planned: { type: [number, "null"] }
+        actualInLines: { type: [number, "null"] }
+        actualExpense: { type: [number, "null"] }
+        balance: { type: [number, "null"] }
+    TrackingBlockCellResponse:
+      type: object
+      required: [month]
+      properties:
+        month: { type: string }
+        amount: { type: [number, "null"] }
+        entries: { type: [integer, "null"] }
+    TrackingBlockResponse:
+      type: object
+      required: [cells, cumulativeEntries]
+      properties:
+        cells: { type: array, items: { $ref: "#/components/schemas/TrackingBlockCellResponse" } }
+        cumulative: { type: [number, "null"] }
+        cumulativeEntries: { type: integer }
+    TrackingBlocksResponse:
+      type: object
+      required: [adjustments, toReallocate, withoutBudgetLine, separateApportionment]
+      properties:
+        adjustments: { $ref: "#/components/schemas/TrackingBlockResponse" }
+        toReallocate: { $ref: "#/components/schemas/TrackingBlockResponse" }
+        withoutBudgetLine: { $ref: "#/components/schemas/TrackingBlockResponse" }
+        separateApportionment: { $ref: "#/components/schemas/TrackingBlockResponse", description: Linhas de rateio à parte }
+    BalanceBridgeItemCode:
+      type: string
+      enum: [LINE_SAVINGS, PROVISIONS_RESERVED, SEPARATE_APPORTIONMENT, INCOME_VS_PLANNED, FUND_PLANNED_COLLECTION, FUND_EXPENSES, OUTSIDE_BUDGET, INTER_FUND_TRANSFERS, UNEXPLAINED]
+    BalanceBridgeResponse:
+      type: object
+      required: [calculationVersion, status, allFunds, from, to, items, months, warnings]
+      properties:
+        calculationVersion: { type: string }
+        status: { $ref: "#/components/schemas/CalculationStatus" }
+        message: { type: [string, "null"] }
+        fundId: { type: [string, "null"], format: uuid, description: Nulo com fund=all }
+        fundName: { type: [string, "null"] }
+        allFunds: { type: boolean }
+        from: { type: string, description: AAAA-MM }
+        to: { type: string, description: AAAA-MM }
+        budget: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BudgetBrief" }] }
+        openingBalance: { type: [number, "null"] }
+        openingSource: { type: [string, "null"], description: 'De onde veio o saldo inicial (ex.: "saldo final do extrato de 08/2026")' }
+        closingBalance: { type: [number, "null"] }
+        variation: { type: [number, "null"] }
+        closes: { type: [boolean, "null"], description: UNEXPLAINED igual a zero }
+        items: { type: array, items: { $ref: "#/components/schemas/BridgeItemResponse" } }
+        months: { type: array, items: { $ref: "#/components/schemas/BridgeMonthResponse" } }
+        warnings: { type: array, items: { $ref: "#/components/schemas/CalculationWarning" } }
+    BridgeItemResponse:
+      type: object
+      required: [code, label, amount, parts, lines]
+      properties:
+        code: { $ref: "#/components/schemas/BalanceBridgeItemCode" }
+        label: { type: string }
+        amount: { type: number }
+        percentageOfVariation: { type: [number, "null"] }
+        parts: { type: array, items: { $ref: "#/components/schemas/BridgePartResponse" }, description: 'Partes do item (ex.: CONDO_FEE, OTHER_INCOME, PLANNED; ADJUSTMENTS, TO_REALLOCATE, WITHOUT_BUDGET_LINE; RECEIVED, SENT)' }
+        lines: { type: array, items: { $ref: "#/components/schemas/BridgeLineResponse" }, description: Linhas da PO que compõem o item }
+    BridgePartResponse:
+      type: object
+      required: [code, label, amount]
+      properties:
+        code: { type: string }
+        label: { type: string }
+        amount: { type: number }
+    BridgeLineResponse:
+      type: object
+      required: [lineId, code, description, effectiveProfile, amount]
+      properties:
+        lineId: { type: string, format: uuid }
+        code: { type: string }
+        description: { type: string }
+        effectiveProfile: { $ref: "#/components/schemas/SpendingProfile" }
+        amount: { type: number }
+    BridgeMonthResponse:
+      type: object
+      required: [month, status, inTotal, items]
+      properties:
+        month: { type: string }
+        status: { $ref: "#/components/schemas/TrackingMonthStatus" }
+        partialUntil: { type: [string, "null"], format: date }
+        inTotal: { type: boolean, description: Mês completo que entra no total da ponte }
+        openingBalance: { type: [number, "null"] }
+        closingBalance: { type: [number, "null"] }
+        variation: { type: [number, "null"] }
+        items: { type: array, items: { $ref: "#/components/schemas/BridgeMonthItemResponse" } }
+    BridgeMonthItemResponse:
+      type: object
+      required: [code, amount]
+      properties:
+        code: { $ref: "#/components/schemas/BalanceBridgeItemCode" }
+        amount: { type: number }
+    FundMovementsResponse:
+      type: object
+      required: [calculationVersion, from, to, months, funds, warnings]
+      properties:
+        calculationVersion: { type: string }
+        from: { type: string }
+        to: { type: string }
+        operatingFundId: { type: [string, "null"], format: uuid }
+        months: { type: array, items: { $ref: "#/components/schemas/FundMonthSummaryResponse" } }
+        funds: { type: array, items: { $ref: "#/components/schemas/FundMovementResponse" } }
+        warnings: { type: array, items: { $ref: "#/components/schemas/CalculationWarning" } }
+    FundMonthSummaryResponse:
+      type: object
+      required: [month, status, cashFlows, funds]
+      properties:
+        month: { type: string }
+        status: { $ref: "#/components/schemas/TrackingMonthStatus" }
+        partialUntil: { type: [string, "null"], format: date }
+        cashFlows: { type: array, items: { $ref: "#/components/schemas/UsedCashFlowResponse" } }
+        funds: { type: integer, description: Fundos presentes no mês }
+        totalClosingBalance: { type: [number, "null"] }
+    FundMovementResponse:
+      type: object
+      required: [fundId, name, operatingFund, months]
+      properties:
+        fundId: { type: string, format: uuid }
+        name: { type: string }
+        operatingFund: { type: boolean }
+        budgetLineId: { type: [string, "null"], format: uuid, description: Linha 1.9 ligada ao fundo }
+        budgetLineCode: { type: [string, "null"] }
+        months: { type: array, items: { $ref: "#/components/schemas/FundMonthMovementResponse" } }
+    FundMonthMovementResponse:
+      type: object
+      required: [month, present, entries]
+      properties:
+        month: { type: string }
+        present: { type: boolean, description: O fundo aparece no fluxo do mês }
+        openingBalance: { type: [number, "null"] }
+        condoFee: { type: [number, "null"], description: Créditos de recebimento de cota }
+        otherIncome: { type: [number, "null"] }
+        transfersIn: { type: [number, "null"] }
+        otherCredits: { type: [number, "null"], description: Créditos sem classificação (aviso UNCLASSIFIED_CREDITS) }
+        credits: { type: [number, "null"] }
+        expenses: { type: [number, "null"] }
+        transfersOut: { type: [number, "null"] }
+        otherDebits: { type: [number, "null"] }
+        debits: { type: [number, "null"] }
+        closingBalance: { type: [number, "null"], description: Saldo final impresso }
+        printedCredits: { type: [number, "null"] }
+        printedDebits: { type: [number, "null"] }
+        calculatedClosingBalance: { type: [number, "null"] }
+        balanceMatches: { type: [boolean, "null"] }
+        planned: { type: [number, "null"], description: Previsto da linha 1.9 ligada (fundo ordinário = previsto do mês) }
+        collected: { type: [number, "null"] }
+        entries: { type: integer }
+    SpendingProfilesResponse:
+      type: object
+      required: [budgetId, version, confirmed, suggested, lines]
+      properties:
+        budgetId: { type: string, format: uuid }
+        version: { type: [integer, "null"], description: Versão da PO }
+        confirmed: { type: integer }
+        suggested: { type: integer }
+        lines: { type: array, items: { $ref: "#/components/schemas/SpendingProfileLineResponse" } }
+    SpendingProfileLineResponse:
+      type: object
+      required: [lineId, position, code, printedCode, description, budgeted, profile, status, effectiveProfile, suggestedProfile]
+      properties:
+        lineId: { type: string, format: uuid }
+        position: { type: integer }
+        groupCode: { type: [string, "null"] }
+        code: { type: string }
+        printedCode: { type: string }
+        description: { type: string }
+        account: { type: [string, "null"] }
+        mark: { type: [string, "null"], enum: [SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE, null] }
+        notes: { type: [string, "null"] }
+        budgeted: { type: number }
+        profile: { $ref: "#/components/schemas/SpendingProfile" }
+        status: { $ref: "#/components/schemas/SpendingProfileStatus" }
+        effectiveProfile: { $ref: "#/components/schemas/SpendingProfile" }
+        suggestedProfile: { $ref: "#/components/schemas/SpendingProfile" }
+        suggestionReason: { type: [string, "null"] }
+        reason: { type: [string, "null"] }
+        changedBy: { type: [string, "null"] }
+        changedAt: { type: [string, "null"], format: date-time }
+    SpendingProfileBatchRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [lineId]
+            properties:
+              lineId: { type: string, format: uuid }
+              profile: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/SpendingProfile" }], description: Nulo = confirma a sugestão }
+        reason: { type: [string, "null"] }
+    SpendingProfileEventResponse:
+      type: object
+      required: [id, lineId, action, username, occurredAt, newProfile, newStatus]
+      properties:
+        id: { type: string, format: uuid }
+        lineId: { type: string, format: uuid }
+        lineCode: { type: [string, "null"] }
+        lineDescription: { type: [string, "null"] }
+        action: { $ref: "#/components/schemas/SpendingProfileStatus" }
+        username: { type: string }
+        occurredAt: { type: string, format: date-time }
+        previousProfile: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/SpendingProfile" }] }
+        previousStatus: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/SpendingProfileStatus" }] }
+        newProfile: { $ref: "#/components/schemas/SpendingProfile" }
+        newStatus: { $ref: "#/components/schemas/SpendingProfileStatus" }
+        reason: { type: [string, "null"] }
+    PartialMonthResponse:
+      type: object
+      required: [fileId, name, partial, automatic, automaticallyPartial]
+      properties:
+        fileId: { type: string, format: uuid }
+        name: { type: string }
+        periodStart: { type: [string, "null"], format: date }
+        periodEnd: { type: [string, "null"], format: date }
+        uploadedAt: { type: [string, "null"], format: date-time }
+        uploadedBy: { type: [string, "null"] }
+        partial: { type: boolean, description: Situação efetiva }
+        automatic: { type: boolean, description: Sem marca manual (vale a regra automática) }
+        automaticallyPartial: { type: boolean, description: O que a regra automática diria }
+        partialUntil: { type: [string, "null"], format: date }
+        reason: { type: [string, "null"] }
+        changedBy: { type: [string, "null"] }
+        changedAt: { type: [string, "null"], format: date-time }
+        supersededById: { type: [string, "null"], format: uuid, description: Extrato completo que substituiu este parcial }
+    PartialMonthRequest:
+      type: object
+      properties:
+        partial: { type: [boolean, "null"], description: true = parcial; false = completo; nulo = volta à regra automática }
+        until: { type: [string, "null"], format: date, description: Com partial = true, último dia com lançamentos (no período do extrato); nulo = data do envio }
+        reason: { type: [string, "null"] }
+    PartialMonthEventResponse:
+      type: object
+      required: [id, fileId, action, previousPartial, newPartial, username, occurredAt]
+      properties:
+        id: { type: string, format: uuid }
+        fileId: { type: string, format: uuid }
+        action: { type: string, enum: [MARKED_PARTIAL, MARKED_COMPLETE, AUTOMATIC, SUPERSEDED] }
+        previousPartial: { type: boolean }
+        newPartial: { type: boolean }
+        partialUntil: { type: [string, "null"], format: date }
+        supersededById: { type: [string, "null"], format: uuid }
+        username: { type: string }
+        occurredAt: { type: string, format: date-time }
+        reason: { type: [string, "null"] }

@@ -166,9 +166,9 @@ public class BudgetQueryService {
             assessment.discrepancies().forEach(t -> warnings.add(new BudgetWarningResponse(BudgetWarningCode.DISCREPANCY,
                     "PO lida com divergência: " + t + ". A PO não é usada no previsto × realizado até a confirmação.")));
         }
-        repeated.stream().filter(r -> !r.resolved()).forEach(r -> warnings.add(new BudgetWarningResponse(BudgetWarningCode.REPEATED_CODE,
-                "Código " + r.printedCode() + " impresso " + r.lines().size()
-                        + " vezes: informe um código distinto na confirmação")));
+        // RF-13.2: informational only; the confirmation is never rejected for a repeated item number
+        structure.repeatedItemWarnings().forEach(t -> warnings.add(new BudgetWarningResponse(
+                BudgetWarningCode.REPEATED_CODE, t)));
         return warnings;
     }
 

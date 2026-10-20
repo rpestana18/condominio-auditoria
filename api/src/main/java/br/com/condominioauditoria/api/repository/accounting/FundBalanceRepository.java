@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 public interface FundBalanceRepository extends JpaRepository<FundBalance, UUID> {
     List<FundBalance> findByFileId(UUID fileId);
 
+    List<FundBalance> findByFileIdIn(java.util.Collection<UUID> fileIds);
+
     @Modifying
     @Query("delete from FundBalance b where b.fileId = :fileId")
     void deleteByFileId(UUID fileId);

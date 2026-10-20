@@ -16,6 +16,7 @@ import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.Enrichme
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.LedgerEntryData;
 import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.TotalsCheckData;
 import br.com.condominioauditoria.api.model.accounting.Fund;
+import br.com.condominioauditoria.api.model.accounting.FundBalance;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
 import br.com.condominioauditoria.api.model.accounting.TotalsCheck;
 import br.com.condominioauditoria.api.model.audit.Finding;
@@ -33,11 +34,14 @@ import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.model.budget.BudgetLineItem;
 import br.com.condominioauditoria.api.model.budget.Reallocation;
 import br.com.condominioauditoria.api.model.budget.ReallocationEvent;
+import br.com.condominioauditoria.api.model.budget.SpendingProfileEvent;
 import br.com.condominioauditoria.api.model.condominium.Condominium;
 import br.com.condominioauditoria.api.model.enums.BudgetStatus;
 import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
+import br.com.condominioauditoria.api.model.file.PartialMonthEvent;
 import br.com.condominioauditoria.api.model.file.SourceFile;
+import br.com.condominioauditoria.api.repository.accounting.FundBalanceRepository;
 import br.com.condominioauditoria.api.repository.accounting.FundRepository;
 import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepository;
 import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
@@ -56,12 +60,16 @@ import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.budget.ReallocationEventRepository;
 import br.com.condominioauditoria.api.repository.budget.ReallocationRepository;
+import br.com.condominioauditoria.api.repository.budget.SpendingProfileEventRepository;
+import br.com.condominioauditoria.api.repository.file.PartialMonthEventRepository;
 import br.com.condominioauditoria.api.repository.condominium.CondominiumRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.service.audit.BudgetFindingRecalculationService;
 import br.com.condominioauditoria.api.service.audit.FindingSyncService;
 import br.com.condominioauditoria.api.service.audit.rule.MonthlyOverrunRule;
 import br.com.condominioauditoria.api.service.audit.rule.ReserveFundCapRule;
+import br.com.condominioauditoria.api.service.accounting.FundMovementService;
+import br.com.condominioauditoria.api.service.file.PartialMonthService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -103,6 +111,9 @@ public final class BudgetScenario {
     public final List<BudgetItem> budgetItems = new ArrayList<>();
     public final List<BudgetLineItem> lineItems = new ArrayList<>();
     public final List<BudgetItemEvent> budgetItemEvents = new ArrayList<>();
+    public final List<SpendingProfileEvent> spendingProfileEvents = new ArrayList<>();
+    public final List<FundBalance> fundBalances = new ArrayList<>();
+    public final List<PartialMonthEvent> partialMonthEvents = new ArrayList<>();
     /** Changes published by the services; {@link #afterCommit()} plays the after-commit trigger. */
     public final List<Object> published = new ArrayList<>();
 
@@ -123,6 +134,11 @@ public final class BudgetScenario {
     public final BudgetFindingRecalculationService recalculation;
     public final FindingSyncService findingSync;
     public final BudgetFundLinkService fundLinkService;
+    public final SpendingProfileService spendingProfiles;
+    public final BudgetTrackingService tracking;
+    public final FundMovementService fundMovements;
+    public final BalanceBridgeService bridge;
+    public final PartialMonthService partialMonths;
     private final BudgetImportService budgetImport;
 
     public BudgetScenario() {
@@ -280,8 +296,17 @@ public final class BudgetScenario {
                 .filter(e -> i.getArgument(0).equals(e.getBudgetId())).toList());
         budgetItemService = new BudgetItemService(condominiums, budgetRepo, lineRepo, itemRepo, lineItemRepo,
                 itemEventRepo);
+        SpendingProfileEventRepository profileEventRepo = mock(SpendingProfileEventRepository.class);
+        when(profileEventRepo.save(any())).thenAnswer(i -> {
+            spendingProfileEvents.add(i.getArgument(0));
+            return i.getArgument(0);
+        });
+        when(profileEventRepo.findByBudgetIdOrderByOccurredAtAscLineCodeAsc(any())).thenAnswer(i -> spendingProfileEvents
+                .stream().filter(e -> e.getBudgetId().equals(i.getArgument(0))).toList());
+        spendingProfiles = new SpendingProfileService(budgetRepo, lineRepo, profileEventRepo);
         confirmation = new BudgetConfirmationService(condominiums, budgetRepo, lineRepo, fundLinkRepo, eventRepo,
-                fileRepo, fundRepo, query, budgetReserve, findingSync, budgetItemService, published::add);
+                fileRepo, fundRepo, query, budgetReserve, findingSync, budgetItemService, spendingProfiles,
+                published::add);
         budgetImport = new BudgetImportService(budgetRepo, lineRepo, new BudgetProperties(new BigDecimal("0.01")));
 
         mappingRepo = mock(AccountMappingRepository.class);
@@ -356,6 +381,28 @@ public final class BudgetScenario {
         fundLinkService = new BudgetFundLinkService(condominiums, budgetRepo, lineRepo, fundLinkRepo, fundRepo,
                 eventRepo,
                 query, published::add);
+
+        tracking = new BudgetTrackingService(condominiums, budgetVsActual, spendingProfiles);
+        FundBalanceRepository balanceRepo = mock(FundBalanceRepository.class);
+        when(balanceRepo.findByFileIdIn(any())).thenAnswer(i -> fundBalances.stream()
+                .filter(b -> i.<Collection<UUID>>getArgument(0).contains(b.getFileId())).toList());
+        fundMovements = new FundMovementService(condominiums, fundRepo, balanceRepo, entryRepo, budgetVsActual);
+        bridge = new BalanceBridgeService(condominiums, budgetVsActual, tracking, fundMovements);
+        when(fileRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(fileRepo.findByCondominiumIdAndIdIn(any(), any())).thenAnswer(i -> files.values().stream()
+                .filter(a -> a.getCondominiumId().equals(i.getArgument(0))
+                        && i.<Collection<UUID>>getArgument(1).contains(a.getId())).toList());
+        PartialMonthEventRepository partialEventRepo = mock(PartialMonthEventRepository.class);
+        when(partialEventRepo.save(any())).thenAnswer(i -> {
+            partialMonthEvents.add(i.getArgument(0));
+            return i.getArgument(0);
+        });
+        when(partialEventRepo.findByFileIdOrderByOccurredAt(any())).thenAnswer(i -> partialMonthEvents.stream()
+                .filter(e -> e.getFileId().equals(i.getArgument(0))).toList());
+        when(partialEventRepo.existsByFileIdAndSupersededById(any(), any())).thenAnswer(i -> partialMonthEvents.stream()
+                .anyMatch(e -> e.getFileId().equals(i.getArgument(0))
+                        && i.getArgument(1).equals(e.getSupersededById())));
+        partialMonths = new PartialMonthService(fileRepo, partialEventRepo, budgetVsActual, published::add);
 
         minutes = file(FileCategory.MINUTES, "ata-ago-2026-05.pdf");
     }

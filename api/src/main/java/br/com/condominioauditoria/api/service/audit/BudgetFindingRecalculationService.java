@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
 /**
  * Recalculates a condominium's budget findings after each change (ADR 0004, Decision 5; RF-03.1.12): for each month of
  * a confirmed budget (fiscal year and extended months, RF-11.3), uses the same calculation as the screen and saves by
- * the unique key. A month without numbers (no cash flow, two cash flows) changes no finding. Called by
+ * the unique key. A month without numbers (no cash flow, two cash flows) or partial (RF-13.10) changes no finding. Called by
  * {@link BudgetFindingRecalculationListener} after the commit; the caller opens the transaction.
  */
 @Service
@@ -59,7 +59,12 @@ public class BudgetFindingRecalculationService {
                 .flatMap(java.util.Optional::stream)
                 .forEach(v -> months.addAll(BudgetVsActualCalculator.months(v.start(), v.end())));
         Map<YearMonth, SyncResult> result = new LinkedHashMap<>();
+        // RF-13.10: a partial month creates no finding and changes none (as a month with two cash flows)
+        Set<YearMonth> partial = query.partialMonths(condominiumId);
         for (YearMonth month : months) {
+            if (partial.contains(month)) {
+                continue;
+            }
             MonthFindings findings = MonthFindings.assess(month, query.calculate(condominiumId, month.toString(),
                     null));
             if (findings.rules().isEmpty()) {

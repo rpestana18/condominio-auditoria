@@ -49,7 +49,8 @@ class ProcessingResultServiceBudgetTest {
     private final BudgetLineRepository lines = mock(BudgetLineRepository.class);
     private final ProcessingResultService service = new ProcessingResultService(files, mock(FundRepository.class),
             entries, balances, totalsChecks,
-            new BudgetImportService(budgets, lines, new BudgetProperties(new BigDecimal("0.01"))), event -> { });
+            new BudgetImportService(budgets, lines, new BudgetProperties(new BigDecimal("0.01"))), event -> { },
+            mock(PartialMonthService.class));
 
     private final List<Budget> saved = new ArrayList<>();
     private SourceFile file;

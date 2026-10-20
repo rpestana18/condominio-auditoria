@@ -1,7 +1,7 @@
 import type { BalanceBridge, BalanceBridgeItemCode, CalculationWarning } from "../../api/types";
 import { formatDate, formatDifference, formatMoneyOrDash, formatPercentage } from "../../format";
 import { MappingWarningNote } from "../MappingWarningNote";
-import { bridgePeriodText, partialMonthText } from "./bridgeTexts";
+import { bridgePeriodText, hasPercentage, partialMonthText, percentagesNote } from "./bridgeTexts";
 
 interface Props {
   bridge: BalanceBridge;
@@ -18,6 +18,7 @@ interface Props {
  */
 export function BridgeSummary({ bridge, selected, onSelect, mappingWarning }: Props) {
   const partial = partialMonthText(bridge);
+  const percentages = percentagesNote(bridge);
   return (
     <section className="block">
       <div className="block-title">
@@ -65,7 +66,15 @@ export function BridgeSummary({ bridge, selected, onSelect, mappingWarning }: Pr
                   {item.code === "LINE_SAVINGS" && mappingWarning && <MappingWarningNote warning={mappingWarning} />}
                 </td>
                 <td className="number">{formatDifference(item.amount)}</td>
-                <td className="number">{formatPercentage(item.percentageOfVariation)}</td>
+                <td className="number">
+                  {hasPercentage(item.code) ? (
+                    formatPercentage(item.percentageOfVariation)
+                  ) : (
+                    <span className="muted" title="Sem percentual da variação">
+                      —
+                    </span>
+                  )}
+                </td>
               </tr>
             );
           })}
@@ -80,6 +89,7 @@ export function BridgeSummary({ bridge, selected, onSelect, mappingWarning }: Pr
           </tr>
         </tfoot>
       </table>
+      {percentages && <p className="muted">{percentages}</p>}
       <p className="muted">Clique em uma parcela para ver as partes, as linhas da PO e os lançamentos.</p>
     </section>
   );

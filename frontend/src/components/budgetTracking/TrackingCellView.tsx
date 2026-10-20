@@ -23,7 +23,10 @@ function highlightClass(difference: number | null | undefined, profile: Spending
   return "";
 }
 
-/** One month of one line: actual and difference to the month's planned. A click opens the entries (RF-03.1.12). */
+/**
+ * One month of one line: actual and difference to the month's planned. A click opens the entries (RF-03.1.12).
+ * In the month in progress (Q50) the API sends no difference: only the actual up to the date, without highlight.
+ */
 export function TrackingCellView({ cell, profile, partial, emptyText, onOpen }: Props) {
   if (cell?.actual == null) {
     return (
@@ -39,7 +42,11 @@ export function TrackingCellView({ cell, profile, partial, emptyText, onOpen }: 
       <button
         className="cell-button"
         onClick={onOpen}
-        title={`Previsto ${formatMoneyOrDash(cell.planned)} · ${cell.entries ?? 0} lançamento(s)${partial ? " · mês parcial" : ""}`}
+        title={
+          partial
+            ? `${cell.entries ?? 0} lançamento(s) · mês em andamento: só o realizado até a data`
+            : `Previsto ${formatMoneyOrDash(cell.planned)} · ${cell.entries ?? 0} lançamento(s)`
+        }
       >
         <span>{formatMoney(cell.actual)}</span>
         {withDifference && <small>{formatDifference(cell.difference!)}</small>}

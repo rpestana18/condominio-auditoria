@@ -3,7 +3,7 @@ import { useBalanceBridge } from "../api/budgetTrackingQueries";
 import type { Dashboard } from "../api/types";
 import { useSession } from "../context";
 import { formatDate, formatDifference, formatPercentage } from "../format";
-import { bridgePeriodText, partialMonthText } from "./balanceBridge/bridgeTexts";
+import { bridgePeriodText, hasPercentage, partialMonthText } from "./balanceBridge/bridgeTexts";
 
 /**
  * Summary of the balance origin on the home screen (RF-13.7), next to "Saldo acumulado": the bridge of the fiscal year
@@ -32,7 +32,8 @@ export function BalanceOriginCard({ dashboard }: { dashboard: Dashboard }) {
           <li key={item.code} className={item.code === "UNEXPLAINED" && bridge.closes === false ? "bridge-unexplained" : undefined}>
             <span>{item.label}</span>
             <span className="number">
-              {formatDifference(item.amount)} <small className="muted">{formatPercentage(item.percentageOfVariation)}</small>
+              {formatDifference(item.amount)}
+              {hasPercentage(item.code) && <small className="muted"> {formatPercentage(item.percentageOfVariation)}</small>}
             </span>
           </li>
         ))}

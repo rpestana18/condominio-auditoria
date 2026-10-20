@@ -1250,6 +1250,8 @@ export interface paths {
          *     previsto × realizado (budgetVsActualVersion) mês a mês; nada é gravado. Os números de cada mês são exatamente
          *     os do previsto × realizado do mês. O acumulado e o saldo da linha somam só os meses completos com fluxo
          *     (inCumulative); mês parcial (RF-13.10) aparece com partialUntil e fica fora do acumulado e da regra dos 20%.
+         *     Mês em andamento (Q50): só o realizado; difference das células, dos grupos e do mês, overrun e linesAbove vêm
+         *     nulos até o mês fechar (o previsto do mês continua em planned).
          *     Avisos: PARTIAL_MONTH, MONTHS_WITHOUT_CASH_FLOW, TWO_CASH_FLOWS, PROFILE_NOT_CONFIRMED e NO_CONFIRMED_MAPPING
          *     (contas do fundo Condomínio sem de-para confirmado no acumulado, com as contas e o valor em "sem linha da PO";
          *     as contas também vêm em blocks.withoutBudgetLine.accounts).
@@ -1279,7 +1281,10 @@ export interface paths {
          *     UNEXPLAINED = variação − soma dos itens; diferente de zero gera o aviso BRIDGE_DOES_NOT_CLOSE. Cada mês tem a
          *     própria coluna (months). from/to são o período pedido (sem eles, o exercício inteiro); o total vai de
          *     effectiveFrom a effectiveTo, do saldo em openingDate ao saldo em closingDate (último dia do último mês
-         *     completo). O mês parcial vem à parte em partialMonth, fora do total. Outros avisos: MONTHS_WITHOUT_CASH_FLOW,
+         *     completo). O mês parcial vem à parte em partialMonth, fora do total, e na sua coluna de months só com entradas
+         *     (inflows), saídas (outflows), saldos e variação: os itens vêm com amount nulo até o mês fechar (Q50). Na ponte de
+         *     todos os fundos (fund=all, Q49) a receita é só a cota do fundo ordinário e os demais fundos ficam no item
+         *     APPORTIONMENT_FUNDS, sem percentual, com a lista por fundo em funds. Outros avisos: MONTHS_WITHOUT_CASH_FLOW,
          *     BALANCE_NOT_PRINTED, PARTIAL_MONTH, PROFILE_NOT_CONFIRMED e NO_CONFIRMED_MAPPING (contas do fundo Condomínio
          *     sem de-para confirmado nos meses do total, com as contas e o valor que ficam em "Fora da PO"; só quando a
          *     ponte inclui o fundo Condomínio). Sem fundo ordinário: status NO_OPERATING_FUND e números nulos.
@@ -3048,9 +3053,11 @@ export interface components {
             planned?: number | null;
             actualInLines?: number | null;
             actualExpense?: number | null;
+            /** @description Nulo também no mês em andamento (parcial, Q50) */
             difference?: number | null;
-            /** @description Soma do excesso das linhas acima do previsto */
+            /** @description Soma do excesso das linhas acima do previsto; nulo no mês em andamento (Q50) */
             overrun?: number | null;
+            /** @description Nulo no mês em andamento (Q50) */
             linesAbove?: number | null;
             overrunPercentage?: number | null;
             /** @description Regra dos 20%; nula em mês parcial */
@@ -3061,6 +3068,7 @@ export interface components {
             planned?: number | null;
             /** @description Nulo em mês sem números */
             actual?: number | null;
+            /** @description actual − planned; nulo em mês sem números e no mês em andamento (parcial, Q50), que mostra só o realizado */
             difference?: number | null;
             entries?: number | null;
         };
@@ -3137,8 +3145,14 @@ export interface components {
             /** @description Linhas de rateio à parte */
             separateApportionment: components["schemas"]["TrackingBlockResponse"];
         };
-        /** @enum {string} */
-        BalanceBridgeItemCode: "LINE_SAVINGS" | "PROVISIONS_RESERVED" | "SEPARATE_APPORTIONMENT" | "INCOME_VS_PLANNED" | "FUND_PLANNED_COLLECTION" | "FUND_EXPENSES" | "OUTSIDE_BUDGET" | "INTER_FUND_TRANSFERS" | "UNEXPLAINED";
+        /**
+         * @description APPORTIONMENT_FUNDS (Q49) só na ponte de todos os fundos (fund=all), antes de UNEXPLAINED: créditos − débitos
+         *     dos fundos de rateio (todo fundo que não é o ordinário), sem as transferências marcadas, sem percentual. Nessa
+         *     ponte INCOME_VS_PLANNED usa só o fundo ordinário (rótulo "Cota ordinária acima ou abaixo do previsto") e
+         *     FUND_PLANNED_COLLECTION e FUND_EXPENSES não aparecem (continuam só na ponte de um fundo que não é o ordinário).
+         * @enum {string}
+         */
+        BalanceBridgeItemCode: "LINE_SAVINGS" | "PROVISIONS_RESERVED" | "SEPARATE_APPORTIONMENT" | "INCOME_VS_PLANNED" | "FUND_PLANNED_COLLECTION" | "FUND_EXPENSES" | "OUTSIDE_BUDGET" | "INTER_FUND_TRANSFERS" | "APPORTIONMENT_FUNDS" | "UNEXPLAINED";
         BalanceBridgeResponse: {
             calculationVersion: string;
             status: components["schemas"]["CalculationStatus"];
@@ -3195,16 +3209,34 @@ export interface components {
             closingBalance?: number | null;
             /** @description closingBalance − openingBalance do mês parcial */
             variation?: number | null;
+            /** @description Entradas: créditos dos lançamentos até partialUntil, transferências incluídas (Q50) */
+            inflows?: number | null;
+            /** @description Saídas: débitos dos lançamentos até partialUntil, transferências incluídas (Q50) */
+            outflows?: number | null;
         };
         BridgeItemResponse: {
             code: components["schemas"]["BalanceBridgeItemCode"];
             label: string;
             amount: number;
+            /** @description Nulo com variação zero e sempre em APPORTIONMENT_FUNDS (Q49): os percentuais não somam 100% */
             percentageOfVariation?: number | null;
-            /** @description Partes do item (ex.: CONDO_FEE, OTHER_INCOME, PLANNED; ADJUSTMENTS, TO_REALLOCATE, WITHOUT_BUDGET_LINE; RECEIVED, SENT) */
+            /** @description Partes do item (ex.: CONDO_FEE, OTHER_INCOME, PLANNED; ADJUSTMENTS, TO_REALLOCATE, WITHOUT_BUDGET_LINE; RECEIVED, SENT; INFLOWS, OUTFLOWS em APPORTIONMENT_FUNDS, com o sinal da ponte: saídas negativas) */
             parts: components["schemas"]["BridgePartResponse"][];
             /** @description Linhas da PO que compõem o item */
             lines: components["schemas"]["BridgeLineResponse"][];
+            /** @description Fundos que compõem APPORTIONMENT_FUNDS (maior valor primeiro); vazia nos outros itens (Q49) */
+            funds?: components["schemas"]["BridgeFundResponse"][];
+        };
+        BridgeFundResponse: {
+            /** Format: uuid */
+            fundId: string;
+            name: string;
+            /** @description Créditos do fundo no período */
+            inflows: number;
+            /** @description Débitos do fundo no período */
+            outflows: number;
+            /** @description inflows − outflows */
+            amount: number;
         };
         BridgePartResponse: {
             code: string;
@@ -3229,11 +3261,17 @@ export interface components {
             openingBalance?: number | null;
             closingBalance?: number | null;
             variation?: number | null;
+            /** @description No mês em andamento (partialUntil preenchido, Q50) os itens vêm com amount nulo ("—" na tela) */
             items: components["schemas"]["BridgeMonthItemResponse"][];
+            /** @description Entradas: créditos dos lançamentos do fundo (ou de todos os fundos) no mês, transferências incluídas; nulo sem números */
+            inflows?: number | null;
+            /** @description Saídas: débitos dos lançamentos do fundo (ou de todos os fundos) no mês, transferências incluídas; nulo sem números */
+            outflows?: number | null;
         };
         BridgeMonthItemResponse: {
             code: components["schemas"]["BalanceBridgeItemCode"];
-            amount: number;
+            /** @description Passa a aceitar nulo (Q50): nulo no mês em andamento */
+            amount: number | null;
         };
         FundMovementsResponse: {
             calculationVersion: string;

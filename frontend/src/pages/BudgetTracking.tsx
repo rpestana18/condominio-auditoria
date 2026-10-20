@@ -152,7 +152,7 @@ function Legend() {
     <p className="tracking-legend">
       <span className="legend-swatch cell-above" /> acima do previsto
       <span className="legend-swatch cell-below" /> abaixo do previsto
-      <span className="legend-swatch cell-partial" /> mês parcial (fora do acumulado)
+      <span className="legend-swatch cell-partial" /> mês em andamento (só o realizado até a data, fora do acumulado)
       <span className="muted">Linhas anuais ou esporádicas: o destaque fica no saldo do exercício.</span>
     </p>
   );

@@ -1,5 +1,5 @@
-import type { BridgeItem, BridgeLine } from "../../api/types";
-import { formatDifference } from "../../format";
+import type { BridgeFund, BridgeItem, BridgeLine } from "../../api/types";
+import { formatDifference, formatMoney } from "../../format";
 import { spendingProfileLabel } from "../budgetVsActual/labels";
 import { lineTarget, partTarget, type OpenBridgeEvidence } from "./bridgeEvidence";
 
@@ -55,7 +55,8 @@ export function BridgeItemDetail({ item, onOpenEvidence }: Props) {
           <LineList title="" lines={item.lines} onOpenEvidence={onOpenEvidence} />
         </details>
       )}
-      {item.parts.length === 0 && item.lines.length === 0 && <p className="muted">Sem partes nem linhas da PO nesta parcela.</p>}
+      {item.funds && item.funds.length > 0 && <FundList funds={item.funds} />}
+      {item.parts.length === 0 && item.lines.length === 0 && !item.funds?.length && <p className="muted">Sem partes nem linhas da PO nesta parcela.</p>}
     </section>
   );
 }
@@ -89,5 +90,39 @@ function LineList({ title, lines, onOpenEvidence }: { title: string; lines: Brid
         </table>
       )}
     </div>
+  );
+}
+
+/**
+ * Funds that make up "Fundos de rateio: entradas − saídas" (Q49), largest amount first, in a collapsed panel.
+ * Same numbers as the "Fundos" screen, without the transfers between funds (calculated by the API).
+ */
+function FundList({ funds }: { funds: BridgeFund[] }) {
+  // Ordering only: the amounts come from the API
+  const sorted = [...funds].sort((a, b) => b.amount - a.amount);
+  return (
+    <details className="trail">
+      <summary>Os {funds.length} fundos de rateio</summary>
+      <table className="table compact">
+        <thead>
+          <tr>
+            <th>Fundo</th>
+            <th className="number">Entradas</th>
+            <th className="number">Saídas</th>
+            <th className="number">Entradas − saídas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((f) => (
+            <tr key={f.fundId}>
+              <td>{f.name}</td>
+              <td className="number">{formatMoney(f.inflows)}</td>
+              <td className="number">{formatMoney(f.outflows)}</td>
+              <td className="number">{formatDifference(f.amount)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
   );
 }

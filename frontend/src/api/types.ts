@@ -161,6 +161,7 @@ export type BridgeItem = Schemas["BridgeItemResponse"];
 export type BridgePart = Schemas["BridgePartResponse"];
 export type BridgeLine = Schemas["BridgeLineResponse"];
 export type BridgeMonth = Schemas["BridgeMonthResponse"];
+export type BridgeFund = Schemas["BridgeFundResponse"];
 export type FundMovements = Schemas["FundMovementsResponse"];
 export type FundMonthSummary = Schemas["FundMonthSummaryResponse"];
 export type FundMovement = Schemas["FundMovementResponse"];

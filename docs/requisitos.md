@@ -904,7 +904,7 @@ Nenhum achado novo: estouro de linha continua entrando só pela regra dos 20% (R
 | Q46 | ✔ Sim (usuário, 20/10/2026). Estouro do mês e acumulado lado a lado; para linhas anuais e "pela média", o destaque é o saldo do exercício (RF-13.4) | Usuário |
 | Q47 | ✔ Sim (usuário, 20/10/2026). A origem do saldo separa economia nas linhas, provisões, receita acima do previsto, fora da PO, transferências e saldo inicial do exercício (RF-13.6) | Usuário |
 | Q48 | ✔ Não precisa (usuário, 20/10/2026): "o arquivo de PO que compartilhei já é o final". O PDF enviado é a PO final e é a fonte da leitura; a planilha original não será enviada | Usuário |
-| P8 | Enviar o extrato consolidado de abril/2026, para o saldo inicial do exercício 2026/2027 (30/04/2026) na ponte do saldo (RF-13.6, RF-13.9) | Usuário |
+| P8 | ✔ Extrato de abril/2026 recebido em 20/10/2026 (`piloto-mio/fontes/extratos/fluxo-caixa-2026-04.pdf`, 19 páginas, imagem sem texto, layout Protest/LiveFacilities). Posição financeira em 30/04/2026: 16 fundos, total 135.666,64; CONDOMÍNIO 116.188,70; FUNDO DE RESERVA −1.497,99; OBRAS / REFORMAS / INFRA 32.352,15. É o saldo inicial do exercício 2026/2027 na ponte (RF-13.6). Em setembro o extrato tem 21 fundos: o conjunto de fundos muda de um mês para outro, e a tela "Fundos" (RF-13.5) mostra todos os que aparecem em algum mês | Usuário |
 | T* | Decisões de tecnologia (ver 03-tecnologias.md) | Usuário |
 
 ---

@@ -11,10 +11,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Funds that the management company leaves out of the Posição Financeira because nothing happened in them: the fund
- * has no entry at all, SALDO ANTERIOR 0,00 and TOTAIS 0,00 / 0,00. Only for these the closing balance 0,00 is certain
- * without the printed line, so only these get a Posição line 0,00 (with a notice in the FUND_CLOSING_BALANCE check). Any
- * other fund missing from the Posição stays an error to review.
+ * Funds that the management company leaves out of the Posição Financeira because they end where they started, at
+ * zero: SALDO ANTERIOR 0,00, TOTAIS 0,00 / 0,00 and the last printed balance 0,00 (no entry, or entries that cancel out,
+ * as a credit and its reversal). Only for these the closing balance 0,00 is certain without the printed line, so only
+ * these get a Posição line 0,00 (with a notice in the FUND_CLOSING_BALANCE check). Any other fund missing from the
+ * Posição stays an error to review.
  */
 public final class ZeroFundPositions {
 
@@ -26,7 +27,7 @@ public final class ZeroFundPositions {
         Set<String> listed = cashFlow.financialPosition().stream().map(FundPosition::fund).collect(Collectors.toSet());
         return cashFlow.sections().stream()
                 .filter(s -> !listed.contains(s.fund()))
-                .filter(ZeroFundPositions::nothingHappened)
+                .filter(ZeroFundPositions::endsAtZero)
                 .toList();
     }
 
@@ -43,9 +44,11 @@ public final class ZeroFundPositions {
                 List.copyOf(position), cashFlow.positionTotal());
     }
 
-    private static boolean nothingHappened(FundSection section) {
-        return section.entries().isEmpty()
-                && section.openingBalance().signum() == 0
+    private static boolean endsAtZero(FundSection section) {
+        BigDecimal lastBalance = section.entries().isEmpty() ? section.openingBalance()
+                : section.entries().getLast().balance();
+        return section.openingBalance().signum() == 0
+                && lastBalance.signum() == 0
                 && section.reportedCreditTotal().signum() == 0
                 && section.reportedDebitTotal().signum() == 0;
     }

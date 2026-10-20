@@ -6,6 +6,7 @@ import br.com.condominioauditoria.rag.model.TotalsCheck;
 import br.com.condominioauditoria.rag.model.cashflow.CashFlow;
 import br.com.condominioauditoria.rag.model.cashflow.LedgerEntry;
 import br.com.condominioauditoria.rag.service.calculator.CashFlowCheck;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
@@ -79,5 +80,35 @@ public class CashFlowParserTest {
                 .financialPosition(360)
                 .position(380, "CONDOMÍNIO", "1.000,00", "50,00", "0,00", "1.050,00")
                 .position(392, "TOTAL", "1.000,00", "50,00", "0,00", "1.050,00");
+    }
+
+    @Test
+    public void cancellingFundOutsidePositionIsReadAsPrinted() {
+        CashFlow cashFlow = parser.parse(withCancellingFundOutsidePosition().document());
+
+        assertThat(cashFlow.sections().get(1).entries()).extracting(LedgerEntry::credit)
+                .containsExactly(new BigDecimal("110.39"), new BigDecimal("-110.39"));
+        assertThat(cashFlow.sections().get(1).entries().get(1).balance()).isEqualByComparingTo("0.00");
+        assertThat(cashFlow.financialPosition()).extracting(p -> p.fund()).containsExactly("CONDOMÍNIO");
+        assertThat(CashFlowCheck.check(cashFlow)).allMatch(TotalsCheck::ok);
+    }
+
+    /**
+     * Fund OBRAS with SALDO ANTERIOR 0,00, a credit and its reversal in the credit column (as in the pilot's April) and
+     * TOTAIS 0,00 / 0,00, left out of the Posição Financeira.
+     */
+    public static SyntheticCashFlow withCancellingFundOutsidePosition() {
+        return new SyntheticCashFlow()
+                .fund(130, "CONDOMÍNIO", "1.000,00")
+                .entry(200, "07/04/2026", null, null, "RECIBOS ACUMULADOS", "50,00", "-", "1.050,00")
+                .totals(220, "50,00", "0,00")
+                .fund(260, "OBRAS", "0,00")
+                .entry(320, "30/04/2026", null, null, "RECIBOS ACUMULADOS", "110,39", "-", "110,39")
+                .entry(350, "30/04/2026", "1788. TRANSFERENCIA CONTABIL", null,
+                        "TRANSFERENCIA CONTABIL GRUPO OBRAS PARA OBRAS/REFORMAS/INFRA", "-110,39", "-", "0,00")
+                .totals(380, "0,00", "0,00")
+                .financialPosition(420)
+                .position(440, "CONDOMÍNIO", "1.000,00", "50,00", "0,00", "1.050,00")
+                .position(452, "TOTAL", "1.000,00", "50,00", "0,00", "1.050,00");
     }
 }

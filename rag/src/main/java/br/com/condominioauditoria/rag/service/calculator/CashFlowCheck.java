@@ -72,7 +72,7 @@ public final class CashFlowCheck {
 
     /**
      * Opening balance + credits − debits of each section = closing balance in Posição Financeira. A fund missing from
-     * the Posição is an error, except when nothing happened in it ({@link ZeroFundPositions}): then the check passes
+     * the Posição is an error, except when it starts and ends at zero ({@link ZeroFundPositions}): then the check passes
      * with a notice, because its closing balance is 0,00 for sure.
      */
     private static TotalsCheck closingBalanceByFund(CashFlow cashFlow, Map<String, FundPosition> position) {
@@ -83,8 +83,11 @@ public final class CashFlowCheck {
         for (FundSection section : cashFlow.sections()) {
             FundPosition p = position.get(section.fund());
             if (p == null && zeroFunds.contains(section.fund())) {
-                notices.add(section.fund() + " não aparece na Posição Financeira; sem lançamentos e com saldo anterior "
-                        + "0,00, o saldo final foi considerado 0,00");
+                notices.add(section.fund() + (section.entries().isEmpty()
+                        ? " não aparece na Posição Financeira; sem lançamentos e com saldo anterior 0,00: "
+                        : " não aparece na Posição Financeira; saldo anterior 0,00, entradas e saídas 0,00 e último "
+                                + "saldo 0,00: ")
+                        + "o saldo final foi considerado 0,00");
                 continue;
             }
             if (p == null) {

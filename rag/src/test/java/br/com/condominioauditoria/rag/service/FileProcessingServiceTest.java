@@ -44,6 +44,21 @@ public class FileProcessingServiceTest {
         assertThat(new MessageContract().write(r)).isNotEmpty();
     }
 
+    /** D2 with entries that cancel out (pilot's April): every check passes and the message has the 0,00 line. */
+    @Test
+    public void cancellingFundGetsPositionLineAndNotice() {
+        ProcessingResultMessage r = service.parse(file("TRIAL_BALANCE"),
+                CashFlowParserTest.withCancellingFundOutsidePosition().document());
+
+        assertThat(r.cashFlow().financialPosition()).extracting(FundPosition::fund)
+                .containsExactly("CONDOMÍNIO", "OBRAS");
+        assertThat(r.cashFlow().financialPosition().get(1).closingBalance()).isEqualByComparingTo("0.00");
+        assertThat(r.totalsChecks()).allMatch(TotalsCheck::ok);
+        assertThat(r.totalsChecks().get(2).detail()).contains("Aviso: OBRAS não aparece na Posição Financeira; "
+                + "saldo anterior 0,00, entradas e saídas 0,00 e último saldo 0,00");
+        assertThat(new MessageContract().write(r)).isNotEmpty();
+    }
+
     @Test
     public void scannedBudgetFailsWithReadableReason() {
         ProcessingResultMessage r = service.parse(file("PO"), scanned());

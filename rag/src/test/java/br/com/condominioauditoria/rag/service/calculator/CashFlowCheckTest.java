@@ -71,7 +71,7 @@ public class CashFlowCheckTest {
 
         assertThat(check.ok()).isTrue();
         assertThat(check.detail()).isEqualTo("2 fundos conferidos. Aviso: OBRAS não aparece na Posição Financeira; "
-                + "sem lançamentos e com saldo anterior 0,00, o saldo final foi considerado 0,00");
+                + "sem lançamentos e com saldo anterior 0,00: o saldo final foi considerado 0,00");
         assertThat(ZeroFundPositions.complete(cashFlow).financialPosition())
                 .extracting(FundPosition::fund, FundPosition::closingBalance)
                 .containsExactly(tuple("CONDOMÍNIO", new BigDecimal("120.00")),
@@ -79,11 +79,40 @@ public class CashFlowCheckTest {
         assertThat(CashFlowCheck.check(cashFlow)).allMatch(TotalsCheck::ok);
     }
 
-    /** A fund with entries stays an error even when they cancel out (credit 110,39 and its reversal −110,39). */
+    /** Entries that cancel out (credit 110,39 and its reversal −110,39, TOTAIS 0,00 / 0,00): passes with a notice. */
     @Test
-    public void fundWithEntriesOutsidePositionIsStillAnError() {
+    public void entriesThatCancelOutOutsidePositionPassWithNotice() {
         CashFlow cashFlow = withSecondFund(fund("OBRAS", "0.00",
                 List.of(entry("110.39", "0.00", "110.39"), entry("-110.39", "0.00", "0.00")), "0.00", "0.00"));
+
+        TotalsCheck check = closingBalance(cashFlow);
+
+        assertThat(check.ok()).isTrue();
+        assertThat(check.detail()).isEqualTo("2 fundos conferidos. Aviso: OBRAS não aparece na Posição Financeira; "
+                + "saldo anterior 0,00, entradas e saídas 0,00 e último saldo 0,00: o saldo final foi considerado 0,00");
+        assertThat(ZeroFundPositions.complete(cashFlow).financialPosition()).extracting(FundPosition::fund)
+                .containsExactly("CONDOMÍNIO", "OBRAS");
+        assertThat(CashFlowCheck.check(cashFlow)).allMatch(TotalsCheck::ok);
+    }
+
+    /** TOTAIS 0,00 / 0,00 but a last printed balance other than 0,00: not certain, stays an error. */
+    @Test
+    public void fundWithNonZeroLastBalanceOutsidePositionIsStillAnError() {
+        CashFlow cashFlow = withSecondFund(fund("OBRAS", "0.00",
+                List.of(entry("110.39", "0.00", "110.39"), entry("-110.39", "0.00", "5.00")), "0.00", "0.00"));
+
+        assertThat(closingBalance(cashFlow).ok()).isFalse();
+        assertThat(ZeroFundPositions.missingFunds(cashFlow)).isEmpty();
+    }
+
+    /**
+     * Credit and debit of the same amount end at 0,00, but TOTAIS 110,39 / 110,39 is not zero: the fund moved money,
+     * so its absence from the Posição stays an error.
+     */
+    @Test
+    public void fundWithNonZeroTotalsOutsidePositionIsStillAnError() {
+        CashFlow cashFlow = withSecondFund(fund("OBRAS", "0.00",
+                List.of(entry("110.39", "0.00", "110.39"), entry("0.00", "110.39", "0.00")), "110.39", "110.39"));
 
         TotalsCheck check = closingBalance(cashFlow);
 

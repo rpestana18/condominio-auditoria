@@ -161,7 +161,8 @@ public class BudgetVsActualQueryService {
                 .collect(Collectors.toMap(BudgetFundLink::getBudgetLineId, BudgetFundLink::getFundId));
         Map<UUID, String> names = funds.findByCondominiumId(condominiumId).stream()
                 .collect(Collectors.toMap(Fund::getId, Fund::getName));
-        List<CashFlowFile> cashFlows = cashFlows(condominiumId);
+        PartialCashFlows selection = selectCashFlows(condominiumId);
+        List<CashFlowFile> cashFlows = selection.effective();
 
         LocalDate start;
         LocalDate end;
@@ -193,7 +194,8 @@ public class BudgetVsActualQueryService {
                 .stream().map(Reallocation::forCalculation).toList();
         return new Input(budget, fileName, readChecks,
                 mappings.findByBudgetIdOrderByAccountCode(budget.getId()), fundByLine, names,
-                condominium.getOperatingFundId(), cashFlows, ofPeriod, active, limit, budgetWarnings, period);
+                condominium.getOperatingFundId(), cashFlows, ofPeriod, active, limit, budgetWarnings, period,
+                selection.partialUntil());
     }
 
     /**

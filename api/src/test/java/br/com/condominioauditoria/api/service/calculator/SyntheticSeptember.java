@@ -127,7 +127,13 @@ final class SyntheticSeptember {
     BudgetVsActualCalculator.Input base() {
         return new BudgetVsActualCalculator.Input(budget, "po.pdf", lines, mappings, Map.of(reserveLine.getId(),
                 RESERVE), Map.of(OPERATING, "CONDOMÍNIO", RESERVE, "FUNDO DE RESERVA"), OPERATING, cashFlows, entries,
-                List.of(), new BigDecimal("20.0000"), List.of(), new Cumulative());
+                List.of(), new BigDecimal("20.0000"), List.of(), new Cumulative(), partialUntil);
+    }
+
+    /** The budget vs. actual of the period, with the partial cash flows of {@link #partialUntil}. */
+    br.com.condominioauditoria.api.dto.response.budget.BudgetVsActualResponse calculate(
+            BudgetVsActualCalculator.Period period) {
+        return BudgetVsActualCalculator.calculate(BudgetTrackingGrid.withPeriod(base(), period)).result();
     }
 
     BudgetTrackingGrid.Grid grid(Map<UUID, LineProfile> profiles) {

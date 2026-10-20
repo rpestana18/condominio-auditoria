@@ -77,7 +77,7 @@ public final class BudgetVsActualCalculator {
      * Version of this calculation's rules; changes whenever any rule above changes. Goes in every result. Version 2:
      * the reallocation matches the entry by the stable key (fingerprint), not by the id.
      */
-    public static final String VERSION = "2";
+    public static final String VERSION = "3";
 
     public static final String TARGET_ADJUSTMENTS = "ADJUSTMENTS";
     public static final String TARGET_TO_REALLOCATE = "TO_REALLOCATE";
@@ -137,11 +137,22 @@ public final class BudgetVsActualCalculator {
      * @param fundByLine 1.9.x line → cash flow fund linked by the Admin
      * @param overrunLimitPercentage parameter of Conv. 16.2 in force in the period (null: rule not assessed)
      * @param budgetWarnings warnings of the budget itself (rounding, confirmed with a mismatch), repeated in the result
+     * @param partialUntil partial cash flows (RF-13.10): file id → last day with entries. A partial month keeps its own
+     *     numbers but stays out of the cumulative and of the 20% rule
      */
     public record Input(Budget budget, String budgetFileName, List<BudgetLine> lines, List<AccountMapping> mappings,
             Map<UUID, UUID> fundByLine, Map<UUID, String> fundNames, UUID operatingFundId, List<CashFlowFile> cashFlows,
             List<LedgerEntry> entries, List<ReallocatedEntry> reallocations, BigDecimal overrunLimitPercentage,
-            List<BudgetVsActualWarningResponse> budgetWarnings, Period period) {
+            List<BudgetVsActualWarningResponse> budgetWarnings, Period period, Map<UUID, LocalDate> partialUntil) {
+
+        /** Input without partial cash flows. */
+        public Input(Budget budget, String budgetFileName, List<BudgetLine> lines, List<AccountMapping> mappings,
+                Map<UUID, UUID> fundByLine, Map<UUID, String> fundNames, UUID operatingFundId,
+                List<CashFlowFile> cashFlows, List<LedgerEntry> entries, List<ReallocatedEntry> reallocations,
+                BigDecimal overrunLimitPercentage, List<BudgetVsActualWarningResponse> budgetWarnings, Period period) {
+            this(budget, budgetFileName, lines, mappings, fundByLine, fundNames, operatingFundId, cashFlows, entries,
+                    reallocations, overrunLimitPercentage, budgetWarnings, period, Map.of());
+        }
 
         public Input {
             Objects.requireNonNull(period, "period");
@@ -153,6 +164,7 @@ public final class BudgetVsActualCalculator {
             entries = entries == null ? List.of() : List.copyOf(entries);
             reallocations = reallocations == null ? List.of() : List.copyOf(reallocations);
             budgetWarnings = budgetWarnings == null ? List.of() : List.copyOf(budgetWarnings);
+            partialUntil = partialUntil == null ? Map.of() : Map.copyOf(partialUntil);
         }
     }
 
@@ -255,10 +267,18 @@ public final class BudgetVsActualCalculator {
                         base.input);
             }
             Tally ap = base.tally(Map.of(m.month(), ofMonth.getFirst()));
+            LocalDate partialUntil = e.partialUntil().get(ofMonth.getFirst().fileId());
             FiscalYearMonthResponse month = base.monthSummary(m.month(), ofMonth.getFirst(),
                     ap).withExtended(extendedMonth);
-            return base.build(period, budgetBrief, ap, 1, List.of(month), List.of(m.month().toString()), List.of(),
-                    List.of(), true);
+            Context out = base;
+            if (partialUntil != null) {
+                // Partial month (RF-13.10): its numbers, without the 20% rule
+                out = new Context(withWarning(base.input, partialWarning(List.of(m.month()),
+                        Map.of(m.month(), partialUntil), false)));
+                month = month.withPartialUntil(partialUntil);
+            }
+            return out.build(period, budgetBrief, ap, 1, List.of(month), List.of(m.month().toString()), List.of(),
+                    List.of(), partialUntil == null);
         }
 
         // Fiscal year cumulative (RF-03.1.10): only the months with a cash flow, on both sides
@@ -272,9 +292,16 @@ public final class BudgetVsActualCalculator {
         List<String> summed = new ArrayList<>();
         List<YearMonth> missing = new ArrayList<>();
         List<String> duplicates = new ArrayList<>();
+        Map<YearMonth, LocalDate> partial = new TreeMap<>();
         for (YearMonth month : fiscalYear) {
             List<CashFlowFile> f = byMonth.get(month);
-            if (f.size() == 1) {
+            LocalDate partialUntil = f.size() == 1 ? e.partialUntil().get(f.getFirst().fileId()) : null;
+            if (partialUntil != null) {
+                // Partial month (RF-13.10): shown with its numbers, outside the cumulative and the 20% rule
+                partial.put(month, partialUntil);
+                months.add(base.monthSummary(month, f.getFirst(), base.tally(Map.of(month, f.getFirst())))
+                        .withPartialUntil(partialUntil));
+            } else if (f.size() == 1) {
                 chosen.put(month, f.getFirst());
                 summed.add(month.toString());
                 months.add(base.monthSummary(month, f.getFirst(), base.tally(Map.of(month, f.getFirst()))));
@@ -299,13 +326,18 @@ public final class BudgetVsActualCalculator {
                 months.add(m.withExtended(true));
             }
         }
+        Context out = partial.isEmpty() ? base : new Context(withWarning(base.input,
+                partialWarning(List.copyOf(partial.keySet()), partial, true)));
         if (chosen.isEmpty()) {
             BudgetVsActualStatus s = duplicates.isEmpty() ? BudgetVsActualStatus.NO_CASH_FLOW : BudgetVsActualStatus.TWO_CASH_FLOWS;
             BudgetVsActualResponse r = empty(period, s,
-                    duplicates.isEmpty() ? "Nenhum mês do exercício com fluxo carregado"
+                    duplicates.isEmpty() ? (partial.isEmpty() ? "Nenhum mês do exercício com fluxo carregado"
+                            : "Nenhum mês completo do exercício: "
+                            + monthList(partial.keySet().stream().map(YearMonth::toString).toList())
+                            + (partial.size() == 1 ? " é parcial" : " são parciais"))
                     : "Os meses com fluxo têm dois fluxos cada: substitua, reclassifique ou exclua um", budgetBrief,
                             months,
-                    base.input)
+                    out.input)
                     .result();
             return new Calculation(new BudgetVsActualResponse(r.calculationVersion(), r.period(), r.status(),
                     r.message(), r.budget(),
@@ -314,7 +346,7 @@ public final class BudgetVsActualCalculator {
                     false, null, List.of(), null, null, null, null, null, List.of(), r.warnings()), Map.of());
         }
         Tally ap = base.tally(chosen);
-        return base.build(period, budgetBrief, ap, chosen.size(), months, summed,
+        return out.build(period, budgetBrief, ap, chosen.size(), months, summed,
                 missing.stream().map(YearMonth::toString).toList(), duplicates, false);
     }
 
@@ -466,7 +498,7 @@ public final class BudgetVsActualCalculator {
                     expense,
                     overrun,
                     rule == null ? null : oneDecimal(rule.percentage()), rule == null ? null : rule.aboveLimit(),
-                    false);
+                    false, null);
         }
 
         public BigDecimal overrun(Tally ap, int months) {
@@ -805,14 +837,25 @@ public final class BudgetVsActualCalculator {
         return new Input(e.budget(), e.budgetFileName(), e.lines(), e.mappings(), e.fundByLine(), e.fundNames(),
                 e.operatingFundId(), e.cashFlows(), e.entries(), e.reallocations(), e.overrunLimitPercentage(),
                         warnings,
-                e.period());
+                e.period(), e.partialUntil());
+    }
+
+    /** "Mês parcial" warning (RF-13.10): which months, until when, and what is left out. */
+    private static BudgetVsActualWarningResponse partialWarning(List<YearMonth> months, Map<YearMonth, LocalDate> until,
+            boolean cumulative) {
+        String list = months.stream().map(m -> mmyyyy(m) + " (lançamentos até " + DATE.format(until.get(m)) + ")")
+                .collect(java.util.stream.Collectors.joining(", "));
+        boolean one = months.size() == 1;
+        return new BudgetVsActualWarningResponse("PARTIAL_MONTH", (one ? "Mês parcial: " : "Meses parciais: ") + list
+                + (cumulative ? (one ? " fica" : " ficam") + " fora do acumulado e da regra dos 20%"
+                        : ": a regra dos 20% não é avaliada"));
     }
 
     private static FiscalYearMonthResponse monthWithoutNumbers(YearMonth month, MonthStatus status,
             List<CashFlowFile> cashFlows) {
         return new FiscalYearMonthResponse(month.toString(), status,
                 cashFlows.stream().map(CashFlowFile::used).toList(), null, null, null,
-                null, null, false);
+                null, null, false, null);
     }
 
     public static List<YearMonth> months(YearMonth start, YearMonth end) {

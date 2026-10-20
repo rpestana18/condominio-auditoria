@@ -528,6 +528,9 @@ paths:
         linha da PO à parte; transferências entre fundos fora. Previsto do mês = soma das linhas 1.1 a 1.8 (Q30).
         Fundos ligados às linhas 1.9: arrecadação (recebimento de cota) × previsto. Mês sem fluxo, com dois fluxos,
         sem PO, com PO não confirmada ou sem fundo ordinário: situacao diz o porquê e os números ficam nulos.
+        Mês parcial (RF-13.10): no acumulado, aparece com partialUntil e seus números, mas fora da soma e da regra dos
+        20%; no mês, os números sem a regra dos 20%. Extrato parcial substituído por um completo dos mesmos meses
+        não entra.
       operationId: budgetVsActual
       parameters:
         - { name: period, in: query, required: true, description: AAAA-MM ou "cumulative", schema: { type: string, pattern: "^([0-9]{4}-[0-9]{2}|cumulative)$" } }
@@ -2372,6 +2375,7 @@ components:
               overrunPercentage: { type: [number, "null"] }
               aboveLimit: { type: [boolean, "null"] }
               extended: { type: boolean, description: Mês depois do exercício em que a PO vale por prorrogação (marca "PO prorrogada") }
+              partialUntil: { type: [string, "null"], format: date, description: 'Mês parcial (RF-13.10) com lançamentos até esta data: mostra os números do mês, mas fica fora do acumulado (summedMonths) e da regra dos 20% (aboveLimit nulo); nulo = completo' }
         summedMonths: { type: array, items: { type: string } }
         monthsWithoutCashFlow: { type: array, items: { type: string }, description: Meses sem fluxo antes do último mês com fluxo }
         monthsWithTwoCashFlows: { type: array, items: { type: string } }
@@ -2465,7 +2469,7 @@ components:
               debits: { type: [number, "null"] }
         warnings:
           type: array
-          description: Inclui BUDGET_EXTENDED (mês prorrogado) e EXTENDED_MONTHS (acumulado com meses fora da soma)
+          description: Inclui BUDGET_EXTENDED (mês prorrogado), EXTENDED_MONTHS (acumulado com meses fora da soma) e PARTIAL_MONTH (mês parcial fora do acumulado e da regra dos 20%; no mês, regra não avaliada e rule20 nulo)
           items:
             type: object
             required: [code, text]

@@ -51,14 +51,17 @@ import java.util.stream.Collectors;
  * <li>cumulative and line balance (planned − actual) only with the <b>complete</b> months that have a cash flow, on
  * both sides (RF-03.1.10); a month without a cash flow has null numbers, never zero;</li>
  * <li>a partial month (cash flow uploaded before the end of its period, RF-13.10) shows its numbers marked "parcial até
- * DD/MM", and stays out of the cumulative, of the line balance and of the 20% rule;</li>
+ * DD/MM", and stays out of the cumulative, of the line balance and of the 20% rule. While in progress it shows
+ * <b>only the actual</b> (Q50): the difference to the planned amount (cells, groups and month total), the overrun and
+ * the lines above are null until the month closes; the planned amount of the month stays, as a budget figure;</li>
  * <li>the spending profile never changes the planned amount (Q24); without confirmation it is MONTHLY.</li>
  * </ul>
  */
 public final class BudgetTrackingGrid {
 
     /** Version of the grid rules; goes in every result, next to {@link BudgetVsActualCalculator#VERSION}. */
-    public static final String VERSION = "1";
+    /** 2: a month in progress shows only the actual, without difference or overrun (Q50). */
+    public static final String VERSION = "2";
 
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2);
     private static final DateTimeFormatter DAY_MONTH = DateTimeFormatter.ofPattern("dd/MM");
@@ -175,8 +178,8 @@ public final class BudgetTrackingGrid {
                         cells.add(new TrackingCellResponse(gm.month().toString(), null, null, null, null));
                         continue;
                     }
-                    cells.add(new TrackingCellResponse(gm.month().toString(), r.planned(), r.actual(), r.difference(),
-                            r.entries()));
+                    cells.add(new TrackingCellResponse(gm.month().toString(), r.planned(), r.actual(),
+                            gm.complete() ? r.difference() : null, r.entries()));
                     if (effective == SpendingProfile.SEPARATE_APPORTIONMENT) {
                         separateByMonth.set(i, separateByMonth.get(i).add(r.actual()));
                         separateEntries.set(i, separateEntries.get(i) + r.entries());
@@ -210,8 +213,8 @@ public final class BudgetTrackingGrid {
                     continue;
                 }
                 int entries = r.lines().stream().mapToInt(BudgetVsActualLineResponse::entries).sum();
-                cells.add(new TrackingCellResponse(gm.month().toString(), r.planned(), r.actual(), r.difference(),
-                        entries));
+                cells.add(new TrackingCellResponse(gm.month().toString(), r.planned(), r.actual(),
+                        gm.complete() ? r.difference() : null, entries));
                 if (gm.complete()) {
                     planned = planned.add(r.planned());
                     actual = actual.add(r.actual());
@@ -294,10 +297,11 @@ public final class BudgetTrackingGrid {
         }
         boolean complete = gm.complete();
         var rule = r.rule20();
+        // A month in progress: only the actual (Q50)
         return new TrackingMonthResponse(gm.month().toString(), status, gm.partialUntil(), complete, m.cashFlows(),
                 r.totals().planned(), r.totals().inLines(), r.totals().actualExpense(),
-                r.totals().inLines().subtract(r.totals().planned()), m.overrun(),
-                rule == null ? null : rule.linesAbove(),
+                complete ? r.totals().inLines().subtract(r.totals().planned()) : null, complete ? m.overrun() : null,
+                complete && rule != null ? rule.linesAbove() : null,
                 complete && rule != null ? rule.percentage() : null, complete && rule != null ? rule.aboveLimit() : null);
     }
 

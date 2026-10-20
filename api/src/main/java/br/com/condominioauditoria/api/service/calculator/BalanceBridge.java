@@ -5,6 +5,7 @@ import br.com.condominioauditoria.api.dto.response.accounting.FundMonthSummaryRe
 import br.com.condominioauditoria.api.dto.response.accounting.FundMovementResponse;
 import br.com.condominioauditoria.api.dto.response.accounting.FundMovementsResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BalanceBridgeResponse;
+import br.com.condominioauditoria.api.dto.response.budget.BridgeFundResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeItemResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeLineResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeMonthItemResponse;
@@ -48,19 +49,25 @@ import java.util.UUID;
  * <li>{@code SEPARATE_APPORTIONMENT}: the same for the separate apportionment lines (Q45);</li>
  * <li>{@code INCOME_VS_PLANNED}: fee received + other income − planned amount of the period (the operating fund's
  * planned expense; for a 1.9 fund, its line);</li>
- * <li>{@code FUND_PLANNED_COLLECTION} and {@code FUND_EXPENSES}: in the funds other than the operating fund, the planned
- * collection of the 1.9 line that stays in the fund and the debits that are not transfers;</li>
+ * <li>{@code FUND_PLANNED_COLLECTION} and {@code FUND_EXPENSES}: in the bridge of one fund other than the operating
+ * fund, the planned collection of the 1.9 line that stays in the fund and the debits that are not transfers;</li>
  * <li>{@code OUTSIDE_BUDGET}: to reallocate, without budget line and adjustments, negative when they leave the fund;</li>
  * <li>{@code INTER_FUND_TRANSFERS}: received − sent;</li>
+ * <li>{@code APPORTIONMENT_FUNDS} (only in the bridge of all funds, Q49): credits − debits of every fund that is not
+ * the operating fund, without the transfers between funds, with the list by fund and without a share of the variation.
+ * In that bridge {@code INCOME_VS_PLANNED} uses only the operating fund ("cota ordinária acima ou abaixo do previsto")
+ * and the 1.9 planned collection is in no item;</li>
  * <li>{@code UNEXPLAINED}: real variation − sum of the items above. Should be zero; otherwise "a ponte não fecha".</li>
  * </ol>
- * The total covers the complete months only; a partial month (RF-13.10) has its own column, outside the total. The
+ * The total covers the complete months only; a partial month (RF-13.10) has its own column, outside the total, with only
+ * the inflows, outflows, balances and variation: its items are null until the month closes (Q50). The
  * opening balance is the closing balance of the month before the period when that cash flow was loaded (P8), otherwise
  * the opening balance printed in the first month. All amounts are BigDecimal with 2 decimals.
  */
 public final class BalanceBridge {
 
-    public static final String VERSION = "1";
+    /** 2: Q49 (apportionment funds apart in the bridge of all funds) and Q50 (month in progress without items). */
+    public static final String VERSION = "2";
 
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2);
     private static final BigDecimal HUNDRED = new BigDecimal("100");
@@ -136,26 +143,32 @@ public final class BalanceBridge {
             FundMonthSummaryResponse s = summaries.get(m.toString());
             if (s == null || s.status() != MonthStatus.WITH_CASH_FLOW) {
                 MonthStatus status = s == null ? MonthStatus.NO_CASH_FLOW : s.status();
-                months.add(new BridgeMonthResponse(m.toString(), status, null, false, null, null, null, List.of()));
+                months.add(new BridgeMonthResponse(m.toString(), status, null, false, null, null, null, List.of(), null,
+                        null));
                 if (lastInTotal != null || opening != null) {
                     gaps.add(m.toString());
                 }
                 continue;
             }
+            boolean inTotal = s.partialUntil() == null;
             Totals t = new Totals();
             if (withOperating) {
                 operating(in, m, gridMonths.get(m.toString()), lines, t);
             }
-            if (withOthers) {
-                others(in, m, all, t);
+            if (all) {
+                apportionmentFunds(in, m, t);
+            } else if (withOthers) {
+                others(in, m, t);
             }
             BigDecimal o = balance(in, all, m, false);
             BigDecimal c = balance(in, all, m, true);
             BigDecimal variation = o == null || c == null ? null : c.subtract(o);
             t.unexplained = variation == null ? null : variation.subtract(t.sum());
-            boolean inTotal = s.partialUntil() == null;
+            BigDecimal[] flows = flows(in, all, m);
+            // A month in progress shows only what came in and went out (Q50): no item compares it with the planned
             months.add(new BridgeMonthResponse(m.toString(), s.status(), s.partialUntil(), inTotal, o, c, variation,
-                    t.monthItems(withOperating, withOthers)));
+                    inTotal ? t.monthItems(withOperating, withOthers, all) : Totals.blankItems(withOperating,
+                            withOthers, all), flows[0], flows[1]));
             if (inTotal) {
                 if (opening == null && lastInTotal == null) {
                     opening = o;
@@ -219,7 +232,7 @@ public final class BalanceBridge {
         }
         return new BalanceBridgeResponse(VERSION, BudgetVsActualStatus.CALCULATED, null, in.fundId(), fundName, all,
                 in.from().toString(), in.to().toString(), budget, opening, openingSource, closing, variation, closes,
-                total.items(withOperating, withOthers, variation), List.copyOf(months), List.copyOf(warnings),
+                total.items(withOperating, withOthers, all, variation), List.copyOf(months), List.copyOf(warnings),
                 firstInTotal.toString(), lastInTotal.toString(), firstInTotal.minusMonths(1).atEndOfMonth(),
                 closingDate, partialMonth(months));
     }
@@ -261,10 +274,10 @@ public final class BalanceBridge {
         t.transfersOut = t.transfersOut.subtract(f.transfersOut());
     }
 
-    /** Items of the other funds: income, planned 1.9 collection, the fund's own expenses and transfers. */
-    private static void others(Input in, YearMonth m, boolean all, Totals t) {
+    /** Items of one fund other than the operating fund: income, planned 1.9 collection, its expenses and transfers. */
+    private static void others(Input in, YearMonth m, Totals t) {
         for (FundMovementResponse fund : in.funds().funds()) {
-            if (fund.operatingFund() || (!all && !fund.fundId().equals(in.fundId()))) {
+            if (fund.operatingFund() || !fund.fundId().equals(in.fundId())) {
                 continue;
             }
             FundMonthMovementResponse f = movement(in, fund.fundId(), m);
@@ -280,6 +293,43 @@ public final class BalanceBridge {
             t.transfersIn = t.transfersIn.add(f.transfersIn());
             t.transfersOut = t.transfersOut.subtract(f.transfersOut());
         }
+    }
+
+    /**
+     * Apportionment funds of the bridge of all funds (Q49): every fund that is not the operating fund. Credits and debits
+     * without the transfers between funds (those stay in INTER_FUND_TRANSFERS); the 1.9 planned amount is in no item.
+     */
+    private static void apportionmentFunds(Input in, YearMonth m, Totals t) {
+        for (FundMovementResponse fund : in.funds().funds()) {
+            if (fund.operatingFund() || fund.fundId().equals(in.operatingFundId())) {
+                continue;
+            }
+            FundMonthMovementResponse f = movement(in, fund.fundId(), m);
+            if (f == null) {
+                continue;
+            }
+            t.fund(fund, f.credits().subtract(f.transfersIn()), f.debits().subtract(f.transfersOut()));
+            t.transfersIn = t.transfersIn.add(f.transfersIn());
+            t.transfersOut = t.transfersOut.subtract(f.transfersOut());
+        }
+    }
+
+    /** Credits and debits of the entries of the chosen fund (or of every fund) in the month; null without the fund. */
+    private static BigDecimal[] flows(Input in, boolean all, YearMonth m) {
+        BigDecimal inflows = null;
+        BigDecimal outflows = null;
+        for (FundMovementResponse fund : in.funds().funds()) {
+            if (!all && !fund.fundId().equals(in.fundId())) {
+                continue;
+            }
+            FundMonthMovementResponse f = movement(in, fund.fundId(), m);
+            if (f == null) {
+                continue;
+            }
+            inflows = (inflows == null ? ZERO : inflows).add(f.credits());
+            outflows = (outflows == null ? ZERO : outflows).add(f.debits());
+        }
+        return new BigDecimal[] {inflows, outflows};
     }
 
     private static FundMonthMovementResponse movement(Input in, UUID fundId, YearMonth m) {
@@ -324,7 +374,7 @@ public final class BalanceBridge {
     private static BridgePartialMonthResponse partialMonth(List<BridgeMonthResponse> months) {
         return months.stream().filter(m -> m.partialUntil() != null).reduce((a, b) -> b)
                 .map(m -> new BridgePartialMonthResponse(m.month(), m.partialUntil(), m.openingBalance(),
-                        m.closingBalance(), m.variation()))
+                        m.closingBalance(), m.variation(), m.inflows(), m.outflows()))
                 .orElse(null);
     }
 
@@ -348,7 +398,21 @@ public final class BalanceBridge {
         BigDecimal adjustments = ZERO;
         BigDecimal transfersIn = ZERO;
         BigDecimal transfersOut = ZERO;
+        final Map<UUID, FundAmount> apportionment = new LinkedHashMap<>();
         BigDecimal unexplained;
+
+        void fund(FundMovementResponse fund, BigDecimal inflows, BigDecimal outflows) {
+            apportionment.merge(fund.fundId(), new FundAmount(fund.fundId(), fund.name(), inflows, outflows),
+                    FundAmount::plus);
+        }
+
+        BigDecimal apportionmentInflows() {
+            return apportionment.values().stream().map(FundAmount::inflows).reduce(ZERO, BigDecimal::add);
+        }
+
+        BigDecimal apportionmentOutflows() {
+            return apportionment.values().stream().map(FundAmount::outflows).reduce(ZERO, BigDecimal::add);
+        }
 
         void line(BalanceBridgeItemCode code, TrackingLineResponse l, BigDecimal amount) {
             lines.computeIfAbsent(code, k -> new LinkedHashMap<>()).merge(l.lineId(),
@@ -367,6 +431,7 @@ public final class BalanceBridge {
             adjustments = adjustments.add(t.adjustments);
             transfersIn = transfersIn.add(t.transfersIn);
             transfersOut = transfersOut.add(t.transfersOut);
+            t.apportionment.values().forEach(f -> apportionment.merge(f.fundId(), f, FundAmount::plus));
         }
 
         BigDecimal lineTotal(BalanceBridgeItemCode code) {
@@ -382,6 +447,7 @@ public final class BalanceBridge {
                 case FUND_EXPENSES -> fundExpenses;
                 case OUTSIDE_BUDGET -> toReallocate.add(withoutLine).add(adjustments);
                 case INTER_FUND_TRANSFERS -> transfersIn.add(transfersOut);
+                case APPORTIONMENT_FUNDS -> apportionmentInflows().subtract(apportionmentOutflows());
                 case UNEXPLAINED -> unexplained;
             };
         }
@@ -396,14 +462,14 @@ public final class BalanceBridge {
             return s;
         }
 
-        static List<BalanceBridgeItemCode> codes(boolean withOperating, boolean withOthers) {
+        static List<BalanceBridgeItemCode> codes(boolean withOperating, boolean withOthers, boolean all) {
             List<BalanceBridgeItemCode> codes = new ArrayList<>();
             if (withOperating) {
                 codes.addAll(List.of(BalanceBridgeItemCode.LINE_SAVINGS, BalanceBridgeItemCode.PROVISIONS_RESERVED,
                         BalanceBridgeItemCode.SEPARATE_APPORTIONMENT));
             }
             codes.add(BalanceBridgeItemCode.INCOME_VS_PLANNED);
-            if (withOthers) {
+            if (withOthers && !all) {
                 codes.addAll(List.of(BalanceBridgeItemCode.FUND_PLANNED_COLLECTION,
                         BalanceBridgeItemCode.FUND_EXPENSES));
             }
@@ -411,21 +477,33 @@ public final class BalanceBridge {
                 codes.add(BalanceBridgeItemCode.OUTSIDE_BUDGET);
             }
             codes.add(BalanceBridgeItemCode.INTER_FUND_TRANSFERS);
+            if (all) {
+                codes.add(BalanceBridgeItemCode.APPORTIONMENT_FUNDS);
+            }
             codes.add(BalanceBridgeItemCode.UNEXPLAINED);
             return codes;
         }
 
-        List<BridgeMonthItemResponse> monthItems(boolean withOperating, boolean withOthers) {
-            return codes(withOperating, withOthers).stream().map(c -> new BridgeMonthItemResponse(c, amount(c)))
+        List<BridgeMonthItemResponse> monthItems(boolean withOperating, boolean withOthers, boolean all) {
+            return codes(withOperating, withOthers, all).stream()
+                    .map(c -> new BridgeMonthItemResponse(c, amount(c))).toList();
+        }
+
+        /** The items of a month in progress (Q50): every amount null ("—" on the screen). */
+        static List<BridgeMonthItemResponse> blankItems(boolean withOperating, boolean withOthers, boolean all) {
+            return codes(withOperating, withOthers, all).stream().map(c -> new BridgeMonthItemResponse(c, null))
                     .toList();
         }
 
-        List<BridgeItemResponse> items(boolean withOperating, boolean withOthers, BigDecimal variation) {
+        List<BridgeItemResponse> items(boolean withOperating, boolean withOthers, boolean all, BigDecimal variation) {
             List<BridgeItemResponse> items = new ArrayList<>();
-            for (BalanceBridgeItemCode code : codes(withOperating, withOthers)) {
+            for (BalanceBridgeItemCode code : codes(withOperating, withOthers, all)) {
                 BigDecimal amount = amount(code);
-                items.add(new BridgeItemResponse(code, label(code), amount, percentage(amount, variation), parts(code),
-                        lineList(code)));
+                // The apportionment funds have no share of the variation (Q49): the other shares do not add up to 100%
+                BigDecimal share = code == BalanceBridgeItemCode.APPORTIONMENT_FUNDS ? null
+                        : percentage(amount, variation);
+                items.add(new BridgeItemResponse(code, label(code, all), amount, share, parts(code), lineList(code),
+                        fundList(code)));
             }
             return List.copyOf(items);
         }
@@ -440,6 +518,9 @@ public final class BalanceBridge {
                         new BridgePartResponse("ADJUSTMENTS", "Ajustes", adjustments));
                 case INTER_FUND_TRANSFERS -> List.of(new BridgePartResponse("RECEIVED", "Recebidas", transfersIn),
                         new BridgePartResponse("SENT", "Enviadas", transfersOut));
+                case APPORTIONMENT_FUNDS -> List.of(
+                        new BridgePartResponse("INFLOWS", "Entradas", apportionmentInflows()),
+                        new BridgePartResponse("OUTFLOWS", "Saídas", apportionmentOutflows().negate()));
                 default -> List.of();
             };
         }
@@ -452,13 +533,45 @@ public final class BalanceBridge {
                             a.line().effectiveProfile(), a.amount()))
                     .toList();
         }
+
+        private List<BridgeFundResponse> fundList(BalanceBridgeItemCode code) {
+            if (code != BalanceBridgeItemCode.APPORTIONMENT_FUNDS) {
+                return List.of();
+            }
+            return apportionment.values().stream()
+                    .sorted(Comparator.comparing(FundAmount::amount).reversed()
+                            .thenComparing(f -> Objects.requireNonNullElse(f.name(), ""))
+                            .thenComparing(f -> f.fundId().toString()))
+                    .map(f -> new BridgeFundResponse(f.fundId(), f.name(), f.inflows(), f.outflows(), f.amount()))
+                    .toList();
+        }
     }
 
     private record LineAmount(TrackingLineResponse line, BigDecimal amount) {
     }
 
+    /** Credits and debits of an apportionment fund without the transfers (Q49). */
+    private record FundAmount(UUID fundId, String name, BigDecimal inflows, BigDecimal outflows) {
+
+        BigDecimal amount() {
+            return inflows.subtract(outflows);
+        }
+
+        FundAmount plus(FundAmount o) {
+            return new FundAmount(fundId, name, inflows.add(o.inflows()), outflows.add(o.outflows()));
+        }
+    }
+
     /** Screen label of each item (Portuguese, without any explanation of the cause). */
     public static String label(BalanceBridgeItemCode code) {
+        return label(code, false);
+    }
+
+    /** Screen label of each item; {@code allFunds}: the bridge of all funds, where the income is the operating fee. */
+    public static String label(BalanceBridgeItemCode code, boolean allFunds) {
+        if (allFunds && code == BalanceBridgeItemCode.INCOME_VS_PLANNED) {
+            return "Cota ordinária acima ou abaixo do previsto";
+        }
         return switch (code) {
             case LINE_SAVINGS -> "Economia nas linhas";
             case PROVISIONS_RESERVED -> "Reservado nas provisões: previsto para pagamento futuro (férias, rescisão,"
@@ -469,6 +582,7 @@ public final class BalanceBridge {
             case FUND_EXPENSES -> "Débitos dos outros fundos";
             case OUTSIDE_BUDGET -> "Fora da PO";
             case INTER_FUND_TRANSFERS -> "Transferências entre fundos (líquido)";
+            case APPORTIONMENT_FUNDS -> "Fundos de rateio: entradas − saídas";
             case UNEXPLAINED -> "Não explicado";
         };
     }

@@ -1250,7 +1250,9 @@ export interface paths {
          *     previsto × realizado (budgetVsActualVersion) mês a mês; nada é gravado. Os números de cada mês são exatamente
          *     os do previsto × realizado do mês. O acumulado e o saldo da linha somam só os meses completos com fluxo
          *     (inCumulative); mês parcial (RF-13.10) aparece com partialUntil e fica fora do acumulado e da regra dos 20%.
-         *     Avisos: PARTIAL_MONTH, MONTHS_WITHOUT_CASH_FLOW, TWO_CASH_FLOWS, PROFILE_NOT_CONFIRMED.
+         *     Avisos: PARTIAL_MONTH, MONTHS_WITHOUT_CASH_FLOW, TWO_CASH_FLOWS, PROFILE_NOT_CONFIRMED e NO_CONFIRMED_MAPPING
+         *     (contas do fundo Condomínio sem de-para confirmado no acumulado, com as contas e o valor em "sem linha da PO";
+         *     as contas também vêm em blocks.withoutBudgetLine.accounts).
          */
         get: operations["budgetTracking"];
         put?: never;
@@ -1275,8 +1277,12 @@ export interface paths {
          * @description Calculado na consulta pela função pura BalanceBridge (calculationVersion). Saldo inicial = saldo final impresso
          *     do mês anterior (quando carregado) ou o saldo inicial impresso do primeiro mês; o total soma só meses completos.
          *     UNEXPLAINED = variação − soma dos itens; diferente de zero gera o aviso BRIDGE_DOES_NOT_CLOSE. Cada mês tem a
-         *     própria coluna (months). Outros avisos: MONTHS_WITHOUT_CASH_FLOW, BALANCE_NOT_PRINTED, PARTIAL_MONTH,
-         *     PROFILE_NOT_CONFIRMED. Sem fundo ordinário: status NO_OPERATING_FUND e números nulos.
+         *     própria coluna (months). from/to são o período pedido (sem eles, o exercício inteiro); o total vai de
+         *     effectiveFrom a effectiveTo, do saldo em openingDate ao saldo em closingDate (último dia do último mês
+         *     completo). O mês parcial vem à parte em partialMonth, fora do total. Outros avisos: MONTHS_WITHOUT_CASH_FLOW,
+         *     BALANCE_NOT_PRINTED, PARTIAL_MONTH, PROFILE_NOT_CONFIRMED e NO_CONFIRMED_MAPPING (contas do fundo Condomínio
+         *     sem de-para confirmado nos meses do total, com as contas e o valor que ficam em "Fora da PO"; só quando a
+         *     ponte inclui o fundo Condomínio). Sem fundo ordinário: status NO_OPERATING_FUND e números nulos.
          */
         get: operations["balanceBridge"];
         put?: never;
@@ -3114,6 +3120,15 @@ export interface components {
             cells: components["schemas"]["TrackingBlockCellResponse"][];
             cumulative?: number | null;
             cumulativeEntries: number;
+            /** @description Contas do bloco somadas nos mesmos meses do acumulado (maior valor primeiro; account nulo = lançamentos sem conta, por último). Vazio no bloco de rateio à parte */
+            accounts?: {
+                account?: string | null;
+                name?: string | null;
+                /** @description Ex. "sem de-para" */
+                detail?: string | null;
+                amount: number;
+                entries: number;
+            }[];
         };
         TrackingBlocksResponse: {
             adjustments: components["schemas"]["TrackingBlockResponse"];
@@ -3150,6 +3165,36 @@ export interface components {
             items: components["schemas"]["BridgeItemResponse"][];
             months: components["schemas"]["BridgeMonthResponse"][];
             warnings: components["schemas"]["CalculationWarning"][];
+            /** @description AAAA-MM: primeiro mês do total (o mês seguinte a openingDate); nulo sem mês completo */
+            effectiveFrom?: string | null;
+            /** @description AAAA-MM: último mês completo, onde o total fecha; nulo sem mês completo */
+            effectiveTo?: string | null;
+            /**
+             * Format: date
+             * @description Data do saldo inicial (último dia do mês anterior a effectiveFrom)
+             */
+            openingDate?: string | null;
+            /**
+             * Format: date
+             * @description Data do saldo final (closingBalance): último dia do último mês completo (ex.: 2026-09-30)
+             */
+            closingDate?: string | null;
+            /** @description Último mês parcial do período (RF-13.10) */
+            partialMonth?: null | components["schemas"]["BridgePartialMonthResponse"];
+        };
+        BridgePartialMonthResponse: {
+            /** @description AAAA-MM */
+            month: string;
+            /**
+             * Format: date
+             * @description Último dia com lançamentos
+             */
+            partialUntil: string;
+            openingBalance?: number | null;
+            /** @description Saldo impresso em partialUntil */
+            closingBalance?: number | null;
+            /** @description closingBalance − openingBalance do mês parcial */
+            variation?: number | null;
         };
         BridgeItemResponse: {
             code: components["schemas"]["BalanceBridgeItemCode"];
@@ -5940,7 +5985,7 @@ export interface operations {
                     "application/json": components["schemas"]["BalanceBridgeResponse"];
                 };
             };
-            /** @description Período ou fundo inválido */
+            /** @description Período ou fundo inválido, período fora do exercício da PO (inclusive from antes do início do exercício, quando nenhuma PO vale em from: vale o exercício da PO confirmada mais recente) ou sem PO confirmada para o período padrão */
             400: {
                 headers: {
                     [name: string]: unknown;

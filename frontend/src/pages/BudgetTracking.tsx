@@ -6,6 +6,7 @@ import { useBudgetTracking } from "../api/budgetTrackingQueries";
 import type { BudgetTracking as Tracking } from "../api/types";
 import { EvidencePanel } from "../components/budgetVsActual/EvidencePanel";
 import type { EvidenceTarget } from "../components/budgetVsActual/evidence";
+import { splitMappingWarning } from "../components/MappingWarningNote";
 import { TrackingBlocksTable } from "../components/budgetTracking/TrackingBlocksTable";
 import { TrackingFilters } from "../components/budgetTracking/TrackingFilters";
 import { TrackingGrid } from "../components/budgetTracking/TrackingGrid";
@@ -104,10 +105,12 @@ function Content({ tracking, filter, onOpenEvidence }: ContentProps) {
   }
   const groups = filterGroups(tracking.groups, filter);
   const lineCount = groups.reduce((count, g) => count + g.lines.length, 0);
+  // The mapping warning goes next to "Sem linha da PO", the others stay on top
+  const { mapping, others } = splitMappingWarning(tracking.warnings);
 
   return (
     <>
-      {tracking.warnings.map((w, i) => (
+      {others.map((w, i) => (
         <p key={`${w.code}-${i}`} className="notice warning">
           {w.text}
         </p>
@@ -127,7 +130,14 @@ function Content({ tracking, filter, onOpenEvidence }: ContentProps) {
           <TrackingGrid tracking={tracking} groups={groups} onOpenEvidence={onOpenEvidence} />
         )}
       </section>
-      {tracking.blocks && <TrackingBlocksTable blocks={tracking.blocks} months={tracking.months} onOpenEvidence={onOpenEvidence} />}
+      {tracking.blocks && (
+        <TrackingBlocksTable
+          blocks={tracking.blocks}
+          months={tracking.months}
+          onOpenEvidence={onOpenEvidence}
+          mappingWarning={mapping}
+        />
+      )}
       <p className="muted">
         As diferenças são números para conferência (realizado − previsto do mês), com os lançamentos de origem. Cálculo: versão{" "}
         {tracking.calculationVersion} (previsto × realizado {tracking.budgetVsActualVersion}).

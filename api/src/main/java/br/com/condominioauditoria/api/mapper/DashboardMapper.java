@@ -2,8 +2,13 @@ package br.com.condominioauditoria.api.mapper;
 
 import br.com.condominioauditoria.api.dto.response.dashboard.ExpenseResponse;
 import br.com.condominioauditoria.api.dto.response.dashboard.FundPeriodResponse;
+import br.com.condominioauditoria.api.dto.response.dashboard.UtilityAccountResponse;
 import br.com.condominioauditoria.api.model.accounting.FundBalance;
 import br.com.condominioauditoria.api.model.accounting.LedgerEntry;
+import br.com.condominioauditoria.api.model.accounting.UtilityAccount;
+import br.com.condominioauditoria.api.model.enums.UtilityAccountStatus;
+import br.com.condominioauditoria.api.model.enums.UtilityType;
+import java.math.BigDecimal;
 
 public final class DashboardMapper {
 
@@ -22,5 +27,18 @@ public final class DashboardMapper {
                 : entry.getAccountCode() + " " + entry.getAccountName();
         return new ExpenseResponse(entry.getDate(), fundName, account, entry.getMemo(), entry.getDebit(),
                 entry.getPage());
+    }
+
+    /** A cash flow account on the utility accounts screen, with the decision when there is one (RF-12.1). */
+    public static UtilityAccountResponse toUtilityAccount(String code, String name, BigDecimal debits,
+            UtilityType suggested, UtilityAccount decision) {
+        if (decision == null) {
+            return new UtilityAccountResponse(code, name, debits,
+                    suggested == null ? UtilityAccountStatus.NONE : UtilityAccountStatus.SUGGESTED, suggested, null,
+                    null, null);
+        }
+        return new UtilityAccountResponse(code, name, debits,
+                decision.getUtilityType() == null ? UtilityAccountStatus.REJECTED : UtilityAccountStatus.CONFIRMED,
+                suggested, decision.getUtilityType(), decision.getDecidedBy(), decision.getDecidedAt());
     }
 }

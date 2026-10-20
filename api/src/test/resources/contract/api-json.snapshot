@@ -716,6 +716,76 @@ GET /api/condominiums/{}/dashboard
     periodStart: LocalDate
   }
 
+GET /api/condominiums/{}/dashboard/monthly-evolution
+  path: UUID
+  query until?: string
+  returns: {
+    condoFee: {
+      key: string
+      label: string
+      points: [{
+        amount: number
+        entries: [{
+          account: string
+          accountName: string
+          amount: number
+          date: LocalDate
+          entryId: UUID
+          fileId: UUID
+          fileName: string
+          fund: string
+          memo: string
+          page: integer
+          referenceMonth: string
+        }]
+        month: string
+        previousMonth: {
+          amount: number
+          percentage: number
+        }
+        previousYear: {
+          amount: number
+          percentage: number
+        }
+        status: enum[LOADED, NO_CASH_FLOW, TWO_CASH_FLOWS, NO_ENTRY]
+      }]
+    }
+    months: [string]
+    operatingFund: string
+    pendingUtilityAccounts: integer
+    until: string
+    utilities: [{
+      key: string
+      label: string
+      points: [{
+        amount: number
+        entries: [{
+          account: string
+          accountName: string
+          amount: number
+          date: LocalDate
+          entryId: UUID
+          fileId: UUID
+          fileName: string
+          fund: string
+          memo: string
+          page: integer
+          referenceMonth: string
+        }]
+        month: string
+        previousMonth: {
+          amount: number
+          percentage: number
+        }
+        previousYear: {
+          amount: number
+          percentage: number
+        }
+        status: enum[LOADED, NO_CASH_FLOW, TWO_CASH_FLOWS, NO_ENTRY]
+      }]
+    }]
+  }
+
 GET /api/condominiums/{}/features
   path: UUID
   returns: [{
@@ -1218,6 +1288,19 @@ GET /api/condominiums/{}/usage/export
   query start: LocalDate
   query end: LocalDate
   returns: bytes
+
+GET /api/condominiums/{}/utility-accounts
+  path: UUID
+  returns: [{
+    accountCode: string
+    accountName: string
+    debits: number
+    decidedAt: Instant
+    decidedBy: string
+    status: enum[SUGGESTED, CONFIRMED, REJECTED, NONE]
+    suggested: enum[WATER, ELECTRICITY, GAS]
+    utilityType: enum[WATER, ELECTRICITY, GAS]
+  }]
 
 GET /api/me
   returns: {
@@ -1991,6 +2074,14 @@ PUT /api/condominiums/{}/operating-fund
   path: UUID
   body: {
     fundId: UUID
+  }
+  returns: Void
+
+PUT /api/condominiums/{}/utility-accounts/{}
+  path: UUID
+  path: string
+  body: {
+    utilityType: enum[WATER, ELECTRICITY, GAS]
   }
   returns: Void
 

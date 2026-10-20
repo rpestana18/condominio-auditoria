@@ -191,6 +191,12 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | reais (formatação do bloco de dados gravados) | `ReaisFormatter` | |
 | ferramentas do condomínio (mcp), cliente do api | `CondominiumTools`, `ApiClient` | os nomes das ferramentas, dos parâmetros e dos campos JSON das respostas estão em inglês desde a fase 2 (ex.: `search_documents`, `condominiumId`); as descrições, que a IA externa lê, ficam em português |
 | entradas, saídas, enviado em | `inflows`, `outflows`, `uploadedAt` | |
+| concessionária, tipo de concessionária | `Utility`, `UtilityType` (`WATER`, `ELECTRICITY`, `GAS`) | água e esgoto, energia e gás (RF-12) |
+| conta da concessionária, sugestão da conta | `UtilityAccount`, `UtilitySuggestion` | |
+| evolução mês a mês, série mensal, ponto do mês | `MonthlyEvolution`, `MonthlySeries`, `MonthlyPoint` | |
+| cota ordinária recebida | `condoFee` (série `CONDO_FEE`) | |
+| mês anterior, mesmo mês do ano anterior | `previousMonth`, `previousYear` | |
+| mês de referência (da conta) | `referenceMonth` | o mesmo termo da competência |
 
 ---
 

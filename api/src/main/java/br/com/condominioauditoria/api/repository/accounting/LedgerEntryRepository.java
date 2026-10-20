@@ -50,6 +50,24 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, UUID> 
     List<LedgerEntry> findByFileIdInAndDateBetween(java.util.Collection<UUID> files, java.time.LocalDate start,
             java.time.LocalDate end);
 
+    /** A cash flow account with debits and its name, for the utility accounts screen (RF-12.1). */
+    interface DebitAccount {
+        String getCode();
+
+        String getName();
+
+        java.math.BigDecimal getDebits();
+    }
+
+    /** Accounts with real outflows in the condominium's entries (without transfers between funds). */
+    @Query("""
+            select l.accountCode as code, max(l.accountName) as name, sum(l.debit) as debits from LedgerEntry l
+            where l.condominiumId = :condominiumId and l.accountCode is not null
+              and l.debit <> 0 and l.interFundTransfer = false
+            group by l.accountCode
+            order by l.accountCode""")
+    List<DebitAccount> debitAccounts(UUID condominiumId);
+
     @Modifying
     @Query("delete from LedgerEntry l where l.fileId = :fileId")
     void deleteByFileId(UUID fileId);

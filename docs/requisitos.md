@@ -706,7 +706,7 @@ Requisitos:
 - RF-12.5 **Do gráfico à evidência** (RNF-04): clicar num mês abre os lançamentos que compõem o valor, com arquivo, página e histórico.
   - Dado o gráfico de concessionárias de setembro/2026, quando o usuário clica em água e esgoto, então vê os dois lançamentos da conta 1896 (48.962,57 e 95.129,74) e abre o fluxo na página de cada um.
 - RF-12.6 **Perfis**: todos veem os gráficos; só Gestor e Admin confirmam contas (RF-12.1).
-- RF-12.7 **Caso de aceite** (RNF-10): o golden de setembro/2026 ganha os três valores das concessionárias do RF-12.3 e o valor da cota ordinária recebida no fundo ordinário. Quando os fluxos de maio a agosto/2026 chegarem (P5), entra o caso com variação real.
+- RF-12.7 **Caso de aceite** (RNF-10): o golden de setembro/2026 ganha os três valores das concessionárias do RF-12.3 e o valor da cota ordinária recebida no fundo ordinário. Quando os fluxos de maio a agosto/2026 chegarem (P5), entra o caso com variação real. Quando chegar o primeiro fluxo da Cipa (P7), entra um caso com a troca de administradora: o mesmo gráfico mostra meses dos dois layouts, cada um com as contas confirmadas para aquela administradora.
 
 Fora deste requisito: valor da cota emitida por unidade (o fluxo não traz; depende do relatório de emissão de boletos ou da fração ideal, Q38); consumo em m³ ou kWh (o fluxo só traz o valor pago); previsão das contas; exportação em PDF ou Excel destes gráficos (como Q36); telefone e internet (Q39).
 
@@ -805,9 +805,10 @@ Fora deste requisito: valor da cota emitida por unidade (o fluxo não traz; depe
 | Q35 | ✔ Sim (usuário, 06/10/2026). Os 7 indicadores do RF-11.11, com cor de alerta só para o excesso acima de 20%? **Sim (recomendado)** / Ajustar a lista ou os limites | Usuário |
 | Q36 | ✔ Sim, e por enquanto sem exportação em PDF ou Excel da comparação e dos indicadores (usuário, 06/10/2026). Gráficos só na tela, com tabelas e barras em CSS no PDF, sem biblioteca nova? **Sim (recomendado)** / Não (gráfico no PDF, com Batik, por ADR) (RF-11.14) | Usuário |
 | Q37 | ✔ Linhas (usuário, 08/10/2026): "soma das linhas mesmo, é o mais correto". Previsto do mês da coluna "Orçado anterior" = 441.525,22 (o 1.6 impresso 18.525,42 × soma 18.746,25 vira aviso). Linha nova, sem correspondente na PO anterior, entra pela soma na nova (caso comum quando entram linhas novas). (RF-11.5, RF-11.6, RF-11.8) | Usuário |
-| Q38 | Cota ordinária no gráfico: **valor recebido no mês no fundo ordinário (recomendado)**, que o fluxo já traz / valor da cota emitida por unidade, que exige o relatório de emissão de boletos (RF-12.2) | Usuário |
-| Q39 | Concessionárias no gráfico: **água, energia e gás (recomendado)** / incluir também telefone e internet (RF-12.3) | Usuário |
-| Q40 | Comparação na tabela: **mês anterior e mesmo mês do ano anterior (recomendado)** / só mês anterior (RF-12.4) | Usuário |
+| Q38 | ✔ A: valor recebido no mês no fundo ordinário (usuário, 20/10/2026). O valor da cota emitida por unidade fica para depois (RF-12.2) | Usuário |
+| Q39 | ✔ A: água, energia e gás (usuário, 20/10/2026). Telefone e internet ficam fora (RF-12.3) | Usuário |
+| Q40 | ✔ Mês anterior e mesmo mês do ano anterior, com o histórico que o usuário vai enviar (20/10/2026): "eu faço o upload dos extratos consolidados emitidos pela administradora". Sem o mês de comparação, a célula mostra "sem base de comparação" (RF-12.4) | Usuário |
+| P7 | Enviar os fluxos consolidados históricos (Protest) e o primeiro da Cipa. O condomínio está trocando a administradora Protest pela Cipa (usuário, 20/10/2026), e o leitor hoje só conhece o layout da Protest. O layout da Cipa ganha requisito próprio no RF-00.5 (agente `ingestao`) quando chegar o primeiro arquivo, e os gráficos do RF-12 juntam os meses das duas administradoras pelas contas confirmadas no RF-12.1 | Usuário |
 | T* | Decisões de tecnologia (ver 03-tecnologias.md) | Usuário |
 
 ---

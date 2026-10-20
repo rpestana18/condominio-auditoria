@@ -129,3 +129,13 @@ export type FundIndicatorSeries = NonNullable<Indicators["funds"]>[number];
 export type IndicatorComparison = NonNullable<Indicators["comparison"]>;
 /** Month status in every series: only WITH_CASH_FLOW has numbers. */
 export type IndicatorMonthStatus = ExecutionPoint["status"];
+
+// Month-by-month evolution on the home screen (RF-12)
+export type MonthlyEvolution = Schemas["MonthlyEvolutionResponse"];
+export type MonthlySeries = Schemas["MonthlySeries"];
+export type MonthlyPoint = Schemas["MonthlyPoint"];
+export type MonthlyPointStatus = MonthlyPoint["status"];
+export type MonthlyEntry = MonthlyPoint["entries"][number];
+export type MonthlyVariation = Schemas["MonthlyVariation"];
+export type UtilityType = Schemas["UtilityType"];
+export type UtilityAccount = Schemas["UtilityAccountResponse"];

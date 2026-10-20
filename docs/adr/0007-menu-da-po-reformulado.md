@@ -1,6 +1,6 @@
 # ADR 0007: Menu da PO reformulado (acompanhamento, fundos e origem do saldo)
 
-- **Status:** proposta, aguardando aprovação do usuário
+- **Status:** aprovada pelo usuário em 20/10/2026 (as seis recomendações)
 - **Requisitos atendidos:** RF-13.1 a RF-13.10, com as respostas Q41 a Q48 de 20/10/2026
 - **Complementa:** ADR 0004 (cálculo na consulta, de-para, fundos) e ADR 0005 (vários exercícios). Não muda a ADR 0002: não há serviço, fila ou canal gRPC novo, e o contrato do leitor não muda.
 - **Não decide:** OCR de PDF em imagem (Decisão 6), troca de administradora, exportação.

@@ -53,6 +53,7 @@ paths:
         "202": { description: Recebido e na fila, content: { application/json: { schema: { $ref: "#/components/schemas/SourceFileResponse" } } } }
         "403": { description: Perfil sem permissão }
         "409": { description: Arquivo já enviado (mesmo conteúdo), content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+        "503": { description: A pasta de dados do servidor não aceita gravação; nada foi salvo, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
   /condominiums/{condominiumId}/files/latest:
     parameters: [{ $ref: "#/components/parameters/CondominiumId" }]
     get:
@@ -910,7 +911,11 @@ paths:
         previsto × realizado (budgetVsActualVersion) mês a mês; nada é gravado. Os números de cada mês são exatamente
         os do previsto × realizado do mês. O acumulado e o saldo da linha somam só os meses completos com fluxo
         (inCumulative); mês parcial (RF-13.10) aparece com partialUntil e fica fora do acumulado e da regra dos 20%.
-        Avisos: PARTIAL_MONTH, MONTHS_WITHOUT_CASH_FLOW, TWO_CASH_FLOWS, PROFILE_NOT_CONFIRMED.
+        Mês em andamento (Q50): só o realizado; difference das células, dos grupos e do mês, overrun e linesAbove vêm
+        nulos até o mês fechar (o previsto do mês continua em planned).
+        Avisos: PARTIAL_MONTH, MONTHS_WITHOUT_CASH_FLOW, TWO_CASH_FLOWS, PROFILE_NOT_CONFIRMED e NO_CONFIRMED_MAPPING
+        (contas do fundo Condomínio sem de-para confirmado no acumulado, com as contas e o valor em "sem linha da PO";
+        as contas também vêm em blocks.withoutBudgetLine.accounts).
       operationId: budgetTracking
       parameters:
         - { name: budget, in: query, required: false, description: Versão da PO; sem ela, a confirmada mais recente, schema: { type: string, format: uuid } }
@@ -926,8 +931,15 @@ paths:
         Calculado na consulta pela função pura BalanceBridge (calculationVersion). Saldo inicial = saldo final impresso
         do mês anterior (quando carregado) ou o saldo inicial impresso do primeiro mês; o total soma só meses completos.
         UNEXPLAINED = variação − soma dos itens; diferente de zero gera o aviso BRIDGE_DOES_NOT_CLOSE. Cada mês tem a
-        própria coluna (months). Outros avisos: MONTHS_WITHOUT_CASH_FLOW, BALANCE_NOT_PRINTED, PARTIAL_MONTH,
-        PROFILE_NOT_CONFIRMED. Sem fundo ordinário: status NO_OPERATING_FUND e números nulos.
+        própria coluna (months). from/to são o período pedido (sem eles, o exercício inteiro); o total vai de
+        effectiveFrom a effectiveTo, do saldo em openingDate ao saldo em closingDate (último dia do último mês
+        completo). O mês parcial vem à parte em partialMonth, fora do total, e na sua coluna de months só com entradas
+        (inflows), saídas (outflows), saldos e variação: os itens vêm com amount nulo até o mês fechar (Q50). Na ponte de
+        todos os fundos (fund=all, Q49) a receita é só a cota do fundo ordinário e os demais fundos ficam no item
+        APPORTIONMENT_FUNDS, sem percentual, com a lista por fundo em funds. Outros avisos: MONTHS_WITHOUT_CASH_FLOW,
+        BALANCE_NOT_PRINTED, PARTIAL_MONTH, PROFILE_NOT_CONFIRMED e NO_CONFIRMED_MAPPING (contas do fundo Condomínio
+        sem de-para confirmado nos meses do total, com as contas e o valor que ficam em "Fora da PO"; só quando a
+        ponte inclui o fundo Condomínio). Sem fundo ordinário: status NO_OPERATING_FUND e números nulos.
       operationId: balanceBridge
       parameters:
         - { name: fund, in: query, required: false, description: 'Id de um fundo, "all" (todos os fundos) ou vazio (fundo ordinário)', schema: { type: string } }
@@ -935,7 +947,7 @@ paths:
         - { name: to, in: query, required: false, description: AAAA-MM, schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BalanceBridgeResponse" } } } }
-        "400": { description: Período ou fundo inválido, período fora do exercício da PO ou sem PO confirmada para o período padrão }
+        "400": { description: 'Período ou fundo inválido, período fora do exercício da PO (inclusive from antes do início do exercício, quando nenhuma PO vale em from: vale o exercício da PO confirmada mais recente) ou sem PO confirmada para o período padrão' }
         "403": { description: Sem acesso ao condomínio }
         "404": { description: Condomínio ou fundo não encontrados }
   /condominiums/{condominiumId}/funds/movements:
@@ -2712,9 +2724,9 @@ components:
         planned: { type: [number, "null"] }
         actualInLines: { type: [number, "null"] }
         actualExpense: { type: [number, "null"] }
-        difference: { type: [number, "null"] }
-        overrun: { type: [number, "null"], description: Soma do excesso das linhas acima do previsto }
-        linesAbove: { type: [integer, "null"] }
+        difference: { type: [number, "null"], description: 'Nulo também no mês em andamento (parcial, Q50)' }
+        overrun: { type: [number, "null"], description: 'Soma do excesso das linhas acima do previsto; nulo no mês em andamento (Q50)' }
+        linesAbove: { type: [integer, "null"], description: 'Nulo no mês em andamento (Q50)' }
         overrunPercentage: { type: [number, "null"] }
         aboveLimit: { type: [boolean, "null"], description: Regra dos 20%; nula em mês parcial }
     TrackingCellResponse:
@@ -2724,7 +2736,7 @@ components:
         month: { type: string }
         planned: { type: [number, "null"] }
         actual: { type: [number, "null"], description: Nulo em mês sem números }
-        difference: { type: [number, "null"] }
+        difference: { type: [number, "null"], description: 'actual − planned; nulo em mês sem números e no mês em andamento (parcial, Q50), que mostra só o realizado' }
         entries: { type: [integer, "null"] }
     TrackingGroupResponse:
       type: object
@@ -2784,6 +2796,18 @@ components:
         cells: { type: array, items: { $ref: "#/components/schemas/TrackingBlockCellResponse" } }
         cumulative: { type: [number, "null"] }
         cumulativeEntries: { type: integer }
+        accounts:
+          type: array
+          description: 'Contas do bloco somadas nos mesmos meses do acumulado (maior valor primeiro; account nulo = lançamentos sem conta, por último). Vazio no bloco de rateio à parte'
+          items:
+            type: object
+            required: [amount, entries]
+            properties:
+              account: { type: [string, "null"] }
+              name: { type: [string, "null"] }
+              detail: { type: [string, "null"], description: Ex. "sem de-para", "de-para sugerido", "destino inválido" }
+              amount: { type: number }
+              entries: { type: integer }
     TrackingBlocksResponse:
       type: object
       required: [adjustments, toReallocate, withoutBudgetLine, separateApportionment]
@@ -2794,7 +2818,12 @@ components:
         separateApportionment: { $ref: "#/components/schemas/TrackingBlockResponse", description: Linhas de rateio à parte }
     BalanceBridgeItemCode:
       type: string
-      enum: [LINE_SAVINGS, PROVISIONS_RESERVED, SEPARATE_APPORTIONMENT, INCOME_VS_PLANNED, FUND_PLANNED_COLLECTION, FUND_EXPENSES, OUTSIDE_BUDGET, INTER_FUND_TRANSFERS, UNEXPLAINED]
+      description: |
+        APPORTIONMENT_FUNDS (Q49) só na ponte de todos os fundos (fund=all), antes de UNEXPLAINED: créditos − débitos
+        dos fundos de rateio (todo fundo que não é o ordinário), sem as transferências marcadas, sem percentual. Nessa
+        ponte INCOME_VS_PLANNED usa só o fundo ordinário (rótulo "Cota ordinária acima ou abaixo do previsto") e
+        FUND_PLANNED_COLLECTION e FUND_EXPENSES não aparecem (continuam só na ponte de um fundo que não é o ordinário).
+      enum: [LINE_SAVINGS, PROVISIONS_RESERVED, SEPARATE_APPORTIONMENT, INCOME_VS_PLANNED, FUND_PLANNED_COLLECTION, FUND_EXPENSES, OUTSIDE_BUDGET, INTER_FUND_TRANSFERS, APPORTIONMENT_FUNDS, UNEXPLAINED]
     BalanceBridgeResponse:
       type: object
       required: [calculationVersion, status, allFunds, from, to, items, months, warnings]
@@ -2816,6 +2845,22 @@ components:
         items: { type: array, items: { $ref: "#/components/schemas/BridgeItemResponse" } }
         months: { type: array, items: { $ref: "#/components/schemas/BridgeMonthResponse" } }
         warnings: { type: array, items: { $ref: "#/components/schemas/CalculationWarning" } }
+        effectiveFrom: { type: [string, "null"], description: 'AAAA-MM: primeiro mês do total (o mês seguinte a openingDate); nulo sem mês completo' }
+        effectiveTo: { type: [string, "null"], description: 'AAAA-MM: último mês completo, onde o total fecha; nulo sem mês completo' }
+        openingDate: { type: [string, "null"], format: date, description: Data do saldo inicial (último dia do mês anterior a effectiveFrom) }
+        closingDate: { type: [string, "null"], format: date, description: 'Data do saldo final (closingBalance): último dia do último mês completo (ex.: 2026-09-30)' }
+        partialMonth: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BridgePartialMonthResponse" }], description: Último mês parcial do período (RF-13.10), à parte e fora do total }
+    BridgePartialMonthResponse:
+      type: object
+      required: [month, partialUntil]
+      properties:
+        month: { type: string, description: AAAA-MM }
+        partialUntil: { type: string, format: date, description: Último dia com lançamentos }
+        openingBalance: { type: [number, "null"] }
+        closingBalance: { type: [number, "null"], description: Saldo impresso em partialUntil }
+        variation: { type: [number, "null"], description: closingBalance − openingBalance do mês parcial }
+        inflows: { type: [number, "null"], description: 'Entradas: créditos dos lançamentos até partialUntil, transferências incluídas (Q50)' }
+        outflows: { type: [number, "null"], description: 'Saídas: débitos dos lançamentos até partialUntil, transferências incluídas (Q50)' }
     BridgeItemResponse:
       type: object
       required: [code, label, amount, parts, lines]
@@ -2823,9 +2868,19 @@ components:
         code: { $ref: "#/components/schemas/BalanceBridgeItemCode" }
         label: { type: string }
         amount: { type: number }
-        percentageOfVariation: { type: [number, "null"] }
-        parts: { type: array, items: { $ref: "#/components/schemas/BridgePartResponse" }, description: 'Partes do item (ex.: CONDO_FEE, OTHER_INCOME, PLANNED; ADJUSTMENTS, TO_REALLOCATE, WITHOUT_BUDGET_LINE; RECEIVED, SENT)' }
+        percentageOfVariation: { type: [number, "null"], description: 'Nulo com variação zero e sempre em APPORTIONMENT_FUNDS (Q49): os percentuais não somam 100%' }
+        parts: { type: array, items: { $ref: "#/components/schemas/BridgePartResponse" }, description: 'Partes do item (ex.: CONDO_FEE, OTHER_INCOME, PLANNED; ADJUSTMENTS, TO_REALLOCATE, WITHOUT_BUDGET_LINE; RECEIVED, SENT; INFLOWS, OUTFLOWS em APPORTIONMENT_FUNDS, com o sinal da ponte: saídas negativas)' }
         lines: { type: array, items: { $ref: "#/components/schemas/BridgeLineResponse" }, description: Linhas da PO que compõem o item }
+        funds: { type: array, items: { $ref: "#/components/schemas/BridgeFundResponse" }, description: 'Fundos que compõem APPORTIONMENT_FUNDS (maior valor primeiro); vazia nos outros itens (Q49)' }
+    BridgeFundResponse:
+      type: object
+      required: [fundId, name, inflows, outflows, amount]
+      properties:
+        fundId: { type: string, format: uuid }
+        name: { type: string }
+        inflows: { type: number, description: Créditos do fundo no período, sem transferências entre fundos }
+        outflows: { type: number, description: Débitos do fundo no período, sem transferências entre fundos (positivo) }
+        amount: { type: number, description: inflows − outflows }
     BridgePartResponse:
       type: object
       required: [code, label, amount]
@@ -2853,13 +2908,15 @@ components:
         openingBalance: { type: [number, "null"] }
         closingBalance: { type: [number, "null"] }
         variation: { type: [number, "null"] }
-        items: { type: array, items: { $ref: "#/components/schemas/BridgeMonthItemResponse" } }
+        items: { type: array, items: { $ref: "#/components/schemas/BridgeMonthItemResponse" }, description: 'No mês em andamento (partialUntil preenchido, Q50) os itens vêm com amount nulo ("—" na tela)' }
+        inflows: { type: [number, "null"], description: 'Entradas: créditos dos lançamentos do fundo (ou de todos os fundos) no mês, transferências incluídas; nulo sem números' }
+        outflows: { type: [number, "null"], description: 'Saídas: débitos dos lançamentos do fundo (ou de todos os fundos) no mês, transferências incluídas; nulo sem números' }
     BridgeMonthItemResponse:
       type: object
       required: [code, amount]
       properties:
         code: { $ref: "#/components/schemas/BalanceBridgeItemCode" }
-        amount: { type: number }
+        amount: { type: [number, "null"], description: 'Passa a aceitar nulo (Q50): nulo no mês em andamento' }
     FundMovementsResponse:
       type: object
       required: [calculationVersion, from, to, months, funds, warnings]

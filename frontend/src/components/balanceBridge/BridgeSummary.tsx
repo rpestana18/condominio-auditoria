@@ -1,39 +1,47 @@
-import type { BalanceBridge, BalanceBridgeItemCode } from "../../api/types";
-import { formatDifference, formatMoneyOrDash, formatMonth, formatPercentage } from "../../format";
+import type { BalanceBridge, BalanceBridgeItemCode, CalculationWarning } from "../../api/types";
+import { formatDate, formatDifference, formatMoneyOrDash, formatPercentage } from "../../format";
+import { MappingWarningNote } from "../MappingWarningNote";
+import { bridgePeriodText, hasPercentage, partialMonthText, percentagesNote } from "./bridgeTexts";
 
 interface Props {
   bridge: BalanceBridge;
   selected: BalanceBridgeItemCode | null;
   onSelect: (code: BalanceBridgeItemCode) => void;
+  /** NO_CONFIRMED_MAPPING warning, shown discreetly next to "Economia nas linhas". */
+  mappingWarning?: CalculationWarning | null;
 }
 
 /**
  * The bridge of RF-13.6: opening balance, closing balance, variation and the items that add up to it, cent by cent
  * (all calculated by the API). "Não explicado" different from zero is highlighted with "a ponte não fecha", never hidden.
+ * The total goes from openingDate to closingDate (last complete month); the partial month comes apart, outside the total.
  */
-export function BridgeSummary({ bridge, selected, onSelect }: Props) {
+export function BridgeSummary({ bridge, selected, onSelect, mappingWarning }: Props) {
+  const partial = partialMonthText(bridge);
+  const percentages = percentagesNote(bridge);
   return (
     <section className="block">
       <div className="block-title">
         <h2>
-          {bridge.fundName ?? "Fundo"} · {formatMonth(bridge.from)} a {formatMonth(bridge.to)}
+          {bridge.fundName ?? "Fundo"} · {bridgePeriodText(bridge)}
         </h2>
         {bridge.closes === false && <span className="badge warning">a ponte não fecha</span>}
         {bridge.closes === true && <span className="badge ok">a ponte fecha: não explicado R$ 0,00</span>}
       </div>
       <dl className="number-list">
-        <dt>Saldo inicial</dt>
+        <dt>Saldo inicial{bridge.openingDate && ` em ${formatDate(bridge.openingDate)}`}</dt>
         <dd>
           {formatMoneyOrDash(bridge.openingBalance)}
           {bridge.openingSource && <span className="muted"> · {bridge.openingSource}</span>}
         </dd>
-        <dt>Saldo final</dt>
+        <dt>Saldo final{bridge.closingDate && ` em ${formatDate(bridge.closingDate)}`}</dt>
         <dd>{formatMoneyOrDash(bridge.closingBalance)}</dd>
         <dt>Variação do saldo</dt>
         <dd>
           <strong>{bridge.variation == null ? "—" : formatDifference(bridge.variation)}</strong>
         </dd>
       </dl>
+      {partial && <p className="muted">{partial}</p>}
       <table className="table clickable bridge-table">
         <thead>
           <tr>
@@ -55,9 +63,18 @@ export function BridgeSummary({ bridge, selected, onSelect }: Props) {
                 <td>
                   {item.label}
                   {highlight && <small className="note">a ponte não fecha: o valor aparece aqui, sem ser escondido</small>}
+                  {item.code === "LINE_SAVINGS" && mappingWarning && <MappingWarningNote warning={mappingWarning} />}
                 </td>
                 <td className="number">{formatDifference(item.amount)}</td>
-                <td className="number">{formatPercentage(item.percentageOfVariation)}</td>
+                <td className="number">
+                  {hasPercentage(item.code) ? (
+                    formatPercentage(item.percentageOfVariation)
+                  ) : (
+                    <span className="muted" title="Sem percentual da variação">
+                      —
+                    </span>
+                  )}
+                </td>
               </tr>
             );
           })}
@@ -72,6 +89,7 @@ export function BridgeSummary({ bridge, selected, onSelect }: Props) {
           </tr>
         </tfoot>
       </table>
+      {percentages && <p className="muted">{percentages}</p>}
       <p className="muted">Clique em uma parcela para ver as partes, as linhas da PO e os lançamentos.</p>
     </section>
   );

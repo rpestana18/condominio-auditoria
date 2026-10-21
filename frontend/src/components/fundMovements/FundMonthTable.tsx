@@ -1,56 +1,71 @@
 import type { FundMonthMovement, FundMovement } from "../../api/types";
 import { formatMoney, formatMoneyOrDash } from "../../format";
+import { inProgressText } from "../budgetTracking/MonthStatusNote";
 
 interface Props {
   funds: FundMovement[];
   month: string;
   selectedFundId: string | null;
   onSelectFund: (fundId: string) => void;
+  /** Month in progress (Q50, RF-13.10): numbers up to this date, only the actual; null = complete month. */
+  partialUntil?: string | null;
 }
 
-/** Every fund in the chosen month (RF-13.5): credits and debits split as the API classified them, nothing hidden. */
-export function FundMonthTable({ funds, month, selectedFundId, onSelectFund }: Props) {
+/**
+ * Every fund in the chosen month (RF-13.5): credits and debits split as the API classified them, nothing hidden.
+ * In the month in progress (Q50) only the actual shows: the collected amount, without the comparison with the planned.
+ */
+export function FundMonthTable({ funds, month, selectedFundId, onSelectFund, partialUntil }: Props) {
+  const partial = !!partialUntil;
   return (
-    <div className="scroll">
-      <table className="table compact clickable fund-table">
-        <thead>
-          <tr>
-            <th className="sticky-column">Fundo</th>
-            <th className="number">Saldo inicial</th>
-            <th className="number">Cota recebida</th>
-            <th className="number">Outras receitas</th>
-            <th className="number">Transf. recebidas</th>
-            <th className="number">Outros créditos</th>
-            <th className="number">Créditos</th>
-            <th className="number">Despesas</th>
-            <th className="number">Transf. enviadas</th>
-            <th className="number">Outros débitos</th>
-            <th className="number">Débitos</th>
-            <th className="number">Saldo final</th>
-            <th>Conferência com o extrato</th>
-            <th className="number">Previsto</th>
-            <th className="number">Arrecadado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {funds.map((fund) => {
-            const movement = fund.months.find((m) => m.month === month);
-            return (
-              <tr
-                key={fund.fundId}
-                className={fund.fundId === selectedFundId ? "selected" : undefined}
-                onClick={() => onSelectFund(fund.fundId)}
-              >
-                <td className="sticky-column">
-                  <FundName fund={fund} />
-                </td>
-                {movement?.present ? <MovementCells movement={movement} /> : <AbsentCells />}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {partialUntil && (
+        <p className="muted">
+          <span className="badge warning">{inProgressText(partialUntil)}</span> Só o realizado até a data: créditos, débitos, saldo e o
+          arrecadado, sem comparação com o previsto até o mês fechar.
+        </p>
+      )}
+      <div className="scroll">
+        <table className="table compact clickable fund-table">
+          <thead>
+            <tr>
+              <th className="sticky-column">Fundo</th>
+              <th className="number">Saldo inicial</th>
+              <th className="number">Cota recebida</th>
+              <th className="number">Outras receitas</th>
+              <th className="number">Transf. recebidas</th>
+              <th className="number">Outros créditos</th>
+              <th className="number">Créditos</th>
+              <th className="number">Despesas</th>
+              <th className="number">Transf. enviadas</th>
+              <th className="number">Outros débitos</th>
+              <th className="number">Débitos</th>
+              <th className="number">Saldo final</th>
+              <th>Conferência com o extrato</th>
+              <th className="number">Previsto</th>
+              <th className="number">Arrecadado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {funds.map((fund) => {
+              const movement = fund.months.find((m) => m.month === month);
+              return (
+                <tr
+                  key={fund.fundId}
+                  className={fund.fundId === selectedFundId ? "selected" : undefined}
+                  onClick={() => onSelectFund(fund.fundId)}
+                >
+                  <td className="sticky-column">
+                    <FundName fund={fund} />
+                  </td>
+                  {movement?.present ? <MovementCells movement={movement} partial={partial} /> : <AbsentCells />}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -72,8 +87,11 @@ function AbsentCells() {
   );
 }
 
-/** The 14 number columns of one fund in one month. Exported for the month-by-month history of one fund. */
-export function MovementCells({ movement: m }: { movement: FundMonthMovement }) {
+/**
+ * The 14 number columns of one fund in one month. Exported for the month-by-month history of one fund.
+ * `partial` = month in progress (Q50): the planned column stays blank, so the collected amount is not compared with it.
+ */
+export function MovementCells({ movement: m, partial = false }: { movement: FundMonthMovement; partial?: boolean }) {
   return (
     <>
       <td className="number">{formatMoneyOrDash(m.openingBalance)}</td>
@@ -96,7 +114,13 @@ export function MovementCells({ movement: m }: { movement: FundMonthMovement }) 
       <td>
         <BalanceCheck movement={m} />
       </td>
-      <td className="number">{formatMoneyOrDash(m.planned)}</td>
+      {partial ? (
+        <td className="number muted" title="Mês em andamento: sem comparação com o previsto até o mês fechar">
+          —
+        </td>
+      ) : (
+        <td className="number">{formatMoneyOrDash(m.planned)}</td>
+      )}
       <td className="number">{formatMoneyOrDash(m.collected)}</td>
     </>
   );

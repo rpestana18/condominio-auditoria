@@ -55,6 +55,9 @@ final class SyntheticSeptember {
     final List<CashFlowFile> cashFlows = new ArrayList<>();
     final List<FundBalance> balances = new ArrayList<>();
     final Map<UUID, LocalDate> partialUntil = new HashMap<>();
+    /** Name of every fund of the cash flows (tests may add more funds). */
+    final Map<UUID, String> fundNames = new LinkedHashMap<>(Map.of(OPERATING, "CONDOMÍNIO", RESERVE,
+            "FUNDO DE RESERVA"));
     final UUID septemberFile = UUID.randomUUID();
     BudgetLine reserveLine;
     private int position;
@@ -126,7 +129,7 @@ final class SyntheticSeptember {
 
     BudgetVsActualCalculator.Input base() {
         return new BudgetVsActualCalculator.Input(budget, "po.pdf", lines, mappings, Map.of(reserveLine.getId(),
-                RESERVE), Map.of(OPERATING, "CONDOMÍNIO", RESERVE, "FUNDO DE RESERVA"), OPERATING, cashFlows, entries,
+                RESERVE), Map.copyOf(fundNames), OPERATING, cashFlows, entries,
                 List.of(), new BigDecimal("20.0000"), List.of(), new Cumulative(), partialUntil);
     }
 
@@ -156,7 +159,7 @@ final class SyntheticSeptember {
                     Map.of(RESERVE, reserveLine.getBudgeted())));
         }
         return new FundMovements.Input(months, cashFlows, partialUntil, balances, entries,
-                Map.of(OPERATING, "CONDOMÍNIO", RESERVE, "FUNDO DE RESERVA"), OPERATING, operating, planned,
+                Map.copyOf(fundNames), OPERATING, operating, planned,
                 Map.of(RESERVE, new FundMovements.FundLine(reserveLine.getId(), "1.9.1")));
     }
 

@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.condominioauditoria.api.dto.response.budget.BudgetTrackingResponse;
 import br.com.condominioauditoria.api.dto.response.budget.TrackingCellResponse;
+import br.com.condominioauditoria.api.dto.response.budget.TrackingGroupResponse;
 import br.com.condominioauditoria.api.dto.response.budget.TrackingLineResponse;
 import br.com.condominioauditoria.api.dto.response.budget.TrackingMonthResponse;
 import br.com.condominioauditoria.api.model.enums.BudgetVsActualStatus;
@@ -145,6 +146,82 @@ class BudgetTrackingGridTest {
         assertThat(r.warnings()).anySatisfy(w -> assertThat(w.text()).startsWith("10/2026 parcial até 20/10"));
     }
 
+    @Test
+    void monthInProgressShowsOnlyTheActual() {
+        // Q50, with the numbers of RF-13.4: October/2026 up to 20/10
+        UUID october = UUID.randomUUID();
+        s.cashFlows.add(SyntheticSeptember.cashFlow(october, OCTOBER, OCTOBER.atEndOfMonth()));
+        s.partialUntil.put(october, LocalDate.of(2026, 10, 20));
+        s.entries.add(s.entry(october, OPERATING, s.account("1.3.10"), "0.00", "86816.34", false, false,
+                OCTOBER.atDay(10)));
+        s.entries.add(s.entry(october, OPERATING, s.account("1.1.1"), "0.00", "15671.02", false, false,
+                OCTOBER.atDay(10)));
+        s.entries.add(s.entry(october, OPERATING, s.account("1.3.1"), "0.00", "266718.50", false, false,
+                OCTOBER.atDay(10)));
+
+        BudgetTrackingResponse r = s.grid(s.confirmedProfiles()).result();
+
+        TrackingMonthResponse oct = month(r, "2026-10");
+        assertThat(oct.actualInLines()).isEqualByComparingTo("369205.86");
+        assertThat(oct.difference()).isNull();
+        assertThat(oct.overrun()).isNull();
+        assertThat(oct.linesAbove()).isNull();
+        // The planned amount of the month is a budget figure: it stays
+        assertThat(oct.planned()).isEqualByComparingTo("451620.13");
+        TrackingCellResponse concierge = cell(line(r, "1.3.10"), "2026-10");
+        assertThat(concierge.actual()).isEqualByComparingTo("86816.34");
+        assertThat(concierge.planned()).isEqualByComparingTo("80022.96");
+        assertThat(concierge.difference()).isNull();
+        assertThat(cell(line(r, "1.1.1"), "2026-10").actual()).isEqualByComparingTo("15671.02");
+        // No line and no group has a difference in October: "só linhas com estouro no mês" lists nothing
+        assertThat(r.groups()).allSatisfy(g -> {
+            assertThat(cell(g, "2026-10").difference()).isNull();
+            assertThat(g.lines()).allSatisfy(l -> assertThat(cell(l, "2026-10").difference()).isNull());
+        });
+        // September is complete: differences as before; cumulative and line balance only with it
+        assertThat(cell(line(r, "1.3.10"), "2026-09").difference()).isEqualByComparingTo("6793.38");
+        assertThat(month(r, "2026-09").overrun()).isEqualByComparingTo("38880.19");
+        assertThat(line(r, "1.1.1").balance()).isEqualByComparingTo("9556.62");
+        assertThat(line(r, "1.3.10").monthsAbove()).isEqualTo(1);
+    }
+
+    @Test
+    void accountsWithoutConfirmedMappingAreWarnedWithTheAccountsAndTheAmount() {
+        // D6: as in the budget vs. actual (NO_CONFIRMED_MAPPING), over the cumulative of the grid
+        s.entries.add(s.entry(s.septemberFile, OPERATING, "9001", "0.00", "700.00", false, false,
+                SEPTEMBER.atDay(10)));
+        s.entries.add(s.entry(s.septemberFile, OPERATING, "9002", "0.00", "50.00", false, false,
+                SEPTEMBER.atDay(11)));
+        s.entries.add(s.entry(s.septemberFile, OPERATING, "9001", "0.00", "300.00", false, false,
+                SEPTEMBER.atDay(12)));
+
+        BudgetTrackingResponse r = s.grid(s.confirmedProfiles()).result();
+
+        assertThat(r.blocks().withoutBudgetLine().cumulative()).isEqualByComparingTo("1050.00");
+        assertThat(r.blocks().withoutBudgetLine().accounts())
+                .extracting(a -> a.account() + "=" + a.amount().toPlainString() + "/" + a.entries())
+                .containsExactly("9001=1000.00/2", "9002=50.00/1");
+        assertThat(r.blocks().withoutBudgetLine().accounts().getFirst().detail()).isEqualTo("sem de-para");
+        assertThat(r.blocks().separateApportionment().accounts()).isEmpty();
+        assertThat(r.warnings()).filteredOn(w -> w.code().equals("NO_CONFIRMED_MAPPING")).singleElement()
+                .satisfies(w -> assertThat(w.text()).isEqualTo("2 contas sem de-para confirmado no acumulado:"
+                        + " R$ 1.050,00 em \"sem linha da PO\", fora das linhas da PO; o previsto das linhas dessas"
+                        + " despesas fica como saldo da linha. Contas: 9001 CONTA 9001 R$ 1.000,00; 9002 CONTA 9002"
+                        + " R$ 50,00"));
+        // The budget vs. actual of the month counts the same accounts
+        var month = BudgetVsActualCalculator.calculate(BudgetTrackingGrid.withPeriod(s.base(), new Month(SEPTEMBER)))
+                .result();
+        assertThat(month.mapping().withoutConfirmedMapping()).isEqualTo(2);
+    }
+
+    @Test
+    void withEveryAccountMappedThereIsNoMappingWarning() {
+        BudgetTrackingResponse r = s.grid(s.confirmedProfiles()).result();
+
+        assertThat(r.warnings()).noneMatch(w -> w.code().equals("NO_CONFIRMED_MAPPING"));
+        assertThat(r.blocks().withoutBudgetLine().accounts()).isEmpty();
+    }
+
     static TrackingMonthResponse month(BudgetTrackingResponse r, String month) {
         return r.months().stream().filter(m -> m.month().equals(month)).findFirst().orElseThrow();
     }
@@ -156,5 +233,9 @@ class BudgetTrackingGridTest {
 
     static TrackingCellResponse cell(TrackingLineResponse l, String month) {
         return l.cells().stream().filter(c -> c.month().equals(month)).findFirst().orElseThrow();
+    }
+
+    static TrackingCellResponse cell(TrackingGroupResponse g, String month) {
+        return g.cells().stream().filter(c -> c.month().equals(month)).findFirst().orElseThrow();
     }
 }

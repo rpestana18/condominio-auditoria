@@ -457,3 +457,7 @@ code { font-family: ui-monospace, monospace; font-size: 0.85em; background: var(
 .partial-form .field { min-width: 160px; }
 .card-actions.wrap { flex-wrap: wrap; }
 .checks li.info > span { color: var(--text-muted); }
+.mapping-note { margin-top: 4px; font-weight: 400; white-space: normal; max-width: 70ch; }
+.mapping-accounts { margin: 10px 0 0; }
+.mapping-accounts > summary { font-weight: 500; font-size: 0.88rem; color: var(--primary); }
+.mapping-accounts table { margin-top: 8px; }

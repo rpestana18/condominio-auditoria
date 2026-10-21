@@ -12,6 +12,9 @@ __pycache__/
 /dados/*
 !/dados/.gitkeep
 
+# Ajustes locais do compose (ex.: DADOS_UID no Linux)
+/infra/.env
+
 # Documentos reais do piloto usados nos testes (dado pessoal/financeiro)
 /data/golden/privado/
 

@@ -177,8 +177,8 @@ public final class CashFlowParser {
                 blocks.put(column, columnBlocks(column));
             }
             for (TextLine line : region) {
-                if (!DATE.matcher(line.first().text()).matches()) {
-                    continue;
+                if (!isEntryDate(line.first())) {
+                    continue; // a date inside the memo (e.g. "LOCACAO ... 30/03/2026 , NF: 34") is memo text
                 }
                 Map<CashFlowColumns.Amount, BigDecimal> amounts = amounts(line);
                 if (!amounts.containsKey(CashFlowColumns.Amount.BALANCE)) {
@@ -207,6 +207,14 @@ public final class CashFlowParser {
             region.clear();
         }
 
+        /**
+         * A date in the DATA column, left of the account column, starts an entry. The same date pattern further right
+         * is part of the memo and stays in the memo blocks.
+         */
+        private boolean isEntryDate(Word word) {
+            return DATE.matcher(word.text()).matches() && word.x0() <= columns.account();
+        }
+
         private Map<CashFlowColumns.Amount, BigDecimal> amounts(TextLine line) {
             Map<CashFlowColumns.Amount, BigDecimal> amounts = new EnumMap<>(CashFlowColumns.Amount.class);
             for (Word p : line.words()) {
@@ -223,7 +231,7 @@ public final class CashFlowParser {
             for (TextLine line : region) {
                 List<Word> words = line.words().stream()
                         .filter(p -> !(BrazilianMoney.isAmountCell(p.text()) && columns.amountColumn(p).isPresent()))
-                        .filter(p -> !DATE.matcher(p.text()).matches() || p.x0() > columns.account())
+                        .filter(p -> !isEntryDate(p))
                         .filter(p -> columns.textColumn(p).filter(column::equals).isPresent())
                         .toList();
                 if (words.isEmpty()) {

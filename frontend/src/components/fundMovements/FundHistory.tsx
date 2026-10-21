@@ -52,7 +52,7 @@ export function FundHistory({ fund, months, onClose }: Props) {
                     <MonthStatusNote status={summary.status} partialUntil={summary.partialUntil} />
                   </th>
                   {movement?.present ? (
-                    <MovementCells movement={movement} />
+                    <MovementCells movement={movement} partial={!!summary.partialUntil} />
                   ) : (
                     <td colSpan={14} className="muted">
                       {summary.status === "NO_CASH_FLOW" ? "sem extrato carregado" : "não aparece no extrato deste mês"}

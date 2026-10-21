@@ -58,6 +58,9 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | realocação | `Reallocation` | |
 | achado | `Finding` | |
 | evidência | `Evidence` | |
+| ponte do saldo | `BalanceBridge` | RF-13.6 (ADR 0007) |
+| fundo de rateio | `ApportionmentFund` (`APPORTIONMENT_FUNDS`) | todo fundo que não é o ordinário, só na ponte de todos os fundos (Q49) |
+| mês parcial, mês em andamento | `PartialMonth`, "month in progress" | RF-13.10 e Q50 |
 | severidade | `Severity` | |
 | regra (de auditoria), parâmetro | `AuditRule`, `RuleParameter` | |
 | ata de assembleia | `MeetingMinutes` | |

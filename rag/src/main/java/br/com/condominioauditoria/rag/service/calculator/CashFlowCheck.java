@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -69,11 +70,26 @@ public final class CashFlowCheck {
                 errors.isEmpty() ? cashFlow.sections().size() + " fundos conferidos" : String.join("; ", errors));
     }
 
-    /** Opening balance + credits − debits of each section = closing balance in Posição Financeira. */
+    /**
+     * Opening balance + credits − debits of each section = closing balance in Posição Financeira. A fund missing from
+     * the Posição is an error, except when it starts and ends at zero ({@link ZeroFundPositions}): then the check passes
+     * with a notice, because its closing balance is 0,00 for sure.
+     */
     private static TotalsCheck closingBalanceByFund(CashFlow cashFlow, Map<String, FundPosition> position) {
         List<String> errors = new ArrayList<>();
+        List<String> notices = new ArrayList<>();
+        Set<String> zeroFunds = ZeroFundPositions.missingFunds(cashFlow).stream().map(FundSection::fund)
+                .collect(Collectors.toSet());
         for (FundSection section : cashFlow.sections()) {
             FundPosition p = position.get(section.fund());
+            if (p == null && zeroFunds.contains(section.fund())) {
+                notices.add(section.fund() + (section.entries().isEmpty()
+                        ? " não aparece na Posição Financeira; sem lançamentos e com saldo anterior 0,00: "
+                        : " não aparece na Posição Financeira; saldo anterior 0,00, entradas e saídas 0,00 e último "
+                                + "saldo 0,00: ")
+                        + "o saldo final foi considerado 0,00");
+                continue;
+            }
             if (p == null) {
                 errors.add(section.fund() + ": não aparece na Posição Financeira");
                 continue;
@@ -86,8 +102,12 @@ public final class CashFlowCheck {
                         format(p.closingBalance())));
             }
         }
+        String detail = errors.isEmpty() ? cashFlow.sections().size() + " fundos conferidos" : String.join("; ", errors);
+        if (!notices.isEmpty()) {
+            detail += ". Aviso: " + String.join("; ", notices);
+        }
         return new TotalsCheck("FUND_CLOSING_BALANCE", "Saldo final de cada fundo = Posição Financeira", errors.isEmpty(),
-                errors.isEmpty() ? cashFlow.sections().size() + " fundos conferidos" : String.join("; ", errors));
+                detail);
     }
 
     /** Sum of the Posição Financeira lines = TOTAL line. */

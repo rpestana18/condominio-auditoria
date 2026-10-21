@@ -1,5 +1,6 @@
-import type { TrackingBlock, TrackingBlocks, TrackingMonth } from "../../api/types";
-import { formatMoney, formatMonthShort } from "../../format";
+import type { CalculationWarning, TrackingBlock, TrackingBlocks, TrackingMonth } from "../../api/types";
+import { formatInteger, formatMoney, formatMonthShort } from "../../format";
+import { MappingWarningNote } from "../MappingWarningNote";
 import { MonthStatusNote, monthStatusText } from "./MonthStatusNote";
 import type { OpenTrackingEvidence } from "./TrackingGrid";
 
@@ -7,6 +8,8 @@ interface Props {
   blocks: TrackingBlocks;
   months: TrackingMonth[];
   onOpenEvidence: OpenTrackingEvidence;
+  /** NO_CONFIRMED_MAPPING warning, shown discreetly in the "Sem linha da PO" row. */
+  mappingWarning?: CalculationWarning | null;
 }
 
 interface Row {
@@ -24,7 +27,7 @@ const rows: Row[] = [
 ];
 
 /** Separate blocks of RF-13.4, as in RF-03.1.13: outside the budget lines, month by month. */
-export function TrackingBlocksTable({ blocks, months, onOpenEvidence }: Props) {
+export function TrackingBlocksTable({ blocks, months, onOpenEvidence, mappingWarning }: Props) {
   return (
     <section className="block">
       <h2>Blocos à parte</h2>
@@ -44,21 +47,30 @@ export function TrackingBlocksTable({ blocks, months, onOpenEvidence }: Props) {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <BlockRow key={row.key} row={row} block={blocks[row.key]} months={months} onOpenEvidence={onOpenEvidence} />
+              <BlockRow
+                key={row.key}
+                row={row}
+                block={blocks[row.key]}
+                months={months}
+                onOpenEvidence={onOpenEvidence}
+                mappingWarning={row.key === "withoutBudgetLine" ? mappingWarning : null}
+              />
             ))}
           </tbody>
         </table>
       </div>
+      {mappingWarning && <UnmappedAccounts block={blocks.withoutBudgetLine} />}
       <p className="muted">Rateio à parte: linhas de luz, água, gás e seguro predial, mostradas só com a movimentação.</p>
     </section>
   );
 }
 
-function BlockRow({ row, block, months, onOpenEvidence }: { row: Row; block: TrackingBlock } & Omit<Props, "blocks">) {
+function BlockRow({ row, block, months, onOpenEvidence, mappingWarning }: { row: Row; block: TrackingBlock } & Omit<Props, "blocks">) {
   return (
     <tr>
       <th scope="row" className="sticky-column">
         {row.label}
+        {mappingWarning && <MappingWarningNote warning={mappingWarning} />}
       </th>
       {months.map((m) => {
         const cell = block.cells.find((c) => c.month === m.month);
@@ -87,5 +99,49 @@ function BlockRow({ row, block, months, onOpenEvidence }: { row: Row; block: Tra
       })}
       <td className="number">{block.cumulative == null ? "—" : formatMoney(block.cumulative)}</td>
     </tr>
+  );
+}
+
+/** Display order: largest amount first; entries without an account (account null) go last, as sent by the API. */
+function byAmount(a: TrackingAccount, b: TrackingAccount): number {
+  if ((a.account == null) !== (b.account == null)) return a.account == null ? 1 : -1;
+  return b.amount - a.amount;
+}
+
+type TrackingAccount = NonNullable<TrackingBlock["accounts"]>[number];
+
+/**
+ * Accounts of "Sem linha da PO" in the months of the cumulative (blocks.withoutBudgetLine.accounts), collapsed by
+ * default. The amounts come from the API; the screen only orders them for reading.
+ */
+function UnmappedAccounts({ block }: { block: TrackingBlock }) {
+  const accounts = [...(block.accounts ?? [])].sort(byAmount);
+  if (accounts.length === 0) return null;
+  return (
+    <details className="mapping-accounts">
+      <summary>Ver as contas sem linha da PO ({accounts.length})</summary>
+      <table className="table compact">
+        <thead>
+          <tr>
+            <th>Conta</th>
+            <th>Nome</th>
+            <th>Situação</th>
+            <th className="number">Valor no acumulado</th>
+            <th className="number">Lançamentos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {accounts.map((a, i) => (
+            <tr key={a.account ?? `no-account-${i}`}>
+              <td>{a.account ?? "lançamentos sem conta"}</td>
+              <td>{a.name ?? "—"}</td>
+              <td>{a.detail ?? "—"}</td>
+              <td className="number">{formatMoney(a.amount)}</td>
+              <td className="number">{formatInteger(a.entries)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
   );
 }

@@ -32,6 +32,14 @@ class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, "O arquivo passa do limite de 50 MB");
     }
 
+    /** The storage folder does not accept writes (e.g. owner of the mounted folder): 503, nothing saved. */
+    @ExceptionHandler(StorageWriteDeniedException.class)
+    ProblemDetail storageWriteDenied(StorageWriteDeniedException e) {
+        ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
+        p.setTitle("Armazenamento indisponível");
+        return p;
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     ProblemDetail invalidState(IllegalStateException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());

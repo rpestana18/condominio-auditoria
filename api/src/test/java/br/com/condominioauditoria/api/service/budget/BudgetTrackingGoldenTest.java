@@ -95,6 +95,24 @@ class BudgetTrackingGoldenTest {
         assertThat(item(bridge, BalanceBridgeItemCode.UNEXPLAINED).amount()).isEqualByComparingTo("0.00");
         assertThat(bridge.items().stream().map(BridgeItemResponse::amount).reduce(BigDecimal.ZERO, BigDecimal::add))
                 .isEqualByComparingTo(bridge.variation());
+
+        // Q49: all funds = the operating fund's items + the 20 apportionment funds apart, still closing at 0,00
+        BalanceBridgeResponse all = g.scenario.bridge.get(g.scenario.condominiumId, "all", "2026-09", "2026-09");
+        for (BalanceBridgeItemCode code : List.of(BalanceBridgeItemCode.LINE_SAVINGS,
+                BalanceBridgeItemCode.PROVISIONS_RESERVED, BalanceBridgeItemCode.INCOME_VS_PLANNED,
+                BalanceBridgeItemCode.OUTSIDE_BUDGET)) {
+            assertThat(item(all, code).amount()).as(code.name()).isEqualByComparingTo(item(bridge, code).amount());
+        }
+        BridgeItemResponse apportionment = item(all, BalanceBridgeItemCode.APPORTIONMENT_FUNDS);
+        assertThat(apportionment.percentageOfVariation()).isNull();
+        assertThat(apportionment.funds()).hasSize(20).noneMatch(f -> f.name().equals("CONDOMÍNIO"));
+        assertThat(apportionment.funds().stream().map(f -> f.amount()).reduce(BigDecimal.ZERO, BigDecimal::add))
+                .isEqualByComparingTo(apportionment.amount());
+        assertThat(all.items()).extracting(BridgeItemResponse::code).doesNotContain(
+                BalanceBridgeItemCode.FUND_PLANNED_COLLECTION, BalanceBridgeItemCode.FUND_EXPENSES);
+        assertThat(item(all, BalanceBridgeItemCode.UNEXPLAINED).amount()).isEqualByComparingTo("0.00");
+        assertThat(all.items().stream().map(BridgeItemResponse::amount).reduce(BigDecimal.ZERO, BigDecimal::add))
+                .isEqualByComparingTo(all.variation());
     }
 
     /** The printed positions of the September cash flow, as the ProcessingResultService stores them. */

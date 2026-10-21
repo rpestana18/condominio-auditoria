@@ -116,6 +116,21 @@ public class CashFlowParserGoldenTest {
                 .map(LedgerEntry::credit).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    /**
+     * D3 of the RF-13 end-to-end test: every transfer between funds is marked on both sides (accounts with accents,
+     * plural, "TRANSF." and the CONCESSIONÁRIAS adjustments), so what leaves one fund enters another: the net is 0,00.
+     */
+    @Test
+    public void interFundTransfersNetToZero() {
+        var transfers = cashFlow.sections().stream().flatMap(s -> s.entries().stream())
+                .filter(l -> l.enrichment().interFundTransfer()).toList();
+        assertThat(transfers).hasSize(14);
+        assertThat(transfers.stream().map(l -> l.credit().subtract(l.debit())).reduce(BigDecimal.ZERO, BigDecimal::add))
+                .isEqualByComparingTo("0.00");
+        assertThat(transfers.stream().map(LedgerEntry::credit).filter(c -> c.signum() > 0)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)).isEqualByComparingTo("616.76");
+    }
+
     @Test
     public void accountOnTwoLines() {
         var issGreaseTrap = cashFlow.sections().getFirst().entries().stream()

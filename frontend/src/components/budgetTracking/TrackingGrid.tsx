@@ -43,7 +43,7 @@ export function TrackingGrid({ tracking, groups, onOpenEvidence }: Props) {
             <th>Contas do extrato</th>
             <th>Observações</th>
             {months.map((m) => (
-              <th key={m.month} className="number month-column">
+              <th key={m.month} className={`number month-column ${m.partialUntil ? "cell-partial" : ""}`}>
                 {formatMonthShort(m.month)}
                 <MonthStatusNote status={m.status} partialUntil={m.partialUntil} />
               </th>
@@ -250,7 +250,11 @@ function TrackingFooter({ tracking }: { tracking: BudgetTracking }) {
           Excesso das linhas acima do previsto (regra dos 20%)
         </th>
         {months.map((m) => (
-          <td key={m.month} className="number">
+          <td
+            key={m.month}
+            className="number"
+            title={m.partialUntil ? "Mês em andamento: só o realizado até a data, sem comparação com o previsto" : undefined}
+          >
             {m.overrun == null ? (
               "—"
             ) : (
@@ -259,7 +263,6 @@ function TrackingFooter({ tracking }: { tracking: BudgetTracking }) {
                 <small>
                   {m.linesAbove ?? 0} linha(s) · {formatPercentage(m.overrunPercentage)}
                   {m.aboveLimit && " · acima de 20%"}
-                  {m.partialUntil && " · fora da regra (parcial)"}
                 </small>
               </span>
             )}

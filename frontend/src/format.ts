@@ -110,3 +110,14 @@ export function formatDayMonth(iso: string | null | undefined): string {
   const [, month, day] = iso.slice(0, 10).split("-");
   return `${day}/${month}`;
 }
+
+const monthNames = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+/** "2026-10" becomes "Outubro" (the year goes elsewhere in the sentence). */
+export function formatMonthName(yearMonth: string): string {
+  const month = Number(yearMonth.split("-")[1]);
+  return monthNames[month - 1] ?? yearMonth;
+}

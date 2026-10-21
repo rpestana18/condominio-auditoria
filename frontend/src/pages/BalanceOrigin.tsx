@@ -9,6 +9,7 @@ import { BridgeItemDetail } from "../components/balanceBridge/BridgeItemDetail";
 import { BridgeMonthsTable } from "../components/balanceBridge/BridgeMonthsTable";
 import { BridgeSummary } from "../components/balanceBridge/BridgeSummary";
 import type { OpenBridgeEvidence } from "../components/balanceBridge/bridgeEvidence";
+import { splitMappingWarning } from "../components/MappingWarningNote";
 import { EvidencePanel } from "../components/budgetVsActual/EvidencePanel";
 import type { EvidenceTarget } from "../components/budgetVsActual/evidence";
 import { useSession } from "../context";
@@ -98,16 +99,19 @@ function Content({ bridge, funds, defaultPeriod }: ContentProps) {
     );
   }
 
+  // The mapping warning goes next to "Economia nas linhas", the others stay on top
+  const { mapping, others } = splitMappingWarning(bridge.warnings);
+
   return (
     <div className={evidence ? "with-detail" : undefined}>
       <div>
-        {bridge.warnings.map((w, i) => (
+        {others.map((w, i) => (
           <p key={`${w.code}-${i}`} className="notice warning">
             {w.text}
           </p>
         ))}
         <div className="two-columns">
-          <BridgeSummary bridge={bridge} selected={selected} onSelect={setSelected} />
+          <BridgeSummary bridge={bridge} selected={selected} onSelect={setSelected} mappingWarning={mapping} />
           <BridgeChart bridge={bridge} />
         </div>
         {item && <BridgeItemDetail item={item} onOpenEvidence={openEvidence} />}

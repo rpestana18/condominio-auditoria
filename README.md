@@ -63,11 +63,19 @@ docker compose down -v       # apaga o banco também (recomeça do zero)
 
 Os arquivos enviados ficam na pasta `dados/` na raiz do projeto e não são apagados pelo `down -v`. Para zerar tudo, apague também o conteúdo de `dados/` (mantenha o `.gitkeep`).
 
+**Linux:** o `api` grava em `dados/` com o usuário `DADOS_UID` (padrão 1001). Se o seu usuário da máquina não é o 1001 (veja com `id -u`), grave o seu antes de subir, senão o envio de arquivo responde "a pasta de dados do servidor não aceita gravação":
+
+```bash
+echo "DADOS_UID=$(id -u)" > infra/.env   # fora do git; vale para os próximos docker compose up
+```
+
+No Docker Desktop (Windows e macOS) não precisa.
+
 Já rodava a versão anterior (antes dos serviços separados)? O backend passou a usar o schema `backend` do banco e cria as tabelas de novo nele. Os arquivos da pasta `dados/` continuam lá: envie de novo ou rode `docker compose down -v` para começar limpo.
 
 ### Busca nos documentos (modelo bge-m3 e índice)
 
-A busca nos documentos usa embeddings locais gerados pelo **Ollama** com o modelo **bge-m3** (nada sai da sua máquina). Na **primeira** subida, o passo `ollama-modelo` baixa o modelo (cerca de **1,2 GB**) para o volume `ollama`, e o `rag` só sobe depois que o download termina: conte alguns minutos a mais. Acompanhe com `docker compose logs -f ollama-modelo`. Nas próximas subidas o modelo já está no volume e nada é baixado (`docker compose down -v` apaga o volume e o modelo é baixado de novo).
+A busca nos documentos usa embeddings locais gerados pelo **Ollama** com o modelo **bge-m3** (nada sai da sua máquina). Na **primeira** subida, o passo `ollama-modelo` baixa o modelo (cerca de **1,2 GB**) para o volume `ollama`, e o `rag` só sobe depois que o download termina: conte alguns minutos a mais. Acompanhe com `docker compose logs -f ollama-modelo`. Sem acesso a `registry.ollama.ai` o passo só deixa um AVISO no log e o sistema sobe do mesmo jeito: a leitura contábil, os painéis e os relatórios não dependem do modelo; os arquivos entram no índice sem vetores, e a busca nos documentos fica só por palavra até o modelo existir (suba de novo com acesso e use **Reprocessar**). Nas próximas subidas o modelo já está no volume e nada é baixado (`docker compose down -v` apaga o volume e o modelo é baixado de novo).
 
 Cada arquivo enviado entra no índice em segundo plano, separado da leitura contábil. A situação da indexação (`QUEUED`, `INDEXING`, `INDEXED`, `NO_TEXT`, `WITHDRAWN`, `ERROR`) vem no campo `indexing` de cada arquivo na API (`GET /api/condominiums/{condominiumId}/files`). Arquivos enviados **antes desta versão** não estão no índice: use **Reprocessar** em cada um para que entrem na busca.
 

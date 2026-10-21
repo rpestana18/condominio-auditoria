@@ -75,7 +75,7 @@ function Content({ movements }: { movements: FundMovements }) {
               <h2>Movimento de cada fundo em {formatMonth(month)}</h2>
               <span className="muted">Clique em um fundo para ver o mês a mês</span>
             </div>
-            <FundMonthTable funds={funds} month={month} selectedFundId={fundId} onSelectFund={setFundId} />
+            <FundMonthTable funds={funds} month={month} selectedFundId={fundId} onSelectFund={setFundId} partialUntil={summary.partialUntil} />
             <p className="muted">
               Créditos e débitos divididos pelas marcações do sistema (recibos de cota, transferências entre fundos, de-para). O que não
               tem marcação aparece em “outros créditos” ou “outros débitos”.

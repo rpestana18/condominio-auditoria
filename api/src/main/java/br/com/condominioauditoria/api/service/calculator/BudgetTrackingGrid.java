@@ -26,18 +26,22 @@ import br.com.condominioauditoria.api.model.enums.SpendingProfileStatus;
 import br.com.condominioauditoria.api.service.calculator.BudgetVsActualCalculator.Calculation;
 import br.com.condominioauditoria.api.service.calculator.BudgetVsActualCalculator.Cumulative;
 import br.com.condominioauditoria.api.service.calculator.BudgetVsActualCalculator.Month;
+import br.com.condominioauditoria.api.util.MoneyFormatter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Tracking grid of the budget (RF-13.4 and RF-13.10; ADR 0007, Decision 3). <b>Pure function</b>: calls
@@ -47,14 +51,17 @@ import java.util.function.Function;
  * <li>cumulative and line balance (planned − actual) only with the <b>complete</b> months that have a cash flow, on
  * both sides (RF-03.1.10); a month without a cash flow has null numbers, never zero;</li>
  * <li>a partial month (cash flow uploaded before the end of its period, RF-13.10) shows its numbers marked "parcial até
- * DD/MM", and stays out of the cumulative, of the line balance and of the 20% rule;</li>
+ * DD/MM", and stays out of the cumulative, of the line balance and of the 20% rule. While in progress it shows
+ * <b>only the actual</b> (Q50): the difference to the planned amount (cells, groups and month total), the overrun and
+ * the lines above are null until the month closes; the planned amount of the month stays, as a budget figure;</li>
  * <li>the spending profile never changes the planned amount (Q24); without confirmation it is MONTHLY.</li>
  * </ul>
  */
 public final class BudgetTrackingGrid {
 
     /** Version of the grid rules; goes in every result, next to {@link BudgetVsActualCalculator#VERSION}. */
-    public static final String VERSION = "1";
+    /** 2: a month in progress shows only the actual, without difference or overrun (Q50). */
+    public static final String VERSION = "2";
 
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2);
     private static final DateTimeFormatter DAY_MONTH = DateTimeFormatter.ofPattern("dd/MM");
@@ -171,8 +178,8 @@ public final class BudgetTrackingGrid {
                         cells.add(new TrackingCellResponse(gm.month().toString(), null, null, null, null));
                         continue;
                     }
-                    cells.add(new TrackingCellResponse(gm.month().toString(), r.planned(), r.actual(), r.difference(),
-                            r.entries()));
+                    cells.add(new TrackingCellResponse(gm.month().toString(), r.planned(), r.actual(),
+                            gm.complete() ? r.difference() : null, r.entries()));
                     if (effective == SpendingProfile.SEPARATE_APPORTIONMENT) {
                         separateByMonth.set(i, separateByMonth.get(i).add(r.actual()));
                         separateEntries.set(i, separateEntries.get(i) + r.entries());
@@ -206,8 +213,8 @@ public final class BudgetTrackingGrid {
                     continue;
                 }
                 int entries = r.lines().stream().mapToInt(BudgetVsActualLineResponse::entries).sum();
-                cells.add(new TrackingCellResponse(gm.month().toString(), r.planned(), r.actual(), r.difference(),
-                        entries));
+                cells.add(new TrackingCellResponse(gm.month().toString(), r.planned(), r.actual(),
+                        gm.complete() ? r.difference() : null, entries));
                 if (gm.complete()) {
                     planned = planned.add(r.planned());
                     actual = actual.add(r.actual());
@@ -253,6 +260,10 @@ public final class BudgetTrackingGrid {
             warnings.add(new BudgetVsActualWarningResponse("MONTHS_WITHOUT_CASH_FLOW",
                     BudgetVsActualCalculator.monthList(missing) + " sem extrato carregado"));
         }
+        unmappedWarning(unmapped(months.stream().filter(GridMonth::complete)
+                .map(m -> m.calculation().result().withoutBudgetLine()).toList()),
+                " no acumulado", "o previsto das linhas dessas despesas fica como saldo da linha")
+                .ifPresent(warnings::add);
         partialMonths.forEach(t -> warnings.add(new BudgetVsActualWarningResponse("PARTIAL_MONTH", t
                 + ": aparece com os números até a data, fora do acumulado, do saldo das linhas e da regra dos 20%")));
         months.stream().filter(m -> m.calculation().result().status() == BudgetVsActualStatus.TWO_CASH_FLOWS)
@@ -286,16 +297,18 @@ public final class BudgetTrackingGrid {
         }
         boolean complete = gm.complete();
         var rule = r.rule20();
+        // A month in progress: only the actual (Q50)
         return new TrackingMonthResponse(gm.month().toString(), status, gm.partialUntil(), complete, m.cashFlows(),
                 r.totals().planned(), r.totals().inLines(), r.totals().actualExpense(),
-                r.totals().inLines().subtract(r.totals().planned()), m.overrun(),
-                rule == null ? null : rule.linesAbove(),
+                complete ? r.totals().inLines().subtract(r.totals().planned()) : null, complete ? m.overrun() : null,
+                complete && rule != null ? rule.linesAbove() : null,
                 complete && rule != null ? rule.percentage() : null, complete && rule != null ? rule.aboveLimit() : null);
     }
 
     private static TrackingBlockResponse block(List<GridMonth> months,
             Function<BudgetVsActualResponse, EntryBlockResponse> of) {
         List<TrackingBlockCellResponse> cells = new ArrayList<>();
+        List<EntryBlockResponse> complete = new ArrayList<>();
         BigDecimal cumulative = ZERO;
         int entries = 0;
         for (GridMonth gm : months) {
@@ -308,9 +321,10 @@ public final class BudgetTrackingGrid {
             if (gm.complete()) {
                 cumulative = cumulative.add(b.total());
                 entries += b.entries();
+                complete.add(b);
             }
         }
-        return new TrackingBlockResponse(List.copyOf(cells), cumulative, entries);
+        return new TrackingBlockResponse(List.copyOf(cells), cumulative, entries, merge(complete));
     }
 
     private static TrackingBlockResponse separate(List<GridMonth> months, List<BigDecimal> amounts,
@@ -319,7 +333,77 @@ public final class BudgetTrackingGrid {
         for (int i = 0; i < months.size(); i++) {
             cells.add(new TrackingBlockCellResponse(months.get(i).month().toString(), amounts.get(i), entries.get(i)));
         }
-        return new TrackingBlockResponse(List.copyOf(cells), cumulative, cumulativeEntries);
+        return new TrackingBlockResponse(List.copyOf(cells), cumulative, cumulativeEntries, List.of());
+    }
+
+    /**
+     * Accounts of the operating fund without a confirmed mapping (the "sem linha da PO" block of the budget vs. actual),
+     * merged over some months. {@code accounts}: largest amount first, the entries without an account last (account
+     * null). {@code count}: accounts with a code, as in the NO_CONFIRMED_MAPPING warning of the budget vs. actual.
+     */
+    public record UnmappedAccounts(List<BlockAccountResponse> accounts, BigDecimal total, int entries) {
+
+        public long count() {
+            return accounts.stream().filter(a -> a.account() != null).count();
+        }
+    }
+
+    /** The "sem linha da PO" block of each month with numbers (complete or partial), for the balance bridge. */
+    public static Map<YearMonth, EntryBlockResponse> withoutBudgetLineByMonth(List<GridMonth> months) {
+        Map<YearMonth, EntryBlockResponse> byMonth = new LinkedHashMap<>();
+        months.stream().filter(GridMonth::hasNumbers)
+                .forEach(m -> byMonth.put(m.month(), m.calculation().result().withoutBudgetLine()));
+        return byMonth;
+    }
+
+    /** Merges "sem linha da PO" blocks of several months. */
+    public static UnmappedAccounts unmapped(List<EntryBlockResponse> blocks) {
+        BigDecimal total = ZERO;
+        int entries = 0;
+        for (EntryBlockResponse b : blocks) {
+            total = total.add(b.total());
+            entries += b.entries();
+        }
+        return new UnmappedAccounts(merge(blocks), total, entries);
+    }
+
+    /**
+     * Warning NO_CONFIRMED_MAPPING (RF-03.1.10) with the accounts and the amount, as in the budget vs. actual.
+     * {@code where}: the period of the amount (" no acumulado"); {@code effect}: what it means on that screen.
+     */
+    public static Optional<BudgetVsActualWarningResponse> unmappedWarning(UnmappedAccounts u, String where,
+            String effect) {
+        long count = u.count();
+        if (count == 0) {
+            return Optional.empty();
+        }
+        String accounts = u.accounts().stream()
+                .map(a -> (a.account() == null ? "lançamentos sem conta"
+                        : a.account() + (a.name() == null || a.name().isBlank() ? "" : " " + a.name()))
+                        + " R$ " + MoneyFormatter.format(a.amount()))
+                .collect(Collectors.joining("; "));
+        return Optional.of(new BudgetVsActualWarningResponse("NO_CONFIRMED_MAPPING", count
+                + (count == 1 ? " conta" : " contas") + " sem de-para confirmado" + where + ": R$ "
+                + MoneyFormatter.format(u.total()) + " em \"sem linha da PO\", fora das linhas da PO; " + effect
+                + ". Contas: " + accounts));
+    }
+
+    /** Merges the accounts of several blocks by account code: amounts and entries added, largest amount first. */
+    static List<BlockAccountResponse> merge(List<EntryBlockResponse> blocks) {
+        Map<String, BlockAccountResponse> byAccount = new LinkedHashMap<>();
+        for (EntryBlockResponse b : blocks) {
+            for (BlockAccountResponse a : b.accounts()) {
+                byAccount.merge(Objects.requireNonNullElse(a.account(), ""), a,
+                        (x, y) -> new BlockAccountResponse(x.account(), x.name() == null ? y.name() : x.name(),
+                                x.detail() == null ? y.detail() : x.detail(), x.amount().add(y.amount()),
+                                x.entries() + y.entries()));
+            }
+        }
+        return byAccount.values().stream()
+                .sorted(Comparator.comparing((BlockAccountResponse a) -> a.account() == null)
+                        .thenComparing(BlockAccountResponse::amount, Comparator.reverseOrder())
+                        .thenComparing(a -> Objects.requireNonNullElse(a.account(), "")))
+                .toList();
     }
 
     /** Accounts of a block, merged over the complete months (for the bridge parts). */

@@ -13,7 +13,9 @@ COPY mcp mcp
 # Remove CRLF e garante a permissão de execução: num clone do Windows o gradlew
 # pode chegar com CRLF ou sem o bit de execução, e aí o build para com código 127.
 RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
-RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon -q :${SERVICO}:bootJar -x test \
+# sharing=locked: o compose compila api, rag e mcp ao mesmo tempo com o mesmo cache; sem a trava, os três
+# disputam o journal-1.lock do Gradle e o build para com "Timeout waiting to lock journal cache".
+RUN --mount=type=cache,target=/root/.gradle,sharing=locked ./gradlew --no-daemon -q :${SERVICO}:bootJar -x test \
     && cp ${SERVICO}/build/libs/${SERVICO}-*.jar /app.jar
 
 FROM eclipse-temurin:25-jre

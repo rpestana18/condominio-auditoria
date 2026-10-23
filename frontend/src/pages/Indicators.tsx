@@ -1,5 +1,5 @@
 import { useSearchParams } from "react-router";
-import { useFiscalYears, useIndicators } from "../api/budgetAnalysisQueries";
+import { useFiscalYears, useHasConfirmedBudget, useIndicators } from "../api/budgetAnalysisQueries";
 import { useFunds } from "../api/budgetQueries";
 import type { Indicators as IndicatorSeries } from "../api/types";
 import { NotApplicable } from "../components/indicators/IndicatorCard";
@@ -13,6 +13,7 @@ import { ActualByGroupChart } from "../components/indicators/ActualByGroupChart"
 import { Rule20Chart } from "../components/indicators/Rule20Chart";
 import { FiscalYearSelector } from "../components/budgetVsActual/FiscalYearSelector";
 import { FundSelector } from "../components/budgetVsActual/FundSelector";
+import { NoConfirmedBudget } from "../components/NoConfirmedBudget";
 import { useSession } from "../context";
 import { formatMonth } from "../format";
 
@@ -29,7 +30,10 @@ export function Indicators() {
 
   const { data: fiscalYears = [] } = useFiscalYears(condominiumId);
   const { data: funds = [] } = useFunds(condominiumId);
-  const query = useIndicators(condominiumId, budgetId, fundId);
+  // Without `po`, the API uses the most recent confirmed budget: with none, the screen shows the empty state
+  const hasBudget = useHasConfirmedBudget(condominiumId);
+  const withoutBudget = !budgetId && hasBudget === false;
+  const query = useIndicators(condominiumId, budgetId, fundId, !!budgetId || hasBudget === true);
 
   const change = (name: string, value: string | null) =>
     setParameters((current) => {
@@ -50,7 +54,9 @@ export function Indicators() {
         <FundSelector funds={funds} fundId={fundId} onChange={(f) => change("fundo", f)} />
       </div>
 
-      {query.isLoading ? (
+      {withoutBudget ? (
+        <NoConfirmedBudget what="os indicadores do exercício" />
+      ) : query.isLoading || hasBudget === undefined ? (
         <p className="notice">Carregando…</p>
       ) : query.error ? (
         <p className="notice error">{query.error.message}</p>

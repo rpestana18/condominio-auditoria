@@ -8,8 +8,9 @@ import { useSession } from "../context";
  */
 export function AiAdministration() {
   const { condominiumId, condominiumName, can } = useSession();
-  const configuration = useAiConfiguration(condominiumId);
-  const providers = useAiProviders();
+  // Only the Admin asks the API: another role reaching this address sees the notice below, not a 403
+  const configuration = useAiConfiguration(condominiumId, can("ADMIN"));
+  const providers = useAiProviders(can("ADMIN"));
 
   if (!can("ADMIN")) {
     return <p className="notice">Esta tela é do administrador da plataforma.</p>;

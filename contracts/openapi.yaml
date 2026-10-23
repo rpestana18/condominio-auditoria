@@ -313,7 +313,7 @@ paths:
         Conta sem de-para tem estado nulo. Só CONFIRMED entra no previsto × realizado.
       operationId: listAccountMappings
       parameters:
-        - name: filtro
+        - name: filter
           in: query
           required: false
           schema: { $ref: "#/components/schemas/AccountMappingFilter" }
@@ -449,7 +449,7 @@ paths:
         CONFIRMED entra na comparação por linha entre exercícios; o resto fica "sem correspondência".
       operationId: listBudgetLineItems
       parameters:
-        - name: filtro
+        - name: filter
           in: query
           required: false
           schema: { $ref: "#/components/schemas/BudgetItemFilter" }
@@ -770,25 +770,25 @@ paths:
       summary: Comparar exercícios (todos os perfis, RF-11.6)
       description: |
         Três visões: resumo por exercício, por grupo (1.1 a 1.9, casados pelo código) e por linha (casadas pela rubrica
-        confirmada, RF-11.7; linha sem rubrica confirmada fica em "semCorrespondencia" e nunca é somada a outra).
+        confirmada, RF-11.7; linha sem rubrica confirmada fica em "unmatched" e nunca é somada a outra).
         Exercícios do mais recente para o mais antigo; a variação de cada um é contra o seguinte da lista. Variação em
-        % só com base diferente de zero; base zero com valor = "novaNoExercicio". O realizado vem do mesmo cálculo do
-        previsto × realizado; "alvo" abre a evidência nele (com o poId e o "periodo" do exercício). Nada é gravado.
+        % só com base diferente de zero; base zero com valor = "newInFiscalYear". O realizado vem do mesmo cálculo do
+        previsto × realizado; "target" abre a evidência nele (com o budgetId e o "period" do exercício). Nada é gravado.
       operationId: compareFiscalYears
       parameters:
-        - name: exercicios
+        - name: fiscalYears
           in: query
           required: false
           description: Ids separados por vírgula ("budget:<uuid>" ou o uuid, e "column:<uuid>"); vazio = os dois mais recentes
           style: form
           explode: false
           schema: { type: array, items: { type: string } }
-        - name: fundo
+        - name: fund
           in: query
           required: false
           description: Fundo Condomínio = sem os fundos 1.9; outro fundo = só a linha 1.9 dele (arrecadação); vazio = tudo
           schema: { type: string, format: uuid }
-        - name: mesmosMeses
+        - name: sameMonths
           in: query
           required: false
           description: Compara só os meses (pelo número) com fluxo em todos os exercícios com PO
@@ -1743,7 +1743,7 @@ components:
               months: { type: array, items: { type: string }, description: Meses somados no realizado }
         fundId: { type: [string, "null"], format: uuid }
         sameMonths: { type: boolean }
-        comparing: { type: [string, "null"], description: 'Ex.: "comparando: setembro" (só com mesmosMeses)' }
+        comparing: { type: [string, "null"], description: 'Ex.: "comparando: setembro" (só com sameMonths)' }
         summary:
           type: array
           items:
@@ -1915,7 +1915,7 @@ components:
           oneOf:
             - { type: "null" }
             - type: object
-              description: Gráfico 7; "previstoMes" de cada grupo na ordem de "exercicios"
+              description: Gráfico 7; "monthlyPlanned" de cada grupo na ordem de "fiscalYears"
               required: [fiscalYears, groups]
               properties:
                 fiscalYears:
@@ -1941,7 +1941,7 @@ components:
                       targets:
                         type: array
                         items: { type: [string, "null"] }
-                        description: Alvo do grupo em cada exercício, na ordem de "exercicios"; abre a evidência no previsto × realizado
+                        description: Alvo do grupo em cada exercício, na ordem de "fiscalYears"; abre a evidência no previsto × realizado
         warnings: { type: array, items: { type: string } }
     LineDifferenceResponse:
       type: object

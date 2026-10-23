@@ -6,7 +6,8 @@ import { useBudgetTracking } from "../api/budgetTrackingQueries";
 import type { BudgetTracking as Tracking } from "../api/types";
 import { EvidencePanel } from "../components/budgetVsActual/EvidencePanel";
 import type { EvidenceTarget } from "../components/budgetVsActual/evidence";
-import { splitMappingWarning } from "../components/MappingWarningNote";
+import { BeforeReadingBox } from "../components/BeforeReadingBox";
+import { NO_CONFIRMED_MAPPING, PROFILE_NOT_CONFIRMED, topNotes, type PendingSteps } from "../components/pendingSteps";
 import { TrackingBlocksTable } from "../components/budgetTracking/TrackingBlocksTable";
 import { TrackingFilters } from "../components/budgetTracking/TrackingFilters";
 import { TrackingGrid } from "../components/budgetTracking/TrackingGrid";
@@ -105,16 +106,12 @@ function Content({ tracking, filter, onOpenEvidence }: ContentProps) {
   }
   const groups = filterGroups(tracking.groups, filter);
   const lineCount = groups.reduce((count, g) => count + g.lines.length, 0);
-  // The mapping warning goes next to "Sem linha da PO", the others stay on top
-  const { mapping, others } = splitMappingWarning(tracking.warnings);
+  const steps = trackingSteps(tracking);
 
   return (
     <>
-      {others.map((w, i) => (
-        <p key={`${w.code}-${i}`} className="notice warning">
-          {w.text}
-        </p>
-      ))}
+      {/* One place on top: the pending steps and the other short notes */}
+      <BeforeReadingBox steps={steps} notes={topNotes(tracking.warnings)} />
       <TrackingMonthsChart months={tracking.months} />
       <section className="block">
         <div className="block-title">
@@ -135,7 +132,7 @@ function Content({ tracking, filter, onOpenEvidence }: ContentProps) {
           blocks={tracking.blocks}
           months={tracking.months}
           onOpenEvidence={onOpenEvidence}
-          mappingWarning={mapping}
+          steps={steps}
         />
       )}
       <p className="muted">
@@ -144,6 +141,24 @@ function Content({ tracking, filter, onOpenEvidence }: ContentProps) {
       </p>
     </>
   );
+}
+
+/**
+ * Pending steps of the grid: the accounts of "Sem linha da PO" in the cumulative (blocks.withoutBudgetLine, only with
+ * the NO_CONFIRMED_MAPPING warning) and the PROFILE_NOT_CONFIRMED warning. Counts the accounts with a code, as the API
+ * does in the warning.
+ */
+function trackingSteps(tracking: Tracking): PendingSteps {
+  const block = tracking.blocks?.withoutBudgetLine;
+  const warned = tracking.warnings.some((w) => w.code === NO_CONFIRMED_MAPPING);
+  const accounts = warned ? (block?.accounts ?? []) : [];
+  return {
+    budgetId: tracking.budget?.id ?? null,
+    unmappedAccounts: accounts.filter((a) => a.account != null).length,
+    unmappedAmount: block?.cumulative ?? null,
+    accounts,
+    profilesNotConfirmed: tracking.warnings.some((w) => w.code === PROFILE_NOT_CONFIRMED),
+  };
 }
 
 /** Legend of the neutral highlights: no red here (RF-11.13); red is only for the excess above 20%. */

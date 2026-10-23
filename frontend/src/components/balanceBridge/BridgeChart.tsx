@@ -1,13 +1,17 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { BalanceBridge } from "../../api/types";
 import { formatDifference, formatMoneyShort } from "../../format";
+import { isProvisionalItem } from "./bridgeSteps";
 
 /**
  * Items of the bridge as horizontal bars (amounts from the API). Neutral tones: one for items that add to the balance,
- * another for items that take from it. "Não explicado" different from zero uses the warning color.
+ * another for items that take from it. "Não explicado" different from zero uses the warning color. Provisional items
+ * (they depend on the account mapping) stay out of the chart, so they do not set its scale; they remain in the table.
  */
 export function BridgeChart({ bridge }: { bridge: BalanceBridge }) {
+  const provisional = bridge.items.filter((i) => isProvisionalItem(bridge, i.code));
   const data = bridge.items
+    .filter((i) => !isProvisionalItem(bridge, i.code))
     .filter((i) => i.amount !== 0 || i.code === "UNEXPLAINED")
     .map((i) => ({ label: i.label, amount: i.amount, code: i.code }));
   if (data.length === 0) return null;
@@ -35,6 +39,11 @@ export function BridgeChart({ bridge }: { bridge: BalanceBridge }) {
         <span className="legend-swatch" style={{ background: "var(--series-1)" }} /> soma ao saldo
         <span className="legend-swatch" style={{ background: "var(--series-2)" }} /> reduz o saldo
       </p>
+      {provisional.length > 0 && (
+        <p className="muted">
+          Fora do gráfico até o de-para ser confirmado (provisório): {provisional.map((i) => `“${i.label}”`).join(" e ")}.
+        </p>
+      )}
     </section>
   );
 }

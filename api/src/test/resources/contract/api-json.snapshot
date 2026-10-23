@@ -222,6 +222,21 @@ GET /api/condominiums/{}/balance-bridge
       }]
       percentageOfVariation: number
     }]
+    mapping: {
+      accounts: [{
+        account: string
+        amount: number
+        detail: string
+        entries: integer
+        name: string
+      }]
+      debits: number
+      provisional: boolean
+      provisionalLimitPercentage: number
+      unmappedAccounts: integer
+      unmappedAmount: number
+      unmappedEntries: integer
+    }
     message: string
     months: [{
       closingBalance: number

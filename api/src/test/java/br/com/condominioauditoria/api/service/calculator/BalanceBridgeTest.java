@@ -7,6 +7,7 @@ import static br.com.condominioauditoria.api.service.calculator.SyntheticSeptemb
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.condominioauditoria.api.dto.response.budget.BalanceBridgeResponse;
+import br.com.condominioauditoria.api.dto.response.budget.BlockAccountResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeItemResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeLineResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeMonthResponse;
@@ -15,6 +16,7 @@ import br.com.condominioauditoria.api.model.enums.BudgetVsActualStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -360,6 +362,37 @@ class BalanceBridgeTest {
                 .noneMatch(w -> w.code().equals("NO_CONFIRMED_MAPPING"));
         assertThat(bridge(null, SEPTEMBER, SEPTEMBER).warnings())
                 .anyMatch(w -> w.code().equals("NO_CONFIRMED_MAPPING"));
+    }
+
+    @Test
+    void mappingStateComesAsFieldsWithTheProvisionalFlag() {
+        s.entries.add(s.entry(s.septemberFile, OPERATING, "9001", "0.00", "700.00", false, false,
+                SEPTEMBER.atDay(10)));
+        s.entries.add(s.entry(s.septemberFile, OPERATING, "9002", "0.00", "50.00", false, false,
+                SEPTEMBER.atDay(11)));
+
+        BalanceBridgeResponse r = bridge(OPERATING, SEPTEMBER, SEPTEMBER);
+
+        assertThat(r.mapping()).isNotNull();
+        assertThat(r.mapping().unmappedAccounts()).isEqualTo(2);
+        assertThat(r.mapping().unmappedAmount()).isEqualByComparingTo("750.00");
+        assertThat(r.mapping().accounts()).extracting(a -> a.account()).containsExactly("9001", "9002");
+        assertThat(r.mapping().provisionalLimitPercentage()).isEqualByComparingTo("5.00");
+        // R$ 750,00 is far below 5% of the operating fund's debits of the month (without transfers)
+        assertThat(r.mapping().debits()).isGreaterThan(new BigDecimal("15000.00"));
+        assertThat(r.mapping().provisional()).isFalse();
+        assertThat(bridge(RESERVE, SEPTEMBER, SEPTEMBER).mapping()).isNull();
+    }
+
+    @Test
+    void mappingIsProvisionalAboveTheLimitOnly() {
+        var accounts = List.of(new BlockAccountResponse("9001", "CONTA", "sem de-para", new BigDecimal("50.01"), 1));
+        var unmapped = new BudgetTrackingGrid.UnmappedAccounts(accounts, new BigDecimal("50.01"), 1);
+        assertThat(BalanceBridge.mapping(unmapped, new BigDecimal("1000.00")).provisional()).isTrue();
+        var atLimit = new BudgetTrackingGrid.UnmappedAccounts(accounts, new BigDecimal("50.00"), 1);
+        assertThat(BalanceBridge.mapping(atLimit, new BigDecimal("1000.00")).provisional()).isFalse();
+        var none = new BudgetTrackingGrid.UnmappedAccounts(List.of(), new BigDecimal("0.00"), 0);
+        assertThat(BalanceBridge.mapping(none, new BigDecimal("0.00")).provisional()).isFalse();
     }
 
     @Test

@@ -1,6 +1,7 @@
-import type { CalculationWarning, TrackingBlock, TrackingBlocks, TrackingMonth } from "../../api/types";
+import type { TrackingBlock, TrackingBlocks, TrackingMonth } from "../../api/types";
 import { formatInteger, formatMoney, formatMonthShort } from "../../format";
-import { MappingWarningNote } from "../MappingWarningNote";
+import type { PendingSteps } from "../pendingSteps";
+import { UnmappedAccountsNote } from "../UnmappedAccountsNote";
 import { MonthStatusNote, monthStatusText } from "./MonthStatusNote";
 import type { OpenTrackingEvidence } from "./TrackingGrid";
 
@@ -8,8 +9,8 @@ interface Props {
   blocks: TrackingBlocks;
   months: TrackingMonth[];
   onOpenEvidence: OpenTrackingEvidence;
-  /** NO_CONFIRMED_MAPPING warning, shown discreetly in the "Sem linha da PO" row. */
-  mappingWarning?: CalculationWarning | null;
+  /** Pending steps: the accounts without a confirmed mapping come as one short line in the "Sem linha da PO" row. */
+  steps?: PendingSteps | null;
 }
 
 interface Row {
@@ -27,7 +28,7 @@ const rows: Row[] = [
 ];
 
 /** Separate blocks of RF-13.4, as in RF-03.1.13: outside the budget lines, month by month. */
-export function TrackingBlocksTable({ blocks, months, onOpenEvidence, mappingWarning }: Props) {
+export function TrackingBlocksTable({ blocks, months, onOpenEvidence, steps }: Props) {
   return (
     <section className="block">
       <h2>Blocos à parte</h2>
@@ -53,24 +54,25 @@ export function TrackingBlocksTable({ blocks, months, onOpenEvidence, mappingWar
                 block={blocks[row.key]}
                 months={months}
                 onOpenEvidence={onOpenEvidence}
-                mappingWarning={row.key === "withoutBudgetLine" ? mappingWarning : null}
+                steps={row.key === "withoutBudgetLine" ? steps : null}
               />
             ))}
           </tbody>
         </table>
       </div>
-      {mappingWarning && <UnmappedAccounts block={blocks.withoutBudgetLine} />}
+      {!!steps?.unmappedAccounts && <UnmappedAccounts block={blocks.withoutBudgetLine} />}
       <p className="muted">Rateio à parte: linhas de luz, água, gás e seguro predial, mostradas só com a movimentação.</p>
     </section>
   );
 }
 
-function BlockRow({ row, block, months, onOpenEvidence, mappingWarning }: { row: Row; block: TrackingBlock } & Omit<Props, "blocks">) {
+function BlockRow({ row, block, months, onOpenEvidence, steps }: { row: Row; block: TrackingBlock } & Omit<Props, "blocks">) {
   return (
     <tr>
       <th scope="row" className="sticky-column">
         {row.label}
-        {mappingWarning && <MappingWarningNote warning={mappingWarning} />}
+        {/* The accounts are listed below the table */}
+        {steps && <UnmappedAccountsNote steps={steps} withAccounts={false} />}
       </th>
       {months.map((m) => {
         const cell = block.cells.find((c) => c.month === m.month);

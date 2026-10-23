@@ -14,7 +14,8 @@ import java.util.UUID;
  * {@code from}/{@code to} are the requested period (by default the whole fiscal year). The total covers only
  * {@code effectiveFrom} to {@code effectiveTo}: from the opening balance at {@code openingDate} to the closing balance
  * at {@code closingDate} (last day of the last complete month). A partial month comes in {@code partialMonth}, outside
- * the total.
+ * the total. {@code mapping}: account mapping state of the operating fund in the total; null when the bridge does not
+ * include the operating fund or has no numbers.
  */
 public record BalanceBridgeResponse(
         String calculationVersion,
@@ -38,5 +39,6 @@ public record BalanceBridgeResponse(
         String effectiveTo,
         LocalDate openingDate,
         LocalDate closingDate,
-        BridgePartialMonthResponse partialMonth) {
+        BridgePartialMonthResponse partialMonth,
+        BridgeMappingResponse mapping) {
 }

@@ -12,6 +12,24 @@ export function NoNumbers({ result }: { result: BudgetVsActual }) {
   const { status, budget } = result;
   const twoCashFlows = result.months.filter((m) => m.status === "TWO_CASH_FLOWS");
 
+  // Cumulative without a budget: the backend found no confirmed budget at all (it picks the latest confirmed one)
+  if (status === "NO_BUDGET" && result.period === "cumulative") {
+    return (
+      <section className="block no-numbers">
+        <h2>Nenhuma PO confirmada ainda</h2>
+        <p>
+          Envie a PO em Arquivos e confirme-a em "PO aprovada". O previsto × realizado aparece depois da confirmação.
+        </p>
+        <Link className="link-button" to="/arquivos">
+          Ir para Arquivos
+        </Link>{" "}
+        <Link className="link-button" to="/previsoes">
+          Ver as POs enviadas
+        </Link>
+      </section>
+    );
+  }
+
   return (
     <section className="block no-numbers">
       <h2>{titles[status]}</h2>

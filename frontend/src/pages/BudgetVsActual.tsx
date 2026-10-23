@@ -40,7 +40,7 @@ export function BudgetVsActual() {
   // The cumulative view brings the months of the fiscal year (for the filter and the month-by-month chart)
   const cumulative = useBudgetVsActual(condominiumId, "cumulative", budgetId);
   const lastMonth = cumulative.data?.summedMonths.at(-1);
-  const period = parameters.get("periodo") ?? (cumulative.isFetched ? (lastMonth ?? "cumulative") : null);
+  const period = addressPeriod(parameters.get("periodo")) ?? (cumulative.isFetched ? (lastMonth ?? "cumulative") : null);
   // The fund filter goes to the API: it returns only what belongs to the chosen view
   const query = useBudgetVsActual(condominiumId, period, budgetId, fundId);
 
@@ -104,6 +104,15 @@ export function BudgetVsActual() {
       ) : null}
     </>
   );
+}
+
+/**
+ * Period written in the address, as the API expects it ("cumulative" or YYYY-MM). Old links (e.g. the home card before
+ * the API went to English) wrote "acumulado": it still opens the cumulative view instead of a 400 from the API.
+ */
+function addressPeriod(value: string | null): string | null {
+  if (!value) return null;
+  return value === "acumulado" ? "cumulative" : value;
 }
 
 interface ContentProps {

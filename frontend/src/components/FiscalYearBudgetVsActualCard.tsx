@@ -14,7 +14,7 @@ export function FiscalYearBudgetVsActualCard() {
 
   const totals = result.status === "CALCULATED" ? result.totals : null;
   return (
-    <Link to="/previsto-realizado?periodo=acumulado" className="number-card card-link" title="Abrir o previsto × realizado">
+    <Link to="/previsto-realizado?periodo=cumulative" className="number-card card-link" title="Abrir o previsto × realizado">
       <span className="card-title">Previsto × realizado no exercício</span>
       {totals ? (
         <>

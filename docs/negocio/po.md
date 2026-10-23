@@ -4,6 +4,18 @@ Entendimento confirmado pelo usuário em 23/10/2026, escrito pelo agente `negoci
 
 Marcas: **[fato]** com a fonte; **[decisão]** do usuário (Q-xx do `docs/requisitos.md` §10, ou D/N com a data, deste entendimento); **[a confirmar]** quando ainda é hipótese. Os exemplos são do piloto (Mio Residencial Parque, PO 2026/2027). Código Civil é regra fixa; convenção, RI, PO, fundos e plano de contas são dados de cada condomínio.
 
+## 0. O requisito principal e a ordem do trabalho
+
+**O que a funcionalidade precisa entregar** [decisão, 23/10/2026]: as **entradas e as saídas mês a mês** e, para cada gasto, **qual linha da PO ele é**. O resto (economia, estouro, ponte do saldo, gráficos) deriva disso. A versão anterior criou vários menus e não entregou esse quadro principal.
+
+**A ordem não pode ser invertida** [decisão, 23/10/2026]:
+
+1. **Entender o documento da PO primeiro.** Identificar cada linha com tudo o que o documento traz: grupo, item, código da conta, nome da conta, empresa (no grupo 1.3), serviço e descrição, valor mensal, observação, e os fundos (1.9). A PO muda de modelo de um ano e de uma administradora para outra, então essa identificação é conferida por uma pessoa antes de qualquer cálculo.
+2. **Só depois distribuir os gastos.** Com as linhas identificadas e confirmadas, cada lançamento do extrato é ligado à sua linha pelo de-para (seção 8).
+3. **Só então mostrar** entradas, saídas, previsto × realizado e a origem da economia.
+
+O problema que levou a este entendimento foi o sistema não saber interpretar a PO: confundiu linha com número do item, com empresa e com conta (seção 9). Sem o passo 1 bem feito, todo o resto sai errado.
+
 ## 1. O que é a PO
 
 A PO (previsão orçamentária) é o **limite de gasto mensal por rubrica que a assembleia aprova para um exercício**. Ela não é plano de contas, não é lista de fornecedores e não tem numeração confiável.
@@ -86,6 +98,7 @@ Cada uma trocou um conceito por outro: linha = número do item; linha = forneced
 
 ## 10. O que o `requisitos` precisa rever no RF-13
 
+0. Partir do requisito principal da seção 0: uma visão de entradas e saídas mês a mês com a linha da PO de cada gasto, e a identificação confirmada das linhas antes de qualquer distribuição. Reavaliar se os oito itens de menu do RF-13.1 servem a isso ou o escondem.
 1. Tipos de linha: separar **recorrentes** e **eventuais**; a sobra das eventuais não entra em "economia nas linhas" (hoje "pela média" está junto de "mensal").
 2. Ponte do saldo: a parcela "receita acima ou abaixo do previsto" passa a se chamar "entrada acima da despesa prevista", no mês e no acumulado.
 3. Entradas e saídas de cada mês lado a lado.

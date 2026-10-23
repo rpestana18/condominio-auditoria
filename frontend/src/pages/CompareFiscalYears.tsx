@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { useFiscalYearComparison, useFiscalYears } from "../api/budgetAnalysisQueries";
 import { useFunds } from "../api/budgetQueries";
 import type { FiscalYearComparison, FiscalYear } from "../api/types";
@@ -34,9 +34,17 @@ export function CompareFiscalYears() {
   const sameMonths = parameters.get("mesmosMeses") === "true";
   const view = (parameters.get("visao") as View | null) ?? "resumo";
 
-  const { data: fiscalYears = [] } = useFiscalYears(condominiumId);
+  const fiscalYearList = useFiscalYears(condominiumId);
+  const fiscalYears = fiscalYearList.data ?? [];
   const { data: funds = [] } = useFunds(condominiumId);
-  const query = useFiscalYearComparison(condominiumId, { fiscalYears: chosen, fundId, sameMonths });
+  // Without a choice in the address, the backend compares the two most recent: with fewer than two fiscal years it
+  // refuses (422), so the screen explains what is missing instead of asking
+  const fewFiscalYears = chosen === null && fiscalYearList.isSuccess && fiscalYears.length < 2;
+  const query = useFiscalYearComparison(
+    condominiumId,
+    { fiscalYears: chosen, fundId, sameMonths },
+    chosen !== null || fiscalYearList.isError || (fiscalYearList.isSuccess && fiscalYears.length >= 2),
+  );
   const response = query.data ?? null;
   // Budget whose "Orçado anterior" column is open in the check panel
   const [openColumn, setOpenColumn] = useState<string | null>(null);
@@ -68,7 +76,9 @@ export function CompareFiscalYears() {
         comparing={response?.comparing}
       />
 
-      {query.isLoading ? (
+      {fewFiscalYears ? (
+        <FewFiscalYears count={fiscalYears.length} />
+      ) : query.isLoading || fiscalYearList.isLoading ? (
         <p className="notice">Carregando…</p>
       ) : query.error ? (
         <p className="notice error">{query.error.message}</p>
@@ -103,6 +113,25 @@ export function CompareFiscalYears() {
         </div>
       ) : null}
     </>
+  );
+}
+
+/** Fewer than two fiscal years (confirmed budgets and printed "Orçado anterior" columns): nothing to compare yet. */
+function FewFiscalYears({ count }: { count: number }) {
+  return (
+    <section className="block no-numbers">
+      <h2>{count === 0 ? "Nenhum exercício para comparar ainda" : "Só há um exercício para comparar"}</h2>
+      <p>
+        A comparação precisa de dois exercícios: duas POs confirmadas, ou uma PO confirmada com a coluna "Orçado anterior"
+        impressa. {count === 0 ? 'Envie a PO em Arquivos e confirme-a em "PO aprovada".' : "Envie e confirme a PO de outro exercício."}
+      </p>
+      <Link className="link-button" to="/arquivos">
+        Ir para Arquivos
+      </Link>{" "}
+      <Link className="link-button" to="/previsoes">
+        Ver as POs enviadas
+      </Link>
+    </section>
   );
 }
 

@@ -49,10 +49,11 @@ export function useBalanceBridge(condominiumId: string, filter: BridgeFilter, en
 
 // ---------- Fund movements (RF-13.5) ----------
 
-export function useFundMovements(condominiumId: string, from: string | null, to: string | null) {
+export function useFundMovements(condominiumId: string, from: string | null, to: string | null, enabled = true) {
   return useQuery({
     queryKey: ["fund-movements", condominiumId, from ?? "", to ?? ""],
     queryFn: () => getJson<FundMovements>(`${base(condominiumId)}/funds/movements${queryString({ from, to })}`),
+    enabled,
   });
 }
 

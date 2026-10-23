@@ -1076,10 +1076,10 @@ export interface paths {
         /**
          * Comparar exercícios (todos os perfis, RF-11.6)
          * @description Três visões: resumo por exercício, por grupo (1.1 a 1.9, casados pelo código) e por linha (casadas pela rubrica
-         *     confirmada, RF-11.7; linha sem rubrica confirmada fica em "semCorrespondencia" e nunca é somada a outra).
+         *     confirmada, RF-11.7; linha sem rubrica confirmada fica em "unmatched" e nunca é somada a outra).
          *     Exercícios do mais recente para o mais antigo; a variação de cada um é contra o seguinte da lista. Variação em
-         *     % só com base diferente de zero; base zero com valor = "novaNoExercicio". O realizado vem do mesmo cálculo do
-         *     previsto × realizado; "alvo" abre a evidência nele (com o poId e o "periodo" do exercício). Nada é gravado.
+         *     % só com base diferente de zero; base zero com valor = "newInFiscalYear". O realizado vem do mesmo cálculo do
+         *     previsto × realizado; "target" abre a evidência nele (com o budgetId e o "period" do exercício). Nada é gravado.
          */
         get: operations["compareFiscalYears"];
         put?: never;
@@ -2103,7 +2103,7 @@ export interface components {
             /** Format: uuid */
             fundId?: string | null;
             sameMonths: boolean;
-            /** @description Ex.: "comparando: setembro" (só com mesmosMeses) */
+            /** @description Ex.: "comparando: setembro" (só com sameMonths) */
             comparing?: string | null;
             summary: {
                 fiscalYearId: string;
@@ -2248,7 +2248,7 @@ export interface components {
                     code: string;
                     description: string;
                     monthlyPlanned: (number | null)[];
-                    /** @description Alvo do grupo em cada exercício, na ordem de "exercicios"; abre a evidência no previsto × realizado */
+                    /** @description Alvo do grupo em cada exercício, na ordem de "fiscalYears"; abre a evidência no previsto × realizado */
                     targets: (string | null)[];
                 }[];
             };
@@ -4320,7 +4320,7 @@ export interface operations {
     listAccountMappings: {
         parameters: {
             query?: {
-                filtro?: components["schemas"]["AccountMappingFilter"];
+                filter?: components["schemas"]["AccountMappingFilter"];
             };
             header?: never;
             path: {
@@ -4713,7 +4713,7 @@ export interface operations {
     listBudgetLineItems: {
         parameters: {
             query?: {
-                filtro?: components["schemas"]["BudgetItemFilter"];
+                filter?: components["schemas"]["BudgetItemFilter"];
             };
             header?: never;
             path: {
@@ -5615,11 +5615,11 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Ids separados por vírgula ("budget:<uuid>" ou o uuid, e "column:<uuid>"); vazio = os dois mais recentes */
-                exercicios?: string[];
+                fiscalYears?: string[];
                 /** @description Fundo Condomínio = sem os fundos 1.9; outro fundo = só a linha 1.9 dele (arrecadação); vazio = tudo */
-                fundo?: string;
+                fund?: string;
                 /** @description Compara só os meses (pelo número) com fluxo em todos os exercícios com PO */
-                mesmosMeses?: boolean;
+                sameMonths?: boolean;
             };
             header?: never;
             path: {

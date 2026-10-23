@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { useFunds } from "../api/budgetQueries";
+import { useHasConfirmedBudget } from "../api/budgetAnalysisQueries";
 import { useBalanceBridge, type BridgeFilter } from "../api/budgetTrackingQueries";
 import type { BalanceBridge, BalanceBridgeItemCode, Fund } from "../api/types";
 import { BridgeChart } from "../components/balanceBridge/BridgeChart";
@@ -11,6 +12,7 @@ import { BridgeSummary } from "../components/balanceBridge/BridgeSummary";
 import type { OpenBridgeEvidence } from "../components/balanceBridge/bridgeEvidence";
 import { splitMappingWarning } from "../components/MappingWarningNote";
 import { EvidencePanel } from "../components/budgetVsActual/EvidencePanel";
+import { NoConfirmedBudget } from "../components/NoConfirmedBudget";
 import type { EvidenceTarget } from "../components/budgetVsActual/evidence";
 import { useSession } from "../context";
 import { formatMonth } from "../format";
@@ -27,7 +29,10 @@ export function BalanceOrigin() {
   const complete = !!filter.from && !!filter.to;
   const sent: BridgeFilter = complete ? filter : { ...filter, from: null, to: null };
   const { data: funds = [] } = useFunds(condominiumId);
-  const query = useBalanceBridge(condominiumId, sent);
+  // The default period is the fiscal year of the confirmed budget: without one, only a chosen period goes to the API
+  const hasBudget = useHasConfirmedBudget(condominiumId);
+  const withoutBudget = hasBudget === false && !complete;
+  const query = useBalanceBridge(condominiumId, sent, complete || hasBudget === true);
 
   const change = (next: BridgeFilter) => {
     const search = new URLSearchParams();
@@ -44,9 +49,14 @@ export function BalanceOrigin() {
       </header>
       <BridgeFilters funds={funds} filter={filter} onChange={change} />
       {(filter.from || filter.to) && !complete && <p className="notice">Escolha os dois meses para mudar o período.</p>}
-      {query.isLoading && <p className="notice">Carregando…</p>}
+      {withoutBudget && (
+        <NoConfirmedBudget what="a origem do saldo do exercício">
+          <p className="muted">Para ver a ponte antes disso, escolha os dois meses acima.</p>
+        </NoConfirmedBudget>
+      )}
+      {(query.isLoading || hasBudget === undefined) && !withoutBudget && <p className="notice">Carregando…</p>}
       {query.error && <p className="notice error">{query.error.message}</p>}
-      {query.data && (
+      {query.data && !withoutBudget && (
         <Content
           // Another view starts with nothing selected
           key={`${sent.fund}-${sent.from}-${sent.to}`}

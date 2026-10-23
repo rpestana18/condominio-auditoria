@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import type { BudgetVsActual } from "../../api/types";
 import { useSession } from "../../context";
 import { formatDateTime, formatMonth, shortHash } from "../../format";
+import { NoConfirmedBudget } from "../NoConfirmedBudget";
 
 /**
  * When the backend does not calculate (no budget, budget not confirmed, no operating fund, no cash flow or two cash flows),
@@ -14,20 +15,7 @@ export function NoNumbers({ result }: { result: BudgetVsActual }) {
 
   // Cumulative without a budget: the backend found no confirmed budget at all (it picks the latest confirmed one)
   if (status === "NO_BUDGET" && result.period === "cumulative") {
-    return (
-      <section className="block no-numbers">
-        <h2>Nenhuma PO confirmada ainda</h2>
-        <p>
-          Envie a PO em Arquivos e confirme-a em "PO aprovada". O previsto × realizado aparece depois da confirmação.
-        </p>
-        <Link className="link-button" to="/arquivos">
-          Ir para Arquivos
-        </Link>{" "}
-        <Link className="link-button" to="/previsoes">
-          Ver as POs enviadas
-        </Link>
-      </section>
-    );
+    return <NoConfirmedBudget what="o previsto × realizado do exercício" />;
   }
 
   return (

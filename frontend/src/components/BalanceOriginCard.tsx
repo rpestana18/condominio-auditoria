@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useHasConfirmedBudget } from "../api/budgetAnalysisQueries";
 import { useBalanceBridge } from "../api/budgetTrackingQueries";
 import type { Dashboard } from "../api/types";
 import { useSession } from "../context";
@@ -14,7 +15,9 @@ import { bridgePeriodText, hasPercentage, partialMonthText } from "./balanceBrid
 export function BalanceOriginCard({ dashboard }: { dashboard: Dashboard }) {
   const { condominiumId } = useSession();
   const confirmed = !!dashboard.operatingFund?.confirmed;
-  const { data: bridge } = useBalanceBridge(condominiumId, { fund: null, from: null, to: null }, confirmed);
+  // Without a confirmed budget there is no fiscal year for the default period: the card does not show
+  const hasBudget = useHasConfirmedBudget(condominiumId) === true;
+  const { data: bridge } = useBalanceBridge(condominiumId, { fund: null, from: null, to: null }, confirmed && hasBudget);
   if (!confirmed || !bridge || bridge.status !== "CALCULATED") return null;
   const partial = partialMonthText(bridge);
 

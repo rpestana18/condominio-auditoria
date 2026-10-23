@@ -29,6 +29,18 @@ export function useFiscalYears(condominiumId: string) {
   });
 }
 
+/**
+ * Whether the condominium already has a confirmed budget (a "PO" fiscal year in the list). Undefined while the list
+ * loads. The screens that work on a fiscal year only ask the API with a confirmed budget: without one, the API refuses
+ * the default period (400/404) and the screen shows the empty state instead. If the list fails, returns true and the
+ * screen's own query shows the error.
+ */
+export function useHasConfirmedBudget(condominiumId: string): boolean | undefined {
+  const { data, isSuccess, isError } = useFiscalYears(condominiumId);
+  if (isError) return true;
+  return isSuccess ? data.some((f) => f.type === "PO") : undefined;
+}
+
 // ---------- Compare fiscal years (RF-11.6) ----------
 
 export interface ComparisonFilter {
@@ -38,7 +50,7 @@ export interface ComparisonFilter {
   sameMonths: boolean;
 }
 
-export function useFiscalYearComparison(condominiumId: string, filter: ComparisonFilter) {
+export function useFiscalYearComparison(condominiumId: string, filter: ComparisonFilter, enabled = true) {
   const { fiscalYears, fundId, sameMonths } = filter;
   return useQuery({
     queryKey: ["fiscal-year-comparison", condominiumId, fiscalYears?.join(",") ?? "default", fundId ?? "all", sameMonths],
@@ -51,6 +63,7 @@ export function useFiscalYearComparison(condominiumId: string, filter: Compariso
           sameMonths: sameMonths ? "true" : null,
         })}`,
       ),
+    enabled,
   });
 }
 
@@ -69,10 +82,11 @@ export function usePrintedColumn(condominiumId: string, budgetId: string | null)
  * Series of the 7 charts for the fiscal year of budget `budgetId` (empty = the most recent). With the Condomínio fund,
  * the funds series comes null; with another fund, series 1 to 5 come null. Nothing is calculated here.
  */
-export function useIndicators(condominiumId: string, budgetId: string | null, fundId: string | null) {
+export function useIndicators(condominiumId: string, budgetId: string | null, fundId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["indicators", condominiumId, budgetId ?? "current", fundId ?? "all"],
     queryFn: () => getJson<Indicators>(`${base(condominiumId)}/indicators${queryString({ budget: budgetId, fund: fundId })}`),
+    enabled,
   });
 }
 

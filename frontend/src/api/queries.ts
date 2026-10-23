@@ -222,19 +222,21 @@ export function useUsage(condominiumId: string, start: string, end: string) {
 // ---- AI configuration (RF-09.6) and Assistant (RF-04) ----
 
 /** The condominium's AI configuration (ADMIN only). The key never comes back: only "registered" and its last 4 characters. */
-export function useAiConfiguration(condominiumId: string) {
+export function useAiConfiguration(condominiumId: string, enabled = true) {
   return useQuery({
     queryKey: ["ai", condominiumId],
     queryFn: () => getJson<AiConfiguration>(`/condominiums/${condominiumId}/ai`),
+    enabled,
   });
 }
 
 /** Catalog of providers and models, read from rag by the backend (ADMIN only). */
-export function useAiProviders() {
+export function useAiProviders(enabled = true) {
   return useQuery({
     queryKey: ["ai", "providers"],
     queryFn: async () => (await getJson<AiProvider[]>("/ai/providers")) ?? [],
     staleTime: 5 * 60_000,
+    enabled,
   });
 }
 

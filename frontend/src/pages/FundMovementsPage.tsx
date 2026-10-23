@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useHasConfirmedBudget } from "../api/budgetAnalysisQueries";
 import { useFundMovements } from "../api/budgetTrackingQueries";
 import type { FundMovements } from "../api/types";
 import { monthStatusText } from "../components/budgetTracking/MonthStatusNote";
@@ -6,6 +7,7 @@ import { FundHistory } from "../components/fundMovements/FundHistory";
 import { FundMonthTable } from "../components/fundMovements/FundMonthTable";
 import { FundTotals } from "../components/fundMovements/FundTotals";
 import { PartialMonthsSection } from "../components/fundMovements/PartialMonthsSection";
+import { NoConfirmedBudget } from "../components/NoConfirmedBudget";
 import { useSession } from "../context";
 import { formatMonth } from "../format";
 
@@ -15,7 +17,9 @@ import { formatMonth } from "../format";
  */
 export function FundMovementsPage() {
   const { condominiumId } = useSession();
-  const query = useFundMovements(condominiumId, null, null);
+  // The period is the fiscal year of the confirmed budget: without one, the screen shows the empty state
+  const hasBudget = useHasConfirmedBudget(condominiumId);
+  const query = useFundMovements(condominiumId, null, null, hasBudget === true);
   return (
     <>
       <header className="page-title">
@@ -26,7 +30,8 @@ export function FundMovementsPage() {
           </span>
         )}
       </header>
-      {query.isLoading && <p className="notice">Carregando…</p>}
+      {hasBudget === false && <NoConfirmedBudget what="o movimento dos fundos no exercício" />}
+      {(query.isLoading || hasBudget === undefined) && <p className="notice">Carregando…</p>}
       {query.error && <p className="notice error">{query.error.message}</p>}
       {query.data && <Content movements={query.data} />}
       <PartialMonthsSection />

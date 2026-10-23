@@ -1,6 +1,7 @@
 import type { BalanceBridge, BridgeMonth } from "../../api/types";
 import { formatDifference, formatMoneyOrDash, formatMonthShort } from "../../format";
 import { MonthStatusNote } from "../budgetTracking/MonthStatusNote";
+import { isProvisionalItem, provisionalTitle } from "./bridgeSteps";
 
 /**
  * The bridge month by month (one column per month), to show when each part of the balance was formed (RF-13.6).
@@ -65,6 +66,11 @@ export function BridgeMonthsTable({ bridge }: { bridge: BalanceBridge }) {
               <tr key={item.code} className={item.code === "UNEXPLAINED" && bridge.closes === false ? "bridge-unexplained" : undefined}>
                 <th scope="row" className="sticky-column">
                   {item.label}
+                  {isProvisionalItem(bridge, item.code) && (
+                    <span className="badge provisional" title={provisionalTitle(bridge)}>
+                      provisório
+                    </span>
+                  )}
                 </th>
                 {months.map((m) => (
                   <td

@@ -1,22 +1,23 @@
-import type { BalanceBridge, BalanceBridgeItemCode, CalculationWarning } from "../../api/types";
+import type { BalanceBridge, BalanceBridgeItemCode } from "../../api/types";
 import { formatDate, formatDifference, formatMoneyOrDash, formatPercentage } from "../../format";
-import { MappingWarningNote } from "../MappingWarningNote";
+import { UnmappedAccountsNote } from "../UnmappedAccountsNote";
+import { bridgeSteps, isProvisionalItem, provisionalTitle } from "./bridgeSteps";
 import { bridgePeriodText, hasPercentage, partialMonthText, percentagesNote } from "./bridgeTexts";
 
 interface Props {
   bridge: BalanceBridge;
   selected: BalanceBridgeItemCode | null;
   onSelect: (code: BalanceBridgeItemCode) => void;
-  /** NO_CONFIRMED_MAPPING warning, shown discreetly next to "Economia nas linhas". */
-  mappingWarning?: CalculationWarning | null;
 }
 
 /**
  * The bridge of RF-13.6: opening balance, closing balance, variation and the items that add up to it, cent by cent
  * (all calculated by the API). "Não explicado" different from zero is highlighted with "a ponte não fecha", never hidden.
  * The total goes from openingDate to closingDate (last complete month); the partial month comes apart, outside the total.
+ * While the API flags the mapping as provisional, "Economia nas linhas" and "Fora da PO" carry a "provisório" badge;
+ * the accounts without a confirmed mapping come in one short line below the table.
  */
-export function BridgeSummary({ bridge, selected, onSelect, mappingWarning }: Props) {
+export function BridgeSummary({ bridge, selected, onSelect }: Props) {
   const partial = partialMonthText(bridge);
   const percentages = percentagesNote(bridge);
   return (
@@ -54,6 +55,7 @@ export function BridgeSummary({ bridge, selected, onSelect, mappingWarning }: Pr
           {bridge.items.map((item) => {
             const unexplained = item.code === "UNEXPLAINED";
             const highlight = unexplained && bridge.closes === false;
+            const provisional = isProvisionalItem(bridge, item.code);
             return (
               <tr
                 key={item.code}
@@ -63,11 +65,19 @@ export function BridgeSummary({ bridge, selected, onSelect, mappingWarning }: Pr
                 <td>
                   {item.label}
                   {highlight && <small className="note">a ponte não fecha: o valor aparece aqui, sem ser escondido</small>}
-                  {item.code === "LINE_SAVINGS" && mappingWarning && <MappingWarningNote warning={mappingWarning} />}
+                  {provisional && (
+                    <span className="badge provisional" title={provisionalTitle(bridge)}>
+                      provisório
+                    </span>
+                  )}
                 </td>
-                <td className="number">{formatDifference(item.amount)}</td>
+                <td className={`number${provisional ? " muted" : ""}`}>{formatDifference(item.amount)}</td>
                 <td className="number">
-                  {hasPercentage(item.code) ? (
+                  {provisional ? (
+                    <span className="muted" title={provisionalTitle(bridge)}>
+                      —
+                    </span>
+                  ) : hasPercentage(item.code) ? (
                     formatPercentage(item.percentageOfVariation)
                   ) : (
                     <span className="muted" title="Sem percentual da variação">
@@ -89,6 +99,7 @@ export function BridgeSummary({ bridge, selected, onSelect, mappingWarning }: Pr
           </tr>
         </tfoot>
       </table>
+      <UnmappedAccountsNote steps={bridgeSteps(bridge)} />
       {percentages && <p className="muted">{percentages}</p>}
       <p className="muted">Clique em uma parcela para ver as partes, as linhas da PO e os lançamentos.</p>
     </section>

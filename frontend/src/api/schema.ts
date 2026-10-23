@@ -1310,7 +1310,8 @@ export interface paths {
          * Origem da variação do saldo (ponte do saldo) no período (todos os perfis, RF-13.6)
          * @description Calculado na consulta pela função pura BalanceBridge (calculationVersion). Saldo inicial = saldo final impresso
          *     do mês anterior (quando carregado) ou o saldo inicial impresso do primeiro mês; o total soma só meses completos.
-         *     UNEXPLAINED = variação − soma dos itens; diferente de zero gera o aviso BRIDGE_DOES_NOT_CLOSE. Cada mês tem a
+         *     UNEXPLAINED = variação − soma dos itens; diferente de zero gera o aviso BRIDGE_DOES_NOT_CLOSE. O de-para do
+         *     fundo Condomínio vem também em campos (mapping, com provisional acima de 5% dos débitos; calculationVersion 3). Cada mês tem a
          *     própria coluna (months). from/to são o período pedido (sem eles, o exercício inteiro); o total vai de
          *     effectiveFrom a effectiveTo, do saldo em openingDate ao saldo em closingDate (último dia do último mês
          *     completo). O mês parcial vem à parte em partialMonth, fora do total, e na sua coluna de months só com entradas
@@ -3252,6 +3253,31 @@ export interface components {
             closingDate?: string | null;
             /** @description Último mês parcial do período (RF-13.10) */
             partialMonth?: null | components["schemas"]["BridgePartialMonthResponse"];
+            /** @description De-para do fundo Condomínio nos meses do total, em campos (o mesmo do aviso NO_CONFIRMED_MAPPING); nulo quando a ponte não inclui o fundo Condomínio ou não tem números */
+            mapping?: null | components["schemas"]["BridgeMappingResponse"];
+        };
+        BridgeMappingResponse: {
+            /** @description Contas com código sem de-para confirmado (as do aviso NO_CONFIRMED_MAPPING) */
+            unmappedAccounts: number;
+            /** @description Valor dessas contas em "sem linha da PO" nos meses do total */
+            unmappedAmount: number;
+            unmappedEntries: number;
+            /** @description Débitos do fundo Condomínio nos mesmos meses */
+            debits: number;
+            /** @description Limite (%) de unmappedAmount sobre debits; hoje 5,00 (BalanceBridge.PROVISIONAL_UNMAPPED_SHARE) */
+            provisionalLimitPercentage: number;
+            /** @description unmappedAmount acima do limite: "Economia nas linhas" e "Fora da PO" ainda são provisórios (a ponte continua fechando) */
+            provisional: boolean;
+            /** @description Maior valor primeiro; account nulo (lançamentos sem conta) por último */
+            accounts: components["schemas"]["BlockAccountResponse"][];
+        };
+        BlockAccountResponse: {
+            account?: string | null;
+            name?: string | null;
+            /** @description Ex. "sem de-para" */
+            detail?: string | null;
+            amount: number;
+            entries: number;
         };
         BridgePartialMonthResponse: {
             /** @description AAAA-MM */

@@ -10,7 +10,8 @@ import { BridgeItemDetail } from "../components/balanceBridge/BridgeItemDetail";
 import { BridgeMonthsTable } from "../components/balanceBridge/BridgeMonthsTable";
 import { BridgeSummary } from "../components/balanceBridge/BridgeSummary";
 import type { OpenBridgeEvidence } from "../components/balanceBridge/bridgeEvidence";
-import { splitMappingWarning } from "../components/MappingWarningNote";
+import { BeforeReadingBox } from "../components/BeforeReadingBox";
+import { bridgeNotes, bridgeSteps } from "../components/balanceBridge/bridgeSteps";
 import { EvidencePanel } from "../components/budgetVsActual/EvidencePanel";
 import { NoConfirmedBudget } from "../components/NoConfirmedBudget";
 import type { EvidenceTarget } from "../components/budgetVsActual/evidence";
@@ -109,19 +110,13 @@ function Content({ bridge, funds, defaultPeriod }: ContentProps) {
     );
   }
 
-  // The mapping warning goes next to "Economia nas linhas", the others stay on top
-  const { mapping, others } = splitMappingWarning(bridge.warnings);
-
   return (
     <div className={evidence ? "with-detail" : undefined}>
       <div>
-        {others.map((w, i) => (
-          <p key={`${w.code}-${i}`} className="notice warning">
-            {w.text}
-          </p>
-        ))}
+        {/* One place on top: the pending steps and the other short notes */}
+        <BeforeReadingBox steps={bridgeSteps(bridge)} notes={bridgeNotes(bridge)} />
         <div className="two-columns">
-          <BridgeSummary bridge={bridge} selected={selected} onSelect={setSelected} mappingWarning={mapping} />
+          <BridgeSummary bridge={bridge} selected={selected} onSelect={setSelected} />
           <BridgeChart bridge={bridge} />
         </div>
         {item && <BridgeItemDetail item={item} onOpenEvidence={openEvidence} />}

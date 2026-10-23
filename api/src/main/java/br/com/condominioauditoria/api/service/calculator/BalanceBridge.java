@@ -8,6 +8,7 @@ import br.com.condominioauditoria.api.dto.response.budget.BalanceBridgeResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeFundResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeItemResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeLineResponse;
+import br.com.condominioauditoria.api.dto.response.budget.BridgeMappingResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeMonthItemResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgeMonthResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BridgePartialMonthResponse;
@@ -66,8 +67,19 @@ import java.util.UUID;
  */
 public final class BalanceBridge {
 
-    /** 2: Q49 (apportionment funds apart in the bridge of all funds) and Q50 (month in progress without items). */
-    public static final String VERSION = "2";
+    /**
+     * 2: Q49 (apportionment funds apart in the bridge of all funds) and Q50 (month in progress without items).
+     * 3: account mapping state as fields ({@code mapping}), with the provisional flag.
+     */
+    public static final String VERSION = "3";
+
+    /**
+     * Above this share (in %) of the operating fund's debits in "sem linha da PO" (accounts without a confirmed
+     * mapping), the bridge is flagged {@code provisional}: those debits are outside the budget lines, so "Economia nas
+     * linhas" keeps their planned amount and "Fora da PO" keeps their actual amount, and both mean little until the
+     * mapping is confirmed. The bridge still closes. The only place of this limit; the screen reads it from the API.
+     */
+    public static final BigDecimal PROVISIONAL_UNMAPPED_SHARE = new BigDecimal("5.00");
 
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2);
     private static final BigDecimal HUNDRED = new BigDecimal("100");
@@ -128,6 +140,7 @@ public final class BalanceBridge {
         YearMonth firstInTotal = null;
         YearMonth lastInTotal = null;
         List<EntryBlockResponse> unmappedBlocks = new ArrayList<>();
+        BigDecimal operatingDebits = ZERO;
         List<String> gaps = new ArrayList<>();
         YearMonth previous = in.from().minusMonths(1);
         FundMonthSummaryResponse before = summaries.get(previous.toString());
@@ -181,6 +194,10 @@ public final class BalanceBridge {
                 if (withOperating && unmapped != null) {
                     unmappedBlocks.add(unmapped);
                 }
+                FundMonthMovementResponse op = withOperating ? movement(in, in.operatingFundId(), m) : null;
+                if (op != null) {
+                    operatingDebits = operatingDebits.add(op.debits().subtract(op.transfersOut()));
+                }
                 total.add(t);
                 closing = c;
                 lastInTotal = m;
@@ -197,7 +214,7 @@ public final class BalanceBridge {
                     ? "Nenhum mês completo com extrato no período" : in.grid().message());
             return new BalanceBridgeResponse(e.calculationVersion(), e.status(), e.message(), e.fundId(),
                     e.fundName(), e.allFunds(), e.from(), e.to(), budget, null, null, null, null, null, List.of(),
-                    List.copyOf(months), List.of(), null, null, null, null, partialMonth(months));
+                    List.copyOf(months), List.of(), null, null, null, null, partialMonth(months), null);
         }
         BigDecimal variation = opening == null || closing == null ? null : closing.subtract(opening);
         total.unexplained = variation == null ? null : variation.subtract(total.sum());
@@ -221,10 +238,13 @@ public final class BalanceBridge {
                         + " (lançamentos até " + DAY.format(m.partialUntil())
                         + (m.variation() == null ? "" : "; variação de R$ " + MoneyFormatter.format(m.variation())
                                 + " à parte") + "); o total vai até " + DAY.format(closingDate))));
+        BridgeMappingResponse mapping = null;
         if (withOperating) {
-            BudgetTrackingGrid.unmappedWarning(BudgetTrackingGrid.unmapped(unmappedBlocks), " no total da ponte",
+            BudgetTrackingGrid.UnmappedAccounts unmapped = BudgetTrackingGrid.unmapped(unmappedBlocks);
+            BudgetTrackingGrid.unmappedWarning(unmapped, " no total da ponte",
                     "ficam em \"Fora da PO\" e \"Economia nas linhas\" pode incluir o previsto dessas despesas")
                     .ifPresent(warnings::add);
+            mapping = mapping(unmapped, operatingDebits);
         }
         if (in.grid().warnings().stream().anyMatch(w -> w.code().equals("PROFILE_NOT_CONFIRMED")) && withOperating) {
             warnings.add(new BudgetVsActualWarningResponse("PROFILE_NOT_CONFIRMED",
@@ -234,7 +254,20 @@ public final class BalanceBridge {
                 in.from().toString(), in.to().toString(), budget, opening, openingSource, closing, variation, closes,
                 total.items(withOperating, withOthers, all, variation), List.copyOf(months), List.copyOf(warnings),
                 firstInTotal.toString(), lastInTotal.toString(), firstInTotal.minusMonths(1).atEndOfMonth(),
-                closingDate, partialMonth(months));
+                closingDate, partialMonth(months), mapping);
+    }
+
+    /**
+     * Mapping state of the total: provisional when the amount without a confirmed mapping is above
+     * {@link #PROVISIONAL_UNMAPPED_SHARE}% of the operating fund's debits (any amount, with no debits).
+     */
+    static BridgeMappingResponse mapping(BudgetTrackingGrid.UnmappedAccounts unmapped, BigDecimal debits) {
+        BigDecimal amount = unmapped.total().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal limit = debits.multiply(PROVISIONAL_UNMAPPED_SHARE).divide(HUNDRED, 2, RoundingMode.HALF_UP);
+        boolean provisional = unmapped.count() > 0 && amount.compareTo(limit) > 0;
+        return new BridgeMappingResponse((int) unmapped.count(), amount, unmapped.entries(),
+                debits.setScale(2, RoundingMode.HALF_UP), PROVISIONAL_UNMAPPED_SHARE, provisional,
+                List.copyOf(unmapped.accounts()));
     }
 
     /** Operating fund items of a month: line balances by profile, income, outside the budget and transfers. */
@@ -367,7 +400,7 @@ public final class BalanceBridge {
             String message) {
         return new BalanceBridgeResponse(VERSION, status, message, in.fundId(), fundName, all, in.from().toString(),
                 in.to().toString(), in.grid().budget(), null, null, null, null, null, List.of(), List.of(), List.of(),
-                null, null, null, null, null);
+                null, null, null, null, null, null);
     }
 
     /** The last partial month of the period (RF-13.10), apart from the total; null without one. */

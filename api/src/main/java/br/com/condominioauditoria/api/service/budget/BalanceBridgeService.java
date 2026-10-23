@@ -78,7 +78,7 @@ public class BalanceBridgeService {
             return new BalanceBridgeResponse(BalanceBridge.VERSION, BudgetVsActualStatus.NO_OPERATING_FUND,
                     "Confirme o fundo ordinário (fundo Condomínio) para calcular a origem do saldo", null, null, false,
                     period[0].toString(), period[1].toString(), grid.budget(), null, null, null, null, null, List.of(),
-                    List.of(), List.of(), null, null, null, null, null);
+                    List.of(), List.of(), null, null, null, null, null, null);
         }
         BudgetValidity validity = budget == null ? null : BudgetValidity.of(budget).orElse(null);
         if (validity != null && (period[0].isBefore(validity.start()) || period[1].isAfter(validity.end()))) {

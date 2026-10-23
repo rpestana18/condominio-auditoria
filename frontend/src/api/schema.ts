@@ -496,6 +496,9 @@ export interface paths {
          * De-para das contas do fluxo nesta versão da PO (todos os perfis, RF-03.1.4 e RF-03.1.13)
          * @description Contas do fluxo com débito no fundo Condomínio no exercício da PO, mais as contas que já têm de-para.
          *     Conta sem de-para tem estado nulo. Só CONFIRMED entra no previsto × realizado.
+         *     Abrir a lista (qualquer perfil) gera antes as sugestões que faltam numa PO confirmada (Q51, RF-03.1.5):
+         *     versão anterior → planilha guardada do condomínio → nome, só para contas sem de-para, autor "sistema".
+         *     Nada é confirmado; gerar de novo não duplica nem desfaz confirmação, recusa ou escolha do Admin.
          */
         get: operations["listAccountMappings"];
         put?: never;
@@ -567,11 +570,38 @@ export interface paths {
         put?: never;
         /**
          * Gera sugestões para as contas sem de-para (só ADMIN, RF-03.1.5), sem IA
-         * @description Primeiro a versão anterior da PO (só o que estava confirmado; linha igual = mesmo código efetivo, conta e
-         *     descrição), depois a comparação de nomes (sem dígitos, sem acento; nota mínima configurável; empate não
-         *     sugere). Tudo entra SUGGESTED, com o motivo. Nenhuma conta é confirmada e nenhum número muda.
+         * @description O sistema já gera sozinho (ao confirmar a PO, ao gravar um extrato e ao abrir a lista, Q51); esta chamada faz
+         *     a mesma geração e devolve o resumo. Primeiro a versão anterior da PO (só o que estava confirmado; linha igual =
+         *     mesmo código efetivo, conta e descrição), depois a planilha guardada do condomínio, depois a comparação de
+         *     nomes (sem dígitos, sem acento; nota mínima configurável; empate só é desfeito pelo favorecido do lançamento;
+         *     todas as palavras do fluxo numa única linha também sugerem). Tudo entra SUGGESTED, com o motivo. Nenhuma conta
+         *     é confirmada e nenhum número muda.
          */
         post: operations["suggestAccountMappings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/budgets/{budgetId}/account-mappings/suggestions/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirma todas as contas SUGGESTED desta versão (só ADMIN, Q51), um evento por conta
+         * @description "Confirmar todas as sugestões". expected é quantas sugestões a tela mostrou (summary.suggested); se o número
+         *     mudou nesse meio-tempo, nada é confirmado (409). Contas sem de-para e recusadas não mudam.
+         */
+        post: operations["confirmAllAccountMappingSuggestions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -594,7 +624,9 @@ export interface paths {
          * Carrega a planilha de sugestões (CSV "conta do fluxo;linha da PO"), só ADMIN (RF-03.1.5)
          * @description Formato do mapa do piloto, separado por ponto e vírgula, com ou sem cabeçalho, UTF-8 ou Windows-1252. Destino:
          *     código efetivo de uma linha de despesa, "AJUSTE (...)", "REALOCAR (...)" ou "TRANSFERENCIA (...)". Tudo entra
-         *     SUGGESTED; conta já confirmada não muda; linha inválida é listada e não entra.
+         *     SUGGESTED; conta já confirmada não muda; linha inválida é listada e não entra. As linhas aceitas ficam guardadas
+         *     como a planilha do condomínio (substituem a anterior; nome, linha e SHA-256 do arquivo, nunca o arquivo) e são
+         *     reaplicadas, como SUGGESTED, a contas novas e a versões novas da PO (Q51).
          */
         post: operations["uploadAccountMappingSheet"];
         delete?: never;
@@ -2472,7 +2504,30 @@ export interface components {
             budgetId: string;
             version?: number | null;
             summary: components["schemas"]["AccountMappingSummaryResponse"];
+            suggestedBySource: components["schemas"]["SuggestedBySourceResponse"];
+            /** @description Planilha de sugestões guardada do condomínio (a última carregada) */
+            sheet?: null | components["schemas"]["StoredSheetResponse"];
             accounts: components["schemas"]["AccountMappingResponse"][];
+        };
+        /** @description Contas SUGGESTED desta versão por origem, para a confirmação de "Confirmar todas as sugestões" (Q51) */
+        SuggestedBySourceResponse: {
+            previousVersion: number;
+            spreadsheet: number;
+            name: number;
+            admin: number;
+        };
+        StoredSheetResponse: {
+            fileName?: string | null;
+            sha256: string;
+            /** @description Linhas aceitas guardadas */
+            lines: number;
+            loadedBy: string;
+            /** Format: date-time */
+            loadedAt: string;
+        };
+        ConfirmSuggestedRequest: {
+            /** @description Quantas sugestões a tela mostrou */
+            expected: number;
         };
         MappingTargetRequest: {
             type: components["schemas"]["MappingTargetType"];
@@ -2501,6 +2556,8 @@ export interface components {
         AccountMappingSuggestionsResponse: {
             created: number;
             fromPreviousVersion: number;
+            /** @description Da planilha guardada do condomínio (Q51) */
+            fromSheet: number;
             byName: number;
             withoutSuggestion: {
                 account: string;
@@ -4498,6 +4555,63 @@ export interface operations {
             };
             /** @description PO ainda não confirmada */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    confirmAllAccountMappingSuggestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmSuggestedRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountMappingBatchResponse"];
+                };
+            };
+            /** @description Perfil sem permissão ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ainda não confirmada ou as sugestões mudaram desde que a tela foi aberta */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description expected ausente ou menor que 1 */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

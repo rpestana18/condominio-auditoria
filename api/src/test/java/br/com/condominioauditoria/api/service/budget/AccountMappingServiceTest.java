@@ -212,6 +212,111 @@ class AccountMappingServiceTest {
                 null).summary().confirmed()).isEqualTo(2);
     }
 
+    @Test
+    void openingTheScreenSuggestsByItselfAndAgainChangesNothing() {
+        scenario.published.clear();
+        var list = scenario.accountMapping.open(scenario.condominiumId, budget.getId(), AccountMappingFilter.ALL);
+
+        // Q51: no click; the suggestion stays SUGGESTED, authored by the system
+        assertThat(list.summary()).isEqualTo(new AccountMappingSummaryResponse(3, 0, 1, 0, 2));
+        assertThat(list.suggestedBySource().name()).isEqualTo(1);
+        assertThat(single("1621").getUpdatedBy()).isEqualTo(AccountMappingService.SYSTEM);
+        assertThat(EffectiveAccountMapping.confirmed(scenario.mappings)).isEmpty();
+        assertThat(scenario.published).isEmpty();
+
+        // Rejection and the Admin's choice are never undone by a new generation
+        scenario.accountMapping.batch(scenario.condominiumId, budget.getId(),
+                new AccountMappingBatchRequest(AccountMappingBatchAction.REJECT, List.of("1621")), "admin");
+        scenario.accountMapping.setTarget(scenario.condominiumId, budget.getId(), "1108",
+                new MappingTargetRequest(MappingTargetType.BUDGET_LINE, scenario.line(budget, "1.3.20", 0).getId(), null,
+                        false), "admin");
+        int events = scenario.mappingEvents.size();
+        scenario.accountMapping.open(scenario.condominiumId, budget.getId(), AccountMappingFilter.ALL);
+        assertThat(scenario.accountMapping.suggestPending(scenario.condominiumId)).isZero();
+
+        assertThat(scenario.mappingEvents).hasSize(events);
+        assertThat(single("1621").getStatus()).isEqualTo(AccountMappingStatus.REJECTED);
+        assertThat(single("1108").getSource()).isEqualTo(AccountMappingSource.ADMIN);
+        assertThat(single("1108").getBudgetLineId()).isEqualTo(scenario.line(budget, "1.3.20", 0).getId());
+    }
+
+    @Test
+    void storedSheetIsAppliedToNewAccountsAndToNewVersions() {
+        scenario.accountMapping.loadSheet(scenario.condominiumId, budget.getId(), "mapa.csv",
+                "1621;1.7.8\n1108;1.3.20\n1324;AJUSTE (estorno)\n4444;1.8.1\n", "admin");
+        assertThat(scenario.sheetItems).hasSize(4).allMatch(i -> i.getFileSha256().length() == 64
+                && i.getFileName().equals("mapa.csv"));
+        var stored = scenario.accountMapping.list(scenario.condominiumId, budget.getId(), null).sheet();
+        assertThat(stored.lines()).isEqualTo(4);
+        assertThat(stored.loadedBy()).isEqualTo("admin");
+
+        // An account that shows up later in a cash flow takes the stored sheet's target, as SUGGESTED
+        scenario.debit("4444", "MATERIAL DE LIMPEZA", "100.00", LocalDate.of(2026, 9, 12));
+        scenario.debit("5555", "CONTA NOVA SEM NOME CONHECIDO", "50.00", LocalDate.of(2026, 9, 12));
+        scenario.accountMapping.suggestPending(scenario.condominiumId);
+        AccountMapping cleaning = single("4444");
+        assertThat(cleaning.getSource()).isEqualTo(AccountMappingSource.SPREADSHEET);
+        assertThat(cleaning.getStatus()).isEqualTo(AccountMappingStatus.SUGGESTED);
+        assertThat(cleaning.getBudgetLineId()).isEqualTo(scenario.line(budget, "1.8.1", 0).getId());
+
+        // A new sheet replaces the stored one
+        scenario.accountMapping.loadSheet(scenario.condominiumId, budget.getId(), "mapa2.csv", "1621;1.7.8\n", "admin");
+        assertThat(scenario.sheetItems).singleElement().satisfies(i -> assertThat(i.getFileName()).isEqualTo("mapa2.csv"));
+
+        // New version: previous version first (only the confirmed 1621), then the stored sheet, then the name
+        scenario.accountMapping.loadSheet(scenario.condominiumId, budget.getId(), "mapa3.csv",
+                "1621;1.3.20\n1108;1.3.20\n", "admin");
+        scenario.accountMapping.batch(scenario.condominiumId, budget.getId(),
+                new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRM, List.of("1621")), "admin");
+        Budget v2 = secondVersion();
+        assertThat(scenario.accountMapping.suggestPending(scenario.condominiumId)).isPositive();
+
+        assertThat(single(v2, "1621").getSource()).isEqualTo(AccountMappingSource.PREVIOUS_VERSION);
+        assertThat(single(v2, "1108").getSource()).isEqualTo(AccountMappingSource.SPREADSHEET);
+        assertThat(single(v2, "1108").getBudgetLineId()).isEqualTo(scenario.line(v2, "1.3.20", 0).getId());
+        assertThat(scenario.mappings.stream().filter(d -> d.getBudgetId().equals(v2.getId())))
+                .allMatch(d -> d.getStatus() == AccountMappingStatus.SUGGESTED);
+    }
+
+    @Test
+    void confirmAllSuggestionsNeedsTheCountTheScreenShowed() {
+        scenario.accountMapping.loadSheet(scenario.condominiumId, budget.getId(), null,
+                "1621;1.7.8\n1108;1.3.20\n1324;AJUSTE (estorno)\n", "admin");
+        scenario.accountMapping.batch(scenario.condominiumId, budget.getId(),
+                new AccountMappingBatchRequest(AccountMappingBatchAction.REJECT, List.of("1324")), "admin");
+        var screen = scenario.accountMapping.list(scenario.condominiumId, budget.getId(), null);
+        assertThat(screen.suggestedBySource().spreadsheet()).isEqualTo(2);
+        int events = scenario.mappingEvents.size();
+        scenario.published.clear();
+
+        assertThatThrownBy(() -> scenario.accountMapping.confirmAllSuggested(scenario.condominiumId, budget.getId(), 3,
+                "admin")).isInstanceOf(ResponseStatusException.class).hasMessageContaining("mudaram");
+        assertThat(scenario.mappingEvents).hasSize(events);
+
+        var r = scenario.accountMapping.confirmAllSuggested(scenario.condominiumId, budget.getId(), 2, "admin");
+
+        assertThat(r.changed()).isEqualTo(2);
+        assertThat(EffectiveAccountMapping.confirmed(scenario.mappings)).containsOnlyKeys("1108", "1621");
+        assertThat(scenario.mappingEvents.subList(events, scenario.mappingEvents.size())).hasSize(2)
+                .allMatch(e -> e.getAction() == AccountMappingAction.CONFIRMED && e.getUsername().equals("admin"));
+        assertThat(single("1324").getStatus()).isEqualTo(AccountMappingStatus.REJECTED);
+        assertThat(scenario.published).hasSize(1);
+    }
+
+    private Budget secondVersion() {
+        Budget v2 = scenario.readBudget(PilotBudget.defaults());
+        var request = scenario.pilotRequest(v2);
+        scenario.confirmation.confirm(scenario.condominiumId, v2.getId(), new BudgetConfirmationRequest("2026-10",
+                "2027-04", request.minutesFileId(), false, request.approvalDate(), request.effectiveCodes(),
+                request.funds(), true, false, null), "admin");
+        return v2;
+    }
+
+    private AccountMapping single(Budget b, String account) {
+        return scenario.mappings.stream().filter(d -> d.getBudgetId().equals(b.getId())
+                && d.getAccountCode().equals(account)).findFirst().orElseThrow();
+    }
+
     private AccountMapping single(String account) {
         return scenario.mappings.stream().filter(d -> d.getAccountCode().equals(account)).findFirst().orElseThrow();
     }

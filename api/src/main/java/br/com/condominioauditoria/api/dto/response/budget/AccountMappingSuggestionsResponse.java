@@ -6,6 +6,7 @@ import java.util.List;
 public record AccountMappingSuggestionsResponse(
         int created,
         int fromPreviousVersion,
+        int fromSheet,
         int byName,
         List<AccountWithoutSuggestionResponse> withoutSuggestion) {
 }

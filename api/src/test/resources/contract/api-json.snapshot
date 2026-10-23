@@ -782,6 +782,19 @@ GET /api/condominiums/{}/budgets/{}/account-mappings
       updatedBy: string
     }]
     budgetId: UUID
+    sheet: {
+      fileName: string
+      lines: integer
+      loadedAt: Instant
+      loadedBy: string
+      sha256: string
+    }
+    suggestedBySource: {
+      admin: integer
+      name: integer
+      previousVersion: integer
+      spreadsheet: integer
+    }
     summary: {
       accounts: integer
       confirmed: integer
@@ -1853,9 +1866,24 @@ POST /api/condominiums/{}/budgets/{}/account-mappings/suggestions
     byName: integer
     created: integer
     fromPreviousVersion: integer
+    fromSheet: integer
     withoutSuggestion: [{
       account: string
       name: string
+      reason: string
+    }]
+  }
+
+POST /api/condominiums/{}/budgets/{}/account-mappings/suggestions/confirmation
+  path: UUID
+  path: UUID
+  body: {
+    expected: integer
+  }
+  returns: {
+    changed: integer
+    skipped: [{
+      account: string
       reason: string
     }]
   }

@@ -1,6 +1,7 @@
 package br.com.condominioauditoria.api.controller.budget;
 
 import br.com.condominioauditoria.api.dto.request.budget.AccountMappingBatchRequest;
+import br.com.condominioauditoria.api.dto.request.budget.ConfirmSuggestedRequest;
 import br.com.condominioauditoria.api.dto.request.budget.MappingTargetRequest;
 import br.com.condominioauditoria.api.dto.response.budget.AccountMappingBatchResponse;
 import br.com.condominioauditoria.api.dto.response.budget.AccountMappingEventResponse;
@@ -34,8 +35,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Account mapping of the cash flow accounts (RF-03.1.4, RF-03.1.5 and RF-03.1.13). Reading: every role of the
- * condominium. Creating, changing, confirming, rejecting, suggesting and uploading the sheet: only the Admin (Gestor
- * and Usuário get 403).
+ * condominium (opening the list also generates the missing suggestions, Q51). Creating, changing, confirming
+ * (one by one, in batch or all suggestions), rejecting, suggesting and uploading the sheet: only the Admin (Gestor and
+ * Usuário get 403).
  */
 @RestController
 @RequestMapping("/api/condominiums/{condominiumId}/budgets/{budgetId}/account-mappings")
@@ -57,7 +59,8 @@ public class AccountMappingController {
     public AccountMappingsResponse list(@PathVariable UUID condominiumId, @PathVariable UUID budgetId,
             @RequestParam(name = "filter", required = false) AccountMappingFilter filter) {
         access.require(condominiumId);
-        return service.list(condominiumId, budgetId, filter);
+        // Opening the screen generates the suggestions still missing (Q51)
+        return service.open(condominiumId, budgetId, filter);
     }
 
     @GetMapping("/events")
@@ -84,6 +87,15 @@ public class AccountMappingController {
         return service.batch(condominiumId, budgetId, request, access.username());
     }
 
+    @PostMapping("/suggestions/confirmation")
+    @PreAuthorize("hasRole('ADMIN')")
+    public AccountMappingBatchResponse confirmAllSuggested(@PathVariable UUID condominiumId,
+            @PathVariable UUID budgetId, @RequestBody ConfirmSuggestedRequest request) {
+        access.require(condominiumId);
+        return service.confirmAllSuggested(condominiumId, budgetId, request == null ? null : request.expected(),
+                access.username());
+    }
+
     @PostMapping("/suggestions")
     @PreAuthorize("hasRole('ADMIN')")
     public AccountMappingSuggestionsResponse suggest(@PathVariable UUID condominiumId, @PathVariable UUID budgetId) {
@@ -102,8 +114,9 @@ public class AccountMappingController {
         if (file.getSize() > SHEET_MAX_SIZE) {
             throw new ResponseStatusException(HttpStatus.CONTENT_TOO_LARGE, "A planilha passa de 1 MB");
         }
-        return service.loadSheet(condominiumId, budgetId, file.getOriginalFilename(), text(file.getBytes()),
-                access.username());
+        byte[] bytes = file.getBytes();
+        return service.loadSheet(condominiumId, budgetId, file.getOriginalFilename(), text(bytes),
+                AccountMappingService.sha256(bytes), access.username());
     }
 
     /** UTF-8 (default); when it is not valid UTF-8, Windows-1252, as Excel in Portuguese saves the CSV. */

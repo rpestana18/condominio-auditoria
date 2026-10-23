@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -22,7 +23,15 @@ import java.util.stream.Collectors;
  *
  * <p>Score = common words ÷ distinct words of both names (Jaccard), compared as an exact fraction. The cash flow name
  * is compared with the budget's account and with the line description; the higher one counts. The best line becomes a
- * suggestion when the score reaches the minimum and no other line ties with it. The suggestion is never confirmed here.
+ * suggestion when the score reaches the minimum and no other line ties with it. Two more rules (Q51), both explained
+ * in the reason and both blind to the account number:
+ * <ul>
+ * <li><b>tie broken by the supplier</b> (RF-13.8): among the tied lines, the only one whose description is entirely
+ * inside the name of a supplier of the account's entries ("Rio Gelar" in "RIO GELAR REFRIGERACAO LTDA");</li>
+ * <li><b>every cash flow word is in the line</b>: when the score does not reach the minimum, the only line whose
+ * budget account plus description contain all the cash flow words ("INSS" in "Salário · INSS/FGTS/PIS/IRPF").</li>
+ * </ul>
+ * The suggestion is never confirmed here.
  */
 public final class NameSuggestion {
 
@@ -97,6 +106,13 @@ public final class NameSuggestion {
     }
 
     public Result suggest(String cashFlowName, List<BudgetLine> candidates) {
+        return suggest(cashFlowName, List.of(), candidates);
+    }
+
+    /**
+     * @param suppliers names of the suppliers printed in the account's entries (only used to break a tie)
+     */
+    public Result suggest(String cashFlowName, java.util.Collection<String> suppliers, List<BudgetLine> candidates) {
         List<String> cashFlow = normalize(cashFlowName);
         if (cashFlow.isEmpty()) {
             return new NoSuggestion("nome da conta do fluxo sem palavras para comparar");
@@ -122,16 +138,23 @@ public final class NameSuggestion {
             }
         }
         String cashFlowText = String.join(" ", cashFlow);
-        if (tied.isEmpty()) {
-            return new NoSuggestion("fluxo: " + cashFlowText + "; nenhuma linha da PO com palavras em comum");
-        }
-        if (!best.reaches(minScore)) {
-            return new NoSuggestion("fluxo: " + cashFlowText + "; melhor linha " + tied.getFirst().getEffectiveCode()
-                    + " com nota " + display(best.value()) + ", abaixo do mínimo " + display(minScore));
+        if (tied.isEmpty() || !best.reaches(minScore)) {
+            Optional<Suggested> contained = allWordsInOneLine(cashFlow, cashFlowText, candidates);
+            if (contained.isPresent()) {
+                return contained.get();
+            }
+            return tied.isEmpty()
+                    ? new NoSuggestion("fluxo: " + cashFlowText + "; nenhuma linha da PO com palavras em comum")
+                    : new NoSuggestion("fluxo: " + cashFlowText + "; melhor linha " + tied.getFirst().getEffectiveCode()
+                            + " com nota " + display(best.value()) + ", abaixo do mínimo " + display(minScore));
         }
         if (tied.size() > 1) {
-            return new NoSuggestion("fluxo: " + cashFlowText + "; empate entre as linhas " + tied.stream()
-                    .map(BudgetLine::getEffectiveCode).collect(Collectors.joining(", ")) + " (nota "
+            String tiedCodes = tied.stream().map(BudgetLine::getEffectiveCode).collect(Collectors.joining(", "));
+            Optional<Suggested> bySupplier = tieBrokenBySupplier(tied, suppliers, best, cashFlowText, tiedCodes);
+            if (bySupplier.isPresent()) {
+                return bySupplier.get();
+            }
+            return new NoSuggestion("fluxo: " + cashFlowText + "; empate entre as linhas " + tiedCodes + " (nota "
                     + display(best.value()) + "): escolha na lista");
         }
         BudgetLine chosen = tied.getFirst();
@@ -140,6 +163,62 @@ public final class NameSuggestion {
         return new Suggested(chosen, best, "fluxo: " + cashFlowText + "; PO " + chosen.getEffectiveCode() + ": "
                 + String.join(" ", bestName) + " (em comum: " + String.join(", ", common) + "; nota "
                 + display(best.value()) + ")");
+    }
+
+    /**
+     * The only tied line whose description (with at least one word) is entirely inside the name of one of the
+     * suppliers: the contract line of that supplier (RF-13.8). None or more than one: no suggestion.
+     */
+    private Optional<Suggested> tieBrokenBySupplier(List<BudgetLine> tied, java.util.Collection<String> suppliers,
+            Score best, String cashFlowText, String tiedCodes) {
+        List<String> sortedSuppliers = suppliers.stream().filter(java.util.Objects::nonNull).distinct().sorted().toList();
+        BudgetLine chosen = null;
+        String supplierFound = null;
+        for (BudgetLine line : tied) {
+            List<String> description = normalize(line.getDescription());
+            if (description.isEmpty()) {
+                continue;
+            }
+            Optional<String> supplier = sortedSuppliers.stream()
+                    .filter(f -> Set.copyOf(normalize(f)).containsAll(description)).findFirst();
+            if (supplier.isPresent()) {
+                if (chosen != null) {
+                    return Optional.empty();
+                }
+                chosen = line;
+                supplierFound = supplier.get();
+            }
+        }
+        if (chosen == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new Suggested(chosen, best, "fluxo: " + cashFlowText + "; empate entre as linhas "
+                + tiedCodes + " (nota " + display(best.value()) + "); desempate pelo favorecido: \"" + supplierFound
+                + "\" contém a descrição da linha " + chosen.getEffectiveCode() + " (" + chosen.getDescription() + ")"));
+    }
+
+    /** The only line whose budget account plus description contain every cash flow word. None or more: empty. */
+    private Optional<Suggested> allWordsInOneLine(List<String> cashFlow, String cashFlowText,
+            List<BudgetLine> candidates) {
+        BudgetLine chosen = null;
+        List<String> chosenWords = List.of();
+        for (BudgetLine line : candidates) {
+            LinkedHashSet<String> words = new LinkedHashSet<>(normalize(line.getAccount()));
+            words.addAll(normalize(line.getDescription()));
+            if (words.containsAll(cashFlow)) {
+                if (chosen != null) {
+                    return Optional.empty();
+                }
+                chosen = line;
+                chosenWords = List.copyOf(words);
+            }
+        }
+        if (chosen == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new Suggested(chosen, score(cashFlow, chosenWords), "fluxo: " + cashFlowText + "; PO "
+                + chosen.getEffectiveCode() + ": " + String.join(" ", chosenWords)
+                + " (todas as palavras do fluxo estão na linha, e só nela: " + String.join(", ", cashFlow) + ")"));
     }
 
     private static Score score(List<String> a, List<String> b) {

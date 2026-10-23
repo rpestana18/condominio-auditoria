@@ -36,9 +36,11 @@ export type MappingTargetRequest = Schemas["MappingTargetRequest"];
 export type AccountMappingBatchRequest = Schemas["AccountMappingBatchRequest"];
 export type AccountMappingBatchResult = Schemas["AccountMappingBatchResponse"];
 export type SkippedAccount = Schemas["SkippedAccountResponse"];
-export type AccountMappingSuggestionsResult = Schemas["AccountMappingSuggestionsResponse"];
 export type AccountMappingSheetResult = Schemas["AccountMappingSheetResponse"];
 export type AccountMappingEvent = Schemas["AccountMappingEventResponse"];
+export type SuggestedBySource = Schemas["SuggestedBySourceResponse"];
+export type StoredSheet = Schemas["StoredSheetResponse"];
+export type ConfirmSuggestedRequest = Schemas["ConfirmSuggestedRequest"];
 
 // Calculation result (comes ready from the backend; the screen only shows it)
 export type BudgetVsActual = Schemas["BudgetVsActualResponse"];

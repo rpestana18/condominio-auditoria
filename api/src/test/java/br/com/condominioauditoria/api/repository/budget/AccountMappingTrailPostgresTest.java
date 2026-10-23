@@ -86,6 +86,31 @@ class AccountMappingTrailPostgresTest {
         }
     }
 
+    @Test
+    void storedSheetHasOneLinePerAccountAndTheLineCodeOnlyForBudgetLine() throws SQLException {
+        try (Statement s = connection.createStatement()) {
+            s.execute("set search_path to " + schema);
+            s.executeUpdate(sheetSql("1621", "BUDGET_LINE", "'1.7.8'"));
+            s.executeUpdate(sheetSql("1324", "ADJUSTMENT", "null"));
+
+            assertThatThrownBy(() -> s.executeUpdate(sheetSql("1621", "ADJUSTMENT", "null")))
+                    .isInstanceOf(SQLException.class).hasMessageContaining("uk_account_mapping_sheet_item");
+            assertThatThrownBy(() -> s.executeUpdate(sheetSql("1108", "BUDGET_LINE", "null")))
+                    .isInstanceOf(SQLException.class).hasMessageContaining("ck_account_mapping_sheet_item_line");
+            assertThatThrownBy(() -> s.executeUpdate(sheetSql("1108", "LINHA", "null")))
+                    .isInstanceOf(SQLException.class).hasMessageContaining("ck_account_mapping_sheet_item_type");
+            // Not a trail: a new sheet replaces the stored one
+            assertThat(s.executeUpdate("delete from account_mapping_sheet_item")).isEqualTo(2);
+        }
+    }
+
+    private static String sheetSql(String account, String type, String lineCode) {
+        return "insert into account_mapping_sheet_item (id, condominium_id, account_code, target_type, target_line_code,"
+                + " file_name, file_sha256, file_line, loaded_by, loaded_at) values ('" + UUID.randomUUID()
+                + "', '6f1d2c1e-3b4a-4c8e-9a51-2815a0000001', '" + account + "', '" + type + "', " + lineCode
+                + ", 'mapa.csv', '" + "b".repeat(64) + "', 2, 'admin', now())";
+    }
+
     private static UUID insertEvent(Statement s) throws SQLException {
         String condominium = "6f1d2c1e-3b4a-4c8e-9a51-2815a0000001"; // piloto (V2)
         UUID file = UUID.randomUUID();

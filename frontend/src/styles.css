@@ -461,3 +461,9 @@ code { font-family: ui-monospace, monospace; font-size: 0.85em; background: var(
 .mapping-accounts { margin: 10px 0 0; }
 .mapping-accounts > summary { font-weight: 500; font-size: 0.88rem; color: var(--primary); }
 .mapping-accounts table { margin-top: 8px; }
+
+/* De-para (Q51): accounts without any suggestion stand out; neutral highlight, no red (RF-11.13) */
+.table tr.without-mapping { background: var(--warning-background); }
+.table tr.without-mapping td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
+.confirm-all { margin: 12px 0; }
+.confirm-all .confirmation { margin-top: 0; }

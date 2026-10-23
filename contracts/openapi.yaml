@@ -311,6 +311,9 @@ paths:
       description: |
         Contas do fluxo com débito no fundo Condomínio no exercício da PO, mais as contas que já têm de-para.
         Conta sem de-para tem estado nulo. Só CONFIRMED entra no previsto × realizado.
+        Abrir a lista (qualquer perfil) gera antes as sugestões que faltam numa PO confirmada (Q51, RF-03.1.5):
+        versão anterior → planilha guardada do condomínio → nome, só para contas sem de-para, autor "sistema".
+        Nada é confirmado; gerar de novo não duplica nem desfaz confirmação, recusa ou escolha do Admin.
       operationId: listAccountMappings
       parameters:
         - name: filter
@@ -360,15 +363,35 @@ paths:
     post:
       summary: Gera sugestões para as contas sem de-para (só ADMIN, RF-03.1.5), sem IA
       description: |
-        Primeiro a versão anterior da PO (só o que estava confirmado; linha igual = mesmo código efetivo, conta e
-        descrição), depois a comparação de nomes (sem dígitos, sem acento; nota mínima configurável; empate não
-        sugere). Tudo entra SUGGESTED, com o motivo. Nenhuma conta é confirmada e nenhum número muda.
+        O sistema já gera sozinho (ao confirmar a PO, ao gravar um extrato e ao abrir a lista, Q51); esta chamada faz
+        a mesma geração e devolve o resumo. Primeiro a versão anterior da PO (só o que estava confirmado; linha igual =
+        mesmo código efetivo, conta e descrição), depois a planilha guardada do condomínio, depois a comparação de
+        nomes (sem dígitos, sem acento; nota mínima configurável; empate só é desfeito pelo favorecido do lançamento;
+        todas as palavras do fluxo numa única linha também sugerem). Tudo entra SUGGESTED, com o motivo. Nenhuma conta
+        é confirmada e nenhum número muda.
       operationId: suggestAccountMappings
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AccountMappingSuggestionsResponse" } } } }
         "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
         "404": { description: PO não encontrada }
         "409": { description: PO ainda não confirmada }
+  /condominiums/{condominiumId}/budgets/{budgetId}/account-mappings/suggestions/confirmation:
+    parameters: [{ $ref: "#/components/parameters/CondominiumId" }, { $ref: "#/components/parameters/BudgetId" }]
+    post:
+      summary: Confirma todas as contas SUGGESTED desta versão (só ADMIN, Q51), um evento por conta
+      description: |
+        "Confirmar todas as sugestões". expected é quantas sugestões a tela mostrou (summary.suggested); se o número
+        mudou nesse meio-tempo, nada é confirmado (409). Contas sem de-para e recusadas não mudam.
+      operationId: confirmAllAccountMappingSuggestions
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ConfirmSuggestedRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AccountMappingBatchResponse" } } } }
+        "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO ainda não confirmada ou as sugestões mudaram desde que a tela foi aberta, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+        "422": { description: expected ausente ou menor que 1 }
   /condominiums/{condominiumId}/budgets/{budgetId}/account-mappings/sheet:
     parameters: [{ $ref: "#/components/parameters/CondominiumId" }, { $ref: "#/components/parameters/BudgetId" }]
     post:
@@ -376,7 +399,9 @@ paths:
       description: |
         Formato do mapa do piloto, separado por ponto e vírgula, com ou sem cabeçalho, UTF-8 ou Windows-1252. Destino:
         código efetivo de uma linha de despesa, "AJUSTE (...)", "REALOCAR (...)" ou "TRANSFERENCIA (...)". Tudo entra
-        SUGGESTED; conta já confirmada não muda; linha inválida é listada e não entra.
+        SUGGESTED; conta já confirmada não muda; linha inválida é listada e não entra. As linhas aceitas ficam guardadas
+        como a planilha do condomínio (substituem a anterior; nome, linha e SHA-256 do arquivo, nunca o arquivo) e são
+        reaplicadas, como SUGGESTED, a contas novas e a versões novas da PO (Q51).
       operationId: uploadAccountMappingSheet
       requestBody:
         required: true
@@ -2152,12 +2177,37 @@ components:
         withoutMapping: { type: integer }
     AccountMappingsResponse:
       type: object
-      required: [budgetId, summary, accounts]
+      required: [budgetId, summary, suggestedBySource, accounts]
       properties:
         budgetId: { type: string, format: uuid }
         version: { type: [integer, "null"] }
         summary: { $ref: "#/components/schemas/AccountMappingSummaryResponse" }
+        suggestedBySource: { $ref: "#/components/schemas/SuggestedBySourceResponse" }
+        sheet: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/StoredSheetResponse" }], description: Planilha de sugestões guardada do condomínio (a última carregada) }
         accounts: { type: array, items: { $ref: "#/components/schemas/AccountMappingResponse" } }
+    SuggestedBySourceResponse:
+      type: object
+      description: Contas SUGGESTED desta versão por origem, para a confirmação de "Confirmar todas as sugestões" (Q51)
+      required: [previousVersion, spreadsheet, name, admin]
+      properties:
+        previousVersion: { type: integer }
+        spreadsheet: { type: integer }
+        name: { type: integer }
+        admin: { type: integer }
+    StoredSheetResponse:
+      type: object
+      required: [sha256, lines, loadedBy, loadedAt]
+      properties:
+        fileName: { type: [string, "null"] }
+        sha256: { type: string }
+        lines: { type: integer, description: Linhas aceitas guardadas }
+        loadedBy: { type: string }
+        loadedAt: { type: string, format: date-time }
+    ConfirmSuggestedRequest:
+      type: object
+      required: [expected]
+      properties:
+        expected: { type: integer, minimum: 1, description: Quantas sugestões a tela mostrou }
     MappingTargetRequest:
       type: object
       required: [type]
@@ -2184,10 +2234,11 @@ components:
         skipped: { type: array, items: { $ref: "#/components/schemas/SkippedAccountResponse" } }
     AccountMappingSuggestionsResponse:
       type: object
-      required: [created, fromPreviousVersion, byName, withoutSuggestion]
+      required: [created, fromPreviousVersion, fromSheet, byName, withoutSuggestion]
       properties:
         created: { type: integer }
         fromPreviousVersion: { type: integer }
+        fromSheet: { type: integer, description: Da planilha guardada do condomínio (Q51) }
         byName: { type: integer }
         withoutSuggestion:
           type: array

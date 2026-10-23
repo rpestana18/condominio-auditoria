@@ -81,6 +81,50 @@ class NameSuggestionTest {
         assertThat(a.reason()).isEqualTo(b.reason());
     }
 
+    @Test
+    void tieIsBrokenOnlyWhenTheLineDescriptionIsTheSupplier() {
+        // Q51 / RF-13.8: "AR CONDICIONADO" ties the contract line (description = supplier) and the parts line
+        List<BudgetLine> pair = List.of(extraLine("1.3.4", "1600 - Ar Condicionado", "Rio Gelar"),
+                extraLine("1.7.10", "1600 - Ar Condicionado", "Peças e Aquisições / Ar Cond"));
+
+        var r = suggestion.suggest("AR CONDICIONADO", List.of("RIO GELAR REFRIGERACAO LTDA"), pair);
+
+        assertThat(((NameSuggestion.Suggested) r).line().getEffectiveCode()).isEqualTo("1.3.4");
+        assertThat(r.reason()).contains("empate entre as linhas 1.3.4, 1.7.10").contains("desempate pelo favorecido")
+                .contains("RIO GELAR REFRIGERACAO LTDA");
+        // Without the supplier, or with a supplier that names no line, it stays a tie
+        assertThat(suggestion.suggest("AR CONDICIONADO", pair)).isInstanceOf(NameSuggestion.NoSuggestion.class);
+        assertThat(suggestion.suggest("AR CONDICIONADO", List.of("OUTRA EMPRESA LTDA"), pair))
+                .isInstanceOf(NameSuggestion.NoSuggestion.class);
+        // Two tied lines that both fit the supplier: no suggestion
+        List<BudgetLine> both = List.of(extraLine("1.3.4", "1600 - Ar Condicionado", "Rio Gelar"),
+                extraLine("1.7.10", "1600 - Ar Condicionado", "Gelar"));
+        assertThat(suggestion.suggest("AR CONDICIONADO", List.of("RIO GELAR REFRIGERACAO LTDA"), both))
+                .isInstanceOf(NameSuggestion.NoSuggestion.class);
+    }
+
+    @Test
+    void everyCashFlowWordInOnlyOneLineSuggests() {
+        // Q51: "INSS" scores 1/4 against "1546 - Salário · INSS/FGTS/PIS/IRPF" (below 0.5), but is entirely in it
+        List<BudgetLine> list = List.of(extraLine("1.1.1", "1545 - Verbas Salariais", "Salários Empregados"),
+                extraLine("1.1.2", "1546 - Salário", "INSS/FGTS/PIS/IRPF"),
+                extraLine("1.2.1", "1591 - Telefone Fixo", "Tefone móvel/fixo"));
+
+        var inss = suggestion.suggest("INSS", list);
+        assertThat(((NameSuggestion.Suggested) inss).line().getEffectiveCode()).isEqualTo("1.1.2");
+        assertThat(inss.reason()).contains("todas as palavras do fluxo estão na linha");
+        // Account plus description together: TELEFONE (account) and MOVEL (description)
+        assertThat(((NameSuggestion.Suggested) suggestion.suggest("TELEFONE MÓVEL", list)).line().getEffectiveCode())
+                .isEqualTo("1.2.1");
+        // A word in more than one line, or a word in none: no suggestion
+        var twice = new java.util.ArrayList<>(list);
+        twice.add(extraLine("1.6.19", "1753 - Obrigações", "INSS sobre autônomos e ESOCIAL"));
+        assertThat(suggestion.suggest("INSS", twice)).isInstanceOf(NameSuggestion.NoSuggestion.class);
+        assertThat(suggestion.suggest("ESOCIAL INSS PATRONAL", twice)).isInstanceOf(NameSuggestion.NoSuggestion.class);
+        // The number is never a word: "1546" alone has nothing to compare
+        assertThat(suggestion.suggest("1546", list)).isInstanceOf(NameSuggestion.NoSuggestion.class);
+    }
+
     private static BudgetLine extraLine(String code, String account, String description) {
         var budget = new Budget(UUID.randomUUID(), UUID.randomUUID(), "b".repeat(64));
         return new BudgetLine(budget, 999, 1, BudgetLineType.LINE, code, account, null, null, description,

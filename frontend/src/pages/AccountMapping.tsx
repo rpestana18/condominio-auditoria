@@ -22,9 +22,14 @@ const filters: { code: AccountMappingFilter; label: string }[] = [
 /** The default budget is the most recent confirmed one (the list already comes from the most recent to the oldest). */
 const defaultBudget = (budgets: BudgetSummary[]) => budgets.find((b) => b.status === "CONFIRMED") ?? budgets[0];
 
+/** Accounts without any mapping come first (Q51: highlighted), then the rest in the order the backend sent. */
+const withoutMappingFirst = (accounts: MappedAccount[]) =>
+  [...accounts].sort((a, b) => Number(a.status != null) - Number(b.status != null));
+
 /**
  * "De-para" screen (RF-03.1.13): everyone can view; only the Admin edits, confirms and rejects.
  * The filter lives in the address (?filtro=PENDING), so the budget vs actual warning brings the Admin straight here.
+ * Opening the screen already brings the suggestions (Q51): the backend generates the missing ones by itself.
  */
 export function AccountMapping() {
   const { condominiumId, can } = useSession();
@@ -61,7 +66,8 @@ export function AccountMapping() {
   const budgetConfirmed = budget?.budget.status === "CONFIRMED";
   // Lines that can be a target: only the expense ones (no total, group or funds)
   const targetLines = budget?.lines.filter((l) => l.type === "LINE" && !l.fundLine) ?? [];
-  const accounts = list?.accounts ?? [];
+  const accounts = withoutMappingFirst(list?.accounts ?? []);
+  const withoutMapping = list?.summary.withoutMapping ?? 0;
 
   return (
     <>
@@ -92,8 +98,24 @@ export function AccountMapping() {
 
       {list && (
         <p className="muted">
-          {list.summary.suggested} sugeridas · {list.summary.rejected} recusadas · {list.summary.withoutMapping} sem de-para. Só as
-          confirmadas entram no previsto × realizado; sugestão nunca muda número.
+          {list.summary.suggested} sugeridas · {list.summary.rejected} recusadas · {list.summary.withoutMapping} sem de-para. As
+          sugestões são feitas pelo sistema (versão anterior, planilha guardada e nome, nunca pelo número da conta). Só as confirmadas
+          entram no previsto × realizado; sugestão nunca muda número.
+        </p>
+      )}
+      {budgetConfirmed && withoutMapping > 0 && (
+        <p className="notice warning">
+          <strong>
+            {withoutMapping} {withoutMapping === 1 ? "conta sem sugestão" : "contas sem sugestão"}
+          </strong>
+          {admin
+            ? ': escolha o destino em "Escolher destino" (busca por código e por nome). Elas aparecem primeiro e em destaque na lista. '
+            : ": o Admin escolhe o destino. Elas aparecem primeiro e em destaque na lista. "}
+          {filter !== "UNMAPPED" && (
+            <button className="link-button" onClick={() => change("filtro", "UNMAPPED")}>
+              Ver só as sem de-para
+            </button>
+          )}
         </p>
       )}
       {!budgetConfirmed && budget && (
@@ -103,7 +125,7 @@ export function AccountMapping() {
       )}
 
       {admin && budgetConfirmed && (
-        <AccountMappingActions budgetId={budgetId} selected={[...selected]} onBatchDone={() => setSelected(new Set())} />
+        <AccountMappingActions budgetId={budgetId} list={list} selected={[...selected]} onBatchDone={() => setSelected(new Set())} />
       )}
 
       <div className="tabs" role="tablist">

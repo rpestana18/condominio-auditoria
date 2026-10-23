@@ -21,7 +21,7 @@ import type {
   Reallocation,
   AccountMappingBatchResult,
   AccountMappingSheetResult,
-  AccountMappingSuggestionsResult,
+  ConfirmSuggestedRequest,
 } from "./types";
 
 /** "2026-09" (one month) or "cumulative" (the budget's fiscal year), as the API expects. */
@@ -197,11 +197,18 @@ export function useAccountMappingBatch(condominiumId: string, budgetId: string) 
   });
 }
 
-export function useSuggestAccountMappings(condominiumId: string, budgetId: string) {
+/**
+ * "Confirmar todas as sugestões" (Q51): confirms every suggested account at once. `expected` is the count the screen
+ * showed; if it changed in the meantime, the backend answers 409 and confirms nothing.
+ */
+export function useConfirmAllSuggestions(condominiumId: string, budgetId: string) {
   const reload = useReloadBudget();
   return useMutation({
-    mutationFn: () => postJson<AccountMappingSuggestionsResult>(`${base(condominiumId)}/budgets/${budgetId}/account-mappings/suggestions`),
+    mutationFn: (request: ConfirmSuggestedRequest) =>
+      postJson<AccountMappingBatchResult>(`${base(condominiumId)}/budgets/${budgetId}/account-mappings/suggestions/confirmation`, request),
     onSuccess: reload,
+    // A 409 means the list changed: reload it so the Admin sees the new count
+    onError: reload,
   });
 }
 

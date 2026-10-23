@@ -25,6 +25,7 @@ import br.com.condominioauditoria.api.model.audit.FindingEvidence;
 import br.com.condominioauditoria.api.model.audit.RuleParameter;
 import br.com.condominioauditoria.api.model.budget.AccountMapping;
 import br.com.condominioauditoria.api.model.budget.AccountMappingEvent;
+import br.com.condominioauditoria.api.model.budget.AccountMappingSheetItem;
 import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.budget.BudgetEvent;
 import br.com.condominioauditoria.api.model.budget.BudgetFundLink;
@@ -51,6 +52,7 @@ import br.com.condominioauditoria.api.repository.audit.FindingRepository;
 import br.com.condominioauditoria.api.repository.audit.RuleParameterRepository;
 import br.com.condominioauditoria.api.repository.budget.AccountMappingEventRepository;
 import br.com.condominioauditoria.api.repository.budget.AccountMappingRepository;
+import br.com.condominioauditoria.api.repository.budget.AccountMappingSheetItemRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetEventRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetFundLinkRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetItemEventRepository;
@@ -103,6 +105,7 @@ public final class BudgetScenario {
     public final List<RuleParameter> ruleParameters = new ArrayList<>();
     public final List<AccountMapping> mappings = new ArrayList<>();
     public final List<AccountMappingEvent> mappingEvents = new ArrayList<>();
+    public final List<AccountMappingSheetItem> sheetItems = new ArrayList<>();
     public final List<LedgerEntry> ledgerEntries = new ArrayList<>();
     public final List<FindingEvent> findingEvents = new ArrayList<>();
     public final List<Reallocation> reallocations = new ArrayList<>();
@@ -342,8 +345,21 @@ public final class BudgetScenario {
                 .toList());
         when(entryRepo.findById(any())).thenAnswer(i -> ledgerEntries.stream()
                 .filter(l -> l.getId().equals(i.getArgument(0))).findFirst());
+        AccountMappingSheetItemRepository sheetItemRepo = mock(AccountMappingSheetItemRepository.class);
+        when(sheetItemRepo.save(any())).thenAnswer(i -> {
+            sheetItems.add(i.getArgument(0));
+            return i.getArgument(0);
+        });
+        when(sheetItemRepo.findByCondominiumIdOrderByAccountCode(any())).thenAnswer(i -> sheetItems.stream()
+                .filter(x -> x.getCondominiumId().equals(i.getArgument(0)))
+                .sorted(Comparator.comparing(AccountMappingSheetItem::getAccountCode)).toList());
+        when(sheetItemRepo.deleteByCondominiumId(any())).thenAnswer(i -> {
+            int before = sheetItems.size();
+            sheetItems.removeIf(x -> x.getCondominiumId().equals(i.getArgument(0)));
+            return before - sheetItems.size();
+        });
         accountMapping = new AccountMappingService(condominiums, budgetRepo, lineRepo, mappingRepo, mappingEventRepo,
-                entryRepo,
+                entryRepo, sheetItemRepo,
                 AccountMappingProperties.defaults(), published::add);
 
         ReallocationRepository reallocationRepo = mock(ReallocationRepository.class);

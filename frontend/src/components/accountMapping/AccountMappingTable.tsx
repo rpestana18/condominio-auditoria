@@ -14,7 +14,10 @@ interface Props {
   };
 }
 
-/** Cash flow accounts with the target, the status, the source and the suggestion reason (RF-03.1.13). */
+/**
+ * Cash flow accounts with the target, the status, the source and the suggestion reason (RF-03.1.13). An account
+ * without any mapping is highlighted (Q51).
+ */
 export function AccountMappingTable({ accounts, editing }: Props) {
   const all = editing && accounts.length > 0 && accounts.every((a) => editing.selected.has(a.account));
   return (
@@ -38,7 +41,10 @@ export function AccountMappingTable({ accounts, editing }: Props) {
         </thead>
         <tbody>
           {accounts.map((a) => (
-            <tr key={a.account} className={editing?.selected.has(a.account) ? "selected" : undefined}>
+            <tr
+              key={a.account}
+              className={[editing?.selected.has(a.account) ? "selected" : "", a.status == null ? "without-mapping" : ""].join(" ").trim() || undefined}
+            >
               {editing && (
                 <td>
                   <input
@@ -66,7 +72,7 @@ export function AccountMappingTable({ accounts, editing }: Props) {
               {editing && (
                 <td>
                   <button className="link-button" onClick={() => editing.onEdit(a)}>
-                    Alterar
+                    {a.status == null ? "Escolher destino" : "Alterar"}
                   </button>
                 </td>
               )}

@@ -8,5 +8,7 @@ public record AccountMappingsResponse(
         UUID budgetId,
         Integer version,
         AccountMappingSummaryResponse summary,
+        SuggestedBySourceResponse suggestedBySource,
+        StoredSheetResponse sheet,
         List<AccountMappingResponse> accounts) {
 }

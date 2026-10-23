@@ -93,7 +93,10 @@ class AccountMappingControllerPermissionTest {
         verify(service).suggest(CONDOMINIUM, BUDGET, "admin");
         verify(service).setTarget(eq(CONDOMINIUM), eq(BUDGET), eq("1621"), any(), eq("admin"));
         verify(service).batch(eq(CONDOMINIUM), eq(BUDGET), any(), eq("admin"));
-        verify(service).loadSheet(eq(CONDOMINIUM), eq(BUDGET), eq("mapa.csv"), eq("1621;1.7.8\n"), eq("admin"));
+        verify(service).loadSheet(eq(CONDOMINIUM), eq(BUDGET), eq("mapa.csv"), eq("1621;1.7.8\n"),
+                eq(AccountMappingService.sha256("1621;1.7.8\n".getBytes(java.nio.charset.StandardCharsets.UTF_8))),
+                eq("admin"));
+        verify(service).confirmAllSuggested(CONDOMINIUM, BUDGET, 49, "admin");
     }
 
     @Test
@@ -103,6 +106,8 @@ class AccountMappingControllerPermissionTest {
             controller.list(CONDOMINIUM, BUDGET, null);
             controller.events(CONDOMINIUM, BUDGET);
         }
+        // Opening the screen generates the missing suggestions, whatever the role (Q51)
+        verify(service, org.mockito.Mockito.times(3)).open(CONDOMINIUM, BUDGET, null);
     }
 
     @Test
@@ -111,11 +116,14 @@ class AccountMappingControllerPermissionTest {
 
         assertThatThrownBy(() -> controller.list(CONDOMINIUM, BUDGET, null)).isInstanceOf(AccessDeniedException.class);
         verify(service, never()).list(any(), any(), any());
+        verify(service, never()).open(any(), any(), any());
     }
 
     private List<Executable> writes() {
         return List.of(
                 () -> controller.suggest(CONDOMINIUM, BUDGET),
+                () -> controller.confirmAllSuggested(CONDOMINIUM, BUDGET,
+                        new br.com.condominioauditoria.api.dto.request.budget.ConfirmSuggestedRequest(49)),
                 () -> controller.setTarget(CONDOMINIUM, BUDGET, "1621",
                         new MappingTargetRequest(MappingTargetType.ADJUSTMENT, null, null, null)),
                 () -> controller.batch(CONDOMINIUM, BUDGET,

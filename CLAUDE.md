@@ -21,10 +21,11 @@
   | `rag/` embeddings, busca e respostas (`rag.search`, `rag.repository`, `rag.client`, `rag.security` e as perguntas em `rag.service`) | `rag` |
   | `mcp/`, `infra/`, testes ponta a ponta e todo contrato entre serviços (`contracts/`) | `mcp` |
   | `frontend/` | `frontend` |
+  | `docs/negocio/` (entendimento do negócio do condomínio: lei, convenção, RI, PO, fundos) | `negocio` |
   | `docs/requisitos.md` | `requisitos` |
   | `docs/arquitetura.md`, `docs/adr/`, `libs/` | `arquiteto` |
 
-- Fluxo de cada entrega: `requisitos` escreve os requisitos com critérios de aceite; `arquiteto` escreve a ADR quando há decisão de estrutura ou tecnologia; o usuário aprova os dois; só então os agentes de desenvolvimento entram. Requisitos em `docs/requisitos.md`, arquitetura em `docs/arquitetura.md`.
+- Fluxo de cada entrega: `negocio` explica o assunto no mundo real (lei, convenção, RI e documentos do condomínio) e lista as dúvidas; o usuário confirma o entendimento; `requisitos` escreve os requisitos com critérios de aceite; `arquiteto` escreve a ADR quando há decisão de estrutura ou tecnologia; o usuário aprova os dois; só então os agentes de desenvolvimento entram. Entendimento do negócio em `docs/negocio/`, requisitos em `docs/requisitos.md`, arquitetura em `docs/arquitetura.md`.
 
 ## Comandos
 

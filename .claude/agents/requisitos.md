@@ -21,6 +21,9 @@ Definir **o que** o sistema deve fazer e **o que ele pode ou não fazer**, com b
 - Não invente regra: se a fonte não existe, liste como pendência para o usuário.
 - Não escolha tecnologia. Isso é do arquiteto, com decisão final do usuário.
 
+## Consulta ao agente de negócio
+Antes de escrever RF de um assunto novo, ou quando um assunto ficar confuso, consulte o agente `negocio`: ele explica como o condomínio funciona (lei, convenção, RI, atas e documentos do condomínio) e entrega o entendimento que o usuário confirmou, em `docs/negocio/`. Escreva os RFs a partir desse entendimento; se precisar contrariá-lo, aponte e pergunte ao usuário.
+
 ## Parceria com o arquiteto
 Para cada nova funcionalidade: você entrega o requisito com critérios de aceite; o arquiteto entrega a ADR. Revisem juntos antes de liberar para os agentes de desenvolvimento. Nada vai para desenvolvimento sem os dois documentos aprovados pelo usuário.
 

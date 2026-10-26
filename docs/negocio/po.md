@@ -105,7 +105,36 @@ Cada uma trocou um conceito por outro: linha = número do item; linha = forneced
 4. Saldo em fluxo contínuo, inclusive antes da PO, com a visão antes/depois da PO aprovada.
 5. Exercício 2026/2027 de mai/2026 a fev/2027.
 6. Concessionárias nos saldos e gráficos, fora da PO (já coberto por Q45 e RF-12).
+7. Origem de cada linha e tipos "sazonal" e "anual" (seção 11).
+
+## 11. De onde sai cada linha (planilha de apoio)
+
+Análise de 24/10/2026 da planilha de apoio da PO 2026/2027 (`piloto-mio/fontes/PO-2026-2027-planilha-apoio.xlsx`); tabela das 86 linhas em `piloto-mio/analises/po-2026-2027-origem-das-linhas.md`. Os valores batem com o PDF aprovado. [fato] Recomendações O1–O8 aceitas pelo usuário em 25/10/2026 ("pode seguir"); O3 e O7 ainda dependem de conferência.
+
+**A corrente de cada linha** [fato]: gasto real da gestão anterior por conta → uma média → um ajuste (índice, negociação ou decisão) → valor aprovado.
+
+- Médias: ago/2025–abr/2026 para pessoal, consumo, aquisições, administrativas, materiais e eventuais; jan–abr/2026 para os contratos (1.3), porque até ago/2025 a administradora lançava os contratos numa conta só (1688) e cada contrato ganhou conta própria em set/2025.
+- Método, no piloto: 19 linhas por fórmula média × (1 + índice); 7 repetem a média; 46 têm valor digitado (negociação, decisão ou valor da proposta da outra empresa); 14 não têm conta (fixo, zero, rateio à parte).
+- A observação impressa não basta para deduzir o método (ex.: "média + IGP-M" com valor digitado). O PDF não traz a origem; a planilha traz.
+
+**O que precisa ser guardado de cada linha**, além do que a seção 0 já lista: contas de origem, período da média, valor da média, método, índice com o seu valor (e se era previsão, como o dissídio de 6,5%), valor final e motivo. A PO aprovada é sempre o valor; a origem só explica. [decisão O4, O8]
+
+**Regras que a análise confirmou** [decisão, 25/10/2026]:
+
+- O1: a linha vale pela descrição quando a conta impressa não combina com ela. No piloto, 1.1.2 "INSS/FGTS/PIS/IRPF" traz a conta 1546 Salário; os encargos estão na 1556 Leis Sociais, que nenhuma linha cita. O de-para liga a 1556 à 1.1.2. A conferência humana da seção 0 passa a checar conta × descrição.
+- O2: a conta analítica ganha da conta de grupo. No piloto, 1.1.1 usa o grupo 1545, que já contém salário, adiantamento, consignado, férias e 13º; férias e 13º vão para as suas linhas (1.1.5 e 1.1.12), para nada contar duas vezes. O plano de contas precisa da hierarquia grupo → conta.
+- O4: o índice é o valor aplicado. O "IGP-M" do piloto vale 4,44% (igual ao IPCA); a diferença de rótulo fica anotada.
+- O5 e O6: além de recorrente, eventual e provisão (seção 4), há linhas **sazonais** (reforço de verão espalhado no ano, ex.: 1.3.7 piscina, cuja média jan–abr inclui o apoio de nov a fev) e **anuais** (ex.: 1.6.21 e-mail, 2.650 por ano contra 150/mês; 13º em nov e dez). Essas se comparam no acumulado do exercício, não no mês.
+- O8: valor copiado de outra proposta tem a origem registrada como tal.
+
+**Outros fatos que o sistema precisa respeitar** [fato]:
+
+- Uma conta pode alimentar duas linhas (1600, 1606, 1693, 1624 no piloto), e as duas puxaram a média da conta inteira; a separação é pelo fornecedor ou pela descrição (seção 8).
+- Linha pode mudar de grupo de um ano para outro (caixa d'água: de 1.8 eventual para 1.3 contrato) e pode ser zerada (interfones, controle de acesso); gasto em linha zero é estouro.
+- Contas com gasto e sem linha na PO: 1556 (resolvida por O1), 1688 Outros serv. contratados (24.360,72/mês em jan–abr), 1665 Honorários advogados (4.085,75/mês) e 13 contas pequenas (3.258,88/mês). Se forem pagas pelo ordinário, aparecem em "sem linha da PO" (seção 8). [a confirmar: O7]
+- Folha: as colunas visíveis somam 64.339,87/mês, perto do realizado; o "custo total" de 92.196,79 inclui 1.857,13 por funcionário sem coluna. [a confirmar: O3]
+- Comparar na mesma base (Q37): o PDF imprime +7,45%, mas compara total com fundos contra total sem fundos; na mesma base o aumento é 2,34%. A proposta da outra empresa fica 10.230,58/mês acima nas despesas; o comparativo da planilha (26.654,46) usa uma versão anterior da PO e bases diferentes. Todo número comparado diz a versão, a base e o período da média.
 
 ## Fontes
 
-PO 2026/2027 (`piloto-mio/fontes/PO-2026-2027-aprovada.pdf`), convenção e RI do piloto (`piloto-mio/fontes/`, OCR conferido no PDF), extratos de abr a out/2026, `piloto-mio/analises/ponte-do-saldo-linha-a-linha-2026-10-20.md`, `docs/requisitos.md` (§3.1 e §10). Documento de trabalho com o histórico das perguntas: Claude Doc "PO: entendimento do negócio".
+PO 2026/2027 (`piloto-mio/fontes/PO-2026-2027-aprovada.pdf`), convenção e RI do piloto (`piloto-mio/fontes/`, OCR conferido no PDF), extratos de abr a out/2026, planilha de apoio da PO (`piloto-mio/fontes/PO-2026-2027-planilha-apoio.xlsx`), `piloto-mio/analises/po-2026-2027-origem-das-linhas.md`, `piloto-mio/analises/ponte-do-saldo-linha-a-linha-2026-10-20.md`, `docs/requisitos.md` (§3.1 e §10). Documento de trabalho com o histórico das perguntas: Claude Doc "PO: entendimento do negócio".

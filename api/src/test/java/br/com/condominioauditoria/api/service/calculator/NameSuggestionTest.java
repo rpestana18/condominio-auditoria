@@ -125,6 +125,27 @@ class NameSuggestionTest {
         assertThat(suggestion.suggest("1546", list)).isInstanceOf(NameSuggestion.NoSuggestion.class);
     }
 
+    @Test
+    void groupAccountAndDescriptionMarksCompareOnlyTheDescription() {
+        // O2: the account printed in 1.1.1 is a group one; unmarked it ties with 1.1.5, marked the holidays go to 1.1.5
+        BudgetLine group = extraLine("1.1.1", "1224 - Férias", "Salários");
+        BudgetLine holidays = extraLine("1.1.5", "1553 - Provisão", "Férias");
+        var pair = List.of(group, holidays);
+        assertThat(suggestion.suggest("FÉRIAS", List.of(), pair)).isInstanceOf(NameSuggestion.NoSuggestion.class);
+
+        group.setMarks(true, false);
+        var r = suggestion.suggest("FÉRIAS", List.of(), pair, NameSuggestion.LineHints.of(pair));
+        assertThat(((NameSuggestion.Suggested) r).line().getEffectiveCode()).isEqualTo("1.1.5");
+
+        // O1: "vale a descrição" — the printed account no longer counts for the line
+        BudgetLine bonus = extraLine("1.1.2", "1240 - Gratificações", "Vale transporte");
+        bonus.setMarks(false, true);
+        var single = List.of(bonus);
+        assertThat(suggestion.suggest("GRATIFICAÇÕES", List.of(), single)).isInstanceOf(NameSuggestion.Suggested.class);
+        assertThat(suggestion.suggest("GRATIFICAÇÕES", List.of(), single, NameSuggestion.LineHints.of(single)))
+                .isInstanceOf(NameSuggestion.NoSuggestion.class);
+    }
+
     private static BudgetLine extraLine(String code, String account, String description) {
         var budget = new Budget(UUID.randomUUID(), UUID.randomUUID(), "b".repeat(64));
         return new BudgetLine(budget, 999, 1, BudgetLineType.LINE, code, account, null, null, description,

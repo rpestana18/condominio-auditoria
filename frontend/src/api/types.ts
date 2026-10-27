@@ -177,3 +177,23 @@ export type SpendingProfileEvent = Schemas["SpendingProfileEventResponse"];
 export type PartialMonth = Schemas["PartialMonthResponse"];
 export type PartialMonthRequest = Schemas["PartialMonthRequest"];
 export type PartialMonthEvent = Schemas["PartialMonthEventResponse"];
+
+// "Entradas e saídas", line review, origin of each line and end of the fiscal year (RF-13.11 to RF-13.17, ADR 0009)
+export type LineReviewState = Schemas["LineReviewStateResponse"];
+export type BudgetLineReviewStatus = Schemas["BudgetLineReviewStatus"];
+export type BudgetLineWarningCode = Schemas["BudgetLineWarningCode"];
+export type BudgetLineReview = Schemas["BudgetLineReviewResponse"];
+export type LineReviewLine = Schemas["LineReviewLineResponse"];
+export type BudgetLineOrigin = Schemas["BudgetLineOriginResponse"];
+export type BudgetLineOriginRequest = Schemas["BudgetLineOriginRequest"];
+export type OriginMethod = Schemas["OriginMethod"];
+export type LineReviewBatchRequest = Schemas["LineReviewBatchRequest"];
+export type BudgetLineReviewEvent = Schemas["BudgetLineReviewEventResponse"];
+export type FiscalYearEndRequest = Schemas["FiscalYearEndRequest"];
+export type CashFlowRowCode = Schemas["CashFlowRowCode"];
+export type CashFlowMonthly = Schemas["CashFlowMonthlyResponse"];
+export type CashFlowMonth = Schemas["CashFlowMonthResponse"];
+export type CashFlowRow = Schemas["CashFlowRowResponse"];
+export type CashFlowGroup = Schemas["CashFlowGroupResponse"];
+export type CashFlowEntries = Schemas["CashFlowEntriesResponse"];
+export type CashFlowEntry = Schemas["CashFlowEntryResponse"];

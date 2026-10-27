@@ -482,3 +482,12 @@ code { font-family: ui-monospace, monospace; font-size: 0.85em; background: var(
 .mapping-note { font-size: 0.85rem; }
 .number-card .before-reading-title { font-size: 0.82rem; }
 .number-card > a:not(.card-title-link) { color: var(--primary); font-size: 0.85rem; }
+
+/* "Entradas e saídas" (RF-13.11) */
+.cash-flow-table td.indent { padding-left: 24px; }
+.cash-flow-table tr.emphasis td { font-weight: 600; }
+.cash-flow-table tfoot th, .cash-flow-table tfoot td { border-top: 1px solid var(--border); }
+.line-review-table td.warnings small { display: block; }
+.origin-detail { background: var(--background); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 8px 0; }
+.origin-detail dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
+.origin-detail dt { color: var(--text-muted); }

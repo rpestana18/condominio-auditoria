@@ -1,11 +1,12 @@
 import type { BalanceBridge, BalanceBridgeItemCode } from "../../api/types";
 import { formatPercentage } from "../../format";
-import { PROFILE_NOT_CONFIRMED, topNotes, type PendingSteps } from "../pendingSteps";
+import { linesToReview, PROFILE_NOT_CONFIRMED, topNotes, type PendingSteps } from "../pendingSteps";
 
 /** Pending steps of a bridge, from its mapping fields and the PROFILE_NOT_CONFIRMED warning. */
 export function bridgeSteps(bridge: BalanceBridge): PendingSteps {
   return {
     budgetId: bridge.budget?.id ?? null,
+    linesToReview: linesToReview(bridge.lineReview),
     unmappedAccounts: bridge.mapping?.unmappedAccounts ?? 0,
     unmappedAmount: bridge.mapping?.unmappedAmount ?? null,
     accounts: bridge.mapping?.accounts ?? [],

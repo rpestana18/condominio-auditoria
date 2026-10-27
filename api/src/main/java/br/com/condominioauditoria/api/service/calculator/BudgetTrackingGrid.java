@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
  * DD/MM", and stays out of the cumulative, of the line balance and of the 20% rule. While in progress it shows
  * <b>only the actual</b> (Q50): the difference to the planned amount (cells, groups and month total), the overrun and
  * the lines above are null until the month closes; the planned amount of the month stays, as a budget figure;</li>
- * <li>the spending profile never changes the planned amount (Q24); without confirmation it is MONTHLY.</li>
+ * <li>the spending profile never changes the planned amount (Q24); without confirmation the suggestion holds.</li>
  * </ul>
  */
 public final class BudgetTrackingGrid {
@@ -69,9 +69,12 @@ public final class BudgetTrackingGrid {
     /** Stored spending profile of a line (null profile = nothing stored: the caller passes the suggestion). */
     public record LineProfile(SpendingProfile profile, SpendingProfileStatus status) {
 
-        /** The profile in use: only the confirmed one; MONTHLY without confirmation (RF-13.3). */
+        /**
+         * The profile in use (RF-13.14, revised on 26/10/2026): the confirmed one or, without confirmation, the
+         * suggestion ("tipo não confirmado"); RECURRING when nothing is known.
+         */
         public SpendingProfile effective() {
-            return status == SpendingProfileStatus.CONFIRMED && profile != null ? profile : SpendingProfile.MONTHLY;
+            return profile != null ? profile : SpendingProfile.RECURRING;
         }
     }
 
@@ -275,7 +278,7 @@ public final class BudgetTrackingGrid {
         if (unconfirmed > 0) {
             warnings.add(new BudgetVsActualWarningResponse("PROFILE_NOT_CONFIRMED", unconfirmed
                     + (unconfirmed == 1 ? " linha com tipo não confirmado" : " linhas com tipo não confirmado")
-                    + ": vale \"mensal\" até o Admin confirmar"));
+                    + ": vale a sugestão até o Admin confirmar"));
         }
         BudgetTrackingResponse result = new BudgetTrackingResponse(VERSION, BudgetVsActualCalculator.VERSION,
                 cumulativeMonths.isEmpty() && partialMonths.isEmpty() ? c.status() : BudgetVsActualStatus.CALCULATED,

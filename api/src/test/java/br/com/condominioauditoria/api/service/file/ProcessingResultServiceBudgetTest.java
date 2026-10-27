@@ -26,6 +26,7 @@ import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.service.budget.BudgetImportService;
+import br.com.condominioauditoria.api.service.budget.BudgetLineOriginService;
 import br.com.condominioauditoria.api.service.budget.PilotBudget;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -50,7 +51,7 @@ class ProcessingResultServiceBudgetTest {
     private final ProcessingResultService service = new ProcessingResultService(files, mock(FundRepository.class),
             entries, balances, totalsChecks,
             new BudgetImportService(budgets, lines, new BudgetProperties(new BigDecimal("0.01"))), event -> { },
-            mock(PartialMonthService.class));
+            mock(PartialMonthService.class), mock(BudgetLineOriginService.class));
 
     private final List<Budget> saved = new ArrayList<>();
     private SourceFile file;

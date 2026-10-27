@@ -1069,6 +1069,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominiums/{condominiumId}/budgets/{budgetId}/fiscal-year-end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Corrige o fim do exercício de uma PO confirmada (só ADMIN, RF-13.17), com justificativa e trilha
+         * @description Para a PO confirmada com o fim errado (D2: exercício de março a fevereiro confirmado até abril). O novo fim não
+         *     pode ser antes do início, igual ao atual nem cobrir meses de outra PO confirmada. Grava o evento
+         *     FISCAL_YEAR_END_CORRECTED ("Fim do exercício corrigido de X para Y."). Uma prorrogação que deixa de ir além do
+         *     novo fim é desfeita. O acompanhamento, a ponte e "Entradas e saídas" passam a usar o novo exercício na próxima
+         *     consulta (nada é gravado como resultado). A sugestão de fim (primeiro fevereiro depois do início) vem em
+         *     BudgetDetailResponse.suggestedFiscalYearEnd.
+         */
+        put: operations["correctFiscalYearEnd"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/budgets/{budgetId}/line-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Conferência das linhas da PO (todos os perfis, RF-13.12)
+         * @description Cada linha lida da PO (despesa e fundos 1.9) com o estado da conferência (PENDING ou REVIEWED, quem e quando),
+         *     as marcas do Admin (conta de grupo O2, vale a descrição O1), a origem do valor (RF-13.13, quando houver) e os
+         *     avisos calculados na consulta pela função pura BudgetLineReviewCheck (checkVersion). Aviso nunca bloqueia e
+         *     nunca é indício. Enquanto state.reviewed é falso, o acompanhamento, a ponte e "Entradas e saídas" não mostram
+         *     números por linha (aviso LINES_NOT_REVIEWED).
+         */
+        get: operations["budgetLineReview"];
+        /**
+         * Confere ou reabre linhas da PO e muda as marcas O1/O2 (só ADMIN), com trilha
+         * @description items: cada linha com o novo status e, se informadas, as marcas groupAccount e descriptionPrevails.
+         *     reviewAll=true confere todas as linhas ainda pendentes ("conferir todas"). Cada mudança grava um evento só de
+         *     inserção (REVIEWED, REOPENED, MARKS_CHANGED). Linha sem mudança é ignorada.
+         */
+        put: operations["reviewBudgetLines"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/budgets/{budgetId}/line-review/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        /** Trilha da conferência das linhas desta PO (todos os perfis), só de inserção */
+        get: operations["budgetLineReviewEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/budgets/{budgetId}/lines/{lineId}/origin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Informa ou corrige a origem do valor de uma linha da PO (só ADMIN, RF-13.13), com trilha
+         * @description Grava a origem com fonte ADMIN (a planilha de apoio não sobrescreve depois) e o evento ORIGIN_CHANGED. A origem
+         *     explica o valor; o valor que vale é sempre o da PO aprovada (aviso ORIGIN_FINAL_DIFFERS quando diferem).
+         */
+        put: operations["saveBudgetLineOrigin"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/condominiums/{condominiumId}/fiscal-years": {
         parameters: {
             query?: never;
@@ -1331,6 +1437,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/condominiums/{condominiumId}/cash-flow/monthly": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Entradas e saídas mês a mês (todos os perfis, RF-13.11)
+         * @description Calculado na consulta pela função pura MonthlyCashFlow (calculationVersion), sem nada gravado. Uma coluna por
+         *     mês com extrato (sem from/to: do primeiro ao último mês com extrato). Entradas do fundo (cota, outras receitas,
+         *     outros créditos); saídas de cada linha da PO conferida, por grupo (outflowGroups, também as linhas com 0,00), e
+         *     os blocos à parte (outflowBlocks: SEPARATE_APPORTIONMENT, WITHOUT_BUDGET_LINE, TO_REALLOCATE, ADJUSTMENTS e,
+         *     com fund=all, OTHER_FUNDS); transferências entre fundos (recebidas e enviadas); saldo do mês e saldo
+         *     acumulado conferido com o extrato (balanceMatches) e saídas + transferências enviadas conferidas com os débitos
+         *     impressos (debitsMatch, tolerância R$ 0,01). Mês sem PO confirmada, com a PO não conferida (lineReview) ou de
+         *     outro fundo: saídas por conta do fluxo (byAccount, bloco BY_ACCOUNT). Avisos: LINES_NOT_REVIEWED,
+         *     DEBITS_DO_NOT_MATCH, BALANCE_DOES_NOT_MATCH, PARTIAL_MONTH, NO_OPERATING_FUND, NO_CASH_FLOW, TWO_CASH_FLOWS,
+         *     CASH_FLOW_SPANS_MONTHS.
+         */
+        get: operations["monthlyCashFlow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/condominiums/{condominiumId}/cash-flow/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Lançamentos de uma célula de "Entradas e saídas", cada um com o seu destino (todos os perfis, RF-13.11)
+         * @description Os lançamentos do fundo no mês (ou no período from/to), filtrados por linha da PO (line), por bloco (block) ou
+         *     por conta do fluxo (account), com o destino pelo de-para, arquivo, página e hash de origem. A soma (total) é a
+         *     da célula da tabela.
+         */
+        get: operations["cashFlowEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/condominiums/{condominiumId}/funds/movements": {
         parameters: {
             query?: never;
@@ -1371,7 +1532,8 @@ export interface paths {
          * Tipo de gasto de cada linha de despesa da PO (todos os perfis, RF-13.3)
          * @description Sugerido na confirmação da PO pela função pura SpendingProfileSuggestion (version) e confirmado pelo Admin.
          *     PO confirmada antes da sugestão existir: a sugestão é calculada na consulta e aparece como SUGGESTED.
-         *     Só o tipo CONFIRMED muda a leitura do acompanhamento e da ponte; SUGGESTED vale como MONTHLY (effectiveProfile).
+         *     Sem confirmação vale a sugestão atual (effectiveProfile, "tipo não confirmado"; ADR 0009, Decisão 2). Linha
+         *     confirmada cuja sugestão atual é outra traz suggestionChanged ("a sugestão mudou", P9).
          */
         get: operations["listSpendingProfiles"];
         /**
@@ -2313,6 +2475,8 @@ export interface components {
             roundingTolerance: number;
             /** @description Mês a partir do qual vale a nova versão */
             supersededFrom?: string | null;
+            /** @description Fim sugerido do exercício (RF-13.17): primeiro fevereiro depois do início (lido ou confirmado); padrão do formulário de confirmação */
+            suggestedFiscalYearEnd?: string | null;
             /** @description Dados informados pelo Admin; nulo antes da confirmação */
             confirmation?: null | {
                 /** Format: uuid */
@@ -2850,6 +3014,8 @@ export interface components {
                 code: string;
                 text: string;
             }[];
+            /** @description Estado da conferência das linhas da PO (RF-13.12). Os números do previsto × realizado continuam aparecendo (base dos indícios e da exportação); as telas mostram o passo pendente */
+            lineReview?: null | components["schemas"]["LineReviewStateResponse"];
         };
         UsedCashFlowResponse: {
             /** Format: uuid */
@@ -3046,14 +3212,15 @@ export interface components {
             aiMode?: components["schemas"]["AiMode"];
         };
         /**
-         * @description Tipo de gasto da linha (RF-13.3; ADR 0007). MONTHLY = mensal; PROVISION = provisão (férias, 13º, rescisão:
-         *     o previsto não gasto fica reservado); ANNUAL = anual (gasto concentrado em um mês); SEPARATE_APPORTIONMENT =
+         * @description Tipo de gasto da linha (RF-13.14; ADR 0009, Decisão 2). RECURRING = recorrente (o antigo MONTHLY);
+         *     OCCASIONAL = eventual (não gastar não é economia, D4); SEASONAL = sazonal (O5); ANNUAL = anual (O6);
+         *     PROVISION = provisão (férias, 13º, rescisão: o previsto não gasto fica reservado); SEPARATE_APPORTIONMENT =
          *     rateio à parte.
          * @enum {string}
          */
-        SpendingProfile: "MONTHLY" | "PROVISION" | "ANNUAL" | "SEPARATE_APPORTIONMENT";
+        SpendingProfile: "RECURRING" | "OCCASIONAL" | "SEASONAL" | "ANNUAL" | "PROVISION" | "SEPARATE_APPORTIONMENT";
         /**
-         * @description SUGGESTED = sugerido pelas regras (vale como MONTHLY); CONFIRMED = confirmado pelo Admin
+         * @description SUGGESTED = sugerido pelas regras (vale a sugestão); CONFIRMED = confirmado pelo Admin
          * @enum {string}
          */
         SpendingProfileStatus: "SUGGESTED" | "CONFIRMED";
@@ -3095,7 +3262,10 @@ export interface components {
             groups: components["schemas"]["TrackingGroupResponse"][];
             cumulative?: null | components["schemas"]["TrackingCumulativeResponse"];
             blocks?: null | components["schemas"]["TrackingBlocksResponse"];
+            /** @description Com a PO não conferida */
             warnings: components["schemas"]["CalculationWarning"][];
+            /** @description Estado da conferência das linhas da PO usada (RF-13.12) */
+            lineReview?: null | components["schemas"]["LineReviewStateResponse"];
         };
         TrackingMonthResponse: {
             /** @description AAAA-MM */
@@ -3204,13 +3374,17 @@ export interface components {
             separateApportionment: components["schemas"]["TrackingBlockResponse"];
         };
         /**
-         * @description APPORTIONMENT_FUNDS (Q49) só na ponte de todos os fundos (fund=all), antes de UNEXPLAINED: créditos − débitos
-         *     dos fundos de rateio (todo fundo que não é o ordinário), sem as transferências marcadas, sem percentual. Nessa
-         *     ponte INCOME_VS_PLANNED usa só o fundo ordinário (rótulo "Cota ordinária acima ou abaixo do previsto") e
-         *     FUND_PLANNED_COLLECTION e FUND_EXPENSES não aparecem (continuam só na ponte de um fundo que não é o ordinário).
+         * @description Itens da ponte, versão 4 (RF-13.15; ADR 0009, Decisão 5). LINE_SAVINGS (linhas recorrentes e sazonais: o único
+         *     lugar da palavra "economia"), PROVISIONS_RESERVED (provisões) e UNUSED_OCCASIONAL (eventuais e anuais: previsto
+         *     não usado, nunca economia, Q52) somam o previsto − realizado das linhas. INCOME_ABOVE_PLANNED_EXPENSE (substitui
+         *     INCOME_VS_PLANNED): entradas do fundo ordinário menos a despesa prevista do período (N2). Sem a PO conferida
+         *     (lineReview), os itens por linha vêm com amount nulo. APPORTIONMENT_FUNDS (Q49) só na ponte de todos os fundos
+         *     (fund=all), antes de UNEXPLAINED: créditos − débitos dos fundos de rateio, sem as transferências marcadas, sem
+         *     percentual; nessa ponte INCOME_ABOVE_PLANNED_EXPENSE usa só o fundo ordinário e FUND_PLANNED_COLLECTION e
+         *     FUND_EXPENSES não aparecem (continuam só na ponte de um fundo que não é o ordinário).
          * @enum {string}
          */
-        BalanceBridgeItemCode: "LINE_SAVINGS" | "PROVISIONS_RESERVED" | "SEPARATE_APPORTIONMENT" | "INCOME_VS_PLANNED" | "FUND_PLANNED_COLLECTION" | "FUND_EXPENSES" | "OUTSIDE_BUDGET" | "INTER_FUND_TRANSFERS" | "APPORTIONMENT_FUNDS" | "UNEXPLAINED";
+        BalanceBridgeItemCode: "LINE_SAVINGS" | "PROVISIONS_RESERVED" | "UNUSED_OCCASIONAL" | "SEPARATE_APPORTIONMENT" | "INCOME_ABOVE_PLANNED_EXPENSE" | "FUND_PLANNED_COLLECTION" | "FUND_EXPENSES" | "OUTSIDE_BUDGET" | "INTER_FUND_TRANSFERS" | "APPORTIONMENT_FUNDS" | "UNEXPLAINED";
         BalanceBridgeResponse: {
             calculationVersion: string;
             status: components["schemas"]["CalculationStatus"];
@@ -3255,6 +3429,8 @@ export interface components {
             partialMonth?: null | components["schemas"]["BridgePartialMonthResponse"];
             /** @description De-para do fundo Condomínio nos meses do total, em campos (o mesmo do aviso NO_CONFIRMED_MAPPING); nulo quando a ponte não inclui o fundo Condomínio ou não tem números */
             mapping?: null | components["schemas"]["BridgeMappingResponse"];
+            /** @description Estado da conferência das linhas da PO usada (RF-13.12) */
+            lineReview?: null | components["schemas"]["LineReviewStateResponse"];
         };
         BridgeMappingResponse: {
             /** @description Contas com código sem de-para confirmado (as do aviso NO_CONFIRMED_MAPPING) */
@@ -3300,7 +3476,8 @@ export interface components {
         BridgeItemResponse: {
             code: components["schemas"]["BalanceBridgeItemCode"];
             label: string;
-            amount: number;
+            /** @description Nulo nos itens por linha (LINE_SAVINGS, PROVISIONS_RESERVED, UNUSED_OCCASIONAL, SEPARATE_APPORTIONMENT) enquanto a PO não está conferida (lineReview, RF-13.12) */
+            amount: number | null;
             /** @description Nulo com variação zero e sempre em APPORTIONMENT_FUNDS (Q49): os percentuais não somam 100% */
             percentageOfVariation?: number | null;
             /** @description Partes do item (ex.: CONDO_FEE, OTHER_INCOME, PLANNED; ADJUSTMENTS, TO_REALLOCATE, WITHOUT_BUDGET_LINE; RECEIVED, SENT; INFLOWS, OUTFLOWS em APPORTIONMENT_FUNDS, com o sinal da ponte: saídas negativas) */
@@ -3423,6 +3600,8 @@ export interface components {
             version: number | null;
             confirmed: number;
             suggested: number;
+            /** @description Linhas confirmadas cuja sugestão atual é outra (P9) */
+            suggestionChanged: number;
             lines: components["schemas"]["SpendingProfileLineResponse"][];
         };
         SpendingProfileLineResponse: {
@@ -3443,6 +3622,8 @@ export interface components {
             effectiveProfile: components["schemas"]["SpendingProfile"];
             suggestedProfile: components["schemas"]["SpendingProfile"];
             suggestionReason?: string | null;
+            /** @description Tipo confirmado e sugestão atual diferente ("a sugestão mudou", P9) */
+            suggestionChanged: boolean;
             reason?: string | null;
             changedBy?: string | null;
             /** Format: date-time */
@@ -3530,6 +3711,299 @@ export interface components {
             /** Format: date-time */
             occurredAt: string;
             reason?: string | null;
+        };
+        /** @description Estado da conferência das linhas da PO (RF-13.12). Os números por linha só aparecem com reviewed verdadeiro */
+        LineReviewStateResponse: {
+            /** Format: uuid */
+            budgetId: string;
+            /** @description Todas as linhas conferidas */
+            reviewed: boolean;
+            reviewedLines: number;
+            totalLines: number;
+            /** @description Ex.: "Confira as linhas da PO em \"PO aprovada\" (0 de 88 conferidas): até lá, os números por linha não aparecem" */
+            message?: string | null;
+        };
+        /** @enum {string} */
+        BudgetLineReviewStatus: "PENDING" | "REVIEWED";
+        /**
+         * @description Avisos da conferência (BudgetLineReviewCheck; nunca bloqueiam, nunca são indício). ACCOUNT_DESCRIPTION_MISMATCH
+         *     (O1: conta impressa e descrição sem palavra em comum); GROUP_ACCOUNT (O2, marcada pelo Admin);
+         *     GROUP_ACCOUNT_SUGGESTED (O2, nome de conta de grupo); ACCOUNT_IN_TWO_LINES; REPEATED_ITEM; ZERO_BUDGETED;
+         *     ORIGIN_FINAL_DIFFERS (valor final da origem diferente do da PO: vale o da PO, O4).
+         * @enum {string}
+         */
+        BudgetLineWarningCode: "ACCOUNT_DESCRIPTION_MISMATCH" | "GROUP_ACCOUNT" | "GROUP_ACCOUNT_SUGGESTED" | "ACCOUNT_IN_TWO_LINES" | "REPEATED_ITEM" | "ZERO_BUDGETED" | "ORIGIN_FINAL_DIFFERS";
+        BudgetLineWarningResponse: {
+            code: components["schemas"]["BudgetLineWarningCode"];
+            message: string;
+        };
+        /**
+         * @description AVERAGE_TIMES_INDEX = média × (1 + índice); EQUAL_TO_AVERAGE = igual à média; TYPED = valor digitado; NO_AVERAGE = sem média de conta
+         * @enum {string}
+         */
+        OriginMethod: "AVERAGE_TIMES_INDEX" | "EQUAL_TO_AVERAGE" | "TYPED" | "NO_AVERAGE";
+        /**
+         * @description SHEET = planilha de apoio da PO; ADMIN = informada pelo Admin (a planilha não sobrescreve)
+         * @enum {string}
+         */
+        OriginSource: "SHEET" | "ADMIN";
+        /** @description De onde veio o valor da linha (RF-13.13). Explica o valor; o que vale é o da PO aprovada */
+        BudgetLineOriginResponse: {
+            /** @description Contas do fluxo da média */
+            sourceAccounts?: string[];
+            /** @description AAAA-MM */
+            averageFrom?: string | null;
+            /** @description AAAA-MM */
+            averageTo?: string | null;
+            averageAmount?: number | null;
+            baseAmount?: number | null;
+            method: components["schemas"]["OriginMethod"];
+            methodLabel?: string | null;
+            /** @description Ex.: "VIGILANTES RJ", "IPCA ACUMULADO" */
+            indexName?: string | null;
+            /** @description Fração (0.0723 = 7,23%) */
+            indexRate?: number | null;
+            /** @description Índice marcado "(previsão)" na planilha */
+            indexForecast?: boolean;
+            indexNote?: string | null;
+            finalAmount?: number | null;
+            reason?: string | null;
+            source: components["schemas"]["OriginSource"];
+            /** Format: uuid */
+            fileId?: string | null;
+            fileName?: string | null;
+            sha256?: string | null;
+            sheet?: string | null;
+            sheetRow?: number | null;
+            changedBy?: string | null;
+            /** Format: date-time */
+            changedAt?: string | null;
+        };
+        LineReviewLineResponse: {
+            /** Format: uuid */
+            lineId: string;
+            position: number;
+            page: number;
+            groupCode?: string | null;
+            groupDescription?: string | null;
+            /** @description Código efetivo */
+            code: string;
+            printedCode: string;
+            account?: string | null;
+            description: string;
+            /** @enum {string|null} */
+            mark?: "SEPARATE_APPORTIONMENT" | "NEGOTIATED_EXEMPTION" | "NO_AMOUNT" | "FIXED_AMOUNT_NO_REFERENCE" | null;
+            notes?: string | null;
+            previousBudgeted?: number | null;
+            budgeted: number;
+            percentageText?: string | null;
+            /** @description Linha do grupo de fundos (1.9) */
+            funds: boolean;
+            status: components["schemas"]["BudgetLineReviewStatus"];
+            reviewedBy?: string | null;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            /** @description O2 marcado pelo Admin */
+            groupAccount: boolean;
+            /** @description O1 marcado pelo Admin */
+            descriptionPrevails: boolean;
+            /** @description Nula = "origem não informada" */
+            origin?: null | components["schemas"]["BudgetLineOriginResponse"];
+            warnings: components["schemas"]["BudgetLineWarningResponse"][];
+        };
+        BudgetLineReviewResponse: {
+            /** Format: uuid */
+            budgetId: string;
+            /** @description Versão da PO */
+            version?: number | null;
+            budgetStatus: components["schemas"]["BudgetStatus"];
+            /** @description Versão do BudgetLineReviewCheck */
+            checkVersion: string;
+            state: components["schemas"]["LineReviewStateResponse"];
+            linesWithWarnings: number;
+            linesWithOrigin: number;
+            lines: components["schemas"]["LineReviewLineResponse"][];
+        };
+        LineReviewItemRequest: {
+            /** Format: uuid */
+            lineId: string;
+            /** @description Nulo = mantém o status (só marcas) */
+            status?: null | components["schemas"]["BudgetLineReviewStatus"];
+            /** @description Nulo = mantém */
+            groupAccount?: boolean | null;
+            /** @description Nulo = mantém */
+            descriptionPrevails?: boolean | null;
+        };
+        LineReviewBatchRequest: {
+            items?: components["schemas"]["LineReviewItemRequest"][];
+            /** @description Confere todas as linhas pendentes */
+            reviewAll?: boolean;
+            reason?: string | null;
+        };
+        BudgetLineReviewEventResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            lineId: string;
+            lineCode?: string | null;
+            lineDescription?: string | null;
+            /** @enum {string} */
+            action: "REVIEWED" | "REOPENED" | "MARKS_CHANGED" | "ORIGIN_CHANGED";
+            previousStatus?: null | components["schemas"]["BudgetLineReviewStatus"];
+            newStatus?: null | components["schemas"]["BudgetLineReviewStatus"];
+            groupAccount?: boolean | null;
+            descriptionPrevails?: boolean | null;
+            reason?: string | null;
+            username: string;
+            /** Format: date-time */
+            occurredAt: string;
+        };
+        BudgetLineOriginRequest: {
+            sourceAccounts?: string[];
+            averageFrom?: string | null;
+            averageTo?: string | null;
+            averageAmount?: number | null;
+            baseAmount?: number | null;
+            method: components["schemas"]["OriginMethod"];
+            indexName?: string | null;
+            indexRate?: number | null;
+            indexForecast?: boolean | null;
+            indexNote?: string | null;
+            finalAmount?: number | null;
+            reason?: string | null;
+        };
+        FiscalYearEndRequest: {
+            fiscalYearEnd: string;
+            justification: string;
+        };
+        /**
+         * @description Linha ou bloco de "Entradas e saídas" (RF-13.11) e destino de cada lançamento. Entradas: CONDO_FEE (cota
+         *     recebida), OTHER_INCOME, OTHER_CREDITS, OTHER_FUNDS_INCOME. Saídas: BUDGET_LINE (linha da PO),
+         *     SEPARATE_APPORTIONMENT, WITHOUT_BUDGET_LINE, TO_REALLOCATE, ADJUSTMENTS, OTHER_FUNDS (fund=all) e BY_ACCOUNT
+         *     (por conta do fluxo, sem PO conferida). TRANSFERS_IN e TRANSFERS_OUT: transferências entre fundos.
+         * @enum {string}
+         */
+        CashFlowRowCode: "CONDO_FEE" | "OTHER_INCOME" | "OTHER_CREDITS" | "OTHER_FUNDS_INCOME" | "BUDGET_LINE" | "SEPARATE_APPORTIONMENT" | "WITHOUT_BUDGET_LINE" | "TO_REALLOCATE" | "ADJUSTMENTS" | "OTHER_FUNDS" | "BY_ACCOUNT" | "TRANSFERS_IN" | "TRANSFERS_OUT";
+        CashFlowRowResponse: {
+            code: components["schemas"]["CashFlowRowCode"];
+            label: string;
+            /** Format: uuid */
+            lineId?: string | null;
+            lineCode?: string | null;
+            account?: string | null;
+            /** Format: uuid */
+            fundId?: string | null;
+            /** @description Um valor por mês */
+            cells: (number | null)[];
+            total: number;
+            children: components["schemas"]["CashFlowRowResponse"][];
+        };
+        CashFlowGroupResponse: {
+            /** Format: uuid */
+            lineId?: string | null;
+            code: string;
+            description: string;
+            cells: (number | null)[];
+            total: number;
+            lines: components["schemas"]["CashFlowRowResponse"][];
+        };
+        CashFlowMonthResponse: {
+            /** @description AAAA-MM */
+            month: string;
+            status: components["schemas"]["TrackingMonthStatus"];
+            /**
+             * Format: date
+             * @description Mês em andamento (RF-13.10)
+             */
+            partialUntil?: string | null;
+            /** @description Mês sem PO confirmada */
+            beforeBudget: boolean;
+            /** @description Saídas por conta do fluxo neste mês */
+            byAccount: boolean;
+            inflows?: number | null;
+            outflows?: number | null;
+            /** @description Saídas nas linhas da PO */
+            inLines?: number | null;
+            transfersIn?: number | null;
+            transfersOut?: number | null;
+            /** @description Entradas − saídas + transferências líquidas */
+            monthBalance?: number | null;
+            openingBalance?: number | null;
+            /** @description Saldo acumulado no fim do mês */
+            closingBalance?: number | null;
+            printedDebits?: number | null;
+            /** @description Saídas + transferências enviadas = débitos impressos (R$ 0 */
+            debitsMatch?: boolean | null;
+            /** @description Saldo acumulado = saldo impresso no extrato (R$ 0 */
+            balanceMatches?: boolean | null;
+        };
+        CashFlowMonthlyResponse: {
+            /** @description Versão do MonthlyCashFlow */
+            calculationVersion: string;
+            /**
+             * Format: uuid
+             * @description Nulo com fund=all
+             */
+            fundId?: string | null;
+            fundName?: string | null;
+            allFunds: boolean;
+            /** @description AAAA-MM */
+            from?: string | null;
+            /** @description AAAA-MM */
+            to?: string | null;
+            budget?: null | components["schemas"]["BudgetBrief"];
+            lineReview?: null | components["schemas"]["LineReviewStateResponse"];
+            months: components["schemas"]["CashFlowMonthResponse"][];
+            inflows: components["schemas"]["CashFlowRowResponse"][];
+            /** @description Grupos da PO com as suas linhas; vazio sem PO conferida */
+            outflowGroups: components["schemas"]["CashFlowGroupResponse"][];
+            outflowBlocks: components["schemas"]["CashFlowRowResponse"][];
+            transfers: components["schemas"]["CashFlowRowResponse"][];
+            warnings: components["schemas"]["CalculationWarning"][];
+        };
+        CashFlowEntryResponse: {
+            /** Format: uuid */
+            entryId: string;
+            /** Format: date */
+            date: string;
+            month: string;
+            memo?: string | null;
+            supplier?: string | null;
+            document?: string | null;
+            account?: string | null;
+            accountName?: string | null;
+            /** Format: uuid */
+            fundId?: string;
+            fund?: string | null;
+            amount: number;
+            /** @enum {string} */
+            direction: "IN" | "OUT";
+            destination: components["schemas"]["CashFlowRowCode"];
+            destinationLabel?: string | null;
+            /** Format: uuid */
+            lineId?: string | null;
+            lineCode?: string | null;
+            lineDescription?: string | null;
+            /** Format: uuid */
+            fileId: string;
+            fileName?: string | null;
+            sha256?: string | null;
+            page?: number | null;
+            position?: number | null;
+        };
+        CashFlowEntriesResponse: {
+            /** Format: uuid */
+            fundId?: string | null;
+            allFunds: boolean;
+            month?: string | null;
+            /** Format: uuid */
+            lineId?: string | null;
+            block?: null | components["schemas"]["CashFlowRowCode"];
+            account?: string | null;
+            count: number;
+            total: number;
+            message?: string | null;
+            entries: components["schemas"]["CashFlowEntryResponse"][];
         };
     };
     responses: never;
@@ -5722,6 +6196,238 @@ export interface operations {
             };
         };
     };
+    correctFiscalYearEnd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FiscalYearEndRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetDetailResponse"];
+                };
+            };
+            /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não confirmada ou substituída */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem justificativa */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    budgetLineReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetLineReviewResponse"];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reviewBudgetLines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LineReviewBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetLineReviewResponse"];
+                };
+            };
+            /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Lista vazia sem reviewAll */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    budgetLineReviewEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetLineReviewEventResponse"][];
+                };
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    saveBudgetLineOrigin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+                budgetId: components["parameters"]["BudgetId"];
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetLineOriginRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LineReviewLineResponse"];
+                };
+            };
+            /** @description Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PO ou linha não encontradas */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Origem vazia ou com valores inválidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     listFiscalYears: {
         parameters: {
             query?: never;
@@ -6164,6 +6870,114 @@ export interface operations {
                 };
             };
             /** @description Período ou fundo inválido, período fora do exercício da PO (inclusive from antes do início do exercício, quando nenhuma PO vale em from: vale o exercício da PO confirmada mais recente) ou sem PO confirmada para o período padrão */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio ou fundo não encontrados */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    monthlyCashFlow: {
+        parameters: {
+            query?: {
+                /** @description Id de um fundo, "all" (todos os fundos) ou vazio (fundo ordinário) */
+                fund?: string;
+                /** @description AAAA-MM; sem from/to */
+                from?: string;
+                /** @description AAAA-MM */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashFlowMonthlyResponse"];
+                };
+            };
+            /** @description Período ou fundo inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Sem acesso ao condomínio */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Condomínio ou fundo não encontrados */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cashFlowEntries: {
+        parameters: {
+            query?: {
+                /** @description Id de um fundo, "all" ou vazio (fundo ordinário) */
+                fund?: string;
+                /** @description AAAA-MM */
+                month?: string;
+                /** @description Id da linha da PO */
+                line?: string;
+                /** @description Bloco da tabela (CashFlowRowCode) */
+                block?: components["schemas"]["CashFlowRowCode"];
+                /** @description Código da conta do fluxo */
+                account?: string;
+                /** @description AAAA-MM (sem month) */
+                from?: string;
+                /** @description AAAA-MM (sem month) */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                condominiumId: components["parameters"]["CondominiumId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashFlowEntriesResponse"];
+                };
+            };
+            /** @description Mês */
             400: {
                 headers: {
                     [name: string]: unknown;

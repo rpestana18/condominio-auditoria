@@ -19,19 +19,20 @@ export function Layout() {
           <NavLink to="/arquivos">Arquivos</NavLink>
           {/* Only with the feature enabled (RF-10.3), for every role; the backend refuses (403) when it is disabled */}
           {isFeatureEnabled("ASSISTANT") && <NavLink to="/assistente">Assistente</NavLink>}
-          {/* RF-13.1: every role sees the eight items in this order; clicking the section opens "Acompanhamento da PO".
+          {/* Revised menu (RF-13, Q53): every role sees the eight items in this order; clicking the section opens
+              "Entradas e saídas". "Previsto × realizado" left the menu: the month header of the tracking grid opens it.
               The editing actions inside the screens are Admin only (and the backend refuses the others) */}
-          <Link className="menu-section menu-section-link" to="/acompanhamento-po">
+          <Link className="menu-section menu-section-link" to="/entradas-e-saidas">
             Análise da PO
           </Link>
+          <NavLink to="/entradas-e-saidas">Entradas e saídas</NavLink>
           <NavLink to="/acompanhamento-po">Acompanhamento da PO</NavLink>
           <NavLink to="/origem-do-saldo">Origem do saldo</NavLink>
           <NavLink to="/fundos">Fundos</NavLink>
-          <NavLink to="/previsto-realizado">Previsto × realizado</NavLink>
-          <NavLink to="/comparar-exercicios">Comparar exercícios</NavLink>
-          <NavLink to="/indicadores">Indicadores</NavLink>
           <NavLink to="/previsoes">PO aprovada</NavLink>
           <NavLink to="/depara">De-para</NavLink>
+          <NavLink to="/comparar-exercicios">Comparar exercícios</NavLink>
+          <NavLink to="/indicadores">Indicadores</NavLink>
           {/* Only hides the menu: the backend refuses (403) anyone without the role */}
           {can("MANAGER", "ADMIN") && (
             <>

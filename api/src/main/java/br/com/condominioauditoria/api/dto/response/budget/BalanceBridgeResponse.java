@@ -15,7 +15,9 @@ import java.util.UUID;
  * {@code effectiveFrom} to {@code effectiveTo}: from the opening balance at {@code openingDate} to the closing balance
  * at {@code closingDate} (last day of the last complete month). A partial month comes in {@code partialMonth}, outside
  * the total. {@code mapping}: account mapping state of the operating fund in the total; null when the bridge does not
- * include the operating fund or has no numbers.
+ * include the operating fund or has no numbers. {@code lineReview}: review of the budget lines (RF-13.12); while they are
+ * not reviewed, the items by line (1 to 3 and the separate apportionment) have a null amount, and the pending step comes
+ * here. Null when the bridge has no budget.
  */
 public record BalanceBridgeResponse(
         String calculationVersion,
@@ -40,5 +42,14 @@ public record BalanceBridgeResponse(
         LocalDate openingDate,
         LocalDate closingDate,
         BridgePartialMonthResponse partialMonth,
-        BridgeMappingResponse mapping) {
+        BridgeMappingResponse mapping,
+        LineReviewStateResponse lineReview) {
+
+    /** The same bridge with other items and months and the review state. */
+    public BalanceBridgeResponse withLineReview(List<BridgeItemResponse> newItems, List<BridgeMonthResponse> newMonths,
+            LineReviewStateResponse review) {
+        return new BalanceBridgeResponse(calculationVersion, status, message, fundId, fundName, allFunds, from, to,
+                budget, openingBalance, openingSource, closingBalance, variation, closes, newItems, newMonths, warnings,
+                effectiveFrom, effectiveTo, openingDate, closingDate, partialMonth, mapping, review);
+    }
 }

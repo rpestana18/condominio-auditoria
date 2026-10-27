@@ -91,6 +91,7 @@ DELETE /api/condominiums/{}/budgets/{}/extension
       resolved: boolean
     }]
     roundingTolerance: number
+    suggestedFiscalYearEnd: string
     supersededFrom: string
     warnings: [{
       code: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
@@ -199,7 +200,7 @@ GET /api/condominiums/{}/balance-bridge
     fundName: string
     items: [{
       amount: number
-      code: enum[LINE_SAVINGS, PROVISIONS_RESERVED, SEPARATE_APPORTIONMENT, INCOME_VS_PLANNED, FUND_PLANNED_COLLECTION, FUND_EXPENSES, OUTSIDE_BUDGET, INTER_FUND_TRANSFERS, APPORTIONMENT_FUNDS, UNEXPLAINED]
+      code: enum[LINE_SAVINGS, PROVISIONS_RESERVED, UNUSED_OCCASIONAL, SEPARATE_APPORTIONMENT, INCOME_ABOVE_PLANNED_EXPENSE, FUND_PLANNED_COLLECTION, FUND_EXPENSES, OUTSIDE_BUDGET, INTER_FUND_TRANSFERS, APPORTIONMENT_FUNDS, UNEXPLAINED]
       funds: [{
         amount: number
         fundId: UUID
@@ -212,7 +213,7 @@ GET /api/condominiums/{}/balance-bridge
         amount: number
         code: string
         description: string
-        effectiveProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+        effectiveProfile: enum[RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
         lineId: UUID
       }]
       parts: [{
@@ -222,6 +223,13 @@ GET /api/condominiums/{}/balance-bridge
       }]
       percentageOfVariation: number
     }]
+    lineReview: {
+      budgetId: UUID
+      message: string
+      reviewed: boolean
+      reviewedLines: integer
+      totalLines: integer
+    }
     mapping: {
       accounts: [{
         account: string
@@ -244,7 +252,7 @@ GET /api/condominiums/{}/balance-bridge
       inflows: number
       items: [{
         amount: number
-        code: enum[LINE_SAVINGS, PROVISIONS_RESERVED, SEPARATE_APPORTIONMENT, INCOME_VS_PLANNED, FUND_PLANNED_COLLECTION, FUND_EXPENSES, OUTSIDE_BUDGET, INTER_FUND_TRANSFERS, APPORTIONMENT_FUNDS, UNEXPLAINED]
+        code: enum[LINE_SAVINGS, PROVISIONS_RESERVED, UNUSED_OCCASIONAL, SEPARATE_APPORTIONMENT, INCOME_ABOVE_PLANNED_EXPENSE, FUND_PLANNED_COLLECTION, FUND_EXPENSES, OUTSIDE_BUDGET, INTER_FUND_TRANSFERS, APPORTIONMENT_FUNDS, UNEXPLAINED]
       }]
       month: string
       openingBalance: number
@@ -404,7 +412,7 @@ GET /api/condominiums/{}/budget-tracking
         cumulativeActual: number
         cumulativePlanned: number
         description: string
-        effectiveProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+        effectiveProfile: enum[RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
         lineId: UUID
         mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
         monthlyPlanned: number
@@ -413,10 +421,17 @@ GET /api/condominiums/{}/budget-tracking
         page: integer
         position: integer
         printedCode: string
-        spendingProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+        spendingProfile: enum[RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
         spendingProfileStatus: enum[SUGGESTED, CONFIRMED]
       }]
     }]
+    lineReview: {
+      budgetId: UUID
+      message: string
+      reviewed: boolean
+      reviewedLines: integer
+      totalLines: integer
+    }
     message: string
     months: [{
       aboveLimit: boolean
@@ -521,6 +536,13 @@ GET /api/condominiums/{}/budget-vs-actual
       }]
       planned: number
     }]
+    lineReview: {
+      budgetId: UUID
+      message: string
+      reviewed: boolean
+      reviewedLines: integer
+      totalLines: integer
+    }
     mapping: {
       accounts: integer
       confirmed: integer
@@ -764,6 +786,7 @@ GET /api/condominiums/{}/budgets/{}
       resolved: boolean
     }]
     roundingTolerance: number
+    suggestedFiscalYearEnd: string
     supersededFrom: string
     warnings: [{
       code: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
@@ -905,6 +928,92 @@ GET /api/condominiums/{}/budgets/{}/events
     username: string
   }]
 
+GET /api/condominiums/{}/budgets/{}/line-review
+  path: UUID
+  path: UUID
+  returns: {
+    budgetId: UUID
+    budgetStatus: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+    checkVersion: string
+    lines: [{
+      account: string
+      budgeted: number
+      code: string
+      description: string
+      descriptionPrevails: boolean
+      funds: boolean
+      groupAccount: boolean
+      groupCode: string
+      groupDescription: string
+      lineId: UUID
+      mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+      notes: string
+      origin: {
+        averageAmount: number
+        averageFrom: string
+        averageTo: string
+        baseAmount: number
+        changedAt: Instant
+        changedBy: string
+        fileId: UUID
+        fileName: string
+        finalAmount: number
+        indexForecast: boolean
+        indexName: string
+        indexNote: string
+        indexRate: number
+        method: enum[AVERAGE_TIMES_INDEX, EQUAL_TO_AVERAGE, TYPED, NO_AVERAGE]
+        methodLabel: string
+        reason: string
+        sha256: string
+        sheet: string
+        sheetRow: integer
+        source: enum[SHEET, ADMIN]
+        sourceAccounts: [string]
+      }
+      page: integer
+      percentageText: string
+      position: integer
+      previousBudgeted: number
+      printedCode: string
+      reviewedAt: Instant
+      reviewedBy: string
+      status: enum[PENDING, REVIEWED]
+      warnings: [{
+        code: enum[ACCOUNT_DESCRIPTION_MISMATCH, GROUP_ACCOUNT, GROUP_ACCOUNT_SUGGESTED, ACCOUNT_IN_TWO_LINES, REPEATED_ITEM, ZERO_BUDGETED, ORIGIN_FINAL_DIFFERS]
+        message: string
+      }]
+    }]
+    linesWithOrigin: integer
+    linesWithWarnings: integer
+    state: {
+      budgetId: UUID
+      message: string
+      reviewed: boolean
+      reviewedLines: integer
+      totalLines: integer
+    }
+    version: integer
+  }
+
+GET /api/condominiums/{}/budgets/{}/line-review/events
+  path: UUID
+  path: UUID
+  returns: [{
+    action: enum[REVIEWED, REOPENED, MARKS_CHANGED, ORIGIN_CHANGED]
+    descriptionPrevails: boolean
+    groupAccount: boolean
+    id: UUID
+    lineCode: string
+    lineDescription: string
+    lineId: UUID
+    newStatus: enum[PENDING, REVIEWED]
+    occurredAt: Instant
+    previousStatus: enum[PENDING, REVIEWED]
+    reason: string
+    username: string
+  }]
+
 GET /api/condominiums/{}/budgets/{}/printed-column
   path: UUID
   path: UUID
@@ -959,20 +1068,22 @@ GET /api/condominiums/{}/budgets/{}/spending-profiles
       changedBy: string
       code: string
       description: string
-      effectiveProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      effectiveProfile: enum[RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
       groupCode: string
       lineId: UUID
       mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
       notes: string
       position: integer
       printedCode: string
-      profile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      profile: enum[RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
       reason: string
       status: enum[SUGGESTED, CONFIRMED]
-      suggestedProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      suggestedProfile: enum[RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
+      suggestionChanged: boolean
       suggestionReason: string
     }]
     suggested: integer
+    suggestionChanged: integer
     version: integer
   }
 
@@ -985,14 +1096,163 @@ GET /api/condominiums/{}/budgets/{}/spending-profiles/events
     lineCode: string
     lineDescription: string
     lineId: UUID
-    newProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+    newProfile: enum[RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
     newStatus: enum[SUGGESTED, CONFIRMED]
     occurredAt: Instant
-    previousProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+    previousProfile: enum[RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
     previousStatus: enum[SUGGESTED, CONFIRMED]
     reason: string
     username: string
   }]
+
+GET /api/condominiums/{}/cash-flow/entries
+  path: UUID
+  query fund?: string
+  query month?: string
+  query line?: UUID
+  query block?: string
+  query account?: string
+  query from?: string
+  query to?: string
+  returns: {
+    account: string
+    allFunds: boolean
+    block: enum[CONDO_FEE, OTHER_INCOME, OTHER_CREDITS, OTHER_FUNDS_INCOME, BUDGET_LINE, SEPARATE_APPORTIONMENT, WITHOUT_BUDGET_LINE, TO_REALLOCATE, ADJUSTMENTS, OTHER_FUNDS, BY_ACCOUNT, TRANSFERS_IN, TRANSFERS_OUT]
+    count: integer
+    entries: [{
+      account: string
+      accountName: string
+      amount: number
+      date: LocalDate
+      destination: enum[CONDO_FEE, OTHER_INCOME, OTHER_CREDITS, OTHER_FUNDS_INCOME, BUDGET_LINE, SEPARATE_APPORTIONMENT, WITHOUT_BUDGET_LINE, TO_REALLOCATE, ADJUSTMENTS, OTHER_FUNDS, BY_ACCOUNT, TRANSFERS_IN, TRANSFERS_OUT]
+      destinationLabel: string
+      direction: string
+      document: string
+      entryId: UUID
+      fileId: UUID
+      fileName: string
+      fund: string
+      fundId: UUID
+      lineCode: string
+      lineDescription: string
+      lineId: UUID
+      memo: string
+      month: string
+      page: integer
+      position: integer
+      sha256: string
+      supplier: string
+    }]
+    fundId: UUID
+    lineId: UUID
+    message: string
+    month: string
+    total: number
+  }
+
+GET /api/condominiums/{}/cash-flow/monthly
+  path: UUID
+  query fund?: string
+  query from?: string
+  query to?: string
+  returns: {
+    allFunds: boolean
+    budget: {
+      fileId: UUID
+      fileName: string
+      fiscalYearEnd: string
+      fiscalYearStart: string
+      id: UUID
+      sha256: string
+      status: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+      version: integer
+    }
+    calculationVersion: string
+    from: string
+    fundId: UUID
+    fundName: string
+    inflows: [{
+      account: string
+      cells: [number]
+      children: [<recursive>]
+      code: enum[CONDO_FEE, OTHER_INCOME, OTHER_CREDITS, OTHER_FUNDS_INCOME, BUDGET_LINE, SEPARATE_APPORTIONMENT, WITHOUT_BUDGET_LINE, TO_REALLOCATE, ADJUSTMENTS, OTHER_FUNDS, BY_ACCOUNT, TRANSFERS_IN, TRANSFERS_OUT]
+      fundId: UUID
+      label: string
+      lineCode: string
+      lineId: UUID
+      total: number
+    }]
+    lineReview: {
+      budgetId: UUID
+      message: string
+      reviewed: boolean
+      reviewedLines: integer
+      totalLines: integer
+    }
+    months: [{
+      balanceMatches: boolean
+      beforeBudget: boolean
+      byAccount: boolean
+      closingBalance: number
+      debitsMatch: boolean
+      inLines: number
+      inflows: number
+      month: string
+      monthBalance: number
+      openingBalance: number
+      outflows: number
+      partialUntil: LocalDate
+      printedDebits: number
+      status: enum[WITH_CASH_FLOW, NO_CASH_FLOW, TWO_CASH_FLOWS]
+      transfersIn: number
+      transfersOut: number
+    }]
+    outflowBlocks: [{
+      account: string
+      cells: [number]
+      children: [<recursive>]
+      code: enum[CONDO_FEE, OTHER_INCOME, OTHER_CREDITS, OTHER_FUNDS_INCOME, BUDGET_LINE, SEPARATE_APPORTIONMENT, WITHOUT_BUDGET_LINE, TO_REALLOCATE, ADJUSTMENTS, OTHER_FUNDS, BY_ACCOUNT, TRANSFERS_IN, TRANSFERS_OUT]
+      fundId: UUID
+      label: string
+      lineCode: string
+      lineId: UUID
+      total: number
+    }]
+    outflowGroups: [{
+      cells: [number]
+      code: string
+      description: string
+      lineId: UUID
+      lines: [{
+        account: string
+        cells: [number]
+        children: [<recursive>]
+        code: enum[CONDO_FEE, OTHER_INCOME, OTHER_CREDITS, OTHER_FUNDS_INCOME, BUDGET_LINE, SEPARATE_APPORTIONMENT, WITHOUT_BUDGET_LINE, TO_REALLOCATE, ADJUSTMENTS, OTHER_FUNDS, BY_ACCOUNT, TRANSFERS_IN, TRANSFERS_OUT]
+        fundId: UUID
+        label: string
+        lineCode: string
+        lineId: UUID
+        total: number
+      }]
+      total: number
+    }]
+    to: string
+    transfers: [{
+      account: string
+      cells: [number]
+      children: [<recursive>]
+      code: enum[CONDO_FEE, OTHER_INCOME, OTHER_CREDITS, OTHER_FUNDS_INCOME, BUDGET_LINE, SEPARATE_APPORTIONMENT, WITHOUT_BUDGET_LINE, TO_REALLOCATE, ADJUSTMENTS, OTHER_FUNDS, BY_ACCOUNT, TRANSFERS_IN, TRANSFERS_OUT]
+      fundId: UUID
+      label: string
+      lineCode: string
+      lineId: UUID
+      total: number
+    }]
+    warnings: [{
+      code: string
+      text: string
+    }]
+  }
 
 GET /api/condominiums/{}/context
   path: UUID
@@ -2046,6 +2306,7 @@ POST /api/condominiums/{}/budgets/{}/confirmation
       resolved: boolean
     }]
     roundingTolerance: number
+    suggestedFiscalYearEnd: string
     supersededFrom: string
     warnings: [{
       code: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
@@ -2348,6 +2609,112 @@ PUT /api/condominiums/{}/budgets/{}/extension
       resolved: boolean
     }]
     roundingTolerance: number
+    suggestedFiscalYearEnd: string
+    supersededFrom: string
+    warnings: [{
+      code: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
+      text: string
+    }]
+  }
+
+PUT /api/condominiums/{}/budgets/{}/fiscal-year-end
+  path: UUID
+  path: UUID
+  body: {
+    fiscalYearEnd: string
+    justification: string
+  }
+  returns: {
+    budget: {
+      confirmedAt: Instant
+      confirmedBy: string
+      extension: {
+        at: Instant
+        by: string
+        from: string
+        justification: string
+        until: string
+      }
+      fileId: UUID
+      fileName: string
+      fiscalYearEnd: string
+      fiscalYearStart: string
+      id: UUID
+      monthlyPlanned: number
+      printedFiscalYear: string
+      printedTotal: number
+      readAt: Instant
+      sha256: string
+      status: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+      title: string
+      version: integer
+    }
+    budgetedColumn: string
+    checks: [{
+      classification: enum[OK, ROUNDING, DISCREPANCY, REPEATED_CODE]
+      code: string
+      description: string
+      detail: string
+      explanation: string
+      ok: boolean
+    }]
+    confirmation: {
+      approvalDate: LocalDate
+      discrepancyAcknowledged: boolean
+      discrepancyJustification: string
+      minutesFileId: UUID
+      withoutMinutes: boolean
+    }
+    findings: [{
+      description: string
+      id: UUID
+      referenceMonth: string
+      rule: string
+      ruleVersion: string
+      severity: string
+      status: string
+    }]
+    funds: [{
+      budgeted: number
+      description: string
+      effectiveCode: string
+      fund: string
+      fundId: UUID
+      lineId: UUID
+    }]
+    lines: [{
+      account: string
+      accountText: string
+      budgeted: number
+      description: string
+      effectiveCode: string
+      fileId: UUID
+      fundLine: boolean
+      id: UUID
+      mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+      notes: string
+      page: integer
+      percentageText: string
+      position: integer
+      previousBudgeted: number
+      printedCode: string
+      sha256: string
+      type: enum[TOTAL, GROUP, LINE]
+    }]
+    previousBudgetedColumn: string
+    printedMonthlyPlanned: number
+    repeatedCodes: [{
+      lines: [{
+        description: string
+        effectiveCode: string
+        lineId: UUID
+        position: integer
+      }]
+      printedCode: string
+      resolved: boolean
+    }]
+    roundingTolerance: number
+    suggestedFiscalYearEnd: string
     supersededFrom: string
     warnings: [{
       code: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
@@ -2454,10 +2821,157 @@ PUT /api/condominiums/{}/budgets/{}/funds
       resolved: boolean
     }]
     roundingTolerance: number
+    suggestedFiscalYearEnd: string
     supersededFrom: string
     warnings: [{
       code: enum[ROUNDING, DISCREPANCY, REPEATED_CODE, CONFIRMED_WITH_DISCREPANCY, OUTSIDE_FIRST_QUARTER, NO_MINUTES, RULE_NOT_EVALUATED]
       text: string
+    }]
+  }
+
+PUT /api/condominiums/{}/budgets/{}/line-review
+  path: UUID
+  path: UUID
+  body: {
+    items: [{
+      descriptionPrevails: boolean
+      groupAccount: boolean
+      lineId: UUID
+      status: enum[PENDING, REVIEWED]
+    }]
+    reason: string
+    reviewAll: boolean
+  }
+  returns: {
+    budgetId: UUID
+    budgetStatus: enum[READ, READ_WITH_DISCREPANCY, CONFIRMED, SUPERSEDED]
+    checkVersion: string
+    lines: [{
+      account: string
+      budgeted: number
+      code: string
+      description: string
+      descriptionPrevails: boolean
+      funds: boolean
+      groupAccount: boolean
+      groupCode: string
+      groupDescription: string
+      lineId: UUID
+      mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+      notes: string
+      origin: {
+        averageAmount: number
+        averageFrom: string
+        averageTo: string
+        baseAmount: number
+        changedAt: Instant
+        changedBy: string
+        fileId: UUID
+        fileName: string
+        finalAmount: number
+        indexForecast: boolean
+        indexName: string
+        indexNote: string
+        indexRate: number
+        method: enum[AVERAGE_TIMES_INDEX, EQUAL_TO_AVERAGE, TYPED, NO_AVERAGE]
+        methodLabel: string
+        reason: string
+        sha256: string
+        sheet: string
+        sheetRow: integer
+        source: enum[SHEET, ADMIN]
+        sourceAccounts: [string]
+      }
+      page: integer
+      percentageText: string
+      position: integer
+      previousBudgeted: number
+      printedCode: string
+      reviewedAt: Instant
+      reviewedBy: string
+      status: enum[PENDING, REVIEWED]
+      warnings: [{
+        code: enum[ACCOUNT_DESCRIPTION_MISMATCH, GROUP_ACCOUNT, GROUP_ACCOUNT_SUGGESTED, ACCOUNT_IN_TWO_LINES, REPEATED_ITEM, ZERO_BUDGETED, ORIGIN_FINAL_DIFFERS]
+        message: string
+      }]
+    }]
+    linesWithOrigin: integer
+    linesWithWarnings: integer
+    state: {
+      budgetId: UUID
+      message: string
+      reviewed: boolean
+      reviewedLines: integer
+      totalLines: integer
+    }
+    version: integer
+  }
+
+PUT /api/condominiums/{}/budgets/{}/lines/{}/origin
+  path: UUID
+  path: UUID
+  path: UUID
+  body: {
+    averageAmount: number
+    averageFrom: string
+    averageTo: string
+    baseAmount: number
+    finalAmount: number
+    indexForecast: boolean
+    indexName: string
+    indexNote: string
+    indexRate: number
+    method: enum[AVERAGE_TIMES_INDEX, EQUAL_TO_AVERAGE, TYPED, NO_AVERAGE]
+    reason: string
+    sourceAccounts: [string]
+  }
+  returns: {
+    account: string
+    budgeted: number
+    code: string
+    description: string
+    descriptionPrevails: boolean
+    funds: boolean
+    groupAccount: boolean
+    groupCode: string
+    groupDescription: string
+    lineId: UUID
+    mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
+    notes: string
+    origin: {
+      averageAmount: number
+      averageFrom: string
+      averageTo: string
+      baseAmount: number
+      changedAt: Instant
+      changedBy: string
+      fileId: UUID
+      fileName: string
+      finalAmount: number
+      indexForecast: boolean
+      indexName: string
+      indexNote: string
+      indexRate: number
+      method: enum[AVERAGE_TIMES_INDEX, EQUAL_TO_AVERAGE, TYPED, NO_AVERAGE]
+      methodLabel: string
+      reason: string
+      sha256: string
+      sheet: string
+      sheetRow: integer
+      source: enum[SHEET, ADMIN]
+      sourceAccounts: [string]
+    }
+    page: integer
+    percentageText: string
+    position: integer
+    previousBudgeted: number
+    printedCode: string
+    reviewedAt: Instant
+    reviewedBy: string
+    status: enum[PENDING, REVIEWED]
+    warnings: [{
+      code: enum[ACCOUNT_DESCRIPTION_MISMATCH, GROUP_ACCOUNT, GROUP_ACCOUNT_SUGGESTED, ACCOUNT_IN_TWO_LINES, REPEATED_ITEM, ZERO_BUDGETED, ORIGIN_FINAL_DIFFERS]
+      message: string
     }]
   }
 
@@ -2467,7 +2981,7 @@ PUT /api/condominiums/{}/budgets/{}/spending-profiles
   body: {
     items: [{
       lineId: UUID
-      profile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      profile: enum[RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
     }]
     reason: string
   }
@@ -2481,20 +2995,22 @@ PUT /api/condominiums/{}/budgets/{}/spending-profiles
       changedBy: string
       code: string
       description: string
-      effectiveProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      effectiveProfile: enum[RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
       groupCode: string
       lineId: UUID
       mark: enum[SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE]
       notes: string
       position: integer
       printedCode: string
-      profile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      profile: enum[RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
       reason: string
       status: enum[SUGGESTED, CONFIRMED]
-      suggestedProfile: enum[MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      suggestedProfile: enum[RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
+      suggestionChanged: boolean
       suggestionReason: string
     }]
     suggested: integer
+    suggestionChanged: integer
     version: integer
   }
 

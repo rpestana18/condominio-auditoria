@@ -28,12 +28,15 @@ class SpendingProfileServiceTest {
         assertThat(r.confirmed()).isZero();
         assertThat(r.lines()).hasSize(r.suggested()).allSatisfy(l -> {
             assertThat(l.status()).isEqualTo(SpendingProfileStatus.SUGGESTED);
-            assertThat(l.effectiveProfile()).isEqualTo(SpendingProfile.MONTHLY);
+            // RF-13.14: without confirmation, the suggestion holds ("tipo não confirmado")
+            assertThat(l.effectiveProfile()).isEqualTo(l.profile());
+            assertThat(l.suggestionChanged()).isFalse();
         });
+        assertThat(line(r.lines(), "1.5.1").profile()).isEqualTo(SpendingProfile.OCCASIONAL);
         assertThat(line(r.lines(), "1.1.5").profile()).isEqualTo(SpendingProfile.PROVISION);
         assertThat(line(r.lines(), "1.4.1").profile()).isEqualTo(SpendingProfile.SEPARATE_APPORTIONMENT);
         assertThat(line(r.lines(), "1.6.15").profile()).isEqualTo(SpendingProfile.SEPARATE_APPORTIONMENT);
-        assertThat(line(r.lines(), "1.1.1").profile()).isEqualTo(SpendingProfile.MONTHLY);
+        assertThat(line(r.lines(), "1.1.1").profile()).isEqualTo(SpendingProfile.RECURRING);
         // Only the expense lines (1.1 to 1.8): no total, group or 1.9 line
         assertThat(r.lines()).extracting(SpendingProfileLineResponse::printedCode).doesNotContain("1", "1.1", "1.9.1");
         assertThat(scenario.spendingProfileEvents).hasSize(r.lines().size())
@@ -57,7 +60,10 @@ class SpendingProfileServiceTest {
         assertThat(r.confirmed()).isEqualTo(2);
         assertThat(line(r.lines(), "1.1.5").effectiveProfile()).isEqualTo(SpendingProfile.PROVISION);
         assertThat(line(r.lines(), "1.8.1").effectiveProfile()).isEqualTo(SpendingProfile.ANNUAL);
-        assertThat(line(r.lines(), "1.8.1").suggestedProfile()).isEqualTo(SpendingProfile.MONTHLY);
+        assertThat(line(r.lines(), "1.8.1").suggestedProfile()).isEqualTo(SpendingProfile.RECURRING);
+        // P9: a confirmed profile different from the revised suggestion is shown as "a sugestão mudou"
+        assertThat(line(r.lines(), "1.8.1").suggestionChanged()).isTrue();
+        assertThat(r.suggestionChanged()).isEqualTo(1);
         assertThat(scenario.spendingProfileEvents).hasSize(2).allSatisfy(e -> {
             assertThat(e.getAction()).isEqualTo(SpendingProfileStatus.CONFIRMED);
             assertThat(e.getPreviousStatus()).isEqualTo(SpendingProfileStatus.SUGGESTED);
@@ -81,7 +87,7 @@ class SpendingProfileServiceTest {
 
         assertThatThrownBy(() -> scenario.spendingProfiles.confirm(scenario.condominiumId, budget.getId(),
                 new SpendingProfileBatchRequest(List.of(new SpendingProfileItemRequest(reserve.getId(),
-                        SpendingProfile.MONTHLY)), null), "admin"))
+                        SpendingProfile.RECURRING)), null), "admin"))
                 .isInstanceOfSatisfying(ResponseStatusException.class, e -> {
                     assertThat(e.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
                     assertThat(e.getReason()).contains("não é linha de despesa");

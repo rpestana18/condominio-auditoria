@@ -3,7 +3,11 @@ package br.com.condominioauditoria.api.dto.response.budget;
 import java.math.BigDecimal;
 import java.util.List;
 
-/** Budget detail for the PO screen: lines, checks, warnings, repeated codes, fund links and findings. */
+/**
+ * Budget detail for the PO screen: lines, checks, warnings, repeated codes, fund links and findings.
+ * {@code suggestedFiscalYearEnd}: the end suggested for the fiscal year start (RF-13.17, "março a março"), YYYY-MM;
+ * null without a start.
+ */
 public record BudgetDetailResponse(
         BudgetSummaryResponse budget,
         String previousBudgetedColumn,
@@ -17,5 +21,6 @@ public record BudgetDetailResponse(
         List<BudgetWarningResponse> warnings,
         List<RepeatedCodeResponse> repeatedCodes,
         List<BudgetFundLineResponse> funds,
-        List<BudgetFindingResponse> findings) {
+        List<BudgetFindingResponse> findings,
+        String suggestedFiscalYearEnd) {
 }

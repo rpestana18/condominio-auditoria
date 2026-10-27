@@ -9,6 +9,7 @@ import { BridgeFilters } from "../components/balanceBridge/BridgeFilters";
 import { BridgeItemDetail } from "../components/balanceBridge/BridgeItemDetail";
 import { BridgeMonthsTable } from "../components/balanceBridge/BridgeMonthsTable";
 import { BridgeSummary } from "../components/balanceBridge/BridgeSummary";
+import { BeforeAfterBudget, ContinuousBalanceChart } from "../components/balanceBridge/ContinuousBalanceChart";
 import type { OpenBridgeEvidence } from "../components/balanceBridge/bridgeEvidence";
 import { BeforeReadingBox } from "../components/BeforeReadingBox";
 import { bridgeNotes, bridgeSteps } from "../components/balanceBridge/bridgeSteps";
@@ -49,6 +50,8 @@ export function BalanceOrigin() {
         <h1>Origem do saldo</h1>
       </header>
       <BridgeFilters funds={funds} filter={filter} onChange={change} />
+      {/* RF-13.16 (a): continuous from the first cash flow, also before the approved budget */}
+      <ContinuousBalanceChart fund={filter.fund} />
       {(filter.from || filter.to) && !complete && <p className="notice">Escolha os dois meses para mudar o período.</p>}
       {withoutBudget && (
         <NoConfirmedBudget what="a origem do saldo do exercício">
@@ -119,6 +122,7 @@ function Content({ bridge, funds, defaultPeriod }: ContentProps) {
           <BridgeSummary bridge={bridge} selected={selected} onSelect={setSelected} />
           <BridgeChart bridge={bridge} />
         </div>
+        {defaultPeriod && <BeforeAfterBudget bridge={bridge} />}
         {item && <BridgeItemDetail item={item} onOpenEvidence={openEvidence} />}
         {item && !period && (
           <p className="muted">

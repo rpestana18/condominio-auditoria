@@ -1,6 +1,7 @@
 package br.com.condominioauditoria.api.model.budget;
 
 import br.com.condominioauditoria.api.model.enums.BudgetLineMark;
+import br.com.condominioauditoria.api.model.enums.BudgetLineReviewStatus;
 import br.com.condominioauditoria.api.model.enums.BudgetLineType;
 import br.com.condominioauditoria.api.model.enums.SpendingProfile;
 import br.com.condominioauditoria.api.model.enums.SpendingProfileStatus;
@@ -50,6 +51,15 @@ public class BudgetLine {
     private String spendingProfileReason;
     private String spendingProfileChangedBy;
     private Instant spendingProfileChangedAt;
+    /** RF-13.12: a person reviewed the line against the document (ADR 0009, Decision 1). */
+    @Enumerated(EnumType.STRING)
+    private BudgetLineReviewStatus reviewStatus = BudgetLineReviewStatus.PENDING;
+    private String reviewedBy;
+    private Instant reviewedAt;
+    /** O2: the line cites a group account (marked by the Admin); a specific line wins in the account mapping. */
+    private boolean groupAccount;
+    /** O1: the line counts by its description, not by the printed account (marked by the Admin). */
+    private boolean descriptionPrevails;
 
     protected BudgetLine() {
     }
@@ -92,6 +102,43 @@ public class BudgetLine {
         this.spendingProfileReason = reason;
         this.spendingProfileChangedBy = username;
         this.spendingProfileChangedAt = at;
+    }
+
+    /** Review state (RF-13.12): REVIEWED records who and when; PENDING clears them. */
+    public void setReview(BudgetLineReviewStatus status, String username, Instant at) {
+        this.reviewStatus = status;
+        this.reviewedBy = status == BudgetLineReviewStatus.REVIEWED ? username : null;
+        this.reviewedAt = status == BudgetLineReviewStatus.REVIEWED ? at : null;
+    }
+
+    /** The Admin's marks of the review (O1 and O2). */
+    public void setMarks(boolean groupAccount, boolean descriptionPrevails) {
+        this.groupAccount = groupAccount;
+        this.descriptionPrevails = descriptionPrevails;
+    }
+
+    public BudgetLineReviewStatus getReviewStatus() {
+        return reviewStatus == null ? BudgetLineReviewStatus.PENDING : reviewStatus;
+    }
+
+    public boolean isReviewed() {
+        return getReviewStatus() == BudgetLineReviewStatus.REVIEWED;
+    }
+
+    public String getReviewedBy() {
+        return reviewedBy;
+    }
+
+    public Instant getReviewedAt() {
+        return reviewedAt;
+    }
+
+    public boolean isGroupAccount() {
+        return groupAccount;
+    }
+
+    public boolean isDescriptionPrevails() {
+        return descriptionPrevails;
     }
 
     public SpendingProfile getSpendingProfile() {

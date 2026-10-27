@@ -7,33 +7,35 @@ import br.com.condominioauditoria.api.model.budget.SpendingProfileEvent;
 import br.com.condominioauditoria.api.model.enums.SpendingProfile;
 import br.com.condominioauditoria.api.model.enums.SpendingProfileStatus;
 import br.com.condominioauditoria.api.service.calculator.BudgetTrackingGrid.LineProfile;
-import br.com.condominioauditoria.api.service.calculator.SpendingProfileSuggestion;
+import br.com.condominioauditoria.api.service.calculator.SpendingProfileSuggestion.Suggestion;
 
-/** Spending profile of the budget lines (RF-13.3) → API DTOs (contracts/openapi.yaml). */
+/** Spending profile of the budget lines (RF-13.14) → API DTOs (contracts/openapi.yaml). */
 public final class SpendingProfileMapper {
 
     private SpendingProfileMapper() {
     }
 
     /**
-     * The stored profile; without one, the current suggestion as SUGGESTED (it is calculated on the fly for budgets
-     * confirmed before V19).
+     * The stored profile; without one, the current suggestion as SUGGESTED (it is calculated on the fly: V21 cleared
+     * the stored suggestions so the revised rules hold).
      */
-    public static LineProfile profile(BudgetLine line) {
+    public static LineProfile profile(BudgetLine line, Suggestion suggestion) {
         if (line.getSpendingProfile() != null) {
             return new LineProfile(line.getSpendingProfile(), line.getSpendingProfileStatus());
         }
-        return new LineProfile(SpendingProfileSuggestion.suggest(line).profile(), SpendingProfileStatus.SUGGESTED);
+        return new LineProfile(suggestion.profile(), SpendingProfileStatus.SUGGESTED);
     }
 
-    public static SpendingProfileLineResponse toResponse(BudgetLine line, String groupCode) {
-        var suggestion = SpendingProfileSuggestion.suggest(line);
-        LineProfile p = profile(line);
+    public static SpendingProfileLineResponse toResponse(BudgetLine line, String groupCode, Suggestion suggestion) {
+        LineProfile p = profile(line, suggestion);
         SpendingProfile effective = p.effective();
+        // P9: a confirmed profile that the revised rules would suggest differently is shown, not hidden
+        boolean suggestionChanged = p.status() == SpendingProfileStatus.CONFIRMED
+                && p.profile() != suggestion.profile();
         return new SpendingProfileLineResponse(line.getId(), line.getPosition(), groupCode, line.getEffectiveCode(),
                 line.getPrintedCode(), line.getDescription(), line.getAccount(), line.getMark(), line.getNotes(),
                 line.getBudgeted(), p.profile(), p.status(), effective, suggestion.profile(), suggestion.reason(),
-                line.getSpendingProfileReason(), line.getSpendingProfileChangedBy(),
+                suggestionChanged, line.getSpendingProfileReason(), line.getSpendingProfileChangedBy(),
                 line.getSpendingProfileChangedAt());
     }
 

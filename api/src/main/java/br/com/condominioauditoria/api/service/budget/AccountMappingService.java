@@ -400,6 +400,8 @@ public class AccountMappingService {
         }
 
         List<BudgetLine> candidates = NameSuggestion.candidates(ctx.structure());
+        // O1 and O2: the Admin's marks of the line review (ADR 0009, Decision 3)
+        NameSuggestion.LineHints hints = NameSuggestion.LineHints.of(candidates);
         List<AccountWithoutSuggestionResponse> withoutSuggestion = new ArrayList<>();
         Map<String, CashFlowAccount> pending = new TreeMap<>(cashFlowAccount);
         notCopiedReason.keySet().forEach(code -> pending.putIfAbsent(code, new CashFlowAccount(code, null, 0,
@@ -411,7 +413,7 @@ public class AccountMappingService {
             }
             String name = e.getValue().name();
             String prefix = notCopiedReason.containsKey(code) ? notCopiedReason.get(code) + "; " : "";
-            var r = nameSuggestion.suggest(name, e.getValue().suppliers(), candidates);
+            var r = nameSuggestion.suggest(name, e.getValue().suppliers(), candidates, hints);
             if (r instanceof NameSuggestion.Suggested s) {
                 existing.put(code, save(ctx, code, name, MappingTarget.line(s.line()), AccountMappingStatus.SUGGESTED,
                         AccountMappingSource.NAME, prefix + s.reason(), false, username, now, false));

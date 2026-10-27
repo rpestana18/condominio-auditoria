@@ -772,6 +772,87 @@ paths:
         "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
         "404": { description: PO não encontrada }
         "409": { description: PO não confirmada, substituída ou sem prorrogação }
+  /condominiums/{condominiumId}/budgets/{budgetId}/fiscal-year-end:
+    parameters: [{ $ref: "#/components/parameters/CondominiumId" }, { $ref: "#/components/parameters/BudgetId" }]
+    put:
+      summary: Corrige o fim do exercício de uma PO confirmada (só ADMIN, RF-13.17), com justificativa e trilha
+      description: |
+        Para a PO confirmada com o fim errado (D2: exercício de março a fevereiro confirmado até abril). O novo fim não
+        pode ser antes do início, igual ao atual nem cobrir meses de outra PO confirmada. Grava o evento
+        FISCAL_YEAR_END_CORRECTED ("Fim do exercício corrigido de X para Y."). Uma prorrogação que deixa de ir além do
+        novo fim é desfeita. O acompanhamento, a ponte e "Entradas e saídas" passam a usar o novo exercício na próxima
+        consulta (nada é gravado como resultado). A sugestão de fim (primeiro fevereiro depois do início) vem em
+        BudgetDetailResponse.suggestedFiscalYearEnd.
+      operationId: correctFiscalYearEnd
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FiscalYearEndRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetDetailResponse" } } } }
+        "403": { description: Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "409": { description: PO não confirmada ou substituída }
+        "422": { description: Sem justificativa, mês inválido, igual ao atual, antes do início ou sobre meses de outra PO, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+  /condominiums/{condominiumId}/budgets/{budgetId}/line-review:
+    parameters: [{ $ref: "#/components/parameters/CondominiumId" }, { $ref: "#/components/parameters/BudgetId" }]
+    get:
+      summary: Conferência das linhas da PO (todos os perfis, RF-13.12)
+      description: |
+        Cada linha lida da PO (despesa e fundos 1.9) com o estado da conferência (PENDING ou REVIEWED, quem e quando),
+        as marcas do Admin (conta de grupo O2, vale a descrição O1), a origem do valor (RF-13.13, quando houver) e os
+        avisos calculados na consulta pela função pura BudgetLineReviewCheck (checkVersion). Aviso nunca bloqueia e
+        nunca é indício. Enquanto state.reviewed é falso, o acompanhamento, a ponte e "Entradas e saídas" não mostram
+        números por linha (aviso LINES_NOT_REVIEWED).
+      operationId: budgetLineReview
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetLineReviewResponse" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+    put:
+      summary: Confere ou reabre linhas da PO e muda as marcas O1/O2 (só ADMIN), com trilha
+      description: |
+        items: cada linha com o novo status e, se informadas, as marcas groupAccount e descriptionPrevails.
+        reviewAll=true confere todas as linhas ainda pendentes ("conferir todas"). Cada mudança grava um evento só de
+        inserção (REVIEWED, REOPENED, MARKS_CHANGED). Linha sem mudança é ignorada.
+      operationId: reviewBudgetLines
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/LineReviewBatchRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetLineReviewResponse" } } } }
+        "403": { description: Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+        "422": { description: Lista vazia sem reviewAll, linha que não é desta PO ou repetida, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+  /condominiums/{condominiumId}/budgets/{budgetId}/line-review/events:
+    parameters: [{ $ref: "#/components/parameters/CondominiumId" }, { $ref: "#/components/parameters/BudgetId" }]
+    get:
+      summary: Trilha da conferência das linhas desta PO (todos os perfis), só de inserção
+      operationId: budgetLineReviewEvents
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/BudgetLineReviewEventResponse" } } } }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: PO não encontrada }
+  /condominiums/{condominiumId}/budgets/{budgetId}/lines/{lineId}/origin:
+    parameters:
+      - { $ref: "#/components/parameters/CondominiumId" }
+      - { $ref: "#/components/parameters/BudgetId" }
+      - { name: lineId, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      summary: Informa ou corrige a origem do valor de uma linha da PO (só ADMIN, RF-13.13), com trilha
+      description: |
+        Grava a origem com fonte ADMIN (a planilha de apoio não sobrescreve depois) e o evento ORIGIN_CHANGED. A origem
+        explica o valor; o valor que vale é sempre o da PO aprovada (aviso ORIGIN_FINAL_DIFFERS quando diferem).
+      operationId: saveBudgetLineOrigin
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/BudgetLineOriginRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/LineReviewLineResponse" } } } }
+        "403": { description: Perfil sem permissão (Gestor e Usuário) ou sem acesso ao condomínio }
+        "404": { description: PO ou linha não encontradas }
+        "422": { description: Origem vazia ou com valores inválidos, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
   /condominiums/{condominiumId}/fiscal-years:
     parameters: [{ $ref: "#/components/parameters/CondominiumId" }]
     get:
@@ -976,6 +1057,53 @@ paths:
         "400": { description: 'Período ou fundo inválido, período fora do exercício da PO (inclusive from antes do início do exercício, quando nenhuma PO vale em from: vale o exercício da PO confirmada mais recente) ou sem PO confirmada para o período padrão' }
         "403": { description: Sem acesso ao condomínio }
         "404": { description: Condomínio ou fundo não encontrados }
+  /condominiums/{condominiumId}/cash-flow/monthly:
+    parameters: [{ $ref: "#/components/parameters/CondominiumId" }]
+    get:
+      summary: Entradas e saídas mês a mês (todos os perfis, RF-13.11)
+      description: |
+        Calculado na consulta pela função pura MonthlyCashFlow (calculationVersion), sem nada gravado. Uma coluna por
+        mês com extrato (sem from/to: do primeiro ao último mês com extrato). Entradas do fundo (cota, outras receitas,
+        outros créditos); saídas de cada linha da PO conferida, por grupo (outflowGroups, também as linhas com 0,00), e
+        os blocos à parte (outflowBlocks: SEPARATE_APPORTIONMENT, WITHOUT_BUDGET_LINE, TO_REALLOCATE, ADJUSTMENTS e,
+        com fund=all, OTHER_FUNDS); transferências entre fundos (recebidas e enviadas); saldo do mês e saldo
+        acumulado conferido com o extrato (balanceMatches) e saídas + transferências enviadas conferidas com os débitos
+        impressos (debitsMatch, tolerância R$ 0,01). Mês sem PO confirmada, com a PO não conferida (lineReview) ou de
+        outro fundo: saídas por conta do fluxo (byAccount, bloco BY_ACCOUNT). Avisos: LINES_NOT_REVIEWED,
+        DEBITS_DO_NOT_MATCH, BALANCE_DOES_NOT_MATCH, PARTIAL_MONTH, NO_OPERATING_FUND, NO_CASH_FLOW, TWO_CASH_FLOWS,
+        CASH_FLOW_SPANS_MONTHS.
+      operationId: monthlyCashFlow
+      parameters:
+        - { name: fund, in: query, required: false, description: 'Id de um fundo, "all" (todos os fundos) ou vazio (fundo ordinário)', schema: { type: string } }
+        - { name: from, in: query, required: false, description: AAAA-MM; sem from/to, do primeiro ao último mês com extrato, schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
+        - { name: to, in: query, required: false, description: AAAA-MM, schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CashFlowMonthlyResponse" } } } }
+        "400": { description: Período ou fundo inválido, ou período maior que 36 meses }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Condomínio ou fundo não encontrados }
+  /condominiums/{condominiumId}/cash-flow/entries:
+    parameters: [{ $ref: "#/components/parameters/CondominiumId" }]
+    get:
+      summary: Lançamentos de uma célula de "Entradas e saídas", cada um com o seu destino (todos os perfis, RF-13.11)
+      description: |
+        Os lançamentos do fundo no mês (ou no período from/to), filtrados por linha da PO (line), por bloco (block) ou
+        por conta do fluxo (account), com o destino pelo de-para, arquivo, página e hash de origem. A soma (total) é a
+        da célula da tabela.
+      operationId: cashFlowEntries
+      parameters:
+        - { name: fund, in: query, required: false, description: 'Id de um fundo, "all" ou vazio (fundo ordinário)', schema: { type: string } }
+        - { name: month, in: query, required: false, description: AAAA-MM, schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
+        - { name: line, in: query, required: false, description: Id da linha da PO, schema: { type: string, format: uuid } }
+        - { name: block, in: query, required: false, description: Bloco da tabela (CashFlowRowCode), schema: { $ref: "#/components/schemas/CashFlowRowCode" } }
+        - { name: account, in: query, required: false, description: Código da conta do fluxo, schema: { type: string } }
+        - { name: from, in: query, required: false, description: AAAA-MM (sem month), schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
+        - { name: to, in: query, required: false, description: AAAA-MM (sem month), schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CashFlowEntriesResponse" } } } }
+        "400": { description: Mês, período, bloco ou fundo inválidos }
+        "403": { description: Sem acesso ao condomínio }
+        "404": { description: Condomínio ou fundo não encontrados }
   /condominiums/{condominiumId}/funds/movements:
     parameters: [{ $ref: "#/components/parameters/CondominiumId" }]
     get:
@@ -1002,7 +1130,8 @@ paths:
       description: |
         Sugerido na confirmação da PO pela função pura SpendingProfileSuggestion (version) e confirmado pelo Admin.
         PO confirmada antes da sugestão existir: a sugestão é calculada na consulta e aparece como SUGGESTED.
-        Só o tipo CONFIRMED muda a leitura do acompanhamento e da ponte; SUGGESTED vale como MONTHLY (effectiveProfile).
+        Sem confirmação vale a sugestão atual (effectiveProfile, "tipo não confirmado"; ADR 0009, Decisão 2). Linha
+        confirmada cuja sugestão atual é outra traz suggestionChanged ("a sugestão mudou", P9).
       operationId: listSpendingProfiles
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SpendingProfilesResponse" } } } }
@@ -1996,6 +2125,7 @@ components:
         printedMonthlyPlanned: { type: [number, "null"], description: Total impresso menos fundos impressos }
         roundingTolerance: { type: number, description: Diferença máxima tratada como arredondamento nesta leitura }
         supersededFrom: { type: [string, "null"], pattern: "^[0-9]{4}-[0-9]{2}$", description: Mês a partir do qual vale a nova versão }
+        suggestedFiscalYearEnd: { type: [string, "null"], pattern: "^[0-9]{4}-[0-9]{2}$", description: 'Fim sugerido do exercício (RF-13.17): primeiro fevereiro depois do início (lido ou confirmado); padrão do formulário de confirmação' }
         confirmation:
           description: Dados informados pelo Admin; nulo antes da confirmação
           oneOf:
@@ -2538,6 +2668,7 @@ components:
             type: object
             required: [code, text]
             properties: { code: { type: string }, text: { type: string } }
+        lineReview: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/LineReviewStateResponse" }], description: 'Estado da conferência das linhas da PO (RF-13.12). Os números do previsto × realizado continuam aparecendo (base dos indícios e da exportação); as telas mostram o passo pendente' }
     UsedCashFlowResponse:
       type: object
       required: [fileId, name, sha256]
@@ -2718,13 +2849,14 @@ components:
     SpendingProfile:
       type: string
       description: |
-        Tipo de gasto da linha (RF-13.3; ADR 0007). MONTHLY = mensal; PROVISION = provisão (férias, 13º, rescisão:
-        o previsto não gasto fica reservado); ANNUAL = anual (gasto concentrado em um mês); SEPARATE_APPORTIONMENT =
+        Tipo de gasto da linha (RF-13.14; ADR 0009, Decisão 2). RECURRING = recorrente (o antigo MONTHLY);
+        OCCASIONAL = eventual (não gastar não é economia, D4); SEASONAL = sazonal (O5); ANNUAL = anual (O6);
+        PROVISION = provisão (férias, 13º, rescisão: o previsto não gasto fica reservado); SEPARATE_APPORTIONMENT =
         rateio à parte.
-      enum: [MONTHLY, PROVISION, ANNUAL, SEPARATE_APPORTIONMENT]
+      enum: [RECURRING, OCCASIONAL, SEASONAL, ANNUAL, PROVISION, SEPARATE_APPORTIONMENT]
     SpendingProfileStatus:
       type: string
-      description: SUGGESTED = sugerido pelas regras (vale como MONTHLY); CONFIRMED = confirmado pelo Admin
+      description: SUGGESTED = sugerido pelas regras (vale a sugestão); CONFIRMED = confirmado pelo Admin
       enum: [SUGGESTED, CONFIRMED]
     TrackingMonthStatus:
       type: string
@@ -2763,7 +2895,8 @@ components:
         groups: { type: array, items: { $ref: "#/components/schemas/TrackingGroupResponse" } }
         cumulative: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/TrackingCumulativeResponse" }] }
         blocks: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/TrackingBlocksResponse" }] }
-        warnings: { type: array, items: { $ref: "#/components/schemas/CalculationWarning" } }
+        warnings: { type: array, items: { $ref: "#/components/schemas/CalculationWarning" }, description: Com a PO não conferida, LINES_NOT_REVIEWED vem primeiro e groups vem vazio }
+        lineReview: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/LineReviewStateResponse" }], description: Estado da conferência das linhas da PO usada (RF-13.12) }
     TrackingMonthResponse:
       type: object
       required: [month, status, inCumulative, cashFlows]
@@ -2871,11 +3004,15 @@ components:
     BalanceBridgeItemCode:
       type: string
       description: |
-        APPORTIONMENT_FUNDS (Q49) só na ponte de todos os fundos (fund=all), antes de UNEXPLAINED: créditos − débitos
-        dos fundos de rateio (todo fundo que não é o ordinário), sem as transferências marcadas, sem percentual. Nessa
-        ponte INCOME_VS_PLANNED usa só o fundo ordinário (rótulo "Cota ordinária acima ou abaixo do previsto") e
-        FUND_PLANNED_COLLECTION e FUND_EXPENSES não aparecem (continuam só na ponte de um fundo que não é o ordinário).
-      enum: [LINE_SAVINGS, PROVISIONS_RESERVED, SEPARATE_APPORTIONMENT, INCOME_VS_PLANNED, FUND_PLANNED_COLLECTION, FUND_EXPENSES, OUTSIDE_BUDGET, INTER_FUND_TRANSFERS, APPORTIONMENT_FUNDS, UNEXPLAINED]
+        Itens da ponte, versão 4 (RF-13.15; ADR 0009, Decisão 5). LINE_SAVINGS (linhas recorrentes e sazonais: o único
+        lugar da palavra "economia"), PROVISIONS_RESERVED (provisões) e UNUSED_OCCASIONAL (eventuais e anuais: previsto
+        não usado, nunca economia, Q52) somam o previsto − realizado das linhas. INCOME_ABOVE_PLANNED_EXPENSE (substitui
+        INCOME_VS_PLANNED): entradas do fundo ordinário menos a despesa prevista do período (N2). Sem a PO conferida
+        (lineReview), os itens por linha vêm com amount nulo. APPORTIONMENT_FUNDS (Q49) só na ponte de todos os fundos
+        (fund=all), antes de UNEXPLAINED: créditos − débitos dos fundos de rateio, sem as transferências marcadas, sem
+        percentual; nessa ponte INCOME_ABOVE_PLANNED_EXPENSE usa só o fundo ordinário e FUND_PLANNED_COLLECTION e
+        FUND_EXPENSES não aparecem (continuam só na ponte de um fundo que não é o ordinário).
+      enum: [LINE_SAVINGS, PROVISIONS_RESERVED, UNUSED_OCCASIONAL, SEPARATE_APPORTIONMENT, INCOME_ABOVE_PLANNED_EXPENSE, FUND_PLANNED_COLLECTION, FUND_EXPENSES, OUTSIDE_BUDGET, INTER_FUND_TRANSFERS, APPORTIONMENT_FUNDS, UNEXPLAINED]
     BalanceBridgeResponse:
       type: object
       required: [calculationVersion, status, allFunds, from, to, items, months, warnings]
@@ -2903,6 +3040,7 @@ components:
         closingDate: { type: [string, "null"], format: date, description: 'Data do saldo final (closingBalance): último dia do último mês completo (ex.: 2026-09-30)' }
         partialMonth: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BridgePartialMonthResponse" }], description: Último mês parcial do período (RF-13.10), à parte e fora do total }
         mapping: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BridgeMappingResponse" }], description: 'De-para do fundo Condomínio nos meses do total, em campos (o mesmo do aviso NO_CONFIRMED_MAPPING); nulo quando a ponte não inclui o fundo Condomínio ou não tem números' }
+        lineReview: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/LineReviewStateResponse" }], description: Estado da conferência das linhas da PO usada (RF-13.12) }
     BridgeMappingResponse:
       type: object
       required: [unmappedAccounts, unmappedAmount, unmappedEntries, debits, provisionalLimitPercentage, provisional, accounts]
@@ -2940,7 +3078,7 @@ components:
       properties:
         code: { $ref: "#/components/schemas/BalanceBridgeItemCode" }
         label: { type: string }
-        amount: { type: number }
+        amount: { type: [number, "null"], description: 'Nulo nos itens por linha (LINE_SAVINGS, PROVISIONS_RESERVED, UNUSED_OCCASIONAL, SEPARATE_APPORTIONMENT) enquanto a PO não está conferida (lineReview, RF-13.12)' }
         percentageOfVariation: { type: [number, "null"], description: 'Nulo com variação zero e sempre em APPORTIONMENT_FUNDS (Q49): os percentuais não somam 100%' }
         parts: { type: array, items: { $ref: "#/components/schemas/BridgePartResponse" }, description: 'Partes do item (ex.: CONDO_FEE, OTHER_INCOME, PLANNED; ADJUSTMENTS, TO_REALLOCATE, WITHOUT_BUDGET_LINE; RECEIVED, SENT; INFLOWS, OUTFLOWS em APPORTIONMENT_FUNDS, com o sinal da ponte: saídas negativas)' }
         lines: { type: array, items: { $ref: "#/components/schemas/BridgeLineResponse" }, description: Linhas da PO que compõem o item }
@@ -3047,16 +3185,17 @@ components:
         entries: { type: integer }
     SpendingProfilesResponse:
       type: object
-      required: [budgetId, version, confirmed, suggested, lines]
+      required: [budgetId, version, confirmed, suggested, suggestionChanged, lines]
       properties:
         budgetId: { type: string, format: uuid }
         version: { type: [integer, "null"], description: Versão da PO }
         confirmed: { type: integer }
         suggested: { type: integer }
+        suggestionChanged: { type: integer, description: Linhas confirmadas cuja sugestão atual é outra (P9) }
         lines: { type: array, items: { $ref: "#/components/schemas/SpendingProfileLineResponse" } }
     SpendingProfileLineResponse:
       type: object
-      required: [lineId, position, code, printedCode, description, budgeted, profile, status, effectiveProfile, suggestedProfile]
+      required: [lineId, position, code, printedCode, description, budgeted, profile, status, effectiveProfile, suggestedProfile, suggestionChanged]
       properties:
         lineId: { type: string, format: uuid }
         position: { type: integer }
@@ -3073,6 +3212,7 @@ components:
         effectiveProfile: { $ref: "#/components/schemas/SpendingProfile" }
         suggestedProfile: { $ref: "#/components/schemas/SpendingProfile" }
         suggestionReason: { type: [string, "null"] }
+        suggestionChanged: { type: boolean, description: 'Tipo confirmado e sugestão atual diferente ("a sugestão mudou", P9)' }
         reason: { type: [string, "null"] }
         changedBy: { type: [string, "null"] }
         changedAt: { type: [string, "null"], format: date-time }
@@ -3144,3 +3284,263 @@ components:
         username: { type: string }
         occurredAt: { type: string, format: date-time }
         reason: { type: [string, "null"] }
+    LineReviewStateResponse:
+      type: object
+      required: [budgetId, reviewed, reviewedLines, totalLines]
+      description: Estado da conferência das linhas da PO (RF-13.12). Os números por linha só aparecem com reviewed verdadeiro
+      properties:
+        budgetId: { type: string, format: uuid }
+        reviewed: { type: boolean, description: Todas as linhas conferidas }
+        reviewedLines: { type: integer }
+        totalLines: { type: integer }
+        message: { type: [string, "null"], description: 'Ex.: "Confira as linhas da PO em \"PO aprovada\" (0 de 88 conferidas): até lá, os números por linha não aparecem"' }
+    BudgetLineReviewStatus:
+      type: string
+      enum: [PENDING, REVIEWED]
+    BudgetLineWarningCode:
+      type: string
+      description: |
+        Avisos da conferência (BudgetLineReviewCheck; nunca bloqueiam, nunca são indício). ACCOUNT_DESCRIPTION_MISMATCH
+        (O1: conta impressa e descrição sem palavra em comum); GROUP_ACCOUNT (O2, marcada pelo Admin);
+        GROUP_ACCOUNT_SUGGESTED (O2, nome de conta de grupo); ACCOUNT_IN_TWO_LINES; REPEATED_ITEM; ZERO_BUDGETED;
+        ORIGIN_FINAL_DIFFERS (valor final da origem diferente do da PO: vale o da PO, O4).
+      enum: [ACCOUNT_DESCRIPTION_MISMATCH, GROUP_ACCOUNT, GROUP_ACCOUNT_SUGGESTED, ACCOUNT_IN_TWO_LINES, REPEATED_ITEM, ZERO_BUDGETED, ORIGIN_FINAL_DIFFERS]
+    BudgetLineWarningResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code: { $ref: "#/components/schemas/BudgetLineWarningCode" }
+        message: { type: string }
+    OriginMethod:
+      type: string
+      description: AVERAGE_TIMES_INDEX = média × (1 + índice); EQUAL_TO_AVERAGE = igual à média; TYPED = valor digitado; NO_AVERAGE = sem média de conta
+      enum: [AVERAGE_TIMES_INDEX, EQUAL_TO_AVERAGE, TYPED, NO_AVERAGE]
+    OriginSource:
+      type: string
+      description: SHEET = planilha de apoio da PO; ADMIN = informada pelo Admin (a planilha não sobrescreve)
+      enum: [SHEET, ADMIN]
+    BudgetLineOriginResponse:
+      type: object
+      required: [method, source]
+      description: De onde veio o valor da linha (RF-13.13). Explica o valor; o que vale é o da PO aprovada
+      properties:
+        sourceAccounts: { type: array, items: { type: string }, description: Contas do fluxo da média }
+        averageFrom: { type: [string, "null"], description: AAAA-MM }
+        averageTo: { type: [string, "null"], description: AAAA-MM }
+        averageAmount: { type: [number, "null"] }
+        baseAmount: { type: [number, "null"] }
+        method: { $ref: "#/components/schemas/OriginMethod" }
+        methodLabel: { type: [string, "null"] }
+        indexName: { type: [string, "null"], description: 'Ex.: "VIGILANTES RJ", "IPCA ACUMULADO"' }
+        indexRate: { type: [number, "null"], description: 'Fração (0.0723 = 7,23%)' }
+        indexForecast: { type: boolean, description: Índice marcado "(previsão)" na planilha }
+        indexNote: { type: [string, "null"] }
+        finalAmount: { type: [number, "null"] }
+        reason: { type: [string, "null"] }
+        source: { $ref: "#/components/schemas/OriginSource" }
+        fileId: { type: [string, "null"], format: uuid }
+        fileName: { type: [string, "null"] }
+        sha256: { type: [string, "null"] }
+        sheet: { type: [string, "null"] }
+        sheetRow: { type: [integer, "null"] }
+        changedBy: { type: [string, "null"] }
+        changedAt: { type: [string, "null"], format: date-time }
+    LineReviewLineResponse:
+      type: object
+      required: [lineId, position, page, code, printedCode, description, budgeted, funds, status, groupAccount, descriptionPrevails, warnings]
+      properties:
+        lineId: { type: string, format: uuid }
+        position: { type: integer }
+        page: { type: integer }
+        groupCode: { type: [string, "null"] }
+        groupDescription: { type: [string, "null"] }
+        code: { type: string, description: Código efetivo }
+        printedCode: { type: string }
+        account: { type: [string, "null"] }
+        description: { type: string }
+        mark: { type: [string, "null"], enum: [SEPARATE_APPORTIONMENT, NEGOTIATED_EXEMPTION, NO_AMOUNT, FIXED_AMOUNT_NO_REFERENCE, null] }
+        notes: { type: [string, "null"] }
+        previousBudgeted: { type: [number, "null"] }
+        budgeted: { type: number }
+        percentageText: { type: [string, "null"] }
+        funds: { type: boolean, description: Linha do grupo de fundos (1.9) }
+        status: { $ref: "#/components/schemas/BudgetLineReviewStatus" }
+        reviewedBy: { type: [string, "null"] }
+        reviewedAt: { type: [string, "null"], format: date-time }
+        groupAccount: { type: boolean, description: O2 marcado pelo Admin }
+        descriptionPrevails: { type: boolean, description: O1 marcado pelo Admin }
+        origin: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BudgetLineOriginResponse" }], description: Nula = "origem não informada" }
+        warnings: { type: array, items: { $ref: "#/components/schemas/BudgetLineWarningResponse" } }
+    BudgetLineReviewResponse:
+      type: object
+      required: [budgetId, budgetStatus, checkVersion, state, linesWithWarnings, linesWithOrigin, lines]
+      properties:
+        budgetId: { type: string, format: uuid }
+        version: { type: [integer, "null"], description: Versão da PO }
+        budgetStatus: { $ref: "#/components/schemas/BudgetStatus" }
+        checkVersion: { type: string, description: Versão do BudgetLineReviewCheck }
+        state: { $ref: "#/components/schemas/LineReviewStateResponse" }
+        linesWithWarnings: { type: integer }
+        linesWithOrigin: { type: integer }
+        lines: { type: array, items: { $ref: "#/components/schemas/LineReviewLineResponse" } }
+    LineReviewItemRequest:
+      type: object
+      required: [lineId]
+      properties:
+        lineId: { type: string, format: uuid }
+        status: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BudgetLineReviewStatus" }], description: Nulo = mantém o status (só marcas) }
+        groupAccount: { type: [boolean, "null"], description: Nulo = mantém }
+        descriptionPrevails: { type: [boolean, "null"], description: Nulo = mantém }
+    LineReviewBatchRequest:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/LineReviewItemRequest" } }
+        reviewAll: { type: boolean, description: Confere todas as linhas pendentes }
+        reason: { type: [string, "null"] }
+    BudgetLineReviewEventResponse:
+      type: object
+      required: [id, lineId, action, username, occurredAt]
+      properties:
+        id: { type: string, format: uuid }
+        lineId: { type: string, format: uuid }
+        lineCode: { type: [string, "null"] }
+        lineDescription: { type: [string, "null"] }
+        action: { type: string, enum: [REVIEWED, REOPENED, MARKS_CHANGED, ORIGIN_CHANGED] }
+        previousStatus: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BudgetLineReviewStatus" }] }
+        newStatus: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BudgetLineReviewStatus" }] }
+        groupAccount: { type: [boolean, "null"] }
+        descriptionPrevails: { type: [boolean, "null"] }
+        reason: { type: [string, "null"] }
+        username: { type: string }
+        occurredAt: { type: string, format: date-time }
+    BudgetLineOriginRequest:
+      type: object
+      required: [method]
+      properties:
+        sourceAccounts: { type: array, items: { type: string } }
+        averageFrom: { type: [string, "null"], pattern: "^[0-9]{4}-[0-9]{2}$" }
+        averageTo: { type: [string, "null"], pattern: "^[0-9]{4}-[0-9]{2}$" }
+        averageAmount: { type: [number, "null"] }
+        baseAmount: { type: [number, "null"] }
+        method: { $ref: "#/components/schemas/OriginMethod" }
+        indexName: { type: [string, "null"] }
+        indexRate: { type: [number, "null"] }
+        indexForecast: { type: [boolean, "null"] }
+        indexNote: { type: [string, "null"] }
+        finalAmount: { type: [number, "null"] }
+        reason: { type: [string, "null"] }
+    FiscalYearEndRequest:
+      type: object
+      required: [fiscalYearEnd, justification]
+      properties:
+        fiscalYearEnd: { type: string, pattern: "^[0-9]{4}-[0-9]{2}$" }
+        justification: { type: string }
+    CashFlowRowCode:
+      type: string
+      description: |
+        Linha ou bloco de "Entradas e saídas" (RF-13.11) e destino de cada lançamento. Entradas: CONDO_FEE (cota
+        recebida), OTHER_INCOME, OTHER_CREDITS, OTHER_FUNDS_INCOME. Saídas: BUDGET_LINE (linha da PO),
+        SEPARATE_APPORTIONMENT, WITHOUT_BUDGET_LINE, TO_REALLOCATE, ADJUSTMENTS, OTHER_FUNDS (fund=all) e BY_ACCOUNT
+        (por conta do fluxo, sem PO conferida). TRANSFERS_IN e TRANSFERS_OUT: transferências entre fundos.
+      enum: [CONDO_FEE, OTHER_INCOME, OTHER_CREDITS, OTHER_FUNDS_INCOME, BUDGET_LINE, SEPARATE_APPORTIONMENT, WITHOUT_BUDGET_LINE, TO_REALLOCATE, ADJUSTMENTS, OTHER_FUNDS, BY_ACCOUNT, TRANSFERS_IN, TRANSFERS_OUT]
+    CashFlowRowResponse:
+      type: object
+      required: [code, label, cells, total, children]
+      properties:
+        code: { $ref: "#/components/schemas/CashFlowRowCode" }
+        label: { type: string }
+        lineId: { type: [string, "null"], format: uuid }
+        lineCode: { type: [string, "null"] }
+        account: { type: [string, "null"] }
+        fundId: { type: [string, "null"], format: uuid }
+        cells: { type: array, items: { type: [number, "null"] }, description: Um valor por mês, na ordem de months; nulo quando o mês não tem extrato }
+        total: { type: number }
+        children: { type: array, items: { $ref: "#/components/schemas/CashFlowRowResponse" } }
+    CashFlowGroupResponse:
+      type: object
+      required: [code, description, cells, total, lines]
+      properties:
+        lineId: { type: [string, "null"], format: uuid }
+        code: { type: string }
+        description: { type: string }
+        cells: { type: array, items: { type: [number, "null"] } }
+        total: { type: number }
+        lines: { type: array, items: { $ref: "#/components/schemas/CashFlowRowResponse" } }
+    CashFlowMonthResponse:
+      type: object
+      required: [month, status, beforeBudget, byAccount]
+      properties:
+        month: { type: string, description: AAAA-MM }
+        status: { $ref: "#/components/schemas/TrackingMonthStatus" }
+        partialUntil: { type: [string, "null"], format: date, description: Mês em andamento (RF-13.10) }
+        beforeBudget: { type: boolean, description: Mês sem PO confirmada }
+        byAccount: { type: boolean, description: Saídas por conta do fluxo neste mês }
+        inflows: { type: [number, "null"] }
+        outflows: { type: [number, "null"] }
+        inLines: { type: [number, "null"], description: Saídas nas linhas da PO }
+        transfersIn: { type: [number, "null"] }
+        transfersOut: { type: [number, "null"] }
+        monthBalance: { type: [number, "null"], description: Entradas − saídas + transferências líquidas }
+        openingBalance: { type: [number, "null"] }
+        closingBalance: { type: [number, "null"], description: Saldo acumulado no fim do mês }
+        printedDebits: { type: [number, "null"] }
+        debitsMatch: { type: [boolean, "null"], description: Saídas + transferências enviadas = débitos impressos (R$ 0,01) }
+        balanceMatches: { type: [boolean, "null"], description: Saldo acumulado = saldo impresso no extrato (R$ 0,01) }
+    CashFlowMonthlyResponse:
+      type: object
+      required: [calculationVersion, allFunds, months, inflows, outflowGroups, outflowBlocks, transfers, warnings]
+      properties:
+        calculationVersion: { type: string, description: Versão do MonthlyCashFlow }
+        fundId: { type: [string, "null"], format: uuid, description: Nulo com fund=all }
+        fundName: { type: [string, "null"] }
+        allFunds: { type: boolean }
+        from: { type: [string, "null"], description: AAAA-MM }
+        to: { type: [string, "null"], description: AAAA-MM }
+        budget: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/BudgetBrief" }] }
+        lineReview: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/LineReviewStateResponse" }] }
+        months: { type: array, items: { $ref: "#/components/schemas/CashFlowMonthResponse" } }
+        inflows: { type: array, items: { $ref: "#/components/schemas/CashFlowRowResponse" } }
+        outflowGroups: { type: array, items: { $ref: "#/components/schemas/CashFlowGroupResponse" }, description: Grupos da PO com as suas linhas; vazio sem PO conferida }
+        outflowBlocks: { type: array, items: { $ref: "#/components/schemas/CashFlowRowResponse" } }
+        transfers: { type: array, items: { $ref: "#/components/schemas/CashFlowRowResponse" } }
+        warnings: { type: array, items: { $ref: "#/components/schemas/CalculationWarning" } }
+    CashFlowEntryResponse:
+      type: object
+      required: [entryId, date, month, amount, direction, destination, fileId]
+      properties:
+        entryId: { type: string, format: uuid }
+        date: { type: string, format: date }
+        month: { type: string }
+        memo: { type: [string, "null"] }
+        supplier: { type: [string, "null"] }
+        document: { type: [string, "null"] }
+        account: { type: [string, "null"] }
+        accountName: { type: [string, "null"] }
+        fundId: { type: string, format: uuid }
+        fund: { type: [string, "null"] }
+        amount: { type: number }
+        direction: { type: string, enum: [IN, OUT] }
+        destination: { $ref: "#/components/schemas/CashFlowRowCode" }
+        destinationLabel: { type: [string, "null"] }
+        lineId: { type: [string, "null"], format: uuid }
+        lineCode: { type: [string, "null"] }
+        lineDescription: { type: [string, "null"] }
+        fileId: { type: string, format: uuid }
+        fileName: { type: [string, "null"] }
+        sha256: { type: [string, "null"] }
+        page: { type: [integer, "null"] }
+        position: { type: [integer, "null"] }
+    CashFlowEntriesResponse:
+      type: object
+      required: [allFunds, count, total, entries]
+      properties:
+        fundId: { type: [string, "null"], format: uuid }
+        allFunds: { type: boolean }
+        month: { type: [string, "null"] }
+        lineId: { type: [string, "null"], format: uuid }
+        block: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/CashFlowRowCode" }] }
+        account: { type: [string, "null"] }
+        count: { type: integer }
+        total: { type: number }
+        message: { type: [string, "null"] }
+        entries: { type: array, items: { $ref: "#/components/schemas/CashFlowEntryResponse" } }

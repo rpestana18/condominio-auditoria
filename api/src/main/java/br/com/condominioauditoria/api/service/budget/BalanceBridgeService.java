@@ -78,7 +78,7 @@ public class BalanceBridgeService {
             return new BalanceBridgeResponse(BalanceBridge.VERSION, BudgetVsActualStatus.NO_OPERATING_FUND,
                     "Confirme o fundo ordinário (fundo Condomínio) para calcular a origem do saldo", null, null, false,
                     period[0].toString(), period[1].toString(), grid.budget(), null, null, null, null, null, List.of(),
-                    List.of(), List.of(), null, null, null, null, null, null);
+                    List.of(), List.of(), null, null, null, null, null, null, null);
         }
         BudgetValidity validity = budget == null ? null : BudgetValidity.of(budget).orElse(null);
         if (validity != null && (period[0].isBefore(validity.start()) || period[1].isAfter(validity.end()))) {
@@ -87,7 +87,13 @@ public class BalanceBridgeService {
                     + validity.end() + ")");
         }
         var funds = fundMovements.calculate(condominiumId, period[0].minusMonths(1), period[1]);
-        return BalanceBridge.calculate(BalanceBridge.Input.of(gridResult, funds, all ? null : fundId,
-                condominium.getOperatingFundId(), period[0], period[1]));
+        BalanceBridgeResponse bridge = BalanceBridge.calculate(BalanceBridge.Input.of(gridResult, funds,
+                all ? null : fundId, condominium.getOperatingFundId(), period[0], period[1]));
+        // RF-13.12: the items by budget line only after the lines are reviewed; the pending step goes in the response
+        var review = query.lineReview(budget == null ? null : budget.getId());
+        if (review == null || review.reviewed()) {
+            return bridge.withLineReview(bridge.items(), bridge.months(), review);
+        }
+        return BalanceBridge.withoutLineItems(bridge, review);
     }
 }

@@ -118,9 +118,11 @@ final class SyntheticSeptember {
     /** The suggested profiles, all confirmed (as in RF-13.6: "os tipos sugeridos confirmados"). */
     Map<UUID, LineProfile> confirmedProfiles() {
         Map<UUID, LineProfile> m = new HashMap<>();
+        Map<UUID, SpendingProfileSuggestion.Suggestion> suggestions = SpendingProfileSuggestion.suggestAll(
+                BudgetStructure.of(lines));
         for (BudgetLine l : lines) {
             if (l.getType() == BudgetLineType.LINE && !l.getPrintedCode().startsWith("1.9")) {
-                m.put(l.getId(), new LineProfile(SpendingProfileSuggestion.suggest(l).profile(),
+                m.put(l.getId(), new LineProfile(suggestions.get(l.getId()).profile(),
                         SpendingProfileStatus.CONFIRMED));
             }
         }

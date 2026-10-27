@@ -6,6 +6,8 @@ import { BudgetChecks } from "../components/budget/BudgetChecks";
 import { BudgetConfirmationForm } from "../components/budget/BudgetConfirmationForm";
 import { BudgetLines } from "../components/budget/BudgetLines";
 import { EditBudgetFunds } from "../components/budget/EditBudgetFunds";
+import { FiscalYearEndCorrection } from "../components/budget/FiscalYearEndCorrection";
+import { LineReviewSection } from "../components/budget/LineReviewSection";
 import { BudgetEvents } from "../components/budget/BudgetEvents";
 import { BudgetItemsSection } from "../components/budgetItems/BudgetItemsSection";
 import { findingStatusLabel, budgetStatusLabel, severityLabel } from "../components/budgetVsActual/labels";
@@ -43,9 +45,12 @@ export function Budget() {
       </header>
 
       <Summary detail={detail} condominiumId={condominiumId} />
+      {budget.status === "CONFIRMED" && can("ADMIN") && <FiscalYearEndCorrection detail={detail} />}
       {awaiting && !can("ADMIN") && <p className="notice warning">Aguardando a confirmação do Admin.</p>}
       {awaiting && can("ADMIN") && <BudgetConfirmationForm detail={detail} />}
       <BudgetChecks checks={detail.checks} warnings={detail.warnings} />
+      {/* RF-13.12 and RF-13.13: review of the lines and origin of each value, for everyone; editing is Admin only */}
+      <LineReviewSection budgetId={budget.id} />
       {budget.status === "CONFIRMED" && can("ADMIN") ? (
         <EditBudgetFunds detail={detail} />
       ) : (

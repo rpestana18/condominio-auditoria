@@ -117,6 +117,9 @@ public final class BudgetScenario {
     public final List<SpendingProfileEvent> spendingProfileEvents = new ArrayList<>();
     public final List<FundBalance> fundBalances = new ArrayList<>();
     public final List<PartialMonthEvent> partialMonthEvents = new ArrayList<>();
+    public final List<br.com.condominioauditoria.api.model.budget.BudgetLineReviewEvent> lineReviewEvents =
+            new ArrayList<>();
+    public final List<br.com.condominioauditoria.api.model.budget.BudgetLineOrigin> lineOrigins = new ArrayList<>();
     /** Changes published by the services; {@link #afterCommit()} plays the after-commit trigger. */
     public final List<Object> published = new ArrayList<>();
 
@@ -142,6 +145,9 @@ public final class BudgetScenario {
     public final FundMovementService fundMovements;
     public final BalanceBridgeService bridge;
     public final PartialMonthService partialMonths;
+    public final BudgetLineReviewService lineReview;
+    public final BudgetLineOriginService lineOriginService;
+    public final br.com.condominioauditoria.api.service.accounting.CashFlowService cashFlow;
     private final BudgetImportService budgetImport;
 
     public BudgetScenario() {
@@ -169,6 +175,10 @@ public final class BudgetScenario {
         when(budgetRepo.findByCondominiumIdAndStatusIn(any(), any())).thenAnswer(i -> budgets.values().stream()
                 .filter(p -> p.getCondominiumId().equals(i.getArgument(0))
                         && i.<Collection<BudgetStatus>>getArgument(1).contains(p.getStatus()))
+                .toList());
+        when(budgetRepo.findByCondominiumIdOrderByReadAtDesc(any())).thenAnswer(i -> budgets.values().stream()
+                .filter(p -> p.getCondominiumId().equals(i.getArgument(0)))
+                .sorted(Comparator.comparing(Budget::getReadAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList());
 
         lineRepo = mock(BudgetLineRepository.class);
@@ -404,6 +414,36 @@ public final class BudgetScenario {
                 .filter(b -> i.<Collection<UUID>>getArgument(0).contains(b.getFileId())).toList());
         fundMovements = new FundMovementService(condominiums, fundRepo, balanceRepo, entryRepo, budgetVsActual);
         bridge = new BalanceBridgeService(condominiums, budgetVsActual, tracking, fundMovements);
+        cashFlow = new br.com.condominioauditoria.api.service.accounting.CashFlowService(condominiums, budgetVsActual,
+                fundMovements, entryRepo);
+        var reviewEventRepo = mock(br.com.condominioauditoria.api.repository.budget.BudgetLineReviewEventRepository.class);
+        when(reviewEventRepo.save(any())).thenAnswer(i -> {
+            lineReviewEvents.add(i.getArgument(0));
+            return i.getArgument(0);
+        });
+        when(reviewEventRepo.findByBudgetIdOrderByOccurredAtAscLineCodeAsc(any())).thenAnswer(i -> lineReviewEvents
+                .stream().filter(e -> e.getBudgetId().equals(i.getArgument(0))).toList());
+        var originRepo = mock(br.com.condominioauditoria.api.repository.budget.BudgetLineOriginRepository.class);
+        when(originRepo.save(any())).thenAnswer(i -> {
+            if (!lineOrigins.contains(i.<br.com.condominioauditoria.api.model.budget.BudgetLineOrigin>getArgument(0))) {
+                lineOrigins.add(i.getArgument(0));
+            }
+            return i.getArgument(0);
+        });
+        when(originRepo.saveAll(any())).thenAnswer(i -> {
+            for (var o : i.<Iterable<br.com.condominioauditoria.api.model.budget.BudgetLineOrigin>>getArgument(0)) {
+                if (!lineOrigins.contains(o)) {
+                    lineOrigins.add(o);
+                }
+            }
+            return i.getArgument(0);
+        });
+        when(originRepo.findByBudgetId(any())).thenAnswer(i -> lineOrigins.stream()
+                .filter(o -> o.getBudgetId().equals(i.getArgument(0))).toList());
+        when(originRepo.findByBudgetLineId(any())).thenAnswer(i -> lineOrigins.stream()
+                .filter(o -> o.getBudgetLineId().equals(i.getArgument(0))).findFirst());
+        lineReview = new BudgetLineReviewService(budgetRepo, lineRepo, reviewEventRepo, originRepo);
+        lineOriginService = new BudgetLineOriginService(budgetRepo, lineRepo, originRepo);
         when(fileRepo.save(any())).thenAnswer(i -> i.getArgument(0));
         when(fileRepo.findByCondominiumIdAndIdIn(any(), any())).thenAnswer(i -> files.values().stream()
                 .filter(a -> a.getCondominiumId().equals(i.getArgument(0))
@@ -515,5 +555,12 @@ public final class BudgetScenario {
     public List<FundLinkRequest> pilotFundLinks(Budget budget) {
         return List.of(new FundLinkRequest(line(budget, "1.9.1", 0).getId(), reserveFund.getId()),
                 new FundLinkRequest(line(budget, "1.9.2", 0).getId(), infraWorksFund.getId()));
+    }
+
+    /** The Admin reviews every line of the budget ("conferir todas", RF-13.12). */
+    public void reviewAllLines(Budget budget) {
+        lineReview.review(condominiumId, budget.getId(),
+                new br.com.condominioauditoria.api.dto.request.budget.LineReviewBatchRequest(List.of(), true, null),
+                "admin");
     }
 }

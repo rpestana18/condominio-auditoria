@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
+import { reviewLink } from "../components/pendingSteps";
 import { useFiscalYears } from "../api/budgetAnalysisQueries";
 import { useFunds, useBudgets, useBudgetVsActual } from "../api/budgetQueries";
 import type { BudgetVsActual as Result } from "../api/types";
@@ -91,6 +92,14 @@ export function BudgetVsActual() {
         <p className="notice">Carregando…</p>
       ) : query.error ? (
         <p className="notice error">{query.error.message}</p>
+      ) : query.data?.lineReview && !query.data.lineReview.reviewed ? (
+        // RF-13.12: before the review of the budget lines, no number by line; the pending step with its link
+        <section className="block no-numbers">
+          <p className="notice warning">{query.data.lineReview.message ?? "Linhas da PO ainda não conferidas."}</p>
+          <p>
+            <Link to={reviewLink(query.data.lineReview.budgetId)}>Conferir as linhas da PO</Link>
+          </p>
+        </section>
       ) : query.data ? (
         <Content
           // A new target in the address remounts the content, so the panel opens right on it

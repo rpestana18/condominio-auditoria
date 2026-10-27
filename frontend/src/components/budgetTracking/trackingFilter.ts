@@ -16,7 +16,7 @@ export const emptyFilter: TrackingFilter = { groupId: null, overrunMonth: null, 
 
 /**
  * Profile shown on the screen: the one recorded (suggested or confirmed) or, without it, the one in force.
- * Unconfirmed profiles still count as "mensal" in the API (effectiveProfile); the screen marks them as "tipo não confirmado".
+ * Unconfirmed profiles count as the current suggestion in the API (effectiveProfile); the screen marks them as "tipo não confirmado".
  */
 export const shownProfile = (line: TrackingLine): SpendingProfile => line.spendingProfile ?? line.effectiveProfile;
 

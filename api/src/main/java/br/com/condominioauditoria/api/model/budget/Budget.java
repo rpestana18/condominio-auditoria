@@ -133,6 +133,23 @@ public class Budget {
         this.extendedAt = at;
     }
 
+    /**
+     * RF-13.17: the Admin corrects the end of the fiscal year of a confirmed budget. An extension that no longer ends
+     * after the new end is undone. The validations live in the extension service.
+     */
+    public void correctFiscalYearEnd(YearMonth end) {
+        if (status != BudgetStatus.CONFIRMED) {
+            throw new IllegalStateException("Só PO confirmada (e não substituída) tem o fim do exercício corrigido");
+        }
+        if (end.isBefore(getFiscalYearStart())) {
+            throw new IllegalArgumentException("O fim do exercício não pode ser antes do início");
+        }
+        this.fiscalYearEnd = end.atDay(1);
+        if (extendedUntil != null && !getExtendedUntil().isAfter(end)) {
+            undoExtension();
+        }
+    }
+
     public void undoExtension() {
         this.extendedUntil = null;
         this.extensionJustification = null;

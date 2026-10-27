@@ -1,5 +1,6 @@
 import type { SpendingProfile, TrackingCell } from "../../api/types";
 import { formatDifference, formatMoney, formatMoneyOrDash } from "../../format";
+import { YEARLY_PROFILES } from "../budgetVsActual/labels";
 
 interface Props {
   cell: TrackingCell | undefined;
@@ -17,7 +18,7 @@ interface Props {
  * "rateio à parte" lines show the movement, without difference (Q45).
  */
 function highlightClass(difference: number | null | undefined, profile: SpendingProfile): string {
-  if (difference == null || profile === "ANNUAL" || profile === "SEPARATE_APPORTIONMENT") return "";
+  if (difference == null || YEARLY_PROFILES.has(profile) || profile === "SEPARATE_APPORTIONMENT") return "";
   if (difference > 0) return "cell-above";
   if (difference < 0) return "cell-below";
   return "";

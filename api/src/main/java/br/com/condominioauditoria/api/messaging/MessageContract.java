@@ -14,10 +14,11 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Converts the queue messages to and from JSON and validates them against the contracts, outgoing and incoming:
- * ArquivoRecebido in contracts/mensagens/v3 (ADR 0006). A message
- * outside the contract never reaches the database: the listener rejects it and it goes to api.processing-results.error. A v1
+ * FileReceived, IndexFile and IndexingResult in contracts/mensagens/v3, ProcessingResult in contracts/mensagens/v4
+ * (ADR 0006, ADR 0009). A message
+ * outside the contract never reaches the database: the listener rejects it and it goes to api.processing-results.error. An older
  * result message still in the queue at switch time is rejected this way; the sweep resends the file and the rag answers
- * in v2.
+ * in the current version.
  */
 @Component
 class MessageContract {
@@ -33,7 +34,7 @@ class MessageContract {
     MessageContract() {
         SchemaRegistry registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
         this.fileReceived = registry.getSchema(SchemaLocation.of("classpath:mensagens/v3/file-received.schema.json"));
-        this.processingResult = registry.getSchema(SchemaLocation.of("classpath:mensagens/v3/processing-result.schema.json"));
+        this.processingResult = registry.getSchema(SchemaLocation.of("classpath:mensagens/v4/processing-result.schema.json"));
         this.indexFile = registry.getSchema(SchemaLocation.of("classpath:mensagens/v3/index-file.schema.json"));
         this.indexingResult = registry.getSchema(
                 SchemaLocation.of("classpath:mensagens/v3/indexing-result.schema.json"));
@@ -47,7 +48,7 @@ class MessageContract {
 
     ProcessingResultMessage readProcessingResult(byte[] body) {
         String json = new String(body, StandardCharsets.UTF_8);
-        validate(processingResult, json, "ProcessingResult v3");
+        validate(processingResult, json, "ProcessingResult v4");
         return mapper.readValue(json, ProcessingResultMessage.class);
     }
 

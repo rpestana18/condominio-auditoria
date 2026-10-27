@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-/** Spending profile of a line: the stored (or suggested) profile and status, the profile in use ({@code effectiveProfile}: the confirmed one, or MONTHLY) and the current suggestion with its reason. */
+/** Spending profile of a line: the stored (or suggested) profile and status, the profile in use ({@code effectiveProfile}: the confirmed one, or the suggestion) and the current suggestion with its reason. {@code suggestionChanged}: the profile is confirmed and the current suggestion differs from it ("a sugestão mudou", P9). */
 public record SpendingProfileLineResponse(
         UUID lineId,
         int position,
@@ -24,6 +24,7 @@ public record SpendingProfileLineResponse(
         SpendingProfile effectiveProfile,
         SpendingProfile suggestedProfile,
         String suggestionReason,
+        boolean suggestionChanged,
         String reason,
         String changedBy,
         Instant changedAt) {

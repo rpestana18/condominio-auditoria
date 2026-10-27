@@ -15,6 +15,7 @@ import br.com.condominioauditoria.api.dto.response.budget.TrackingLineResponse;
 import br.com.condominioauditoria.api.model.accounting.Fund;
 import br.com.condominioauditoria.api.model.accounting.FundBalance;
 import br.com.condominioauditoria.api.model.enums.BalanceBridgeItemCode;
+import br.com.condominioauditoria.api.model.enums.SpendingProfile;
 import br.com.condominioauditoria.api.model.enums.MonthStatus;
 import java.math.BigDecimal;
 import java.time.YearMonth;
@@ -35,6 +36,7 @@ class BudgetTrackingGoldenTest {
     void septemberGridIsTheBudgetVsActualOfTheMonth() {
         SeptemberGolden g = golden();
         g.confirmMap();
+        g.scenario.reviewAllLines(g.budget);
 
         var grid = g.scenario.tracking.get(g.scenario.condominiumId, g.budget.getId());
         var month = g.september().result();
@@ -66,6 +68,7 @@ class BudgetTrackingGoldenTest {
     void septemberFundsAndBridge() {
         SeptemberGolden g = golden();
         g.confirmMap();
+        g.scenario.reviewAllLines(g.budget);
         positions(g);
         // "com os tipos sugeridos confirmados" (RF-13.6)
         var profiles = g.scenario.spendingProfiles.list(g.scenario.condominiumId, g.budget.getId());
@@ -88,7 +91,24 @@ class BudgetTrackingGoldenTest {
         assertThat(item(bridge, BalanceBridgeItemCode.PROVISIONS_RESERVED).lines())
                 .extracting(l -> l.code() + "=" + l.amount().toPlainString())
                 .containsExactlyInAnyOrder("1.1.5=1585.14", "1.1.6=-2265.84", "1.1.12=2857.95");
-        assertThat(item(bridge, BalanceBridgeItemCode.LINE_SAVINGS).amount()).isEqualByComparingTo("4316.92");
+        // RF-13.15 (version 4): 1 + 2 + 3 = planned 451.620,13 − actual in the lines 445.125,96, whatever the split by
+        // type (the amount of each item enters the golden after the user reviews the types, P9)
+        assertThat(item(bridge, BalanceBridgeItemCode.LINE_SAVINGS).amount()
+                .add(item(bridge, BalanceBridgeItemCode.PROVISIONS_RESERVED).amount())
+                .add(item(bridge, BalanceBridgeItemCode.UNUSED_OCCASIONAL).amount())).isEqualByComparingTo("6494.17");
+        assertThat(item(bridge, BalanceBridgeItemCode.LINE_SAVINGS).lines())
+                .noneMatch(l -> l.effectiveProfile() == SpendingProfile.OCCASIONAL
+                        || l.effectiveProfile() == SpendingProfile.ANNUAL);
+        assertThat(item(bridge, BalanceBridgeItemCode.SEPARATE_APPORTIONMENT).amount()).isEqualByComparingTo("0.00");
+        // RF-13.15 gives +41.547,45 and transfers 0,00, the numbers of the 20/10 test with the D3 defect (transfers
+        // received not marked): the five "TRANSFERENCIA CONTABIL ... PARA CONDOMINIO" (281,10) are marked in the reading
+        // and go to item 5; 41.266,35 + 281,10 = 41.547,45, the sum does not change
+        assertThat(item(bridge, BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE).amount())
+                .isEqualByComparingTo("41266.35");
+        assertThat(item(bridge, BalanceBridgeItemCode.OUTSIDE_BUDGET).amount()).isEqualByComparingTo("-4329.17");
+        assertThat(item(bridge, BalanceBridgeItemCode.INTER_FUND_TRANSFERS).amount()).isEqualByComparingTo("281.10");
+        assertThat(bridge.variation()).isEqualByComparingTo("43712.45");
+        assertThat(bridge.lineReview().reviewed()).isTrue();
         assertThat(item(bridge, BalanceBridgeItemCode.OUTSIDE_BUDGET).parts())
                 .extracting(p -> p.code() + "=" + p.amount().toPlainString())
                 .contains("TO_REALLOCATE=-1050.93", "ADJUSTMENTS=-3278.24");
@@ -99,7 +119,7 @@ class BudgetTrackingGoldenTest {
         // Q49: all funds = the operating fund's items + the 20 apportionment funds apart, still closing at 0,00
         BalanceBridgeResponse all = g.scenario.bridge.get(g.scenario.condominiumId, "all", "2026-09", "2026-09");
         for (BalanceBridgeItemCode code : List.of(BalanceBridgeItemCode.LINE_SAVINGS,
-                BalanceBridgeItemCode.PROVISIONS_RESERVED, BalanceBridgeItemCode.INCOME_VS_PLANNED,
+                BalanceBridgeItemCode.PROVISIONS_RESERVED, BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE,
                 BalanceBridgeItemCode.OUTSIDE_BUDGET)) {
             assertThat(item(all, code).amount()).as(code.name()).isEqualByComparingTo(item(bridge, code).amount());
         }

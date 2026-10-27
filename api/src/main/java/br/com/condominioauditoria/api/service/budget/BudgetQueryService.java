@@ -25,6 +25,7 @@ import br.com.condominioauditoria.api.repository.budget.BudgetFundLinkRepository
 import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
+import br.com.condominioauditoria.api.service.calculator.FiscalYearEndSuggestion;
 import br.com.condominioauditoria.api.service.calculator.BudgetReadingAssessment;
 import br.com.condominioauditoria.api.service.calculator.BudgetReadingAssessment.BudgetCheck;
 import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
@@ -121,7 +122,8 @@ public class BudgetQueryService {
                         p.getApprovalDate(), p.isDiscrepancyAcknowledged(), p.getDiscrepancyJustification()) : null,
                 budgetLines.stream().map(l -> BudgetMapper.toResponse(l, fundLines.contains(l.getId()))).toList(),
                         checkResponses,
-                warnings(p, structure, assessment, repeated), repeated, funds(p, budgetLines), findings(p));
+                warnings(p, structure, assessment, repeated), repeated, funds(p, budgetLines), findings(p),
+                month(FiscalYearEndSuggestion.suggest(p.getFiscalYearStart())));
     }
 
     private List<BudgetFundLineResponse> funds(Budget p, List<BudgetLine> budgetLines) {

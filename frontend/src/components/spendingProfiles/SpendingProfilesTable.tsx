@@ -63,11 +63,13 @@ export function SpendingProfilesTable({ budgetId, data }: Props) {
         <h2>Tipo de cada linha</h2>
         <span className="muted">
           {data.confirmed} confirmado(s) · {data.suggested} sugerido(s)
+          {data.suggestionChanged > 0 && ` · ${data.suggestionChanged} com a sugestão mudada`}
         </span>
       </div>
       <p className="muted">
-        Sem confirmação, a linha vale como “mensal” e a tela mostra “tipo não confirmado”. O tipo não muda o previsto: muda só como o
-        saldo é classificado na origem do saldo e o destaque do acompanhamento.
+        Sem confirmação, vale a sugestão do sistema e a tela mostra “tipo não confirmado”. O tipo não muda o previsto: muda só como o
+        saldo é classificado na origem do saldo (eventual e anual não são economia) e o destaque do acompanhamento. “A sugestão mudou”:
+        o tipo confirmado é diferente da sugestão atual; confira.
       </p>
       {isAdmin && (
         <div className="filters">
@@ -149,6 +151,7 @@ export function SpendingProfilesTable({ budgetId, data }: Props) {
                     {l.status === "CONFIRMED" ? spendingProfileStatusLabel.CONFIRMED : "tipo não confirmado"}
                   </span>
                   {l.changedBy && <small className="note">por {l.changedBy}</small>}
+                  {l.suggestionChanged && <small className="badge warning">a sugestão mudou</small>}
                 </td>
               </tr>
             ))}

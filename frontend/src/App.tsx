@@ -20,6 +20,7 @@ import { BudgetTracking } from "./pages/BudgetTracking";
 import { BalanceOrigin } from "./pages/BalanceOrigin";
 import { FundMovementsPage } from "./pages/FundMovementsPage";
 import { SpendingProfilesPage } from "./pages/SpendingProfilesPage";
+import { CashFlowPage } from "./pages/CashFlowPage";
 
 export function App() {
   const { data: user, error } = useCurrentUser();
@@ -45,9 +46,11 @@ export function App() {
               <Route index element={<Home />} />
               <Route path="arquivos" element={<Files />} />
               <Route path="concessionarias" element={<UtilityAccounts />} />
+              <Route path="entradas-e-saidas" element={<CashFlowPage />} />
               <Route path="acompanhamento-po" element={<BudgetTracking />} />
               <Route path="origem-do-saldo" element={<BalanceOrigin />} />
               <Route path="fundos" element={<FundMovementsPage />} />
+              {/* Out of the menu (Q53): opened from the month header of the tracking grid; old addresses keep working */}
               <Route path="previsto-realizado" element={<BudgetVsActual />} />
               <Route path="comparar-exercicios" element={<CompareFiscalYears />} />
               <Route path="indicadores" element={<Indicators />} />

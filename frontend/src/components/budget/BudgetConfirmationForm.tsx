@@ -18,7 +18,9 @@ export function BudgetConfirmationForm({ detail }: { detail: BudgetDetail }) {
   const { data: condominiumFunds = [] } = useFunds(condominiumId);
 
   const [start, setStart] = useState(detail.budget.fiscalYearStart ?? "");
-  const [end, setEnd] = useState(detail.budget.fiscalYearEnd ?? "");
+  // RF-13.17 (D2): the default end is the suggestion of the API (first February after the start), not the printed one
+  const [end, setEnd] = useState(detail.suggestedFiscalYearEnd ?? detail.budget.fiscalYearEnd ?? "");
+  const [endTouched, setEndTouched] = useState(false);
   const [withoutMinutes, setWithoutMinutes] = useState(false);
   const [minutesId, setMinutesId] = useState("");
   const [approvalDate, setApprovalDate] = useState("");
@@ -66,12 +68,30 @@ export function BudgetConfirmationForm({ detail }: { detail: BudgetDetail }) {
         <legend>Exercício</legend>
         <label className="field">
           Mês inicial
-          <input type="month" required value={start} onChange={(e) => setStart(e.target.value)} />
+          <input
+            type="month"
+            required
+            value={start}
+            onChange={(e) => {
+              setStart(e.target.value);
+              // Same rule as the API suggestion, only while the Admin has not chosen the end
+              if (!endTouched) setEnd(firstFebruaryAfter(e.target.value) ?? end);
+            }}
+          />
         </label>
         <label className="field">
           Mês final
-          <input type="month" required value={end} onChange={(e) => setEnd(e.target.value)} />
+          <input
+            type="month"
+            required
+            value={end}
+            onChange={(e) => {
+              setEnd(e.target.value);
+              setEndTouched(true);
+            }}
+          />
         </label>
+        <p className="muted">Sugestão: fevereiro, exercício de março a março (D2). Confira com a ata.</p>
       </fieldset>
 
       <fieldset>
@@ -189,4 +209,13 @@ export function BudgetConfirmationForm({ detail }: { detail: BudgetDetail }) {
       </div>
     </form>
   );
+}
+
+/** Default end of the fiscal year shown in the form: the first February after the start ("AAAA-MM"), as the API suggests. */
+function firstFebruaryAfter(start: string): string | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(start);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  return `${month < 2 ? year : year + 1}-02`;
 }

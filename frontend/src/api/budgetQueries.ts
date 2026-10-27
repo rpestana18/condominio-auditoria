@@ -162,6 +162,8 @@ export function useReloadBudget() {
       // RF-13: tracking grid, balance bridge, fund movements, spending profiles and partial months
       "budget-tracking", "balance-bridge", "fund-movements", "spending-profiles", "spending-profile-events", "partial-months",
       "partial-month-events", "monthly-evolution",
+      // ADR 0009: "Entradas e saídas", line review and origin
+      "cash-flow-monthly", "cash-flow-entries", "line-review", "line-review-events",
     ];
     for (const key of keys) {
       void client.invalidateQueries({ queryKey: [key] });

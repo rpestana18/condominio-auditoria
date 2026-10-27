@@ -3078,7 +3078,7 @@ components:
       properties:
         code: { $ref: "#/components/schemas/BalanceBridgeItemCode" }
         label: { type: string }
-        amount: { type: number }
+        amount: { type: [number, "null"], description: 'Nulo nos itens por linha (LINE_SAVINGS, PROVISIONS_RESERVED, UNUSED_OCCASIONAL, SEPARATE_APPORTIONMENT) enquanto a PO não está conferida (lineReview, RF-13.12)' }
         percentageOfVariation: { type: [number, "null"], description: 'Nulo com variação zero e sempre em APPORTIONMENT_FUNDS (Q49): os percentuais não somam 100%' }
         parts: { type: array, items: { $ref: "#/components/schemas/BridgePartResponse" }, description: 'Partes do item (ex.: CONDO_FEE, OTHER_INCOME, PLANNED; ADJUSTMENTS, TO_REALLOCATE, WITHOUT_BUDGET_LINE; RECEIVED, SENT; INFLOWS, OUTFLOWS em APPORTIONMENT_FUNDS, com o sinal da ponte: saídas negativas)' }
         lines: { type: array, items: { $ref: "#/components/schemas/BridgeLineResponse" }, description: Linhas da PO que compõem o item }

@@ -12,8 +12,9 @@ export function BridgeChart({ bridge }: { bridge: BalanceBridge }) {
   const provisional = bridge.items.filter((i) => isProvisionalItem(bridge, i.code));
   const data = bridge.items
     .filter((i) => !isProvisionalItem(bridge, i.code))
-    .filter((i) => i.amount !== 0 || i.code === "UNEXPLAINED")
-    .map((i) => ({ label: i.label, amount: i.amount, code: i.code }));
+    // Items by line come without an amount while the budget lines are not reviewed (RF-13.12): out of the chart
+    .filter((i) => i.amount != null && (i.amount !== 0 || i.code === "UNEXPLAINED"))
+    .map((i) => ({ label: i.label, amount: i.amount ?? 0, code: i.code }));
   if (data.length === 0) return null;
   const color = (code: string, amount: number) => {
     if (code === "UNEXPLAINED" && bridge.closes === false) return "var(--warning)";

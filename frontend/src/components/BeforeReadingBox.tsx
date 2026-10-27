@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { accountsText, hasPendingSteps, mappingLink, profilesLink, type PendingSteps } from "./pendingSteps";
+import { accountsText, hasPendingSteps, mappingLink, profilesLink, reviewLink, type PendingSteps } from "./pendingSteps";
 
 interface Props {
   steps: PendingSteps;
@@ -22,6 +22,14 @@ export function BeforeReadingBox({ steps, notes = [], compact = false }: Props) 
         <>
           <strong className="before-reading-title">Antes de ler estes números</strong>
           <ol>
+            {steps.linesToReview && (
+              <li>
+                <Link to={reviewLink(steps.linesToReview.budgetId)}>
+                  Conferir as linhas da PO ({steps.linesToReview.reviewedLines} de {steps.linesToReview.totalLines} conferidas)
+                </Link>
+                {!compact && <span className="muted"> · até lá, os números por linha da PO não aparecem</span>}
+              </li>
+            )}
             {steps.unmappedAccounts > 0 && (
               <li>
                 <Link to={mappingLink(steps.budgetId)}>
@@ -39,7 +47,7 @@ export function BeforeReadingBox({ steps, notes = [], compact = false }: Props) 
             {steps.profilesNotConfirmed && (
               <li>
                 <Link to={profilesLink(steps.budgetId)}>Confirmar os tipos das linhas</Link>
-                {!compact && <span className="muted"> · até lá, as linhas valem “mensal”</span>}
+                {!compact && <span className="muted"> · até lá, vale a sugestão do sistema</span>}
               </li>
             )}
           </ol>

@@ -94,13 +94,18 @@ export const budgetItemActionLabel: Record<BudgetItemEvent["action"], string> = 
   CHANGED: "alterado",
 };
 
-// Spending profile of the line (RF-13.3) and partial month (RF-13.10)
+// Spending profile of the line (RF-13.14, ADR 0009) and partial month (RF-13.10)
 export const spendingProfileLabel: Record<SpendingProfile, string> = {
-  MONTHLY: "mensal",
+  RECURRING: "recorrente",
+  OCCASIONAL: "eventual",
+  SEASONAL: "sazonal",
+  ANNUAL: "anual",
   PROVISION: "provisão",
-  ANNUAL: "anual ou esporádica",
   SEPARATE_APPORTIONMENT: "rateio à parte",
 };
+
+/** Profiles compared over the fiscal year, not month by month (O5, O6, D4): the line balance is the main number. */
+export const YEARLY_PROFILES: ReadonlySet<SpendingProfile> = new Set<SpendingProfile>(["OCCASIONAL", "SEASONAL", "ANNUAL"]);
 
 export const spendingProfileStatusLabel: Record<SpendingProfileStatus, string> = {
   SUGGESTED: "sugerido",

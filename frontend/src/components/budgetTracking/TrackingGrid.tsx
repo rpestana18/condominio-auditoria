@@ -1,7 +1,8 @@
+import { Link } from "react-router";
 import type { BudgetTracking, SpendingProfile, TrackingGroup, TrackingLine, TrackingMonth } from "../../api/types";
 import { formatMoney, formatMoneyOrDash, formatMonthShort, formatPercentage } from "../../format";
 import type { EvidenceTarget } from "../budgetVsActual/evidence";
-import { markLabel, spendingProfileLabel } from "../budgetVsActual/labels";
+import { markLabel, spendingProfileLabel, YEARLY_PROFILES } from "../budgetVsActual/labels";
 import { MonthStatusNote, monthStatusText } from "./MonthStatusNote";
 import { TrackingCellView } from "./TrackingCellView";
 import { shownProfile } from "./trackingFilter";
@@ -44,7 +45,10 @@ export function TrackingGrid({ tracking, groups, onOpenEvidence }: Props) {
             <th>Observações</th>
             {months.map((m) => (
               <th key={m.month} className={`number month-column ${m.partialUntil ? "cell-partial" : ""}`}>
-                {formatMonthShort(m.month)}
+                {/* Q53: the month header opens "Previsto × realizado" of that month (out of the menu) */}
+                <Link to={`/previsto-realizado?${new URLSearchParams({ periodo: m.month, ...(tracking.budget ? { po: tracking.budget.id } : {}) })}`} title="Abrir o previsto × realizado do mês">
+                  {formatMonthShort(m.month)}
+                </Link>
                 <MonthStatusNote status={m.status} partialUntil={m.partialUntil} />
               </th>
             ))}
@@ -85,7 +89,7 @@ function GroupRows({ group, months, cumulativeClickable, onOpenEvidence }: RowsP
           <TrackingCellView
             key={m.month}
             cell={group.cells.find((c) => c.month === m.month)}
-            profile="MONTHLY"
+            profile="RECURRING"
             partial={!!m.partialUntil}
             emptyText={monthStatusText(m) ?? ""}
             onOpen={() => onOpenEvidence(m.month, target)}
@@ -96,7 +100,7 @@ function GroupRows({ group, months, cumulativeClickable, onOpenEvidence }: RowsP
           planned={group.cumulativePlanned}
           onOpen={cumulativeClickable ? () => onOpenEvidence("cumulative", target) : undefined}
         />
-        <BalanceCell balance={group.balance} profile="MONTHLY" />
+        <BalanceCell balance={group.balance} profile="RECURRING" />
       </tr>
       {group.lines.map((l) => (
         <LineRow key={l.lineId} line={l} months={months} cumulativeClickable={cumulativeClickable} onOpenEvidence={onOpenEvidence} />
@@ -189,7 +193,7 @@ function CumulativeCell({ actual, planned, onOpen }: { actual?: number | null; p
 
 /**
  * "Saldo da linha no exercício" = planned − actual of the complete months, calculated by the API.
- * Positive = below planned; negative = above planned. Neutral highlight; for "anual ou esporádica" it is the main one (Q46).
+ * Positive = below planned; negative = above planned. Neutral highlight; for the yearly profiles (eventual, sazonal, anual) it is the main one (Q46).
  */
 function BalanceCell({ balance, profile, monthsAbove }: { balance?: number | null; profile: SpendingProfile; monthsAbove?: number }) {
   if (profile === "SEPARATE_APPORTIONMENT") {
@@ -202,7 +206,7 @@ function BalanceCell({ balance, profile, monthsAbove }: { balance?: number | nul
   if (balance == null) return <td className="number">—</td>;
   const highlight = balance < 0 ? "cell-above" : balance > 0 ? "cell-below" : "";
   return (
-    <td className={`number tracking-cell ${highlight} ${profile === "ANNUAL" ? "emphasis" : ""}`}>
+    <td className={`number tracking-cell ${highlight} ${YEARLY_PROFILES.has(profile) ? "emphasis" : ""}`}>
       <span className="cell-content">
         <span>{formatMoney(balance)}</span>
         {monthsAbove !== undefined && monthsAbove > 0 && (

@@ -54,7 +54,7 @@ export function BalanceOriginCard({ dashboard }: { dashboard: Dashboard }) {
             <li key={item.code} className={item.code === "UNEXPLAINED" && bridge.closes === false ? "bridge-unexplained" : undefined}>
               <span>{item.label}</span>
               <span className="number">
-                {formatDifference(item.amount)}
+                {item.amount == null ? "—" : formatDifference(item.amount)}
                 {hasPercentage(item.code) && <small className="muted"> {formatPercentage(item.percentageOfVariation)}</small>}
               </span>
             </li>

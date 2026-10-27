@@ -71,7 +71,9 @@ export function BridgeSummary({ bridge, selected, onSelect }: Props) {
                     </span>
                   )}
                 </td>
-                <td className={`number${provisional ? " muted" : ""}`}>{formatDifference(item.amount)}</td>
+                <td className={`number${provisional ? " muted" : ""}`} title={item.amount == null ? "Depois da conferência das linhas da PO" : undefined}>
+                  {item.amount == null ? "—" : formatDifference(item.amount)}
+                </td>
                 <td className="number">
                   {provisional ? (
                     <span className="muted" title={provisionalTitle(bridge)}>

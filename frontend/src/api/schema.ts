@@ -3476,7 +3476,8 @@ export interface components {
         BridgeItemResponse: {
             code: components["schemas"]["BalanceBridgeItemCode"];
             label: string;
-            amount: number;
+            /** @description Nulo nos itens por linha (LINE_SAVINGS, PROVISIONS_RESERVED, UNUSED_OCCASIONAL, SEPARATE_APPORTIONMENT) enquanto a PO não está conferida (lineReview, RF-13.12) */
+            amount: number | null;
             /** @description Nulo com variação zero e sempre em APPORTIONMENT_FUNDS (Q49): os percentuais não somam 100% */
             percentageOfVariation?: number | null;
             /** @description Partes do item (ex.: CONDO_FEE, OTHER_INCOME, PLANNED; ADJUSTMENTS, TO_REALLOCATE, WITHOUT_BUDGET_LINE; RECEIVED, SENT; INFLOWS, OUTFLOWS em APPORTIONMENT_FUNDS, com o sinal da ponte: saídas negativas) */

@@ -7,7 +7,7 @@ import type { BudgetTracking as Tracking } from "../api/types";
 import { EvidencePanel } from "../components/budgetVsActual/EvidencePanel";
 import type { EvidenceTarget } from "../components/budgetVsActual/evidence";
 import { BeforeReadingBox } from "../components/BeforeReadingBox";
-import { NO_CONFIRMED_MAPPING, PROFILE_NOT_CONFIRMED, topNotes, type PendingSteps } from "../components/pendingSteps";
+import { linesToReview, reviewLink, NO_CONFIRMED_MAPPING, PROFILE_NOT_CONFIRMED, topNotes, type PendingSteps } from "../components/pendingSteps";
 import { TrackingBlocksTable } from "../components/budgetTracking/TrackingBlocksTable";
 import { TrackingFilters } from "../components/budgetTracking/TrackingFilters";
 import { TrackingGrid } from "../components/budgetTracking/TrackingGrid";
@@ -112,7 +112,14 @@ function Content({ tracking, filter, onOpenEvidence }: ContentProps) {
     <>
       {/* One place on top: the pending steps and the other short notes */}
       <BeforeReadingBox steps={steps} notes={topNotes(tracking.warnings)} />
-      <TrackingMonthsChart months={tracking.months} />
+      {steps.linesToReview ? (
+        <p className="notice warning">
+          Linhas da PO ainda não conferidas: o acompanhamento não mostra números por linha até a conferência em{" "}
+          <Link to={reviewLink(steps.budgetId)}>PO aprovada</Link>.
+        </p>
+      ) : (
+        <TrackingMonthsChart months={tracking.months} />
+      )}
       <section className="block">
         <div className="block-title">
           <h2>Linhas da PO × meses do exercício</h2>
@@ -122,7 +129,7 @@ function Content({ tracking, filter, onOpenEvidence }: ContentProps) {
         </div>
         <Legend />
         {groups.length === 0 ? (
-          <p className="notice">Nenhuma linha neste filtro.</p>
+          <p className="notice">{steps.linesToReview ? "Nenhuma linha antes da conferência." : "Nenhuma linha neste filtro."}</p>
         ) : (
           <TrackingGrid tracking={tracking} groups={groups} onOpenEvidence={onOpenEvidence} />
         )}
@@ -154,6 +161,7 @@ function trackingSteps(tracking: Tracking): PendingSteps {
   const accounts = warned ? (block?.accounts ?? []) : [];
   return {
     budgetId: tracking.budget?.id ?? null,
+    linesToReview: linesToReview(tracking.lineReview),
     unmappedAccounts: accounts.filter((a) => a.account != null).length,
     unmappedAmount: block?.cumulative ?? null,
     accounts,

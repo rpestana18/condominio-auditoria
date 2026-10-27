@@ -42,7 +42,7 @@ public class MessageContractTest {
                 CashFlowCheck.check(cashFlow)));
 
         String text = new String(json, StandardCharsets.UTF_8);
-        assertThat(text).contains("\"version\":3").contains("\"debit\":\"1500.10\"")
+        assertThat(text).contains("\"version\":4").contains("\"debit\":\"1500.10\"")
                 .contains("\"status\":\"COMPLETED\"").contains("\"condoFeeReceipt\":false")
                 .contains("\"budget\":null").doesNotContain("totalLancamentos");
     }
@@ -130,12 +130,32 @@ public class MessageContractTest {
         assertThat(MAPPER.readTree(produced)).isEqualTo(example);
     }
 
+    /**
+     * The support-sheet example (v4, ADR 0009 Decision 3 B) fits the rag's types (rag.model.budget) and comes back the
+     * same: rates and money as text, months as YYYY-MM.
+     */
+    @Test
+    public void contractSupportSheetExampleFitsRagTypes() throws Exception {
+        String json = example("processing-result-support-sheet.json");
+        var example = MAPPER.readTree(json);
+        var read = MAPPER.readValue(json, ProcessingResultMessage.class);
+
+        var vigia = read.budgetLineOrigins().lines().getFirst();
+        assertThat(vigia.method()).isEqualTo("AVERAGE_TIMES_INDEX");
+        assertThat(vigia.indexRate()).isEqualByComparingTo("0.0723");
+
+        byte[] produced = contract.write(ProcessingResultMessage.completedSupportSheet(fileOf(example),
+                read.parser(), read.pages(), read.budgetLineOrigins(), read.totalsChecks()));
+
+        assertThat(MAPPER.readTree(produced)).isEqualTo(example);
+    }
+
     private static final tools.jackson.databind.json.JsonMapper MAPPER =
             tools.jackson.databind.json.JsonMapper.builder().build();
 
     private static String example(String name) throws Exception {
         return java.nio.file.Files.readString(java.nio.file.Path.of(System.getProperty("contratos.dir"),
-                "mensagens/v3/examples", name));
+                "mensagens/v4/examples", name));
     }
 
     private static FileReceivedMessage fileOf(tools.jackson.databind.JsonNode example) {

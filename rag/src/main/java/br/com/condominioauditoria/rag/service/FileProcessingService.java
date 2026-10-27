@@ -6,9 +6,11 @@ import br.com.condominioauditoria.rag.messaging.FileReceivedMessage;
 import br.com.condominioauditoria.rag.messaging.MessageContract;
 import br.com.condominioauditoria.rag.messaging.ProcessingResultMessage;
 import br.com.condominioauditoria.rag.model.budget.Budget;
+import br.com.condominioauditoria.rag.model.budget.BudgetLineOrigins;
 import br.com.condominioauditoria.rag.model.cashflow.CashFlow;
 import br.com.condominioauditoria.rag.model.document.ReadDocument;
 import br.com.condominioauditoria.rag.parser.budget.ProtestBudgetParser;
+import br.com.condominioauditoria.rag.parser.budget.SupportSheetParser;
 import br.com.condominioauditoria.rag.parser.cashflow.CashFlowParser;
 import br.com.condominioauditoria.rag.service.calculator.BudgetCheck;
 import br.com.condominioauditoria.rag.service.calculator.CashFlowCheck;
@@ -26,7 +28,7 @@ import org.springframework.web.client.ResourceAccessException;
 
 /**
  * Consumes the files received queue. For each file: reports that it started, reads the original, calls the Python
- * reader, parses the layout (Protest cash flow or budget, chosen by the content), checks the sums and returns
+ * reader, parses the layout (Protest cash flow, budget or the budget's support sheet, chosen by the content), checks the sums and returns
  * everything in a single message. The api decides whether the budget read is valid, by the file category (ADR 0004,
  * Decision 3).
  *
@@ -38,6 +40,8 @@ public class FileProcessingService {
 
     static final String CASH_FLOW_PARSER = "fluxo-caixa-protest";
     static final String BUDGET_PARSER = "po-protest";
+    /** Support sheet of the budget (.xlsx; ADR 0009, Decision 3 B). */
+    static final String SUPPORT_SHEET_PARSER = "po-planilha-apoio";
     /** Category of the budget file in the api; only used to explain the scanned budget failure. */
     static final String BUDGET_CATEGORY = "PO";
 
@@ -49,10 +53,12 @@ public class FileProcessingService {
     private final DocumentReaderClient reader;
     private final CashFlowParser cashFlowParser;
     private final ProtestBudgetParser budgetParser;
+    private final SupportSheetParser supportSheetParser;
 
     public FileProcessingService(MessageContract contract, RabbitTemplate rabbit, Storage storage,
             DocumentReaderClient reader, CashFlowParser cashFlowParser,
-            ProtestBudgetParser budgetParser) {
+            ProtestBudgetParser budgetParser, SupportSheetParser supportSheetParser) {
+        this.supportSheetParser = supportSheetParser;
         this.contract = contract;
         this.rabbit = rabbit;
         this.storage = storage;
@@ -98,6 +104,11 @@ public class FileProcessingService {
             Budget budget = budgetParser.parse(document);
             return ProcessingResultMessage.completedBudget(file, BUDGET_PARSER, pages, budget,
                     BudgetCheck.check(budget));
+        }
+        if (supportSheetParser.recognizes(document)) {
+            BudgetLineOrigins origins = supportSheetParser.parse(document);
+            return ProcessingResultMessage.completedSupportSheet(file, SUPPORT_SHEET_PARSER, pages, origins,
+                    SupportSheetParser.check(origins));
         }
         if (BUDGET_CATEGORY.equals(file.category()) && ProtestBudgetParser.noText(document)) {
             return ProcessingResultMessage.failed(file, ProtestBudgetParser.NO_TEXT);

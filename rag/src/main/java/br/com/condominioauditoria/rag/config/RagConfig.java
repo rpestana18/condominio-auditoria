@@ -3,6 +3,7 @@ package br.com.condominioauditoria.rag.config;
 import br.com.condominioauditoria.rag.config.properties.RagProperties;
 import br.com.condominioauditoria.rag.parser.ReaderContract;
 import br.com.condominioauditoria.rag.parser.budget.ProtestBudgetParser;
+import br.com.condominioauditoria.rag.parser.budget.SupportSheetParser;
 import br.com.condominioauditoria.rag.parser.cashflow.CashFlowParser;
 import br.com.condominioauditoria.storage.LocalStorage;
 import br.com.condominioauditoria.storage.Storage;
@@ -36,5 +37,10 @@ public class RagConfig {
     @Bean
     public ProtestBudgetParser protestBudgetParser() {
         return new ProtestBudgetParser();
+    }
+
+    @Bean
+    public SupportSheetParser supportSheetParser() {
+        return new SupportSheetParser();
     }
 }

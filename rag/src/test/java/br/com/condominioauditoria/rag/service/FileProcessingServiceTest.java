@@ -12,6 +12,7 @@ import br.com.condominioauditoria.rag.parser.ReaderContract;
 import br.com.condominioauditoria.rag.model.TotalsCheck;
 import br.com.condominioauditoria.rag.model.cashflow.FundPosition;
 import br.com.condominioauditoria.rag.parser.budget.ProtestBudgetParser;
+import br.com.condominioauditoria.rag.parser.budget.SupportSheetParser;
 import br.com.condominioauditoria.rag.parser.cashflow.CashFlowParserTest;
 import br.com.condominioauditoria.rag.parser.cashflow.CashFlowParser;
 import java.nio.file.Files;
@@ -24,7 +25,7 @@ import org.junit.jupiter.api.Test;
 public class FileProcessingServiceTest {
 
     private final FileProcessingService service = new FileProcessingService(new MessageContract(), null, null, null,
-            new CashFlowParser(), new ProtestBudgetParser());
+            new CashFlowParser(), new ProtestBudgetParser(), new SupportSheetParser());
 
     /**
      * D2: the message carries the closing balance 0,00 of the fund where nothing happened and the Posição left out;
@@ -94,7 +95,7 @@ public class FileProcessingServiceTest {
             assertThat(r.cashFlow()).isNull();
             assertThat(r.totalsChecks()).isNotEmpty();
             assertThat(new String(new MessageContract().write(r), java.nio.charset.StandardCharsets.UTF_8))
-                    .contains("\"version\":3").contains("\"budgeted\":\"1585.14\"");
+                    .contains("\"version\":4").contains("\"budgeted\":\"1585.14\"");
         }
         Path cashFlow = privateDir.resolve("fluxo-caixa-2026-09.read-document.json");
         if (Files.exists(cashFlow)) {

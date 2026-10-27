@@ -21,6 +21,7 @@ import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepositor
 import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.service.budget.BudgetImportService;
+import br.com.condominioauditoria.api.service.budget.BudgetLineOriginService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -39,7 +40,7 @@ class ProcessingResultServiceCategoryTest {
     private final TotalsCheckRepository totalsChecks = mock(TotalsCheckRepository.class);
     private final ProcessingResultService service = new ProcessingResultService(files, mock(FundRepository.class),
             entries, balances, totalsChecks, mock(BudgetImportService.class), event -> { },
-            mock(PartialMonthService.class));
+            mock(PartialMonthService.class), mock(BudgetLineOriginService.class));
 
     @Test
     void cashFlowInAnotherCategoryDeletesExtractionAndSavesNoEntries() {

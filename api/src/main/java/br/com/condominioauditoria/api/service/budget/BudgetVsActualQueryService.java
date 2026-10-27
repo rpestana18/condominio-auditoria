@@ -1,6 +1,7 @@
 package br.com.condominioauditoria.api.service.budget;
 
 import br.com.condominioauditoria.api.dto.response.budget.BudgetVsActualResponse;
+import br.com.condominioauditoria.api.dto.response.budget.LineReviewStateResponse;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetVsActualWarningResponse;
 import br.com.condominioauditoria.api.dto.response.budget.EvidenceResponse;
 import br.com.condominioauditoria.api.model.accounting.Fund;
@@ -101,13 +102,26 @@ public class BudgetVsActualQueryService {
 
     @Transactional(readOnly = true)
     public BudgetVsActualResponse get(UUID condominiumId, String period, UUID budgetId) {
-        return calculate(condominiumId, period, budgetId).result();
+        return withLineReview(calculate(condominiumId, period, budgetId).result());
     }
 
     /** With the fund filter (RF-03.1.13); null {@code fundId} = all. */
     @Transactional(readOnly = true)
     public BudgetVsActualResponse get(UUID condominiumId, String period, UUID budgetId, UUID fundId) {
-        return calculate(condominiumId, period, budgetId, fundId).result();
+        return withLineReview(calculate(condominiumId, period, budgetId, fundId).result());
+    }
+
+    /**
+     * Review state of the budget lines (RF-13.12; ADR 0009, Decision 1), the single place every screen that distributes
+     * spending by line asks. Null without a budget.
+     */
+    public LineReviewStateResponse lineReview(UUID budgetId) {
+        return budgetId == null ? null
+                : BudgetLineReviewService.state(budgetId, lines.findByBudgetIdOrderByPosition(budgetId));
+    }
+
+    private BudgetVsActualResponse withLineReview(BudgetVsActualResponse r) {
+        return r.budget() == null ? r : r.withLineReview(lineReview(r.budget().id()));
     }
 
     /** The filter's fund, which must belong to this condominium (404 otherwise). */

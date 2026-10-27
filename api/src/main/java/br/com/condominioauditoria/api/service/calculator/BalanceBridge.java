@@ -41,37 +41,53 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Balance bridge (RF-13.6 and RF-13.7; ADR 0007, Decision 3). <b>Pure function</b> over the tracking grid
- * ({@link BudgetTrackingGrid}) and the fund movements ({@link FundMovements}) of the same months. For the chosen fund
- * (or all funds), the items add up <b>exactly</b> to the variation of the printed balance, cent by cent:
+ * Balance bridge (RF-13.6, RF-13.7 and RF-13.15; ADR 0007, Decision 3, and ADR 0009, Decision 5: version 4).
+ * <b>Pure function</b> over the tracking grid ({@link BudgetTrackingGrid}) and the fund movements
+ * ({@link FundMovements}) of the same months. For the chosen fund (or all funds), the items add up <b>exactly</b> to the
+ * variation of the printed balance, cent by cent:
  * <ol>
- * <li>{@code LINE_SAVINGS}: planned − actual of the MONTHLY and ANNUAL lines (operating fund);</li>
+ * <li>{@code LINE_SAVINGS}: planned − actual of the RECURRING and SEASONAL lines (operating fund);</li>
  * <li>{@code PROVISIONS_RESERVED}: the same for the PROVISION lines (Q44), never counted as savings;</li>
+ * <li>{@code UNUSED_OCCASIONAL}: the same for the OCCASIONAL and ANNUAL lines (Q52, own item: "previsto que não virou
+ * gasto; não é economia"), split into planned not used and purchases above the line;</li>
  * <li>{@code SEPARATE_APPORTIONMENT}: the same for the separate apportionment lines (Q45);</li>
- * <li>{@code INCOME_VS_PLANNED}: fee received + other income − planned amount of the period (the operating fund's
- * planned expense; for a 1.9 fund, its line);</li>
+ * <li>{@code INCOME_ABOVE_PLANNED_EXPENSE}: fee received + other income − planned expense of the period (N2; the
+ * operating fund's planned expense; for a 1.9 fund, its line);</li>
  * <li>{@code FUND_PLANNED_COLLECTION} and {@code FUND_EXPENSES}: in the bridge of one fund other than the operating
  * fund, the planned collection of the 1.9 line that stays in the fund and the debits that are not transfers;</li>
  * <li>{@code OUTSIDE_BUDGET}: to reallocate, without budget line and adjustments, negative when they leave the fund;</li>
  * <li>{@code INTER_FUND_TRANSFERS}: received − sent;</li>
  * <li>{@code APPORTIONMENT_FUNDS} (only in the bridge of all funds, Q49): credits − debits of every fund that is not
  * the operating fund, without the transfers between funds, with the list by fund and without a share of the variation.
- * In that bridge {@code INCOME_VS_PLANNED} uses only the operating fund ("cota ordinária acima ou abaixo do previsto")
- * and the 1.9 planned collection is in no item;</li>
+ * In that bridge the income item uses only the operating fund ("cota ordinária acima da despesa prevista") and the 1.9
+ * planned collection is in no item;</li>
  * <li>{@code UNEXPLAINED}: real variation − sum of the items above. Should be zero; otherwise "a ponte não fecha".</li>
  * </ol>
- * The total covers the complete months only; a partial month (RF-13.10) has its own column, outside the total, with only
- * the inflows, outflows, balances and variation: its items are null until the month closes (Q50). The
- * opening balance is the closing balance of the month before the period when that cash flow was loaded (P8), otherwise
- * the opening balance printed in the first month. All amounts are BigDecimal with 2 decimals.
+ * {@code LINE_SAVINGS + PROVISIONS_RESERVED + UNUSED_OCCASIONAL} = planned − actual of the budget lines (without the
+ * separate apportionment ones), whatever the split by profile. The total covers the complete months only; a partial
+ * month (RF-13.10) has its own column, outside the total, with only the inflows, outflows, balances and variation: its
+ * items are null until the month closes (Q50). Each month column carries the month balance ({@code variation}) and the
+ * cumulative balance ({@code closingBalance}) apart (N2). The opening balance is the closing balance of the month before
+ * the period when that cash flow was loaded (P8), otherwise the opening balance printed in the first month. All amounts
+ * are BigDecimal with 2 decimals.
  */
 public final class BalanceBridge {
 
     /**
      * 2: Q49 (apportionment funds apart in the bridge of all funds) and Q50 (month in progress without items).
      * 3: account mapping state as fields ({@code mapping}), with the provisional flag.
+     * 4: ADR 0009 (revised profiles, UNUSED_OCCASIONAL, INCOME_ABOVE_PLANNED_EXPENSE, line review gate).
      */
-    public static final String VERSION = "3";
+    public static final String VERSION = "4";
+
+    /**
+     * Q52, the only place of the decision: true = the balance of the OCCASIONAL and ANNUAL lines is an item of its own
+     * ({@code UNUSED_OCCASIONAL}, the recommendation, implemented while the user's card is not answered). false = that
+     * item does not exist and {@code INCOME_ABOVE_PLANNED_EXPENSE} compares the income only with the planned amount of
+     * the other lines (recurring, seasonal and provision), with the actual of the occasional lines as a part of its own.
+     * The bridge closes in both.
+     */
+    public static final boolean OCCASIONAL_SURPLUS_APART = true;
 
     /**
      * Above this share (in %) of the operating fund's debits in "sem linha da PO" (accounts without a confirmed
@@ -214,7 +230,7 @@ public final class BalanceBridge {
                     ? "Nenhum mês completo com extrato no período" : in.grid().message());
             return new BalanceBridgeResponse(e.calculationVersion(), e.status(), e.message(), e.fundId(),
                     e.fundName(), e.allFunds(), e.from(), e.to(), budget, null, null, null, null, null, List.of(),
-                    List.copyOf(months), List.of(), null, null, null, null, partialMonth(months), null);
+                    List.copyOf(months), List.of(), null, null, null, null, partialMonth(months), null, null);
         }
         BigDecimal variation = opening == null || closing == null ? null : closing.subtract(opening);
         total.unexplained = variation == null ? null : variation.subtract(total.sum());
@@ -248,13 +264,13 @@ public final class BalanceBridge {
         }
         if (in.grid().warnings().stream().anyMatch(w -> w.code().equals("PROFILE_NOT_CONFIRMED")) && withOperating) {
             warnings.add(new BudgetVsActualWarningResponse("PROFILE_NOT_CONFIRMED",
-                    "Há linhas com tipo não confirmado: valem \"mensal\" e entram em \"economia nas linhas\""));
+                    "Há linhas com tipo não confirmado: vale o tipo sugerido para escolher a parcela de cada linha"));
         }
         return new BalanceBridgeResponse(VERSION, BudgetVsActualStatus.CALCULATED, null, in.fundId(), fundName, all,
                 in.from().toString(), in.to().toString(), budget, opening, openingSource, closing, variation, closes,
                 total.items(withOperating, withOthers, all, variation), List.copyOf(months), List.copyOf(warnings),
                 firstInTotal.toString(), lastInTotal.toString(), firstInTotal.minusMonths(1).atEndOfMonth(),
-                closingDate, partialMonth(months), mapping);
+                closingDate, partialMonth(months), mapping, null);
     }
 
     /**
@@ -288,12 +304,14 @@ public final class BalanceBridge {
                     continue;
                 }
                 BigDecimal amount = cell.planned().subtract(cell.actual());
-                BalanceBridgeItemCode code = switch (l.effectiveProfile()) {
-                    case PROVISION -> BalanceBridgeItemCode.PROVISIONS_RESERVED;
-                    case SEPARATE_APPORTIONMENT -> BalanceBridgeItemCode.SEPARATE_APPORTIONMENT;
-                    case MONTHLY, ANNUAL -> BalanceBridgeItemCode.LINE_SAVINGS;
-                };
-                t.line(code, l, amount);
+                BalanceBridgeItemCode code = itemOf(l.effectiveProfile());
+                if (code == null) {
+                    // Q52 "junto da entrada acima da despesa": the occasional line's planned leaves the income base
+                    t.occasionalPlanned = t.occasionalPlanned.add(cell.planned());
+                    t.occasionalActual = t.occasionalActual.subtract(cell.actual());
+                } else {
+                    t.line(code, l, amount);
+                }
             }
             t.toReallocate = t.toReallocate.subtract(block(in.grid().blocks().toReallocate(), month));
             t.withoutLine = t.withoutLine.subtract(block(in.grid().blocks().withoutBudgetLine(), month));
@@ -305,6 +323,41 @@ public final class BalanceBridge {
         t.planned = t.planned.subtract(planned);
         t.transfersIn = t.transfersIn.add(f.transfersIn());
         t.transfersOut = t.transfersOut.subtract(f.transfersOut());
+    }
+
+    /**
+     * Bridge item of a line's balance by its profile (RF-13.15). Null only when {@link #OCCASIONAL_SURPLUS_APART} is
+     * false and the line is OCCASIONAL or ANNUAL (its balance then goes to the income item).
+     */
+    public static BalanceBridgeItemCode itemOf(br.com.condominioauditoria.api.model.enums.SpendingProfile profile) {
+        return switch (profile) {
+            case RECURRING, SEASONAL -> BalanceBridgeItemCode.LINE_SAVINGS;
+            case PROVISION -> BalanceBridgeItemCode.PROVISIONS_RESERVED;
+            case OCCASIONAL, ANNUAL -> OCCASIONAL_SURPLUS_APART ? BalanceBridgeItemCode.UNUSED_OCCASIONAL : null;
+            case SEPARATE_APPORTIONMENT -> BalanceBridgeItemCode.SEPARATE_APPORTIONMENT;
+        };
+    }
+
+    /** Items that distribute the expense by budget line: blank until the lines are reviewed (RF-13.12). */
+    public static final java.util.Set<BalanceBridgeItemCode> LINE_ITEMS = java.util.Set.of(
+            BalanceBridgeItemCode.LINE_SAVINGS, BalanceBridgeItemCode.PROVISIONS_RESERVED,
+            BalanceBridgeItemCode.UNUSED_OCCASIONAL, BalanceBridgeItemCode.SEPARATE_APPORTIONMENT);
+
+    /**
+     * The bridge without the numbers by budget line (RF-13.12): while the lines are not reviewed, items 1 to 3 (and the
+     * separate apportionment) have no amount, no share and no list, in the total and in every month; the other items,
+     * the balances and "não explicado" stay as calculated. {@code review}: the pending step, in the response.
+     */
+    public static BalanceBridgeResponse withoutLineItems(BalanceBridgeResponse r,
+            br.com.condominioauditoria.api.dto.response.budget.LineReviewStateResponse review) {
+        List<BridgeItemResponse> items = r.items().stream().map(i -> LINE_ITEMS.contains(i.code())
+                ? new BridgeItemResponse(i.code(), i.label(), null, null, List.of(), List.of(), List.of()) : i)
+                .toList();
+        List<BridgeMonthResponse> months = r.months().stream().map(m -> new BridgeMonthResponse(m.month(),
+                m.status(), m.partialUntil(), m.inTotal(), m.openingBalance(), m.closingBalance(), m.variation(),
+                m.items().stream().map(i -> LINE_ITEMS.contains(i.code()) ? new BridgeMonthItemResponse(i.code(), null)
+                        : i).toList(), m.inflows(), m.outflows())).toList();
+        return r.withLineReview(items, months, review);
     }
 
     /** Items of one fund other than the operating fund: income, planned 1.9 collection, its expenses and transfers. */
@@ -400,7 +453,7 @@ public final class BalanceBridge {
             String message) {
         return new BalanceBridgeResponse(VERSION, status, message, in.fundId(), fundName, all, in.from().toString(),
                 in.to().toString(), in.grid().budget(), null, null, null, null, null, List.of(), List.of(), List.of(),
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     /** The last partial month of the period (RF-13.10), apart from the total; null without one. */
@@ -431,6 +484,9 @@ public final class BalanceBridge {
         BigDecimal adjustments = ZERO;
         BigDecimal transfersIn = ZERO;
         BigDecimal transfersOut = ZERO;
+        /** Only with OCCASIONAL_SURPLUS_APART false (Q52): planned (positive) and actual (negative) of those lines. */
+        BigDecimal occasionalPlanned = ZERO;
+        BigDecimal occasionalActual = ZERO;
         final Map<UUID, FundAmount> apportionment = new LinkedHashMap<>();
         BigDecimal unexplained;
 
@@ -464,6 +520,8 @@ public final class BalanceBridge {
             adjustments = adjustments.add(t.adjustments);
             transfersIn = transfersIn.add(t.transfersIn);
             transfersOut = transfersOut.add(t.transfersOut);
+            occasionalPlanned = occasionalPlanned.add(t.occasionalPlanned);
+            occasionalActual = occasionalActual.add(t.occasionalActual);
             t.apportionment.values().forEach(f -> apportionment.merge(f.fundId(), f, FundAmount::plus));
         }
 
@@ -472,10 +530,17 @@ public final class BalanceBridge {
                     .reduce(ZERO, BigDecimal::add);
         }
 
+        /** Sum of the lines of the item with a positive (1) or negative (−1) balance in the period. */
+        BigDecimal lineTotal(BalanceBridgeItemCode code, int sign) {
+            return lines.getOrDefault(code, Map.of()).values().stream().map(LineAmount::amount)
+                    .filter(a -> a.signum() == sign).reduce(ZERO, BigDecimal::add);
+        }
+
         BigDecimal amount(BalanceBridgeItemCode code) {
             return switch (code) {
-                case LINE_SAVINGS, PROVISIONS_RESERVED, SEPARATE_APPORTIONMENT -> lineTotal(code);
-                case INCOME_VS_PLANNED -> condoFee.add(otherIncome).add(planned);
+                case LINE_SAVINGS, PROVISIONS_RESERVED, UNUSED_OCCASIONAL, SEPARATE_APPORTIONMENT -> lineTotal(code);
+                case INCOME_ABOVE_PLANNED_EXPENSE -> condoFee.add(otherIncome).add(planned).add(occasionalPlanned)
+                        .add(occasionalActual);
                 case FUND_PLANNED_COLLECTION -> fundPlanned;
                 case FUND_EXPENSES -> fundExpenses;
                 case OUTSIDE_BUDGET -> toReallocate.add(withoutLine).add(adjustments);
@@ -498,10 +563,13 @@ public final class BalanceBridge {
         static List<BalanceBridgeItemCode> codes(boolean withOperating, boolean withOthers, boolean all) {
             List<BalanceBridgeItemCode> codes = new ArrayList<>();
             if (withOperating) {
-                codes.addAll(List.of(BalanceBridgeItemCode.LINE_SAVINGS, BalanceBridgeItemCode.PROVISIONS_RESERVED,
-                        BalanceBridgeItemCode.SEPARATE_APPORTIONMENT));
+                codes.addAll(List.of(BalanceBridgeItemCode.LINE_SAVINGS, BalanceBridgeItemCode.PROVISIONS_RESERVED));
+                if (OCCASIONAL_SURPLUS_APART) {
+                    codes.add(BalanceBridgeItemCode.UNUSED_OCCASIONAL);
+                }
+                codes.add(BalanceBridgeItemCode.SEPARATE_APPORTIONMENT);
             }
-            codes.add(BalanceBridgeItemCode.INCOME_VS_PLANNED);
+            codes.add(BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE);
             if (withOthers && !all) {
                 codes.addAll(List.of(BalanceBridgeItemCode.FUND_PLANNED_COLLECTION,
                         BalanceBridgeItemCode.FUND_EXPENSES));
@@ -543,9 +611,19 @@ public final class BalanceBridge {
 
         private List<BridgePartResponse> parts(BalanceBridgeItemCode code) {
             return switch (code) {
-                case INCOME_VS_PLANNED -> List.of(new BridgePartResponse("CONDO_FEE", "Cota recebida", condoFee),
-                        new BridgePartResponse("OTHER_INCOME", "Outras receitas", otherIncome),
-                        new BridgePartResponse("PLANNED", "Previsto do período", planned));
+                case INCOME_ABOVE_PLANNED_EXPENSE -> OCCASIONAL_SURPLUS_APART
+                        ? List.of(new BridgePartResponse("CONDO_FEE", "Cota recebida", condoFee),
+                                new BridgePartResponse("OTHER_INCOME", "Outras receitas", otherIncome),
+                                new BridgePartResponse("PLANNED", "Previsto de despesa do período", planned))
+                        : List.of(new BridgePartResponse("CONDO_FEE", "Cota recebida", condoFee),
+                                new BridgePartResponse("OTHER_INCOME", "Outras receitas", otherIncome),
+                                new BridgePartResponse("PLANNED", "Previsto de despesa do período (sem eventuais e"
+                                        + " anuais)", planned.add(occasionalPlanned)),
+                                new BridgePartResponse("OCCASIONAL_ACTUAL", "Realizado das linhas eventuais e anuais",
+                                        occasionalActual));
+                case UNUSED_OCCASIONAL -> List.of(
+                        new BridgePartResponse("UNUSED", "Previsto não usado", lineTotal(code, 1)),
+                        new BridgePartResponse("ABOVE_LINE", "Compras acima da linha", lineTotal(code, -1)));
                 case OUTSIDE_BUDGET -> List.of(new BridgePartResponse("TO_REALLOCATE", "A realocar", toReallocate),
                         new BridgePartResponse("WITHOUT_BUDGET_LINE", "Sem linha da PO", withoutLine),
                         new BridgePartResponse("ADJUSTMENTS", "Ajustes", adjustments));
@@ -602,15 +680,17 @@ public final class BalanceBridge {
 
     /** Screen label of each item; {@code allFunds}: the bridge of all funds, where the income is the operating fee. */
     public static String label(BalanceBridgeItemCode code, boolean allFunds) {
-        if (allFunds && code == BalanceBridgeItemCode.INCOME_VS_PLANNED) {
-            return "Cota ordinária acima ou abaixo do previsto";
+        if (allFunds && code == BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE) {
+            return "Cota ordinária acima da despesa prevista";
         }
         return switch (code) {
-            case LINE_SAVINGS -> "Economia nas linhas";
+            case LINE_SAVINGS -> "Economia nas linhas (recorrentes e sazonais)";
             case PROVISIONS_RESERVED -> "Reservado nas provisões: previsto para pagamento futuro (férias, rescisão,"
                     + " 13º)";
+            case UNUSED_OCCASIONAL -> "Linhas eventuais e anuais: previsto não usado (previsto que não virou gasto;"
+                    + " não é economia)";
             case SEPARATE_APPORTIONMENT -> "Rateio à parte";
-            case INCOME_VS_PLANNED -> "Receita acima ou abaixo do previsto";
+            case INCOME_ABOVE_PLANNED_EXPENSE -> "Entrada acima da despesa prevista";
             case FUND_PLANNED_COLLECTION -> "Arrecadação prevista dos fundos (linhas 1.9)";
             case FUND_EXPENSES -> "Débitos dos outros fundos";
             case OUTSIDE_BUDGET -> "Fora da PO";

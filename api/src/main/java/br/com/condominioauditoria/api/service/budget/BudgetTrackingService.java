@@ -34,7 +34,8 @@ public class BudgetTrackingService {
     /** {@code budgetId}: budget version; without it, the most recent confirmed one. */
     @Transactional(readOnly = true)
     public BudgetTrackingResponse get(UUID condominiumId, UUID budgetId) {
-        return calculate(condominiumId, budgetId).result();
+        BudgetTrackingResponse r = calculate(condominiumId, budgetId).result();
+        return r.budget() == null ? r : r.withLineReview(query.lineReview(r.budget().id()));
     }
 
     public BudgetTrackingGrid.Grid calculate(UUID condominiumId, UUID budgetId) {

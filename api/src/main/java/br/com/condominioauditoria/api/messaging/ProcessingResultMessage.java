@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Message rag → api. Contract: contracts/mensagens/v3/processing-result.schema.json. These records belong to the
+ * Message rag → api. Contract: contracts/mensagens/v4/processing-result.schema.json
+ * (v4: {@code budgetLineOrigins}, the origin of the lines read from the budget's support sheet, ADR 0009 Decision 3 B). These records belong to the
  * api: the rag has its own. Only the JSON contract is shared.
  */
 public record ProcessingResultMessage(
@@ -20,7 +21,16 @@ public record ProcessingResultMessage(
         Integer pages,
         CashFlow cashFlow,
         BudgetData budget,
-        List<TotalsCheckData> totalsChecks) {
+        List<TotalsCheckData> totalsChecks,
+        BudgetLineOriginsData budgetLineOrigins) {
+
+    /** Message without the origins of the lines (cash flow and budget results). */
+    public ProcessingResultMessage(int version, UUID processingId, UUID fileId, UUID condominiumId, Status status,
+            String reason, String parser, Integer pages, CashFlow cashFlow, BudgetData budget,
+            List<TotalsCheckData> totalsChecks) {
+        this(version, processingId, fileId, condominiumId, status, reason, parser, pages, cashFlow, budget,
+                totalsChecks, null);
+    }
 
     public enum Status {
         STARTED, COMPLETED, FAILED
@@ -114,5 +124,37 @@ public record ProcessingResultMessage(
             String description,
             boolean ok,
             String detail) {
+    }
+
+    /** Lines of the budget's support sheet (v4): where each amount came from. Explains only, never enters a calculation. */
+    public record BudgetLineOriginsData(
+            String sheet,
+            String expensesSheet,
+            String indexSheet,
+            List<BudgetLineOriginData> lines) {
+    }
+
+    /**
+     * One expense line of the support sheet. {@code sequence} is the order among the expense lines, the same order as
+     * the budget's expense lines. Months as "yyyy-MM"; rate as a decimal fraction ("0.0723").
+     */
+    public record BudgetLineOriginData(
+            int sequence,
+            int row,
+            String printedCode,
+            String account,
+            String description,
+            List<String> sourceAccounts,
+            String averageFrom,
+            String averageTo,
+            BigDecimal averageAmount,
+            BigDecimal baseAmount,
+            String method,
+            String indexName,
+            BigDecimal indexRate,
+            boolean indexForecast,
+            String indexNote,
+            BigDecimal finalAmount,
+            String reason) {
     }
 }

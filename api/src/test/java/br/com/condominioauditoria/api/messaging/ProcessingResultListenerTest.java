@@ -32,18 +32,18 @@ class ProcessingResultListenerTest {
     }
 
     @Test
-    void v3CashFlowResultGoesToTheWriter() throws Exception {
-        var message = new Message(MessageContractTest.example("v3", "processing-result-cash-flow.json"),
+    void v4CashFlowResultGoesToTheWriter() throws Exception {
+        var message = new Message(MessageContractTest.example("v4", "processing-result-cash-flow.json"),
                 new MessageProperties());
 
         listener.onMessage(message);
 
-        verify(processingResults).save(org.mockito.ArgumentMatchers.argThat(r -> r.version() == 3));
+        verify(processingResults).save(org.mockito.ArgumentMatchers.argThat(r -> r.version() == 4));
     }
 
     @Test
-    void v3BudgetResultIsAccepted() throws Exception {
-        var message = new Message(MessageContractTest.example("v3", "processing-result-budget.json"),
+    void v4BudgetResultIsAccepted() throws Exception {
+        var message = new Message(MessageContractTest.example("v4", "processing-result-budget.json"),
                 new MessageProperties());
 
         listener.onMessage(message);

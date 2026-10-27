@@ -33,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Spending profile of each expense line (RF-13.3; ADR 0007, Decision 2): suggested by {@link SpendingProfileSuggestion}
+ * Spending profile of each expense line (RF-13.3 and RF-13.14; ADR 0007, Decision 2, revised by ADR 0009, Decision 2): suggested by {@link SpendingProfileSuggestion}
  * when the budget is confirmed, confirmed by the Admin, every change in the trail. The profile never changes the
  * planned amount: it only classifies the line's balance in the balance bridge and the highlight of the tracking grid.
  */
@@ -58,13 +58,14 @@ public class SpendingProfileService {
      * the budget confirmation transaction; the caller saves the lines.
      */
     public void suggestOnConfirmation(Budget budget, BudgetStructure structure, String username, Instant now) {
+        Map<UUID, SpendingProfileSuggestion.Suggestion> suggestions = SpendingProfileSuggestion.suggestAll(structure);
         for (BudgetLine l : AccountMappingService.debitTargets(structure)) {
             if (l.getSpendingProfileStatus() == SpendingProfileStatus.CONFIRMED) {
                 continue;
             }
             SpendingProfile previous = l.getSpendingProfile();
             SpendingProfileStatus previousStatus = l.getSpendingProfileStatus();
-            var s = SpendingProfileSuggestion.suggest(l);
+            var s = suggestions.get(l.getId());
             l.setSpendingProfile(s.profile(), SpendingProfileStatus.SUGGESTED, s.reason(), username, now);
             events.save(new SpendingProfileEvent(l, previous, previousStatus, username, now));
         }
@@ -77,11 +78,13 @@ public class SpendingProfileService {
         return response(budget, lines.findByBudgetIdOrderByPosition(budget.getId()));
     }
 
-    /** Profile in use of each expense line (only CONFIRMED counts; MONTHLY otherwise). */
+    /** Profile of each expense line: the confirmed one, or the current suggestion (RF-13.14). */
     public Map<UUID, LineProfile> profiles(List<BudgetLine> budgetLines) {
+        BudgetStructure structure = BudgetStructure.of(budgetLines);
+        Map<UUID, SpendingProfileSuggestion.Suggestion> suggestions = SpendingProfileSuggestion.suggestAll(structure);
         Map<UUID, LineProfile> m = new HashMap<>();
-        AccountMappingService.debitTargets(BudgetStructure.of(budgetLines))
-                .forEach(l -> m.put(l.getId(), SpendingProfileMapper.profile(l)));
+        AccountMappingService.debitTargets(structure)
+                .forEach(l -> m.put(l.getId(), SpendingProfileMapper.profile(l, suggestions.get(l.getId()))));
         return m;
     }
 
@@ -98,8 +101,10 @@ public class SpendingProfileService {
                     "Confirme a PO antes de confirmar o tipo das linhas");
         }
         List<BudgetLine> budgetLines = lines.findByBudgetIdOrderByPosition(budget.getId());
+        BudgetStructure structure = BudgetStructure.of(budgetLines);
+        Map<UUID, SpendingProfileSuggestion.Suggestion> suggestions = SpendingProfileSuggestion.suggestAll(structure);
         Map<UUID, BudgetLine> targets = new LinkedHashMap<>();
-        AccountMappingService.debitTargets(BudgetStructure.of(budgetLines)).forEach(l -> targets.put(l.getId(), l));
+        AccountMappingService.debitTargets(structure).forEach(l -> targets.put(l.getId(), l));
         List<SpendingProfileItemRequest> items = request == null || request.items() == null ? List.of()
                 : request.items();
         if (items.isEmpty()) {
@@ -112,7 +117,7 @@ public class SpendingProfileService {
             if (l == null) {
                 reasons.add("Linha " + (item == null ? null : item.lineId()) + " não é linha de despesa desta PO"
                         + " (grupos 1.1 a 1.8).");
-            } else if (chosen.put(l, item.profile() == null ? SpendingProfileSuggestion.suggest(l).profile()
+            } else if (chosen.put(l, item.profile() == null ? suggestions.get(l.getId()).profile()
                     : item.profile()) != null) {
                 reasons.add("Mais de um tipo para a linha " + l.getEffectiveCode() + " (ordem " + l.getPosition()
                         + ").");
@@ -150,11 +155,13 @@ public class SpendingProfileService {
     private SpendingProfilesResponse response(Budget budget, List<BudgetLine> budgetLines) {
         List<SpendingProfileLineResponse> list = new ArrayList<>();
         for (BudgetStructure.Group g : BudgetStructure.of(budgetLines).groupsWithoutFunds()) {
-            g.lines().forEach(l -> list.add(SpendingProfileMapper.toResponse(l, g.line().getPrintedCode())));
+            g.lines().forEach(l -> list.add(SpendingProfileMapper.toResponse(l, g.line().getPrintedCode(),
+                    SpendingProfileSuggestion.suggest(l, g.line().getDescription()))));
         }
         int confirmed = (int) list.stream().filter(l -> l.status() == SpendingProfileStatus.CONFIRMED).count();
+        int changed = (int) list.stream().filter(SpendingProfileLineResponse::suggestionChanged).count();
         return new SpendingProfilesResponse(budget.getId(), budget.getVersion(), confirmed, list.size() - confirmed,
-                List.copyOf(list));
+                changed, List.copyOf(list));
     }
 
     private Budget budget(UUID condominiumId, UUID budgetId) {

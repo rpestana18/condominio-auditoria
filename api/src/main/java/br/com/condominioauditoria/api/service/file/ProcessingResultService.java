@@ -22,6 +22,7 @@ import br.com.condominioauditoria.api.repository.accounting.LedgerEntryRepositor
 import br.com.condominioauditoria.api.repository.accounting.TotalsCheckRepository;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.service.budget.BudgetImportService;
+import br.com.condominioauditoria.api.service.budget.BudgetLineOriginService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,10 +55,13 @@ public class ProcessingResultService {
     private final BudgetImportService budgets;
     private final ApplicationEventPublisher events;
     private final PartialMonthService partialMonths;
+    private final BudgetLineOriginService lineOrigins;
 
     ProcessingResultService(SourceFileRepository files, FundRepository funds, LedgerEntryRepository entries,
             FundBalanceRepository balances, TotalsCheckRepository totalsChecks, BudgetImportService budgets,
-            ApplicationEventPublisher publisher, PartialMonthService partialMonths) {
+            ApplicationEventPublisher publisher, PartialMonthService partialMonths,
+            BudgetLineOriginService lineOrigins) {
+        this.lineOrigins = lineOrigins;
         this.files = files;
         this.funds = funds;
         this.entries = entries;
@@ -98,6 +102,10 @@ public class ProcessingResultService {
         }
         if (budgetData != null) {
             saveBudget(file, result, budgetData);
+            return;
+        }
+        if (result.budgetLineOrigins() != null) {
+            saveSupportSheet(file, result);
             return;
         }
 
@@ -149,6 +157,20 @@ public class ProcessingResultService {
                 result.parser(), null, null, null);
         log.info("PO do arquivo {} gravada: {} linhas, estado {}", file.getOriginalName(), budgetData.lines().size(),
                 budget.getStatus());
+    }
+
+    /** Support sheet of the budget (RF-13.13; v4): the origin of each line, never the planned amount (O4). */
+    private void saveSupportSheet(SourceFile file, ProcessingResultMessage result) {
+        if (file.getCategory() != FileCategory.PO) {
+            file.complete(FileStatus.COMPLETED,
+                    "Arquivo guardado. Ele parece a planilha de apoio da PO: para ler a origem das linhas, mude a"
+                            + " categoria para \"" + FileCategory.PO.label() + "\".",
+                    null, null, null, null);
+            return;
+        }
+        var saved = lineOrigins.saveFromSheet(file, result.budgetLineOrigins());
+        file.complete(saved.budget() == null ? FileStatus.NEEDS_REVIEW : FileStatus.COMPLETED, saved.message(),
+                result.parser(), null, null, null);
     }
 
     private void saveCashFlow(SourceFile file, CashFlow cashFlow, List<TotalsCheckData> checks) {

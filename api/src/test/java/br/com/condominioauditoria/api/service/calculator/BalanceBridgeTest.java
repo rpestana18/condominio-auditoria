@@ -44,7 +44,7 @@ class BalanceBridgeTest {
         BridgeItemResponse outside = item(r, BalanceBridgeItemCode.OUTSIDE_BUDGET);
         assertThat(outside.parts()).extracting(p -> p.code() + "=" + p.amount().toPlainString())
                 .containsExactly("TO_REALLOCATE=-1050.93", "WITHOUT_BUDGET_LINE=0.00", "ADJUSTMENTS=-3278.24");
-        BridgeItemResponse income = item(r, BalanceBridgeItemCode.INCOME_VS_PLANNED);
+        BridgeItemResponse income = item(r, BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE);
         assertThat(income.amount()).isEqualByComparingTo("-10385.57");
         assertThat(income.parts()).extracting(p -> p.code() + "=" + p.amount().toPlainString())
                 .containsExactly("CONDO_FEE=440000.00", "OTHER_INCOME=1234.56", "PLANNED=-451620.13");
@@ -58,6 +58,65 @@ class BalanceBridgeTest {
                 BalanceBridgeItemCode.FUND_PLANNED_COLLECTION, BalanceBridgeItemCode.FUND_EXPENSES);
         assertThat(item(r, BalanceBridgeItemCode.LINE_SAVINGS).percentageOfVariation()).isEqualByComparingTo("-32.7");
         assertThat(r.warnings()).isEmpty();
+    }
+
+    /**
+     * RF-13.15 (version 4): items 1 + 2 + 3 = planned − actual in the budget lines (451.620,13 − 445.125,96 =
+     * 6.494,17 in September/2026), whatever the split by type; an occasional line goes to UNUSED_OCCASIONAL ("previsto
+     * que não virou gasto; não é economia"), never to LINE_SAVINGS (Q52, own item).
+     */
+    @Test
+    void occasionalLineIsUnusedPlannedNotSavings() {
+        assertThat(BalanceBridge.VERSION).isEqualTo("4");
+        assertThat(BalanceBridge.OCCASIONAL_SURPLUS_APART).isTrue();
+        var profiles = new java.util.HashMap<>(s.confirmedProfiles());
+        var services = s.lines.stream().filter(l -> "1.8.1".equals(l.getPrintedCode())).findFirst().orElseThrow();
+        profiles.put(services.getId(), new BudgetTrackingGrid.LineProfile(
+                br.com.condominioauditoria.api.model.enums.SpendingProfile.OCCASIONAL,
+                br.com.condominioauditoria.api.model.enums.SpendingProfileStatus.CONFIRMED));
+        var grid = s.grid(profiles);
+        var funds = FundMovements.calculate(s.funds(SEPTEMBER.minusMonths(1), SEPTEMBER));
+        BalanceBridgeResponse r = BalanceBridge.calculate(BalanceBridge.Input.of(grid, funds, OPERATING, OPERATING,
+                SEPTEMBER, SEPTEMBER));
+
+        BridgeItemResponse unused = item(r, BalanceBridgeItemCode.UNUSED_OCCASIONAL);
+        assertThat(unused.amount()).isEqualByComparingTo("31374.65");
+        assertThat(unused.label()).contains("não é economia");
+        assertThat(unused.parts()).extracting(p -> p.code() + "=" + p.amount().toPlainString())
+                .containsExactly("UNUSED=31374.65", "ABOVE_LINE=0.00");
+        assertThat(unused.lines()).extracting(BridgeLineResponse::code).containsExactly("1.8.1");
+        assertThat(item(r, BalanceBridgeItemCode.LINE_SAVINGS).lines()).extracting(BridgeLineResponse::code)
+                .doesNotContain("1.8.1");
+        BigDecimal lines = item(r, BalanceBridgeItemCode.LINE_SAVINGS).amount()
+                .add(item(r, BalanceBridgeItemCode.PROVISIONS_RESERVED).amount()).add(unused.amount());
+        assertThat(lines).isEqualByComparingTo("6494.17");
+        assertThat(item(r, BalanceBridgeItemCode.UNEXPLAINED).amount()).isEqualByComparingTo("0.00");
+        assertThat(r.closes()).isTrue();
+        assertThat(r.months().getFirst().items()).extracting(i -> i.code())
+                .contains(BalanceBridgeItemCode.UNUSED_OCCASIONAL);
+    }
+
+    /** RF-13.12: while the lines are not reviewed, the items by line have no number; the others stay. */
+    @Test
+    void withoutReviewedLinesTheItemsByLineAreBlank() {
+        BalanceBridgeResponse r = bridge(OPERATING, SEPTEMBER, SEPTEMBER);
+        var review = new br.com.condominioauditoria.api.dto.response.budget.LineReviewStateResponse(UUID.randomUUID(),
+                false, 3, 88, "Confira as linhas da PO");
+
+        BalanceBridgeResponse blank = BalanceBridge.withoutLineItems(r, review);
+
+        assertThat(blank.lineReview()).isEqualTo(review);
+        for (BalanceBridgeItemCode code : BalanceBridge.LINE_ITEMS) {
+            blank.items().stream().filter(i -> i.code() == code).forEach(i -> {
+                assertThat(i.amount()).isNull();
+                assertThat(i.lines()).isEmpty();
+            });
+        }
+        assertThat(item(blank, BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE).amount())
+                .isEqualByComparingTo("-10385.57");
+        assertThat(blank.variation()).isEqualByComparingTo(r.variation());
+        assertThat(blank.months().getFirst().items()).filteredOn(i -> i.code() == BalanceBridgeItemCode.LINE_SAVINGS)
+                .allSatisfy(i -> assertThat(i.amount()).isNull());
     }
 
     @Test
@@ -81,8 +140,8 @@ class BalanceBridgeTest {
         assertThat(r.closingBalance()).isEqualByComparingTo("317575.27");
         assertThat(r.variation()).isEqualByComparingTo("5840.22");
         // Q49: the income is only the operating fund's fee; the reserve fund is an apportionment fund
-        BridgeItemResponse income = item(r, BalanceBridgeItemCode.INCOME_VS_PLANNED);
-        assertThat(income.label()).isEqualTo("Cota ordinária acima ou abaixo do previsto");
+        BridgeItemResponse income = item(r, BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE);
+        assertThat(income.label()).isEqualTo("Cota ordinária acima da despesa prevista");
         assertThat(income.amount()).isEqualByComparingTo("-10385.57");
         BridgeItemResponse funds = item(r, BalanceBridgeItemCode.APPORTIONMENT_FUNDS);
         assertThat(funds.amount()).isEqualByComparingTo("14060.79");
@@ -105,11 +164,12 @@ class BalanceBridgeTest {
         assertThat(r.effectiveTo()).isEqualTo("2026-09");
         assertThat(r.items()).extracting(BridgeItemResponse::code).containsExactly(
                 BalanceBridgeItemCode.LINE_SAVINGS, BalanceBridgeItemCode.PROVISIONS_RESERVED,
-                BalanceBridgeItemCode.SEPARATE_APPORTIONMENT, BalanceBridgeItemCode.INCOME_VS_PLANNED,
-                BalanceBridgeItemCode.OUTSIDE_BUDGET, BalanceBridgeItemCode.INTER_FUND_TRANSFERS,
-                BalanceBridgeItemCode.APPORTIONMENT_FUNDS, BalanceBridgeItemCode.UNEXPLAINED);
-        BridgeItemResponse income = item(r, BalanceBridgeItemCode.INCOME_VS_PLANNED);
-        assertThat(income.label()).isEqualTo("Cota ordinária acima ou abaixo do previsto");
+                BalanceBridgeItemCode.UNUSED_OCCASIONAL, BalanceBridgeItemCode.SEPARATE_APPORTIONMENT,
+                BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE, BalanceBridgeItemCode.OUTSIDE_BUDGET,
+                BalanceBridgeItemCode.INTER_FUND_TRANSFERS, BalanceBridgeItemCode.APPORTIONMENT_FUNDS,
+                BalanceBridgeItemCode.UNEXPLAINED);
+        BridgeItemResponse income = item(r, BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE);
+        assertThat(income.label()).isEqualTo("Cota ordinária acima da despesa prevista");
         assertThat(income.amount()).isEqualByComparingTo("171373.73");
         assertThat(income.parts()).extracting(p -> p.code() + "=" + p.amount().toPlainString())
                 .containsExactly("CONDO_FEE=2415892.07", "OTHER_INCOME=13582.31", "PLANNED=-2258100.65");
@@ -154,15 +214,15 @@ class BalanceBridgeTest {
         BalanceBridgeResponse operating = bridge(OPERATING, YearMonth.of(2026, 5), SEPTEMBER);
 
         for (BalanceBridgeItemCode code : new BalanceBridgeItemCode[] {BalanceBridgeItemCode.LINE_SAVINGS,
-                BalanceBridgeItemCode.PROVISIONS_RESERVED, BalanceBridgeItemCode.INCOME_VS_PLANNED,
+                BalanceBridgeItemCode.PROVISIONS_RESERVED, BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE,
                 BalanceBridgeItemCode.OUTSIDE_BUDGET}) {
             assertThat(item(all, code).amount()).as(code.name()).isEqualByComparingTo(item(operating, code).amount());
         }
         // The operating fund's bridge (and the home summary, RF-13.7) has no apportionment funds
         assertThat(operating.items()).extracting(BridgeItemResponse::code)
                 .doesNotContain(BalanceBridgeItemCode.APPORTIONMENT_FUNDS);
-        assertThat(item(operating, BalanceBridgeItemCode.INCOME_VS_PLANNED).label())
-                .isEqualTo("Receita acima ou abaixo do previsto");
+        assertThat(item(operating, BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE).label())
+                .isEqualTo("Entrada acima da despesa prevista");
         assertThat(item(operating, BalanceBridgeItemCode.UNEXPLAINED).amount()).isEqualByComparingTo("0.00");
     }
 
@@ -193,7 +253,7 @@ class BalanceBridgeTest {
         assertThat(oct.closingBalance()).isEqualByComparingTo("381980.34");
         assertThat(oct.items()).isNotEmpty().allSatisfy(i -> assertThat(i.amount()).isNull());
         assertThat(oct.items()).extracting(i -> i.code()).contains(BalanceBridgeItemCode.LINE_SAVINGS,
-                BalanceBridgeItemCode.PROVISIONS_RESERVED, BalanceBridgeItemCode.INCOME_VS_PLANNED,
+                BalanceBridgeItemCode.PROVISIONS_RESERVED, BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE,
                 BalanceBridgeItemCode.OUTSIDE_BUDGET, BalanceBridgeItemCode.INTER_FUND_TRANSFERS,
                 BalanceBridgeItemCode.UNEXPLAINED);
         assertThat(r.partialMonth().inflows()).isEqualByComparingTo("459045.72");
@@ -230,7 +290,7 @@ class BalanceBridgeTest {
         BalanceBridgeResponse r = bridge(RESERVE, SEPTEMBER, SEPTEMBER);
 
         assertThat(r.variation()).isEqualByComparingTo("19060.79");
-        assertThat(item(r, BalanceBridgeItemCode.INCOME_VS_PLANNED).amount()).isEqualByComparingTo("712.19");
+        assertThat(item(r, BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE).amount()).isEqualByComparingTo("712.19");
         assertThat(r.items()).extracting(BridgeItemResponse::code).doesNotContain(BalanceBridgeItemCode.LINE_SAVINGS);
         assertThat(item(r, BalanceBridgeItemCode.UNEXPLAINED).amount()).isEqualByComparingTo("0.00");
     }

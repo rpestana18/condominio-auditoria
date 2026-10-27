@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-/** Budget line in the grid, identified by its id (ADR 0007, Decision 1). {@code code}: display label (the printed code when there is none). {@code balance}: cumulative planned − cumulative actual, only in the complete months with a cash flow (positive = left over). {@code effectiveProfile}: the confirmed profile, or MONTHLY without confirmation. */
+/** Budget line in the grid, identified by its id (ADR 0007, Decision 1). {@code code}: display label (the printed code when there is none). {@code balance}: cumulative planned − cumulative actual, only in the complete months with a cash flow (positive = left over). {@code effectiveProfile}: the confirmed profile, or the suggested one without confirmation (RECURRING when there is none). */
 public record TrackingLineResponse(
         UUID lineId,
         int position,

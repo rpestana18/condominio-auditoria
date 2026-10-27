@@ -76,7 +76,9 @@ class BudgetTrackingGridTest {
         assertThat(r.blocks().toReallocate().cumulative()).isEqualByComparingTo("1050.93");
         assertThat(r.blocks().withoutBudgetLine().cumulative()).isEqualByComparingTo("0.00");
         assertThat(line(r, "1.1.5").effectiveProfile()).isEqualTo(SpendingProfile.PROVISION);
-        assertThat(line(r, "1.6.20").effectiveProfile()).isEqualTo(SpendingProfile.ANNUAL);
+        // RF-13.14 (rules v2): "anual" only by the word in Observações; "média 3 assembléias no ano" stays recurring
+        // until the Admin confirms (P9 proposes eventual)
+        assertThat(line(r, "1.6.20").effectiveProfile()).isEqualTo(SpendingProfile.RECURRING);
     }
 
     @Test
@@ -99,7 +101,7 @@ class BudgetTrackingGridTest {
         BudgetTrackingResponse unconfirmed = s.grid(Map.of()).result();
 
         assertThat(unconfirmed.groups().stream().flatMap(g -> g.lines().stream()))
-                .allSatisfy(l -> assertThat(l.effectiveProfile()).isEqualTo(SpendingProfile.MONTHLY));
+                .allSatisfy(l -> assertThat(l.effectiveProfile()).isEqualTo(SpendingProfile.RECURRING));
         assertThat(unconfirmed.cumulative()).isEqualTo(confirmed.cumulative());
         assertThat(unconfirmed.warnings()).anySatisfy(w -> assertThat(w.code()).isEqualTo("PROFILE_NOT_CONFIRMED"));
     }

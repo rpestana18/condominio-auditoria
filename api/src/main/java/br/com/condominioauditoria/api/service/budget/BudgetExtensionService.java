@@ -1,6 +1,7 @@
 package br.com.condominioauditoria.api.service.budget;
 
 import br.com.condominioauditoria.api.dto.request.budget.BudgetExtensionRequest;
+import br.com.condominioauditoria.api.dto.request.budget.FiscalYearEndRequest;
 import br.com.condominioauditoria.api.dto.response.budget.BudgetDetailResponse;
 import br.com.condominioauditoria.api.event.BudgetChanged;
 import br.com.condominioauditoria.api.model.budget.Budget;
@@ -93,6 +94,61 @@ public class BudgetExtensionService {
         return query.detail(budget);
     }
 
+    /**
+     * RF-13.17 (ADR 0009, Decision 6): the Admin corrects the end of the fiscal year of a confirmed budget, with a
+     * justification and a FISCAL_YEAR_END_CORRECTED event ("de X para Y"). The new end is not before the start and its
+     * months do not overlap another confirmed budget. The grid, the bridge and the indicators follow on the next query
+     * (nothing is stored). An extension that no longer ends after the new end is undone in the same event.
+     */
+    @Transactional
+    public BudgetDetailResponse correctFiscalYearEnd(UUID condominiumId, UUID budgetId, FiscalYearEndRequest request,
+            String username) {
+        Budget budget = budgetForWrite(condominiumId, budgetId, "corrigir o fim do exercício");
+        String justification = request == null || request.justification() == null ? "" : request.justification().trim();
+        if (justification.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT,
+                    "A correção do fim do exercício exige justificativa");
+        }
+        YearMonth end = month(request.fiscalYearEnd(), "Informe o fim do exercício no formato AAAA-MM: ");
+        YearMonth before = budget.getFiscalYearEnd();
+        if (end.equals(before)) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT,
+                    "O fim do exercício já é " + BudgetVsActualCalculator.mmyyyy(end));
+        }
+        if (end.isBefore(budget.getFiscalYearStart())) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "O fim do exercício ("
+                    + BudgetVsActualCalculator.mmyyyy(end) + ") não pode ser antes do início ("
+                    + BudgetVsActualCalculator.mmyyyy(budget.getFiscalYearStart()) + ")");
+        }
+        List<Budget> others = budgets.findByCondominiumIdAndStatusIn(condominiumId,
+                        EnumSet.of(BudgetStatus.CONFIRMED, BudgetStatus.SUPERSEDED)).stream()
+                .filter(p -> !p.getId().equals(budget.getId())).toList();
+        if (end.isAfter(before)) {
+            for (YearMonth month : BudgetVsActualCalculator.months(before.plusMonths(1), end)) {
+                Optional<BudgetValidity.BudgetOfMonth> ofMonth = BudgetValidity.ofMonth(others, month);
+                if (ofMonth.isPresent() && !ofMonth.get().extended()) {
+                    Budget other = ofMonth.get().budget();
+                    throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT,
+                            BudgetVsActualCalculator.mmyyyy(month) + " já tem PO confirmada (versão "
+                                    + other.getVersion() + ", exercício " + other.getFiscalYearStart() + " a "
+                                    + other.getFiscalYearEnd() + ")");
+                }
+            }
+        }
+        Instant now = Instant.now();
+        YearMonth extendedBefore = budget.getExtendedUntil();
+        budget.correctFiscalYearEnd(end);
+        budgets.save(budget);
+        String undone = extendedBefore != null && budget.getExtendedUntil() == null
+                ? " Prorrogação até " + extendedBefore + " desfeita, porque não termina depois do novo fim." : "";
+        events.save(new BudgetEvent(budget, BudgetEvent.FISCAL_YEAR_END_CORRECTED, username, now, justification,
+                "Fim do exercício corrigido de " + before + " para " + end + "." + undone));
+        publisher.publishEvent(BudgetChanged.of(condominiumId, "fim do exercício da PO versão " + budget.getVersion()
+                + " corrigido para " + end, username, now));
+        log.info("Fim do exercício da PO {} corrigido de {} para {} por {}", budget.getId(), before, end, username);
+        return query.detail(budget);
+    }
+
     @Transactional
     public BudgetDetailResponse undo(UUID condominiumId, UUID budgetId, String username) {
         Budget budget = budgetForWrite(condominiumId, budgetId);
@@ -112,6 +168,10 @@ public class BudgetExtensionService {
     }
 
     private Budget budgetForWrite(UUID condominiumId, UUID budgetId) {
+        return budgetForWrite(condominiumId, budgetId, "prorrogar");
+    }
+
+    private Budget budgetForWrite(UUID condominiumId, UUID budgetId, String action) {
         // One budget change at a time in the condominium, as in confirmation
         condominiums.lockById(condominiumId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Condomínio não encontrado"));
@@ -119,18 +179,21 @@ public class BudgetExtensionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PO não encontrada"));
         if (budget.getStatus() != BudgetStatus.CONFIRMED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, budget.getStatus() == BudgetStatus.SUPERSEDED
-                    ? "PO substituída por outra versão: prorrogue a versão que vale"
-                    : "Confirme a PO antes de prorrogar");
+                    ? "PO substituída por outra versão: use a versão que vale para " + action
+                    : "Confirme a PO antes de " + action);
         }
         return budget;
     }
 
     private static YearMonth month(String text) {
+        return month(text, "Informe o último mês prorrogado no formato AAAA-MM: ");
+    }
+
+    private static YearMonth month(String text, String message) {
         try {
             return YearMonth.parse(text == null ? "" : text.trim());
         } catch (DateTimeParseException e) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT,
-                    "Informe o último mês prorrogado no formato AAAA-MM: " + text);
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, message + text);
         }
     }
 }

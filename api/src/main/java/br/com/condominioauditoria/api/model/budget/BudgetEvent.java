@@ -22,6 +22,8 @@ public class BudgetEvent {
      * (RF-11.3).
      */
     public static final String EXTENSION_SHORTENED = "EXTENSION_SHORTENED";
+    /** RF-13.17: the Admin corrected the end of the fiscal year of a confirmed budget, with a justification. */
+    public static final String FISCAL_YEAR_END_CORRECTED = "FISCAL_YEAR_END_CORRECTED";
 
     @Id
     private UUID id;

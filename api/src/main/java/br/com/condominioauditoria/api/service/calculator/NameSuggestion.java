@@ -31,6 +31,14 @@ import java.util.stream.Collectors;
  * <li><b>every cash flow word is in the line</b>: when the score does not reach the minimum, the only line whose
  * budget account plus description contain all the cash flow words ("INSS" in "Salário · INSS/FGTS/PIS/IRPF").</li>
  * </ul>
+ * Two rules of the line review (O1 and O2; ADR 0009, Decision 3), from the Admin's marks ({@link LineHints}):
+ * <ul>
+ * <li><b>description prevails</b> (O1): a line marked "vale a descrição" is compared only by its description, never by
+ * the printed account;</li>
+ * <li><b>analytic account beats the group account</b> (O2): a line marked "conta de grupo" is compared only by its
+ * description, and in a tie the other lines win over it (holidays go to 1.1.5 and the 13th salary to 1.1.12, not to
+ * 1.1.1).</li>
+ * </ul>
  * The suggestion is never confirmed here.
  */
 public final class NameSuggestion {
@@ -51,6 +59,27 @@ public final class NameSuggestion {
 
         boolean reaches(BigDecimal minimum) {
             return BigDecimal.valueOf(common).compareTo(minimum.multiply(BigDecimal.valueOf(total))) >= 0;
+        }
+    }
+
+    /** The Admin's marks of the line review used here (O1, O2); empty = no mark. */
+    public record LineHints(Set<java.util.UUID> groupAccount, Set<java.util.UUID> descriptionPrevails) {
+
+        public static final LineHints NONE = new LineHints(Set.of(), Set.of());
+
+        public LineHints {
+            groupAccount = groupAccount == null ? Set.of() : Set.copyOf(groupAccount);
+            descriptionPrevails = descriptionPrevails == null ? Set.of() : Set.copyOf(descriptionPrevails);
+        }
+
+        public static LineHints of(List<BudgetLine> lines) {
+            return new LineHints(lines.stream().filter(BudgetLine::isGroupAccount).map(BudgetLine::getId)
+                    .collect(Collectors.toSet()), lines.stream().filter(BudgetLine::isDescriptionPrevails)
+                    .map(BudgetLine::getId).collect(Collectors.toSet()));
+        }
+
+        boolean byDescriptionOnly(BudgetLine line) {
+            return groupAccount.contains(line.getId()) || descriptionPrevails.contains(line.getId());
         }
     }
 
@@ -113,6 +142,12 @@ public final class NameSuggestion {
      * @param suppliers names of the suppliers printed in the account's entries (only used to break a tie)
      */
     public Result suggest(String cashFlowName, java.util.Collection<String> suppliers, List<BudgetLine> candidates) {
+        return suggest(cashFlowName, suppliers, candidates, LineHints.NONE);
+    }
+
+    /** @param hints the Admin's marks of the line review (O1, O2) */
+    public Result suggest(String cashFlowName, java.util.Collection<String> suppliers, List<BudgetLine> candidates,
+            LineHints hints) {
         List<String> cashFlow = normalize(cashFlowName);
         if (cashFlow.isEmpty()) {
             return new NoSuggestion("nome da conta do fluxo sem palavras para comparar");
@@ -121,7 +156,7 @@ public final class NameSuggestion {
         List<BudgetLine> tied = new ArrayList<>();
         List<String> bestName = List.of();
         for (BudgetLine line : candidates) {
-            List<String> account = normalize(line.getAccount());
+            List<String> account = hints.byDescriptionOnly(line) ? List.of() : normalize(line.getAccount());
             List<String> description = normalize(line.getDescription());
             Score byAccount = score(cashFlow, account);
             Score byDescription = score(cashFlow, description);
@@ -139,7 +174,7 @@ public final class NameSuggestion {
         }
         String cashFlowText = String.join(" ", cashFlow);
         if (tied.isEmpty() || !best.reaches(minScore)) {
-            Optional<Suggested> contained = allWordsInOneLine(cashFlow, cashFlowText, candidates);
+            Optional<Suggested> contained = allWordsInOneLine(cashFlow, cashFlowText, candidates, hints);
             if (contained.isPresent()) {
                 return contained.get();
             }
@@ -147,6 +182,15 @@ public final class NameSuggestion {
                     ? new NoSuggestion("fluxo: " + cashFlowText + "; nenhuma linha da PO com palavras em comum")
                     : new NoSuggestion("fluxo: " + cashFlowText + "; melhor linha " + tied.getFirst().getEffectiveCode()
                             + " com nota " + display(best.value()) + ", abaixo do mínimo " + display(minScore));
+        }
+        String groupNote = "";
+        if (tied.size() > 1 && tied.stream().anyMatch(l -> hints.groupAccount().contains(l.getId()))
+                && tied.stream().anyMatch(l -> !hints.groupAccount().contains(l.getId()))) {
+            // O2: the line with its own account wins over the line marked as citing a group account
+            String grouped = tied.stream().filter(l -> hints.groupAccount().contains(l.getId()))
+                    .map(BudgetLine::getEffectiveCode).collect(Collectors.joining(", "));
+            tied.removeIf(l -> hints.groupAccount().contains(l.getId()));
+            groupNote = "; a linha com conta própria ganha da linha com conta de grupo " + grouped + " (O2)";
         }
         if (tied.size() > 1) {
             String tiedCodes = tied.stream().map(BudgetLine::getEffectiveCode).collect(Collectors.joining(", "));
@@ -158,11 +202,16 @@ public final class NameSuggestion {
                     + display(best.value()) + "): escolha na lista");
         }
         BudgetLine chosen = tied.getFirst();
+        if (!groupNote.isEmpty()) {
+            List<String> account = hints.byDescriptionOnly(chosen) ? List.of() : normalize(chosen.getAccount());
+            List<String> description = normalize(chosen.getDescription());
+            bestName = score(cashFlow, account).compareTo(score(cashFlow, description)) >= 0 ? account : description;
+        }
         Set<String> common = new LinkedHashSet<>(cashFlow);
         common.retainAll(bestName);
         return new Suggested(chosen, best, "fluxo: " + cashFlowText + "; PO " + chosen.getEffectiveCode() + ": "
                 + String.join(" ", bestName) + " (em comum: " + String.join(", ", common) + "; nota "
-                + display(best.value()) + ")");
+                + display(best.value()) + ")" + groupNote);
     }
 
     /**
@@ -199,11 +248,12 @@ public final class NameSuggestion {
 
     /** The only line whose budget account plus description contain every cash flow word. None or more: empty. */
     private Optional<Suggested> allWordsInOneLine(List<String> cashFlow, String cashFlowText,
-            List<BudgetLine> candidates) {
+            List<BudgetLine> candidates, LineHints hints) {
         BudgetLine chosen = null;
         List<String> chosenWords = List.of();
         for (BudgetLine line : candidates) {
-            LinkedHashSet<String> words = new LinkedHashSet<>(normalize(line.getAccount()));
+            LinkedHashSet<String> words = new LinkedHashSet<>(hints.byDescriptionOnly(line) ? List.of()
+                    : normalize(line.getAccount()));
             words.addAll(normalize(line.getDescription()));
             if (words.containsAll(cashFlow)) {
                 if (chosen != null) {

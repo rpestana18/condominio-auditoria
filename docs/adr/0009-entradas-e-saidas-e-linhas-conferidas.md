@@ -1,10 +1,10 @@
 # ADR 0009: Entradas e saídas, linhas conferidas e tipos revistos (RF-13 revisto)
 
-- **Status:** proposta (26/10/2026), aguardando o usuário
+- **Status:** aprovada pelo usuário em 27/10/2026 (merge do PR #62); Decisão 3 na opção B e Q52 na opção "parcela própria", recomendações, enquanto os cartões não forem respondidos
 - **Requisitos atendidos:** revisão do RF-13 de 26/10/2026 (RF-13.11 a RF-13.17, menu e tela inicial revistos), a partir de `docs/negocio/po.md`
 - **Complementa:** ADR 0004 (cálculo na consulta, de-para), ADR 0007 (tipo da linha, grade e ponte). Não cria serviço, fila nova ou canal gRPC (ADR 0002).
 - **Número:** a ADR 0008 fica reservada para o padrão de logs, já anunciado ao usuário em 23/10/2026.
-- **Não decide:** a Q52 (onde fica a sobra das linhas eventuais). A Decisão 5 mostra o que muda em cada resposta.
+- **Q52:** implementada na opção "parcela própria" (`UNUSED_OCCASIONAL`), a recomendada, até a resposta do cartão. A troca fica num ponto só do código (`BalanceBridge.OCCASIONAL_SURPLUS_APART`); a Decisão 5 mostra o que muda em cada resposta.
 
 ## Contexto
 

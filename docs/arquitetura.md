@@ -111,7 +111,7 @@ Pipeline por arquivo:
 
 Idempotente: reenviar o mesmo arquivo não duplica nada.
 
-**PO aprovada (ADR 0004):** o `rag` reconhece a PO da administradora do piloto pelo título e lê as linhas pela posição das palavras do leitor v1, sem IA e sem mudar o leitor (`rag.parser.budget`, `rag.model.budget`). Confere subtotais, total, previsto do mês e código repetido, e devolve tudo no `ResultadoProcessamento` **v2** (`previsaoOrcamentaria`). No fluxo de caixa, o enriquecimento passa a marcar `recebimentoCota` nos créditos "RECIBOS ACUMULADOS", usados na arrecadação dos fundos de reserva e de obras.
+**PO aprovada (ADR 0004):** o `rag` reconhece a PO da administradora do piloto pelo título e lê as linhas pela posição das palavras do leitor v1, sem IA e sem mudar o leitor (`rag.parser.budget`, `rag.model.budget`). Confere subtotais, total, previsto do mês e código repetido, e devolve tudo no `ResultadoProcessamento` **v2** (`previsaoOrcamentaria`). Desde a ADR 0009 (mensagem **v4**), a planilha de apoio da PO (`.xlsx`, contrato do leitor v2 sem mudança) é reconhecida pelo cabeçalho e devolvida no bloco `budgetLineOrigins`: o método de cada linha é deduzido pelos números (média × (1 + índice) até R$ 0,01, igual à média, valor digitado ou sem média). No fluxo de caixa, o enriquecimento passa a marcar `recebimentoCota` nos créditos "RECIBOS ACUMULADOS", usados na arrecadação dos fundos de reserva e de obras.
 
 ### 3.2 RAG (serviço `rag`, Spring AI)
 - Indexa **texto** dos documentos (contratos, **atas de assembleia**, convenção, RI, POs). Atas também geram registros estruturados de `Deliberacao` (assunto, valor, fundo, prazo) usados para justificar achados em *chunks* com metadados (categoria, competência, página).
@@ -128,6 +128,7 @@ Idempotente: reenviar o mesmo arquivo não duplica nada.
 - **Orçamento e previsão**: previsto × realizado; projeção por rubrica (estatística + contratos + índices).
   - **ADR 0004:** pacote `backend.orcamento`. Grava a PO lida (só para arquivo da categoria PO) e o Admin a confirma, com exercício, ata, código efetivo das linhas repetidas e ligação das linhas 1.9 aos fundos. De-para por versão da PO (conta do fluxo → linha da PO, ajuste, a realocar ou transferência), com sugestão por comparação de texto sem IA, cópia da versão anterior e planilha, sempre "sugerido" até o Admin confirmar, e trilha só de inserção. Realocação mínima (RF-03.1.7) com chave estável do lançamento. **Os números não são gravados:** uma função pura (`CalculoPrevistoRealizado`) calcula na consulta e alimenta a tela, o PDF e o Excel. Os achados (regra dos 20%, conta sem linha da PO, reserva acima do teto) são recalculados depois do commit de cada mudança e gravados por chave única.
   - **ADR 0005 (aprovada em 07/10/2026):** análise de vários exercícios no mesmo pacote. Catálogo de **rubricas** do condomínio (cada linha da PO ligada a uma rubrica, sugerida pela conta da PO e pelo grupo, confirmada pelo Admin, com trilha só de inserção), que faz a correspondência entre exercícios. Prorrogação como campo da PO. "PO anterior pela coluna impressa" montada na consulta a partir de `orcado_anterior`. Comparação e indicadores calculados na consulta por funções puras que reusam o `CalculoPrevistoRealizado`.
+  - **ADR 0009 (aprovada em 27/10/2026):** a seção "Análise da PO" começa em "Entradas e saídas" (`MonthlyCashFlow`, função pura na consulta: entradas, saídas por linha da PO e por bloco, transferências, saldo do mês e acumulado, conferidos com o extrato; meses antes da PO com a marca `BEFORE_BUDGET`). Antes de distribuir gasto por linha, o Admin confere as linhas da PO (`budget_line.review_status`, trilha só de inserção, avisos em `BudgetLineReviewCheck`); enquanto falta, as telas trazem o passo pendente na resposta, sem erro 4xx. Tipos da linha revistos (`RECURRING`, `OCCASIONAL`, `SEASONAL`, `ANNUAL`, `PROVISION`, `SEPARATE_APPORTIONMENT`), origem de cada linha (`budget_line_origin`, lida pelo `rag` da planilha de apoio e enviada na mensagem v4) e ponte do saldo v4 (`LINE_SAVINGS`, `PROVISIONS_RESERVED`, `UNUSED_OCCASIONAL`, `INCOME_ABOVE_PLANNED_EXPENSE`, ...). Ação "corrigir o fim do exercício", com trilha.
 - **Relatórios**: PDF/Excel sob demanda, gerados no backend com Thymeleaf + OpenHTMLtoPDF e Apache POI a partir do mesmo objeto que a tela recebe (ADR 0004: sem gráfico no PDF e no Excel; barras de execução em CSS).
 - **Trilha de auditoria** de todas as mudanças.
 - **Registro dos arquivos** e pedidos de leitura ao rag pela fila.
@@ -190,6 +191,12 @@ DeParaConta(id, po_id, conta_fluxo_codigo, conta_fluxo_nome, destino[linha_po|aj
 EventoDePara(id, depara_id, antes, depois, usuario, em)   -- só inserção; migra para EventoAuditoria (RF-07.4)
 Realocacao(id, impressao_lancamento, linha_po_id, por, em, desfeita_em)   -- impressão = arquivo, página, ordem, data, conta, documento, valor
    -- o resultado do previsto × realizado não é tabela: é calculado na consulta
+   -- ADR 0009 (V21): a conferência das linhas fica em budget_line (review_status[PENDING|REVIEWED], reviewed_by,
+   -- reviewed_at, group_account, description_prevails) com a trilha budget_line_review_event (só inserção); o tipo da
+   -- linha passa a RECURRING|OCCASIONAL|SEASONAL|ANNUAL|PROVISION|SEPARATE_APPORTIONMENT
+OrigemLinhaPO = budget_line_origin(budget_line_id 1:1, contas_origem, periodo_media, valor_media, metodo,
+           indice_nome, indice_valor, indice_previsao, valor_final, motivo, fonte[SHEET|ADMIN], arquivo_id, aba, linha, sha256)
+   -- só explica: o previsto é sempre o valor da PO (O4). Entradas e saídas (MonthlyCashFlow) e a ponte v4 são calculadas na consulta
 Unidade(id, identificacao, fracao_ideal)
 RegraAuditoria(id, codigo, versao, parametros, vigencia)
 ExecucaoAuditoria(id, competencia, versao_regras, iniciada_em, concluida_em)

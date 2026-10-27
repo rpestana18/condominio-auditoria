@@ -61,6 +61,15 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | ponte do saldo | `BalanceBridge` | RF-13.6 (ADR 0007) |
 | fundo de rateio | `ApportionmentFund` (`APPORTIONMENT_FUNDS`) | todo fundo que não é o ordinário, só na ponte de todos os fundos (Q49) |
 | mês parcial, mês em andamento | `PartialMonth`, "month in progress" | RF-13.10 e Q50 |
+| tipo da linha: recorrente, eventual, sazonal, anual | `SpendingProfile`: `RECURRING`, `OCCASIONAL`, `SEASONAL`, `ANNUAL` | RF-13.14 (ADR 0009, Decisão 2). `RECURRING` substitui `MONTHLY`; `PROVISION` e `SEPARATE_APPORTIONMENT` não mudam |
+| linha conferida, conferência das linhas, estado da conferência | `reviewed`, `BudgetLineReview`, `BudgetLineReviewStatus` (`PENDING`, `REVIEWED`) | RF-13.12 (ADR 0009, Decisão 1); avisos em `BudgetLineReviewCheck` |
+| conta de grupo, vale a descrição | `groupAccount`, `descriptionPrevails` | marcas do Admin na conferência (O2 e O1) |
+| entrada acima da despesa prevista | `incomeAbovePlannedExpense` (`INCOME_ABOVE_PLANNED_EXPENSE`) | substitui "receita acima ou abaixo do previsto" (`INCOME_VS_PLANNED`), RF-13.15 |
+| eventuais e anuais: previsto não usado | `UNUSED_OCCASIONAL` | parcela própria da ponte (Q52), "não é economia" |
+| origem da linha, planilha de apoio, método | `BudgetLineOrigin`, `supportSheet`, `OriginMethod` (`AVERAGE_TIMES_INDEX`, `EQUAL_TO_AVERAGE`, `TYPED`, `NO_AVERAGE`) | RF-13.13 (ADR 0009, Decisão 3 B); fonte `SHEET` ou `ADMIN` |
+| entradas e saídas (mês a mês), lançamentos da tela | `MonthlyCashFlow`, `CashFlowEntry` | RF-13.11 (ADR 0009, Decisão 4) |
+| antes da PO aprovada | `BEFORE_BUDGET` | meses sem PO, no fluxo contínuo (RF-13.16) |
+| saldo do mês, saldo acumulado | `monthBalance`, `closingBalance` | N2 |
 | severidade | `Severity` | |
 | regra (de auditoria), parâmetro | `AuditRule`, `RuleParameter` | |
 | ata de assembleia | `MeetingMinutes` | |

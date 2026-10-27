@@ -8,11 +8,17 @@ Documentos reais com o resultado esperado. Toda mudança no leitor (`reader/`) o
   - `po-2026-2027.pdf`: PO 2026/2027 aprovada do piloto (1 página, 98 linhas: total, 9 grupos e 88 linhas).
   - `po-2026-2027.read-document.json`: saída do leitor Python para essa PO (contrato `reader/v2`). Caso da leitura da PO
     (RF-03.1.1, RF-03.1.2 e RF-03.1.15) em `rag/.../parser/budget/ProtestBudgetParserGoldenTest`.
-  - `fluxo-caixa-2026-09.resultado-v3.json` e `po-2026-2027.resultado-v3.json`: mensagens `ProcessingResult` v3
-    que o rag publica para esses dois arquivos (ids fixos). São a entrada do golden do api, que as lê pelo contrato
-    (`contracts/mensagens/v3`), sem usar classe do rag. Gravadas e conferidas por `rag/.../service/ProcessingResultGoldenTest`:
-    sem o arquivo, o teste grava; com ele, exige saída idêntica. Os `*.resultado-v2.json` antigos podem ser apagados. Mudou a leitura do rag? Apague as duas, rode
-    `./gradlew :rag:test` e depois `./gradlew :api:test`.
+  - `po-2026-2027-planilha-apoio.xlsx`: planilha de apoio da PO 2026/2027 do piloto (origem de cada linha: contas e
+    período da média, índice, método e valor final; RF-13.13), e `po-2026-2027-planilha-apoio.read-document.json`, a saída
+    do leitor Python para ela (contrato `reader/v2`, células). Caso da leitura em
+    `rag/.../parser/budget/SupportSheetParserGoldenTest` (86 linhas; 1.3.10 Vigia na linha 30, média × VIGILANTES RJ).
+  - `fluxo-caixa-2026-09.resultado-v4.json`, `po-2026-2027.resultado-v4.json` e `po-2026-2027-planilha-apoio.resultado-v4.json`:
+    mensagens `ProcessingResult` v4 que o rag publica para esses arquivos (ids fixos). São a entrada do golden do api, que
+    as lê pelo contrato (`contracts/mensagens/v4`), sem usar classe do rag. Gravadas e conferidas por
+    `rag/.../service/ProcessingResultGoldenTest`: sem o arquivo, o teste grava; com ele, exige saída idêntica. Os
+    `*.resultado-v3.json` antigos podem ser apagados. Mudou a leitura do rag? Apague as três, rode `./gradlew :rag:test` e
+    depois `./gradlew :api:test`. Os números do RF-13 revisto (Entradas e saídas, conferência das linhas, origem, ponte v4
+    e fim do exercício) estão em `api/.../service/budget/CashFlowAndLineReviewGoldenTest` e `BudgetTrackingGoldenTest`.
   - `mapa-contas-fluxo-para-PO.csv`: de-para das 73 contas do piloto (planilha de sugestões do RF-03.1.5), cópia de
     `piloto-mio/`. Caso do de-para em `api/.../service/budget/AccountMappingGoldenTest`.
   - `previsto-realizado-2026-09.csv`: previsto × realizado de setembro/2026 da análise manual, cópia de `piloto-mio/`

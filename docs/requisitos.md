@@ -952,6 +952,33 @@ Nenhum achado novo: estouro de linha continua entrando só pela regra dos 20% (R
 | RNF-08 | Portável para nuvem sem reescrita (12-factor: configuração por variáveis de ambiente, armazenamento de arquivos abstraído). |
 | RNF-09 | Custo de IA controlado: cache de extrações, chamadas só quando necessário, registro de tokens por operação. |
 | RNF-10 | Testes automatizados com um conjunto de documentos de referência ("golden files") por categoria. |
+| RNF-11 | Logs para diagnóstico e auditoria técnica, sem dado pessoal (detalhe abaixo; ADR 0008). |
+
+### RNF-11 Logs (aprovado pelo usuário em 28/10/2026)
+
+Origem: pedido do usuário de 23/10/2026 (*"precisamos revisar os logs da aplicação para saber se estamos logando bem os erros e infos necessárias"*), depois de um 400 na tela Previsto × realizado sem nenhuma linha no log. A revisão do agente `arquiteto` (`revisao-logs-2026-10-23.md`, 30 achados) propôs nove decisões, D1 a D9; o usuário aprovou **as 9 recomendações** em 28/10/2026. A decisão técnica está na ADR 0008.
+
+Regras:
+- RNF-11.1 **Formato**: texto legível no local e JSON (uma linha por evento) na nuvem, com o formato estruturado nativo do Spring Boot e, no leitor Python, o `logging` padrão (D1, D6). Nenhuma biblioteca nova.
+- RNF-11.2 **Correlação**: toda requisição tem um `requestId` próprio, que viaja por HTTP (`X-Request-Id`), gRPC (metadado `x-request-id`) e fila (cabeçalho `requestId`, sem mudar o corpo), aparece em toda linha de log de todos os serviços e volta para a tela no erro (D2). OpenTelemetry fica para a fase de nuvem.
+- RNF-11.3 **Erros na borda**: um tratamento central loga cada erro uma vez: 4xx em WARN, numa linha, sem stack, com método, rota-modelo e motivo; 5xx em ERROR com stack; 503 e 504 de dependência em WARN (D3). A mesma regra vale no gRPC.
+- RNF-11.4 **Quem e o quê**: o usuário aparece pelo `sub` do Keycloak, nunca pelo nome (D4); o arquivo aparece pelo `fileId` (e categoria), nunca pelo nome original (D5, LGPD). Nunca vão para o log: token, chave de IA, senha, CPF, nome de pessoa, nome original do arquivo, conteúdo de documento, valores em dinheiro de lançamentos, pergunta e resposta do assistente, argumentos de ferramenta, corpo de mensagem ou de requisição e texto livre digitado pelo usuário.
+- RNF-11.5 **Eventos obrigatórios em INFO**: arquivo recebido, envio duplicado recusado, reprocessamento, troca de categoria, leitura e indexação concluídas; em WARN, leitura que falhou **com o motivo** e arquivo marcado como falha pela varredura (B3, B4, B5).
+- RNF-11.6 **Fila**: quando uma mensagem desiste depois das tentativas e vai para a fila `.error`, sai uma linha em ERROR com a fila, os ids da mensagem e a causa, sem o corpo (D7).
+- RNF-11.7 **Disco local**: no docker compose, cada serviço guarda no máximo 5 arquivos de log de 10 MB (D8).
+- RNF-11.8 **Idioma**: mensagens de log em português; chaves dos campos em inglês, como o código (D9, ADR 0006).
+
+Critérios de aceite:
+- Dado um pedido ao "Previsto × realizado" com período inválido, quando a API responde 400, então o log do api tem **uma** linha WARN, sem stack, com `GET /api/condominiums/{condominiumId}/...`, `→ 400`, o motivo ("Período deve ser AAAA-MM…") e o `requestId`; o corpo do erro traz o mesmo `requestId`, e o cabeçalho `X-Request-Id` da resposta também.
+- Dado um erro inesperado na API, quando ela responde 500, então o log tem uma linha ERROR com a stack, e a mensagem da tela diz "avise o suporte informando o código …" com o `requestId`.
+- Dado um usuário que pede dados de outro condomínio, quando a API recusa com 403, então o log tem uma linha WARN com o motivo ("Sem acesso a este condomínio") e o `sub` do usuário, sem o nome dele.
+- Dado um arquivo "Recibo Fulano 123.456.789-00.pdf" que o leitor não consegue ler, quando o rag desiste, então o log do rag tem um WARN com o `fileId`, o `processingId` e o motivo; o api registra "Leitura do arquivo … falhou: motivo"; e o nome do arquivo e o CPF não aparecem em nenhum log.
+- Dado o leitor Python com um defeito próprio (não do arquivo), quando a leitura falha, então ele responde 422 como hoje e o log dele tem ERROR com a stack; com um arquivo corrompido, WARN sem stack.
+- Dado uma pergunta feita pelo mcp, quando ela passa por mcp → api (e api → rag), então o mesmo `requestId` aparece nas linhas dos serviços envolvidos.
+- Dado uma mensagem da fila que falha três vezes, quando vai para a fila `.error`, então sai uma linha ERROR com a fila e o `fileId`, sem o conteúdo da mensagem.
+- Dado o sistema rodando no docker compose, quando um serviço escreve muito log, então o disco ocupado pelos logs dele não passa de 50 MB.
+- Dado a variável `LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs` (Java) ou `LOG_FORMATO=json` (leitor), quando o serviço sobe, então cada linha do log é um JSON com `requestId` e os ids do contexto.
+- Dado uma consulta da tela que falha com 4xx, quando o erro volta, então a tela não repete a chamada.
 
 ---
 

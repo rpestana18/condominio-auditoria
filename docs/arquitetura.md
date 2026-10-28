@@ -54,12 +54,14 @@ condominio-auditoria/
 ├── frontend/                   # React + TypeScript + Vite (pnpm); tipos gerados do OpenAPI
 ├── libs/
 │   ├── storage/                # interface Storage: pasta local (MVP) ou S3 (nuvem), por parâmetro
-│   └── grpc-contract/          # código gerado de contracts/grpc
+│   ├── grpc-contract/          # código gerado de contracts/grpc
+│   └── logging/                # requestId e contexto dos logs (MDC, interceptores gRPC, fila), ADR 0008
 ├── contracts/
 │   ├── openapi.yaml            # frontend ↔ backend
 │   ├── reader/v2/              # rag ↔ reader (JSON Schema; leitor/v1 fica como histórico)
 │   ├── mensagens/v3/           # api ↔ rag pela fila (JSON Schema + exemplos testados dos dois lados; v1 e v2 são histórico)
-│   └── grpc/query/v2/       # mcp → backend (.proto)
+│   ├── grpc/query/v2/       # mcp → backend (.proto)
+│   └── correlacao.md           # requestId em HTTP, gRPC e fila (ADR 0008; nenhum corpo muda)
 ├── infra/
 │   ├── docker-compose.yml      # PostgreSQL, RabbitMQ, Keycloak, reader, api, rag, mcp, frontend
 │   ├── java.Dockerfile         # imagem dos serviços Java (o serviço vem por argumento)
@@ -87,7 +89,14 @@ Regras: um serviço **nunca importa classe de outro** nem lê o schema de banco 
 - Filas duráveis: serviço reiniciado encontra o trabalho esperando. Uma varredura reenvia o que ficou parado há mais de 15 minutos (até 3 tentativas).
 - Muitos arquivos: sobe-se mais réplicas do rag; o paralelismo de cada réplica é parâmetro.
 
-### 2.3 Segurança (Keycloak)
+### 2.3 Logs e correlação (ADR 0008, aprovada em 28/10/2026)
+- Texto no local; JSON na nuvem com o formato estruturado nativo do Spring Boot (`LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs`) e, no reader, `LOG_FORMATO=json`. Nenhuma biblioteca nova.
+- Um `requestId` próprio liga tudo o que um pedido causa: cabeçalho `X-Request-Id` (HTTP), metadado `x-request-id` (gRPC) e cabeçalho AMQP `requestId` (fila, sem mudar o corpo). Fica no MDC com `user` (o `sub` do Keycloak), `condominiumId`, `fileId`, `processingId` e `indexingId` (`libs/logging`; contrato em `contracts/correlacao.md`).
+- Erros logados uma vez, na borda: 4xx em WARN sem stack, 5xx em ERROR com stack, 503/504 em WARN; o `requestId` volta no corpo do erro e a tela o mostra nos 5xx. Mensagem da fila que desiste: ERROR com os ids, sem o corpo.
+- Nunca no log: token, chaves, senha, nome de pessoa, username, nome original do arquivo, conteúdo de documento, valores de lançamentos, pergunta e resposta do assistente, texto livre do usuário. Mensagens em português, chaves em inglês.
+- Docker compose: `json-file` com 10 MB × 5 por serviço.
+
+### 2.4 Segurança (Keycloak)
 - Keycloak gerencia usuários, senhas, perfis (Usuário, Gestor, Admin) e vínculo com condomínios (claim no token).
 - Frontend faz login OIDC (Authorization Code + PKCE). Backend é resource server: valida o JWT e aplica perfil e condomínio em todo endpoint.
 - Token de acesso curto, renovado com o uso; sessão cai por inatividade (configurável no realm, ex.: 30 min).
@@ -226,6 +235,7 @@ EventoAuditoria(id, usuario_id, acao, entidade, antes, depois, em)
 
 - **Golden files**: para cada categoria, documentos reais anonimizados com o resultado esperado (lançamentos e achados). Toda mudança em parser/regra roda contra eles.
 - Testes de unidade (regras, conciliação), de contrato (OpenAPI), ponta a ponta (MCP dirigindo o sistema).
+- Testes dos logs (ADR 0008): o tratamento central (4xx WARN, 5xx ERROR), a propagação do `requestId` (HTTP, gRPC e fila) e a ausência do nome do arquivo no log.
 - Avaliação do RAG: conjunto de perguntas com respostas e fontes esperadas.
 
 ---
@@ -253,4 +263,4 @@ Regras:
 
 ## 8. Caminho para a nuvem (fase 3)
 
-Os mesmos contêineres do `docker-compose` vão para um provedor (T9). Trocas previstas, todas por parâmetro: armazenamento local → objeto (S3/GCS/Blob); banco local → PostgreSQL gerenciado; Keycloak em contêiner gerenciado ou serviço; modo de IA API_KEY por condomínio; AI Gateway com mascaramento ativo.
+Os mesmos contêineres do `docker-compose` vão para um provedor (T9). Logs em JSON por variável (ADR 0008); rastreamento com OpenTelemetry, se o usuário quiser, entra com ADR própria. Trocas previstas, todas por parâmetro: armazenamento local → objeto (S3/GCS/Blob); banco local → PostgreSQL gerenciado; Keycloak em contêiner gerenciado ou serviço; modo de IA API_KEY por condomínio; AI Gateway com mascaramento ativo.

@@ -33,6 +33,8 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 
 **Decidido: B**, com o glossário abaixo como regra. Termo que não tiver tradução fiel entra no glossário antes de entrar no código; ninguém inventa tradução nova.
 
+Mensagens de log (acréscimo de 28/10/2026, ADR 0008, D9): o texto das mensagens de log fica em **português**, como as mensagens mostradas ao usuário; as chaves dos campos de log (MDC e JSON: `requestId`, `user`, `condominiumId`, `fileId`...) ficam em inglês, como o resto do código.
+
 ### Glossário (português → inglês no código)
 
 | Termo | No código | Observação |

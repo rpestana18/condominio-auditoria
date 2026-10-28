@@ -53,7 +53,8 @@ Grupos 1.1 a 1.8 são despesa (piloto: 86 linhas, 451.620,13/mês pela soma das 
 
 - **Economia é entrar mais dinheiro do que sair.** O saldo do mês é entradas − saídas, e a funcionalidade mostra de onde veio, ligando às linhas da PO. [decisão D1, D4]
 - **Linhas recorrentes** (contas de todo mês: pessoal, contratos de prestadores, telefone, internet): previsto − realizado do mês é economia ou estouro. [decisão D4]
-- **Linhas eventuais** (equipamentos, materiais, serviços avulsos, pagamentos anuais): não comprar **não é** economia. Cada compra é sinalizada e comparada à linha, para mostrar se estourou no mês e no exercício. [decisão D4]
+- **Linhas eventuais** (equipamentos, materiais, serviços avulsos, pagamentos anuais): cada compra é sinalizada e comparada à linha, para mostrar se estourou no mês e no exercício. [decisão D4] ~~Não comprar **não é** economia.~~ A sobra também é economia na linha, com a marca "eventual" ou "anual". [decisão Q52, 28/10/2026, abaixo]
+- **Decisão de 28/10/2026 (Q52), que substitui a D4 no ponto "não comprar não é economia":** o usuário disse: "as sobras são economia, não? A ideia é ter visibilidade do gasto daquela linha naquele mês e podermos ver se estouramos a linha ou se economizamos na linha." Para o negócio, a pergunta de cada linha é a mesma, seja ela recorrente, eventual ou anual: no mês e no exercício, gastou-se menos (economia na linha) ou mais (estouro) do que o previsto? A sobra de uma linha eventual ou anual entra em "economia nas linhas", e a lista mostra o tipo para quem lê saber que ali pode haver compra ainda por fazer. O resto da D4 continua: linhas recorrentes comparadas no mês e no acumulado; compra eventual sinalizada e comparada à linha. Provisões continuam "reservado", não economia (Q44). [decisão Q52]
 - **Provisões** (férias, rescisão, 13º): a sobra é dinheiro guardado, não economia. [decisão Q44]
 - **Rateio à parte** (luz, água, gás, seguro predial): orçado zero, fora da PO. As concessionárias são contabilizadas: os pagamentos aparecem nos saldos e nos gráficos, nunca como estouro da PO. [decisão Q45, N3]
 - **Entrada acima da despesa prevista**: a parte do saldo que vem de entrar mais do que a despesa prevista do mês não tem linha da PO. Aparece numa linha própria, no mês e no acumulado. [decisão N2] Ex.: set/2026, saldo do mês +43.712,45 = linhas +4.316,92; provisões +2.177,25; fora da PO −4.329,17; entrada acima da despesa prevista +41.547,45. [fato, ponte de 20/10/2026]
@@ -99,7 +100,7 @@ Cada uma trocou um conceito por outro: linha = número do item; linha = forneced
 ## 10. O que o `requisitos` precisa rever no RF-13
 
 0. Partir do requisito principal da seção 0: uma visão de entradas e saídas mês a mês com a linha da PO de cada gasto, e a identificação confirmada das linhas antes de qualquer distribuição. Reavaliar se os oito itens de menu do RF-13.1 servem a isso ou o escondem.
-1. Tipos de linha: separar **recorrentes** e **eventuais**; a sobra das eventuais não entra em "economia nas linhas" (hoje "pela média" está junto de "mensal").
+1. Tipos de linha: separar **recorrentes** e **eventuais** (hoje "pela média" está junto de "mensal"). ~~A sobra das eventuais não entra em "economia nas linhas".~~ Revisto em 28/10/2026 (Q52): entra, com a marca do tipo.
 2. Ponte do saldo: a parcela "receita acima ou abaixo do previsto" passa a se chamar "entrada acima da despesa prevista", no mês e no acumulado.
 3. Entradas e saídas de cada mês lado a lado.
 4. Saldo em fluxo contínuo, inclusive antes da PO, com a visão antes/depois da PO aprovada.

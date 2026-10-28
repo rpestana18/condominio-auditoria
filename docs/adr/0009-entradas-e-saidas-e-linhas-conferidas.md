@@ -1,10 +1,10 @@
 # ADR 0009: Entradas e saídas, linhas conferidas e tipos revistos (RF-13 revisto)
 
-- **Status:** aprovada pelo usuário em 27/10/2026 (merge do PR #62); Decisão 3 na opção B e Q52 na opção "parcela própria", recomendações, enquanto os cartões não forem respondidos
+- **Status:** aprovada pelo usuário em 27/10/2026 (merge do PR #62); Decisão 3 na opção B e Q52 na opção "parcela própria", recomendações, enquanto os cartões não forem respondidos; Q52 respondida pelo usuário em 28/10/2026 (ponte versão 5, ver a Decisão 5)
 - **Requisitos atendidos:** revisão do RF-13 de 26/10/2026 (RF-13.11 a RF-13.17, menu e tela inicial revistos), a partir de `docs/negocio/po.md`
 - **Complementa:** ADR 0004 (cálculo na consulta, de-para), ADR 0007 (tipo da linha, grade e ponte). Não cria serviço, fila nova ou canal gRPC (ADR 0002).
 - **Número:** a ADR 0008 fica reservada para o padrão de logs, já anunciado ao usuário em 23/10/2026.
-- **Q52:** implementada na opção "parcela própria" (`UNUSED_OCCASIONAL`), a recomendada, até a resposta do cartão. A troca fica num ponto só do código (`BalanceBridge.OCCASIONAL_SURPLUS_APART`); a Decisão 5 mostra o que muda em cada resposta.
+- **Q52:** ~~implementada na opção "parcela própria" (`UNUSED_OCCASIONAL`), a recomendada, até a resposta do cartão.~~ Respondida pelo usuário em 28/10/2026: a sobra das linhas eventuais e anuais é economia nas linhas. `UNUSED_OCCASIONAL` e `BalanceBridge.OCCASIONAL_SURPLUS_APART` saíram, e a ponte passou à versão 5 (ver a Decisão 5).
 
 ## Contexto
 
@@ -113,9 +113,9 @@ O gráfico do saldo contínuo da "Origem do saldo" usa a mesma resposta mensal.
 
 | Código | Parcela |
 |---|---|
-| `LINE_SAVINGS` | Economia nas linhas: recorrentes e sazonais |
+| `LINE_SAVINGS` | Economia nas linhas: recorrentes e sazonais (desde a versão 5, também eventuais e anuais, com a marca do tipo) |
 | `PROVISIONS_RESERVED` | Reservado nas provisões |
-| `UNUSED_OCCASIONAL` | Eventuais e anuais: previsto não usado |
+| ~~`UNUSED_OCCASIONAL`~~ | ~~Eventuais e anuais: previsto não usado~~ (saiu na versão 5, Q52, 28/10/2026: essas linhas entram em `LINE_SAVINGS`) |
 | `INCOME_ABOVE_PLANNED_EXPENSE` | Entrada acima da despesa prevista (substitui `INCOME_VS_PLANNED`) |
 | `OUTSIDE_BUDGET` | Fora da PO |
 | `TRANSFERS` | Transferências entre fundos |
@@ -123,12 +123,13 @@ O gráfico do saldo contínuo da "Origem do saldo" usa a mesma resposta mensal.
 
 Regras:
 - Cada coluna de mês carrega também o saldo do mês e o saldo acumulado (N2).
-- A soma de `LINE_SAVINGS`, `PROVISIONS_RESERVED` e `UNUSED_OCCASIONAL` é igual à diferença entre o previsto e o realizado nas linhas, e o teste confere isso.
+- A soma de `LINE_SAVINGS` e `PROVISIONS_RESERVED` (na versão 4, também `UNUSED_OCCASIONAL`) é igual à diferença entre o previsto e o realizado nas linhas, e o teste confere isso.
 - O caso de setembro do RF-13.15 entra no golden: 6.494,17 nas três parcelas, entrada acima da despesa prevista +41.547,45 e não explicado 0,00.
 
 **Q52:**
-- Se o usuário escolher "junto da entrada acima da despesa", `UNUSED_OCCASIONAL` deixa de existir, e `INCOME_ABOVE_PLANNED_EXPENSE` passa a comparar só com o previsto das linhas recorrentes, sazonais e de provisão.
-- É uma troca dentro da função, e o resto desta ADR não muda.
+- ~~Se o usuário escolher "junto da entrada acima da despesa", `UNUSED_OCCASIONAL` deixa de existir, e `INCOME_ABOVE_PLANNED_EXPENSE` passa a comparar só com o previsto das linhas recorrentes, sazonais e de provisão.~~
+- ~~É uma troca dentro da função, e o resto desta ADR não muda.~~
+- **Respondida em 28/10/2026** (usuário: "as sobras são economia, não? A ideia é ter visibilidade do gasto daquela linha naquele mês e podermos ver se estouramos a linha ou se economizamos na linha."). Nenhuma das duas opções do cartão: o saldo das linhas `OCCASIONAL` e `ANNUAL` entra em `LINE_SAVINGS` ("Economia nas linhas"), e cada linha da lista leva o seu tipo (`effectiveProfile`) para a tela marcar "eventual" ou "anual". O item `UNUSED_OCCASIONAL` saiu do enum, do contrato e da tela, junto com a chave `OCCASIONAL_SURPLUS_APART`. `INCOME_ABOVE_PLANNED_EXPENSE` continua comparando com o previsto de todas as linhas. A ponte passou à **versão 5**; a soma `LINE_SAVINGS + PROVISIONS_RESERVED` de set/2026 continua 6.494,17. O resto desta ADR não muda.
 
 ## Decisão 6: fim do exercício (RF-13.17)
 

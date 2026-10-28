@@ -1,4 +1,4 @@
-import type { BridgeFund, BridgeItem, BridgeLine } from "../../api/types";
+import type { BridgeFund, BridgeItem, BridgeLine, SpendingProfile } from "../../api/types";
 import { formatDifference, formatMoney } from "../../format";
 import { spendingProfileLabel } from "../budgetVsActual/labels";
 import { lineTarget, partTarget, type OpenBridgeEvidence } from "./bridgeEvidence";
@@ -11,6 +11,18 @@ interface Props {
 
 /** How many lines to show on each side ("para mais" and "para menos"); the rest stays in the full list. */
 const TOP = 10;
+
+/**
+ * Profiles marked in the "Economia nas linhas" list (Q52, 28/10/2026): the occasional and annual lines are savings too,
+ * with a discreet "eventual" or "anual" next to the line. The recurring and seasonal ones carry no mark there.
+ */
+const MARKED_IN_SAVINGS: ReadonlySet<SpendingProfile> = new Set<SpendingProfile>(["OCCASIONAL", "ANNUAL"]);
+
+/** The mark next to a line of the item: in the savings, only "eventual" or "anual"; in the other items, the type. */
+function profileMark(item: BridgeItem, line: BridgeLine): string | null {
+  if (item.code === "LINE_SAVINGS") return MARKED_IN_SAVINGS.has(line.effectiveProfile) ? spendingProfileLabel[line.effectiveProfile] : null;
+  return spendingProfileLabel[line.effectiveProfile];
+}
 
 /** Parts and budget lines of one bridge item, with the lines that contributed the most, up and down (RF-13.6). */
 export function BridgeItemDetail({ item, onOpenEvidence }: Props) {
@@ -45,14 +57,14 @@ export function BridgeItemDetail({ item, onOpenEvidence }: Props) {
       )}
       {item.lines.length > 0 && (
         <div className="two-columns">
-          <LineList title="Linhas que mais contribuíram para mais" lines={up.slice(0, TOP)} onOpenEvidence={onOpenEvidence} />
-          <LineList title="Linhas que mais contribuíram para menos" lines={down.slice(0, TOP)} onOpenEvidence={onOpenEvidence} />
+          <LineList item={item} title="Linhas que mais contribuíram para mais" lines={up.slice(0, TOP)} onOpenEvidence={onOpenEvidence} />
+          <LineList item={item} title="Linhas que mais contribuíram para menos" lines={down.slice(0, TOP)} onOpenEvidence={onOpenEvidence} />
         </div>
       )}
       {item.lines.length > TOP && (
         <details className="trail">
           <summary>Todas as {item.lines.length} linhas</summary>
-          <LineList title="" lines={item.lines} onOpenEvidence={onOpenEvidence} />
+          <LineList item={item} title="" lines={item.lines} onOpenEvidence={onOpenEvidence} />
         </details>
       )}
       {item.funds && item.funds.length > 0 && <FundList funds={item.funds} />}
@@ -61,7 +73,17 @@ export function BridgeItemDetail({ item, onOpenEvidence }: Props) {
   );
 }
 
-function LineList({ title, lines, onOpenEvidence }: { title: string; lines: BridgeLine[]; onOpenEvidence: OpenBridgeEvidence | null }) {
+function LineList({
+  item,
+  title,
+  lines,
+  onOpenEvidence,
+}: {
+  item: BridgeItem;
+  title: string;
+  lines: BridgeLine[];
+  onOpenEvidence: OpenBridgeEvidence | null;
+}) {
   return (
     <div>
       {title && <h3>{title}</h3>}
@@ -70,22 +92,25 @@ function LineList({ title, lines, onOpenEvidence }: { title: string; lines: Brid
       ) : (
         <table className="table compact">
           <tbody>
-            {lines.map((l) => (
-              <tr key={l.lineId}>
-                <td>
-                  {l.code} {l.description} <small className="muted">· {spendingProfileLabel[l.effectiveProfile]}</small>
-                </td>
-                <td className="number">
-                  {onOpenEvidence ? (
-                    <button className="sourced-value" onClick={() => onOpenEvidence(lineTarget(l))}>
-                      {formatDifference(l.amount)}
-                    </button>
-                  ) : (
-                    formatDifference(l.amount)
-                  )}
-                </td>
-              </tr>
-            ))}
+            {lines.map((l) => {
+              const mark = profileMark(item, l);
+              return (
+                <tr key={l.lineId}>
+                  <td>
+                    {l.code} {l.description} {mark && <small className="muted">· {mark}</small>}
+                  </td>
+                  <td className="number">
+                    {onOpenEvidence ? (
+                      <button className="sourced-value" onClick={() => onOpenEvidence(lineTarget(l))}>
+                        {formatDifference(l.amount)}
+                      </button>
+                    ) : (
+                      formatDifference(l.amount)
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

@@ -91,14 +91,21 @@ class BudgetTrackingGoldenTest {
         assertThat(item(bridge, BalanceBridgeItemCode.PROVISIONS_RESERVED).lines())
                 .extracting(l -> l.code() + "=" + l.amount().toPlainString())
                 .containsExactlyInAnyOrder("1.1.5=1585.14", "1.1.6=-2265.84", "1.1.12=2857.95");
-        // RF-13.15 (version 4): 1 + 2 + 3 = planned 451.620,13 − actual in the lines 445.125,96, whatever the split by
-        // type (the amount of each item enters the golden after the user reviews the types, P9)
+        // RF-13.15 (version 5): 1 + 2 = planned 451.620,13 − actual in the lines 445.125,96, whatever the split by type
+        // (the amount of each item enters the golden after the user reviews the types, P9). Q52 (28/10/2026): the
+        // occasional and annual lines are in the savings, each with its profile; only the provisions stay apart
         assertThat(item(bridge, BalanceBridgeItemCode.LINE_SAVINGS).amount()
-                .add(item(bridge, BalanceBridgeItemCode.PROVISIONS_RESERVED).amount())
-                .add(item(bridge, BalanceBridgeItemCode.UNUSED_OCCASIONAL).amount())).isEqualByComparingTo("6494.17");
+                .add(item(bridge, BalanceBridgeItemCode.PROVISIONS_RESERVED).amount())).isEqualByComparingTo("6494.17");
         assertThat(item(bridge, BalanceBridgeItemCode.LINE_SAVINGS).lines())
-                .noneMatch(l -> l.effectiveProfile() == SpendingProfile.OCCASIONAL
-                        || l.effectiveProfile() == SpendingProfile.ANNUAL);
+                .allMatch(l -> l.effectiveProfile() != null && l.effectiveProfile() != SpendingProfile.PROVISION
+                        && l.effectiveProfile() != SpendingProfile.SEPARATE_APPORTIONMENT);
+        // RF-13.14 and Q52: 1.5.1 Equipamentos (eventual) is in the savings list with its profile, so the screen marks it
+        // "eventual"; in September it had a purchase above the line (planned 2.200,00, actual 6.150,57)
+        assertThat(item(bridge, BalanceBridgeItemCode.LINE_SAVINGS).lines()).filteredOn(l -> l.code().equals("1.5.1"))
+                .singleElement().satisfies(l -> {
+                    assertThat(l.effectiveProfile()).isEqualTo(SpendingProfile.OCCASIONAL);
+                    assertThat(l.amount()).isEqualByComparingTo("-3950.57");
+                });
         assertThat(item(bridge, BalanceBridgeItemCode.SEPARATE_APPORTIONMENT).amount()).isEqualByComparingTo("0.00");
         // RF-13.15 gives +41.547,45 and transfers 0,00, the numbers of the 20/10 test with the D3 defect (transfers
         // received not marked): the five "TRANSFERENCIA CONTABIL ... PARA CONDOMINIO" (281,10) are marked in the reading

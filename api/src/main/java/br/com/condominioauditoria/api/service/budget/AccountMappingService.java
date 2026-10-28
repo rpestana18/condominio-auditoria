@@ -303,7 +303,7 @@ public class AccountMappingService {
                 changed++;
             }
         }
-        log.info("De-para da PO {}: {} conta(s) {} por {}", ctx.budget().getId(), changed, newStatus, username);
+        log.info("De-para da PO {}: {} conta(s) {}", ctx.budget().getId(), changed, newStatus);
         if (changed > 0) {
             String action = newStatus == AccountMappingStatus.CONFIRMED ? "confirmado" : "recusado";
             List<String> changedAccounts = accounts.stream()

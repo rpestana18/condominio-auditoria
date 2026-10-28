@@ -1,8 +1,10 @@
 package br.com.condominioauditoria.api.config;
 
+import br.com.condominioauditoria.logging.LogContext;
 import org.springframework.amqp.core.Declarables;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.boot.amqp.autoconfigure.RabbitTemplateCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -33,6 +35,21 @@ public class QueueConfig {
                 queue(PROCESSING_RESULTS), QueueBuilder.durable(PROCESSING_RESULTS + ".error").build(),
                 queue(INDEXING), QueueBuilder.durable(INDEXING + ".error").build(),
                 queue(INDEXING_RESULTS), QueueBuilder.durable(INDEXING_RESULTS + ".error").build());
+    }
+
+    /**
+     * Every message published by the api carries the request id in the AMQP header {@code requestId} (ADR 0008;
+     * {@code contracts/correlacao.md}): the id of the request that caused it, or a new one (e.g. the scan that resends
+     * stalled files). The body does not change.
+     */
+    @Bean
+    public RabbitTemplateCustomizer requestIdHeader() {
+        return template -> template.addBeforePublishPostProcessors(message -> {
+            if (message.getMessageProperties().getHeader(LogContext.AMQP_HEADER) == null) {
+                message.getMessageProperties().setHeader(LogContext.AMQP_HEADER, LogContext.currentOrNewRequestId());
+            }
+            return message;
+        });
     }
 
     private static Queue queue(String name) {

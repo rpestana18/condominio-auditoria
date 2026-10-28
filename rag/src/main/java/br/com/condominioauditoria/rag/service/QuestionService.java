@@ -150,8 +150,10 @@ public class QuestionService {
                 return notFound(conversation, request, attempt, join(warning,
                         "O modelo recusou responder a esta pergunta por política de segurança do provedor."));
             }
+            String rule;
             if (draft.reason() != null) {
                 lastReason = draft.reason();
+                rule = "formato ou limite da resposta";
             } else {
                 progress.stage(Stage.VALIDATING, attempt);
                 Optional<String> error = validator.validate(draft.response(), byId, calls.keySet());
@@ -159,8 +161,10 @@ public class QuestionService {
                     return build(draft.response(), byId, calls, conversation, request, attempt, warning);
                 }
                 lastReason = error.get();
+                rule = "validação das citações e números";
             }
-            log.info("Resposta do assistente reprovada na tentativa {}: {}", attempt, lastReason);
+            // Only the rule: the reason may quote the document or the question, which never go to the log (ADR 0008)
+            log.info("Resposta do assistente reprovada na tentativa {} ({})", attempt, rule);
             if (attempt < ATTEMPTS) {
                 progress.stage(Stage.RETRYING, attempt + 1);
                 conversation.addQuestion(AssistantInstructions.retry(lastReason));
@@ -215,7 +219,7 @@ public class QuestionService {
                     // api down = UNAVAILABLE in Ask; there is no way to answer any number
                     throw error;
                 }
-                log.info("Ferramenta {} recusada pelo backend ({}): {}", call.name(), code,
+                log.warn("Ferramenta {} recusada pelo backend ({}): {}", call.name(), code,
                         error.getStatus().getDescription());
                 results.add(new ToolResult(call.id(),
                         "a consulta não foi autorizada ou os parâmetros são inválidos: "

@@ -1,15 +1,17 @@
 package br.com.condominioauditoria.mcp.tool;
 
-import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsRequest;
-import br.com.condominioauditoria.contracts.query.v2.FileChecksRequest;
+import br.com.condominioauditoria.contracts.query.v2.DocumentChunk;
+import br.com.condominioauditoria.contracts.query.v2.DocumentChunkLocation;
 import br.com.condominioauditoria.contracts.query.v2.DocumentFilters;
-import br.com.condominioauditoria.contracts.query.v2.ListFilesRequest;
+import br.com.condominioauditoria.contracts.query.v2.FileChecksRequest;
+import br.com.condominioauditoria.contracts.query.v2.FundSummaryRequest;
 import br.com.condominioauditoria.contracts.query.v2.ListCondominiumsRequest;
 import br.com.condominioauditoria.contracts.query.v2.ListEntriesRequest;
-import br.com.condominioauditoria.contracts.query.v2.DocumentChunkLocation;
-import br.com.condominioauditoria.contracts.query.v2.FundSummaryRequest;
-import br.com.condominioauditoria.contracts.query.v2.DocumentChunk;
+import br.com.condominioauditoria.contracts.query.v2.ListFilesRequest;
+import br.com.condominioauditoria.contracts.query.v2.SearchDocumentsRequest;
+import br.com.condominioauditoria.logging.LogContext;
 import br.com.condominioauditoria.mcp.client.ApiClient;
+import br.com.condominioauditoria.mcp.config.McpConfig;
 import io.grpc.StatusRuntimeException;
 import io.modelcontextprotocol.common.McpTransportContext;
 import java.util.ArrayList;
@@ -42,7 +44,7 @@ public class CondominiumTools {
             description = "Lista os condomínios que o usuário pode consultar, com o id usado nas outras ferramentas.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false))
     public List<Condominium> listCondominiums(McpTransportContext context) {
-        return call(() -> api.query(context)
+        return call(context, () -> api.query(context)
                 .listCondominiums(ListCondominiumsRequest.getDefaultInstance())
                 .getCondominiumsList().stream()
                 .map(c -> new Condominium(c.getId(), c.getName()))
@@ -55,7 +57,7 @@ public class CondominiumTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false))
     public FundSummary fundSummary(McpTransportContext context,
             @McpToolParam(description = "Id do condomínio (veja list_condominiums)") String condominiumId) {
-        return call(() -> {
+        return call(context, () -> {
             var r = api.query(context).fundSummary(
                     FundSummaryRequest.newBuilder().setCondominiumId(condominiumId).build());
             if (!r.getHasData()) {
@@ -77,7 +79,7 @@ public class CondominiumTools {
             @McpToolParam(required = false, description = "Categoria: TRIAL_BALANCE, BANK_STATEMENT, PO, CONTRACT, PAYROLL, "
                     + "RECEIPT, MINUTES, BYLAWS ou OTHER") String category,
             @McpToolParam(required = false, description = "Quantos arquivos no máximo (padrão 50)") Integer limit) {
-        return call(() -> api.query(context).listFiles(ListFilesRequest.newBuilder()
+        return call(context, () -> api.query(context).listFiles(ListFilesRequest.newBuilder()
                         .setCondominiumId(condominiumId)
                         .setCategory(Objects.toString(category, ""))
                         .setLimit(limit == null ? 0 : limit)
@@ -95,7 +97,7 @@ public class CondominiumTools {
     public List<Check> fileChecks(McpTransportContext context,
             @McpToolParam(description = "Id do condomínio") String condominiumId,
             @McpToolParam(description = "Id do arquivo (veja list_files)") String fileId) {
-        return call(() -> api.query(context).fileChecks(FileChecksRequest.newBuilder()
+        return call(context, () -> api.query(context).fileChecks(FileChecksRequest.newBuilder()
                         .setCondominiumId(condominiumId).setFileId(fileId).build())
                 .getChecksList().stream()
                 .map(c -> new Check(c.getCode(), c.getDescription(), c.getOk(), c.getDetail()))
@@ -116,7 +118,7 @@ public class CondominiumTools {
             Boolean outflowsOnly,
             @McpToolParam(required = false, description = "Quantos lançamentos no máximo (padrão 500, máximo 5000)")
             Integer limit) {
-        return call(() -> {
+        return call(context, () -> {
             var request = ListEntriesRequest.newBuilder()
                     .setCondominiumId(condominiumId)
                     .setDateFrom(Objects.toString(dateFrom, ""))
@@ -178,7 +180,7 @@ public class CondominiumTools {
                 .setFilters(filters)
                 .setLimit(limit == null ? DEFAULT_SEARCH_LIMIT : Math.min(limit, MAX_SEARCH_LIMIT))
                 .build();
-        return call(() -> {
+        return call(context, () -> {
             var r = api.query(context).searchDocuments(request);
             String mode = switch (r.getModeUsed()) {
                 case DOCUMENT_SEARCH_MODE_KEYWORD -> "KEYWORD";
@@ -223,8 +225,13 @@ public class CondominiumTools {
         return end <= start ? singular + " " + start : plural + " " + start + "–" + end;
     }
 
-    private static <T> T call(Supplier<T> call) {
-        try {
+    /**
+     * Runs the tool with the request id of the MCP call in the MDC (ADR 0008): the gRPC call to the api carries it, and
+     * the log lines of the mcp and of the api share it. The arguments of the tool never go to the log.
+     */
+    private static <T> T call(McpTransportContext context, Supplier<T> call) {
+        Object requestId = context == null ? null : context.get(McpConfig.REQUEST_ID);
+        try (LogContext.Scope ignored = LogContext.with(LogContext.REQUEST_ID, requestId)) {
             return call.get();
         } catch (StatusRuntimeException error) {
             throw ApiClient.translate(error);

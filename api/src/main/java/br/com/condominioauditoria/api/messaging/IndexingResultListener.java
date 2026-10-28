@@ -2,6 +2,8 @@ package br.com.condominioauditoria.api.messaging;
 
 import br.com.condominioauditoria.api.config.QueueConfig;
 import br.com.condominioauditoria.api.service.file.IndexingResultService;
+import br.com.condominioauditoria.logging.LogContext;
+import br.com.condominioauditoria.logging.QueueLogContext;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -24,6 +26,9 @@ class IndexingResultListener {
 
     @RabbitListener(queues = QueueConfig.INDEXING_RESULTS, concurrency = "1")
     void onMessage(Message message) {
-        indexingResults.apply(contract.readIndexingResult(message.getBody()));
+        try (LogContext.Scope ignored = QueueLogContext.enter(message.getBody(),
+                message.getMessageProperties().getHeader(LogContext.AMQP_HEADER))) {
+            indexingResults.apply(contract.readIndexingResult(message.getBody()));
+        }
     }
 }

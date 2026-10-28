@@ -57,8 +57,8 @@ public class IndexingResultService {
             usageRecorder.recordIndexing(file.getCondominiumId(), result.pages(), result.embeddingModel());
         }
         if (result.status() != IndexingResultMessage.Status.INDEXING) {
-            log.info("Indexação de {}: {} ({} trechos)", file.getOriginalName(), result.status(),
-                    result.chunks());
+            log.info("Indexação do arquivo {} (condomínio {}): {} ({} trechos)", file.getId(),
+                    file.getCondominiumId(), result.status(), result.chunks());
         }
         return true;
     }

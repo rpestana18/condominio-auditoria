@@ -1,6 +1,8 @@
 // Contrato gRPC de consulta do backend. Quem chama: o serviço mcp (e, no futuro, outros serviços internos).
 // O token do usuário (Keycloak) vai no metadado "authorization: Bearer ...": o backend aplica perfil e condomínio
 // em toda chamada, do mesmo jeito que na API REST.
+// Metadado opcional "x-request-id": id da requisição para os logs (ADR 0008; contracts/correlacao.md). Não muda
+// nenhuma mensagem.
 //
 // Dinheiro é texto com duas casas ("1234.56"): protobuf não tem decimal exato e nunca usamos ponto flutuante.
 // Datas são texto ISO ("2026-09-30").

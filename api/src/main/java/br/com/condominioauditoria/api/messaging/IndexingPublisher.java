@@ -8,6 +8,7 @@ import br.com.condominioauditoria.api.model.enums.IndexingStatus;
 import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import br.com.condominioauditoria.api.service.feature.FeatureService;
+import br.com.condominioauditoria.logging.LogContext;
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.time.Instant;
@@ -93,8 +94,10 @@ public class IndexingPublisher {
 
     @TransactionalEventListener
     void afterCommit(FilesIndexRequested batch) {
+        // The batch runs on another thread: it keeps the request id of the request that asked for it (ADR 0008)
+        String requestId = LogContext.currentRequestId();
         batches.execute(() -> {
-            try {
+            try (LogContext.Scope ignored = LogContext.with(LogContext.REQUEST_ID, requestId)) {
                 if (!features.isEnabled(batch.condominiumId(), FeatureService.ASSISTANT)) {
                     return; // disabled again before sending
                 }
@@ -125,9 +128,12 @@ public class IndexingPublisher {
                             c -> features.isEnabled(c, FeatureService.ASSISTANT)))
                     .toList();
             List<SourceFile> toResend = list.stream().filter(a -> a.getIndexingAttempts() < maxAttempts).toList();
-            list.stream().filter(a -> a.getIndexingAttempts() >= maxAttempts).forEach(a -> a.failIndexing(
-                    "A indexação não terminou depois de " + a.getIndexingAttempts()
-                            + " tentativas. O serviço rag está rodando?"));
+            list.stream().filter(a -> a.getIndexingAttempts() >= maxAttempts).forEach(a -> {
+                a.failIndexing("A indexação não terminou depois de " + a.getIndexingAttempts()
+                        + " tentativas. O serviço rag está rodando?");
+                log.warn("Indexação do arquivo {} (condomínio {}) marcada como erro depois de {} tentativas",
+                        a.getId(), a.getCondominiumId(), a.getIndexingAttempts());
+            });
             toResend.forEach(SourceFile::resendIndexing);
             return toResend;
         });
@@ -156,7 +162,7 @@ public class IndexingPublisher {
                     new Message(contract.write(IndexFileMessage.index(file)), properties));
         } catch (AmqpException error) {
             // The request stays queued; the sweep tries again
-            log.warn("Fila indisponível ao pedir a indexação de {}: {}", file.getOriginalName(), error.getMessage());
+            log.warn("Fila indisponível ao pedir a indexação do arquivo {}; a varredura reenvia", file.getId(), error);
         }
     }
 }

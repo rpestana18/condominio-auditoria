@@ -142,7 +142,7 @@ public class SpendingProfileService {
             changed++;
         }
         lines.saveAll(budgetLines);
-        log.info("Tipos das linhas da PO {}: {} confirmado(s) por {}", budget.getId(), changed, username);
+        log.info("Tipos das linhas da PO {}: {} confirmado(s)", budget.getId(), changed);
         return response(budget, budgetLines);
     }
 

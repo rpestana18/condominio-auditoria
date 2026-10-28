@@ -7,9 +7,13 @@ import br.com.condominioauditoria.api.model.enums.FileCategory;
 import br.com.condominioauditoria.contracts.assistant.v2.ChunkLocation;
 import br.com.condominioauditoria.contracts.assistant.v2.IndexedChunk;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** rag chunks (contracts/grpc/assistant/v2) → Assistant API DTOs (contracts/openapi.yaml). */
 public final class AssistantMapper {
+
+    private static final Logger log = LoggerFactory.getLogger(AssistantMapper.class);
 
     private AssistantMapper() {
     }
@@ -54,6 +58,9 @@ public final class AssistantMapper {
         try {
             return FileCategory.valueOf(value.strip().toUpperCase());
         } catch (IllegalArgumentException | NullPointerException e) {
+            // A category the api does not know means the contract with the rag diverged (ADR 0008, D2 of the review)
+            log.warn("Categoria de arquivo desconhecida vinda do rag ({}); tratada como OTHER",
+                    value == null ? "nula" : value.strip());
             return FileCategory.OTHER;
         }
     }

@@ -105,7 +105,7 @@ public class PartialMonthService {
         publisher.publishEvent(BudgetChanged.of(condominiumId, "mês parcial do extrato " + f.getOriginalName()
                 + ": " + (f.isPartial() ? "parcial até " + DATE.format(f.effectivePartialUntil()) : "completo"),
                 username, now));
-        log.info("Extrato {} marcado {} por {}", f.getId(), action, username);
+        log.info("Extrato {} marcado {}", f.getId(), action);
         return PartialMonthMapper.toResponse(f, null);
     }
 

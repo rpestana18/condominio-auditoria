@@ -7,6 +7,7 @@ tasks.named<Jar>("jar") { enabled = false }
 dependencies {
     implementation(project(":libs:storage"))
     implementation(project(":libs:grpc-contract"))
+    implementation(project(":libs:logging"))
 
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-validation")

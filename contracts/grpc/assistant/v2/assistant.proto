@@ -2,6 +2,8 @@
 // O token do usuário (Keycloak) vai no metadado "authorization: Bearer ...", como no contrato de consulta. O backend já
 // verificou perfil, condomínio e módulo antes de chamar; o rag valida o token e filtra tudo pelo condominium_id recebido.
 // O backend ainda descarta, na volta, trechos de arquivos que o usuário não pode ver (segunda barreira).
+// Metadado opcional "x-request-id": id da requisição para os logs (ADR 0008; contracts/correlacao.md). Não muda
+// nenhuma mensagem.
 //
 // Entrega 1: Search. Entrega 3 (05/10/2026): Ask e ListProviders.
 //

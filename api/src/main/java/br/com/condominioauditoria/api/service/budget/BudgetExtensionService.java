@@ -90,7 +90,7 @@ public class BudgetExtensionService {
                 "Prorrogada de " + first + " a " + until + " (antes: " + before + ")."));
         publisher.publishEvent(BudgetChanged.of(condominiumId, "PO versão " + budget.getVersion() + " prorrogada até "
                 + until, username, now));
-        log.info("PO {} prorrogada até {} por {}", budget.getId(), until, username);
+        log.info("PO {} prorrogada até {}", budget.getId(), until);
         return query.detail(budget);
     }
 
@@ -145,7 +145,7 @@ public class BudgetExtensionService {
                 "Fim do exercício corrigido de " + before + " para " + end + "." + undone));
         publisher.publishEvent(BudgetChanged.of(condominiumId, "fim do exercício da PO versão " + budget.getVersion()
                 + " corrigido para " + end, username, now));
-        log.info("Fim do exercício da PO {} corrigido de {} para {} por {}", budget.getId(), before, end, username);
+        log.info("Fim do exercício da PO {} corrigido de {} para {}", budget.getId(), before, end);
         return query.detail(budget);
     }
 
@@ -163,7 +163,7 @@ public class BudgetExtensionService {
                 "Prorrogação de " + budget.getFiscalYearEnd().plusMonths(1) + " a " + until + " desfeita."));
         publisher.publishEvent(BudgetChanged.of(condominiumId, "prorrogação da PO versão " + budget.getVersion()
                 + " desfeita", username, now));
-        log.info("Prorrogação da PO {} desfeita por {}", budget.getId(), username);
+        log.info("Prorrogação da PO {} desfeita", budget.getId());
         return query.detail(budget);
     }
 

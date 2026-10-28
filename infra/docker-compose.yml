@@ -26,8 +26,17 @@
 # (Windows e macOS) não precisa.
 name: condominio-auditoria
 
+# Logs (ADR 0008): json-file com rotação, 10 MB × 5 arquivos por serviço, para o disco local não encher.
+# Na nuvem, os serviços Java saem em JSON com LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs e o leitor com LOG_FORMATO=json.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   banco:
+    logging: *logging
     image: pgvector/pgvector:pg17
     environment:
       POSTGRES_DB: condominio
@@ -41,6 +50,7 @@ services:
       retries: 20
 
   fila:
+    logging: *logging
     image: rabbitmq:4-management
     environment:
       RABBITMQ_DEFAULT_USER: condominio
@@ -53,6 +63,7 @@ services:
       retries: 30
 
   keycloak:
+    logging: *logging
     image: keycloak/keycloak:26.4
     command: ["start-dev", "--import-realm"]
     environment:
@@ -70,6 +81,7 @@ services:
       retries: 40
 
   reader:
+    logging: *logging
     build: ../reader
     ports: ["8090:8090"]
     read_only: true
@@ -77,6 +89,7 @@ services:
 
   # Embeddings locais (ADR 0003, Decisão 2). Versão fixada: trocar só com teste da busca nos documentos.
   ollama:
+    logging: *logging
     image: ollama/ollama:0.35.1
     volumes: [ollama:/root/.ollama]
     # Dentro do compose só o rag usa, pela rede interna. A porta fica publicada só no endereço local da máquina
@@ -91,6 +104,7 @@ services:
   # novo (e a subida funciona sem internet). Se o download falha, avisa e termina com sucesso mesmo assim: o rag não
   # pode deixar de subir por causa dos embeddings (a leitura contábil não depende deles).
   ollama-modelo:
+    logging: *logging
     image: ollama/ollama:0.35.1
     environment:
       OLLAMA_HOST: http://ollama:11434
@@ -106,6 +120,7 @@ services:
       ollama: { condition: service_healthy }
 
   api:
+    logging: *logging
     build:
       context: ..
       dockerfile: infra/java.Dockerfile
@@ -133,6 +148,7 @@ services:
       keycloak: { condition: service_healthy }
 
   rag:
+    logging: *logging
     build:
       context: ..
       dockerfile: infra/java.Dockerfile
@@ -170,6 +186,7 @@ services:
       ollama-modelo: { condition: service_completed_successfully }
 
   mcp:
+    logging: *logging
     build:
       context: ..
       dockerfile: infra/java.Dockerfile
@@ -185,6 +202,7 @@ services:
       api: { condition: service_started }
 
   frontend:
+    logging: *logging
     build: ../frontend
     ports: ["8080:80"]
     depends_on: [api]

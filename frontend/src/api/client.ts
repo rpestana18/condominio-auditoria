@@ -2,19 +2,38 @@ import { config } from "../config";
 import { validToken } from "../auth/keycloak";
 import type { Problem } from "./types";
 
-/** API error carrying the Portuguese message the backend sent (RFC 9457 format). */
+/** Header of the request id (ADR 0008): the same id is in the log lines of the api, rag and reader. */
+const REQUEST_ID_HEADER = "X-Request-Id";
+
+/**
+ * API error carrying the Portuguese message the backend sent (RFC 9457 format) and the request id. A server error
+ * (5xx) shows the id in the message, for the user to tell support; a 4xx shows only the reason.
+ */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     readonly problem: Problem | null,
+    readonly requestId: string | null = null,
   ) {
-    super(problem?.detail ?? problem?.title ?? defaultMessage(status));
+    super(message(status, problem, requestId));
   }
 
   /** Feature code when the refusal is "feature not contracted" (403 with the `feature` field). */
   get featureNotEnabled(): string | undefined {
     return this.status === 403 ? (this.problem?.feature ?? undefined) : undefined;
   }
+}
+
+function message(status: number, problem: Problem | null, requestId: string | null): string {
+  const text = problem?.detail ?? problem?.title ?? defaultMessage(status);
+  return status >= 500 && requestId && !text.includes(requestId) ? `${text} (código ${requestId})` : text;
+}
+
+/** New request id; crypto.randomUUID only exists on https or localhost. */
+function newRequestId(): string {
+  return typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
 function defaultMessage(status: number): string {
@@ -24,13 +43,14 @@ function defaultMessage(status: number): string {
 
 async function call(path: string, options: RequestInit = {}): Promise<Response> {
   const token = await validToken();
+  const requestId = newRequestId();
   const response = await fetch(config.api + path, {
     ...options,
-    headers: { ...options.headers, Authorization: `Bearer ${token}` },
+    headers: { ...options.headers, Authorization: `Bearer ${token}`, [REQUEST_ID_HEADER]: requestId },
   });
   if (!response.ok) {
-    const problem = response.headers.get("content-type")?.includes("json") ? await response.json() : null;
-    throw new ApiError(response.status, problem);
+    const problem: Problem | null = response.headers.get("content-type")?.includes("json") ? await response.json() : null;
+    throw new ApiError(response.status, problem, problem?.requestId ?? response.headers.get(REQUEST_ID_HEADER) ?? requestId);
   }
   return response;
 }

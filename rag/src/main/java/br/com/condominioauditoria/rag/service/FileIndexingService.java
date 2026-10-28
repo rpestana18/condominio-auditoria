@@ -1,5 +1,7 @@
 package br.com.condominioauditoria.rag.service;
 
+import br.com.condominioauditoria.logging.LogContext;
+import br.com.condominioauditoria.logging.QueueLogContext;
 import br.com.condominioauditoria.rag.client.DocumentReaderClient;
 import br.com.condominioauditoria.rag.config.QueueConfig;
 import br.com.condominioauditoria.rag.exception.EmbeddingsUnavailableException;
@@ -7,8 +9,8 @@ import br.com.condominioauditoria.rag.messaging.IndexFileMessage;
 import br.com.condominioauditoria.rag.messaging.IndexingResultMessage;
 import br.com.condominioauditoria.rag.messaging.MessageContract;
 import br.com.condominioauditoria.rag.model.document.ReadDocument;
-import br.com.condominioauditoria.rag.repository.IndexRepository;
 import br.com.condominioauditoria.rag.repository.IndexRepository.IndexedDocument;
+import br.com.condominioauditoria.rag.repository.IndexRepository;
 import br.com.condominioauditoria.rag.search.Chunk;
 import br.com.condominioauditoria.rag.search.ChunkedDocument;
 import br.com.condominioauditoria.rag.search.EmbeddingGenerator;
@@ -58,12 +60,19 @@ public class FileIndexingService {
         this.repository = repository;
     }
 
-    @RabbitListener(queues = QueueConfig.INDEXING, concurrency = "${rag.indexacao.paralelismo:1}")
+    @RabbitListener(queues = QueueConfig.INDEXING, concurrency = "${rag.indexing.parallelism:1}")
     public void onReceive(Message message) {
-        IndexFileMessage request = contract.readIndexFile(message.getBody());
+        // fileId, indexingId, condominiumId and the request id in every line; never the original name (ADR 0008)
+        try (LogContext.Scope ignored = QueueLogContext.enter(message.getBody(),
+                message.getMessageProperties().getHeader(LogContext.AMQP_HEADER))) {
+            handle(contract.readIndexFile(message.getBody()));
+        }
+    }
+
+    private void handle(IndexFileMessage request) {
         if (request.operation() == IndexFileMessage.Operation.WITHDRAW) {
             boolean existed = repository.withdraw(request.fileId(), request.indexingId());
-            log.info("Arquivo {} retirado do índice{}", request.originalName(),
+            log.info("Arquivo {} retirado do índice{}", request.fileId(),
                     existed ? "" : " (não estava indexado)");
             publish(IndexingResultMessage.withdrawn(request));
             return;
@@ -72,7 +81,7 @@ public class FileIndexingService {
         if (alreadyDone.isPresent()) {
             repository.confirmUnchanged(request);
             log.info("Arquivo {} já indexado com o mesmo conteúdo, modelo e versão; só confirmado",
-                    request.originalName());
+                    request.fileId());
             publish(alreadyDone.get());
             return;
         }
@@ -81,11 +90,11 @@ public class FileIndexingService {
         IndexingResultMessage result;
         try {
             result = index(request);
-            log.info("Arquivo {} indexado: {} ({} trechos)", request.originalName(), result.status(),
+            log.info("Arquivo {} indexado: {} ({} trechos)", request.fileId(), result.status(),
                     result.chunks());
         } catch (Exception error) {
-            log.warn("Falha ao indexar {}: {}", request.originalName(), error.getMessage(), error);
             String reason = readableReason(error);
+            log.warn("Indexação do arquivo {} falhou: {}", request.fileId(), reason, error);
             repository.markError(request.fileId(), request.indexingId(), reason);
             result = IndexingResultMessage.error(request, reason);
         }
@@ -146,7 +155,7 @@ public class FileIndexingService {
                 // next request with Ollama up is not treated as a repeat and generates the vectors.
                 warning = truncate("Indexado só para a busca por palavra, sem busca por significado: "
                         + error.getMessage());
-                log.warn("Arquivo {} indexado sem vetores: {}", request.originalName(), error.getMessage());
+                log.warn("Arquivo {} indexado sem vetores: {}", request.fileId(), error.getMessage());
                 model = null;
             }
         }

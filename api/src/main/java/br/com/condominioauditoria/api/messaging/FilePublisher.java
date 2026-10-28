@@ -67,8 +67,12 @@ public class FilePublisher {
         List<SourceFile> stalled = transaction.execute(t -> {
             List<SourceFile> list = files.findByStatusInAndQueuedAtBeforeOrderByUploadedAt(IN_PROGRESS, cutoff);
             List<SourceFile> toResend = list.stream().filter(a -> a.getAttempts() < maxAttempts).toList();
-            list.stream().filter(a -> a.getAttempts() >= maxAttempts).forEach(a -> a.fail(
-                    "A leitura não terminou depois de " + a.getAttempts() + " tentativas. O serviço rag está rodando?"));
+            list.stream().filter(a -> a.getAttempts() >= maxAttempts).forEach(a -> {
+                a.fail("A leitura não terminou depois de " + a.getAttempts() + " tentativas. O serviço rag está rodando?");
+                // Gave up on the file (ADR 0008, B4): one line per file, by its id, never by its name
+                log.warn("Leitura do arquivo {} (condomínio {}) marcada como falha depois de {} tentativas",
+                        a.getId(), a.getCondominiumId(), a.getAttempts());
+            });
             toResend.forEach(SourceFile::resend);
             return toResend;
         });
@@ -87,7 +91,7 @@ public class FilePublisher {
                     new Message(contract.write(FileReceivedMessage.from(file)), properties));
         } catch (AmqpException error) {
             // The file stays Pending; the sweep tries again
-            log.warn("Fila indisponível ao enviar {}: {}", file.getOriginalName(), error.getMessage());
+            log.warn("Fila indisponível ao pedir a leitura do arquivo {}; a varredura reenvia", file.getId(), error);
         }
     }
 }

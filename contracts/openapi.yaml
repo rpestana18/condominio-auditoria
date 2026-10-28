@@ -6,6 +6,9 @@ info:
     Contrato entre backend, frontend e MCP. Toda chamada exige token Bearer do Keycloak.
     Perfis: USER (consulta), MANAGER (+ envia arquivos), ADMIN (tudo).
     Valores monetários são números com 2 casas decimais; datas em ISO 8601.
+    Correlação (ADR 0008; contracts/correlacao.md): o cabeçalho opcional X-Request-Id (letras, dígitos, ".", "-" e
+    "_", até 64 caracteres) identifica a requisição nos logs de todos os serviços. Sem ele, ou com um valor fora desse
+    formato, a API cria um. Toda resposta devolve o X-Request-Id, e todo erro (Problem) traz o mesmo valor em requestId.
 servers:
   - url: /api
 security:
@@ -2846,6 +2849,7 @@ components:
         feature: { type: string, description: "Em recusa por módulo não contratado (403): código do módulo" }
         reasons: { type: array, items: { type: string }, description: "Motivos da recusa (confirmação da PO, configuração de IA)" }
         aiMode: { $ref: "#/components/schemas/AiMode", description: "Em recusa do chat pelo modo (409): modo de respostas efetivo" }
+        requestId: { type: string, description: "Id da requisição (o mesmo do cabeçalho X-Request-Id e da linha do log, ADR 0008); a tela mostra em erro 5xx para o usuário informar ao suporte" }
     SpendingProfile:
       type: string
       description: |

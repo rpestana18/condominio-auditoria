@@ -100,7 +100,7 @@ public class BudgetItemService {
         BudgetItem r = new BudgetItem(condominiumId, name, group, null, username, Instant.now());
         items.save(r);
         events.save(BudgetItemEvent.created(r, null, username, r.getCreatedAt()));
-        log.info("Rubrica {} \"{}\" criada no condomínio {} por {}", r.getId(), name, condominiumId, username);
+        log.info("Rubrica {} criada no condomínio {}", r.getId(), condominiumId);
         return BudgetItemMapper.toResponse(r);
     }
 
@@ -291,7 +291,7 @@ public class BudgetItemService {
                 changed++;
             }
         }
-        log.info("Rubricas da PO {}: {} linha(s) {} por {}", ctx.budget().getId(), changed, newStatus, username);
+        log.info("Rubricas da PO {}: {} linha(s) {}", ctx.budget().getId(), changed, newStatus);
         return new BudgetItemBatchResponse(changed, skipped);
     }
 

@@ -322,8 +322,8 @@ public class AiConfigurationService {
                     now, embBefore.mode(), embeddings.mode(), embBefore.provider(), embeddings.provider(),
                     embBefore.model(), embeddings.model(), false, null));
         }
-        log.info("Configuração de IA do condomínio {} gravada por {} (modo geral {}, respostas {}, embeddings {}{})",
-                condominiumId, username, generalMode, answers.mode() == null ? "herda" : answers.mode(),
+        log.info("Configuração de IA do condomínio {} gravada (modo geral {}, respostas {}, embeddings {}{})",
+                condominiumId, generalMode, answers.mode() == null ? "herda" : answers.mode(),
                 embeddings.mode(), encryptedKey != null ? ", chave trocada" : removeKey ? ", chave removida" : "");
     }
 

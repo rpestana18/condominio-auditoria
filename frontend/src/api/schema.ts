@@ -3210,6 +3210,8 @@ export interface components {
             reasons?: string[];
             /** @description Em recusa do chat pelo modo (409): modo de respostas efetivo */
             aiMode?: components["schemas"]["AiMode"];
+            /** @description Id da requisição (o mesmo do cabeçalho X-Request-Id e da linha do log, ADR 0008); a tela mostra em erro 5xx para o usuário informar ao suporte */
+            requestId?: string;
         };
         /**
          * @description Tipo de gasto da linha (RF-13.14; ADR 0009, Decisão 2). RECURRING = recorrente (o antigo MONTHLY);

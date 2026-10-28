@@ -1,5 +1,7 @@
 package br.com.condominioauditoria.api.exception;
 
+import br.com.condominioauditoria.logging.LogContext;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,11 +19,15 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -30,6 +36,11 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * carries {@code detail}: the reason of a {@link ResponseStatusException} as written in the service, a Portuguese
  * text for the errors Spring MVC raises itself (missing parameter, invalid value, unreadable body...) and a generic
  * text for an unexpected error. Never a stack trace or the exception's own message for unexpected errors.
+ *
+ * <p>The only place that logs the errors of the REST API (ADR 0008, D3: log once, at the edge): every 4xx is one WARN
+ * line without stack ({@code GET /api/... → 400: detail}, with the route template, never the query string); every 5xx
+ * is an ERROR with the stack, except 503 and 504, which are an expected dependency failure (WARN). Every error body
+ * carries {@code requestId}, the same id of the log line and of the {@code X-Request-Id} header.
  */
 @RestControllerAdvice
 class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
@@ -63,6 +74,7 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ResponseEntity<Object> response = super.handleExceptionInternal(ex, body, headers, statusCode, request);
         if (response != null && response.getBody() instanceof ProblemDetail problem) {
             translate(problem, ex);
+            logged(problem, ex);
         }
         return response;
     }
@@ -73,17 +85,56 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN,
                 "Seu perfil não tem permissão para esta ação ou para este condomínio.");
         p.setTitle(TITLES.get(403));
-        return p;
+        // Security event (A3): the log keeps the reason of the refusal ("Sem acesso a este condomínio"), the screen not
+        return logged(p, e, e.getMessage());
     }
 
-    /** Unexpected error: logged with the stack trace here, answered with a generic text (nothing internal leaks). */
+    /**
+     * Unexpected error: logged with the stack trace here, answered with a generic text (nothing internal leaks) and the
+     * request id, for the user to tell support.
+     */
     @ExceptionHandler(Exception.class)
     ProblemDetail unexpected(Exception e) {
-        log.error("Unexpected error answering the request", e);
+        String requestId = LogContext.currentOrNewRequestId();
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR,
-                "Erro interno no servidor. Tente de novo; se continuar, avise o suporte.");
+                "Erro interno no servidor. Tente de novo; se continuar, avise o suporte informando o código "
+                        + requestId + ".");
         p.setTitle(TITLES.get(500));
-        return p;
+        p.setProperty("requestId", requestId);
+        return logged(p, e);
+    }
+
+    /** Logs the error answered (once, here) and puts the request id in the body. */
+    static ProblemDetail logged(ProblemDetail problem, Exception e) {
+        return logged(problem, e, problem.getDetail());
+    }
+
+    private static ProblemDetail logged(ProblemDetail problem, Exception e, String reason) {
+        if (problem.getProperties() == null || !problem.getProperties().containsKey("requestId")) {
+            String requestId = LogContext.currentRequestId();
+            if (requestId != null) {
+                problem.setProperty("requestId", requestId);
+            }
+        }
+        int status = problem.getStatus();
+        String line = "{} → {}: {}";
+        if (status >= 500 && status != 503 && status != 504) {
+            log.error(line, route(), status, reason, e);
+        } else {
+            log.warn(line, route(), status, reason);
+        }
+        return problem;
+    }
+
+    /** "GET /api/condominios/{condominiumId}/po": method and route template, without ids or query string. */
+    static String route() {
+        RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
+        if (!(attributes instanceof ServletRequestAttributes servlet)) {
+            return "(fora de uma requisição)";
+        }
+        HttpServletRequest request = servlet.getRequest();
+        Object pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        return request.getMethod() + " " + (pattern != null ? pattern : "(rota não mapeada)");
     }
 
     static void translate(ProblemDetail problem, Exception ex) {
@@ -130,7 +181,8 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
         p.setTitle("Arquivo já enviado");
         p.setProperty("existingFileId", e.existingId());
-        return p;
+        // The detail shows the original file name to the user; the log never does (LGPD, ADR 0008)
+        return logged(p, e, "arquivo já enviado, igual ao arquivo " + e.existingId());
     }
 
     /** All reasons at once, so the screen shows what is missing. */
@@ -139,7 +191,7 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(e.status(), e.getMessage());
         p.setTitle("Confirmação recusada");
         p.setProperty("reasons", e.reasons());
-        return p;
+        return logged(p, e);
     }
 
     /** The storage folder does not accept writes (e.g. owner of the mounted folder): 503, nothing saved. */
@@ -147,12 +199,12 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ProblemDetail storageWriteDenied(StorageWriteDeniedException e) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
         p.setTitle("Armazenamento indisponível");
-        return p;
+        return logged(p, e);
     }
 
     @ExceptionHandler(IllegalStateException.class)
     ProblemDetail invalidState(IllegalStateException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+        return logged(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage()), e);
     }
 
     /**
@@ -164,17 +216,17 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
         p.setTitle("Módulo não contratado");
         p.setProperty("feature", e.feature());
-        return p;
+        return logged(p, e);
     }
 
     @ExceptionHandler(UnknownFeatureException.class)
     ProblemDetail unknownFeature(UnknownFeatureException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+        return logged(ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage()), e);
     }
 
     @ExceptionHandler(InvalidRequestException.class)
     ProblemDetail invalidRequest(InvalidRequestException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+        return logged(ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage()), e);
     }
 
     /** AI configuration rejected (RF-09.6): 422 with all the reasons. No reason carries the key. */
@@ -183,7 +235,7 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, e.getMessage());
         p.setTitle("Configuração de IA recusada");
         p.setProperty("reasons", e.reasons());
-        return p;
+        return logged(p, e);
     }
 
     /** Rag down or without a public key while reading the catalog or saving the key: 503, nothing saved. */
@@ -191,7 +243,7 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ProblemDetail aiUnavailable(AiUnavailableException e) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
         p.setTitle("Serviço de IA indisponível");
-        return p;
+        return logged(p, e);
     }
 
     /** Assistant chat and search: 409 by mode (with modoIa), 422, 429, 503 and 504 as in the contract. */
@@ -202,6 +254,6 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (e.aiMode() != null) {
             p.setProperty("aiMode", e.aiMode().name());
         }
-        return p;
+        return logged(p, e);
     }
 }

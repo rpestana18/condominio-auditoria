@@ -173,8 +173,8 @@ public class BudgetConfirmationService {
         // Budget confirmed and funds linked: the findings of the fiscal year's months are recalculated after the commit
         publisher.publishEvent(BudgetChanged.of(condominiumId, "PO versão " + version + " confirmada (exercício "
                 + start + " a " + end + ")", username, now));
-        log.info("PO {} confirmada: condominio={} versao={} exercicio={} a {} por={} ciente={}", budget.getId(),
-                condominiumId, version, start, end, username, acknowledged);
+        log.info("PO {} confirmada: condominio={} versao={} exercicio={} a {} ciente={}", budget.getId(),
+                condominiumId, version, start, end, acknowledged);
         return query.detail(budget);
     }
 

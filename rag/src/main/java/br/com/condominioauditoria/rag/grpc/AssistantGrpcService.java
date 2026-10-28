@@ -96,6 +96,8 @@ public class AssistantGrpcService extends AssistantGrpc.AssistantImplBase {
             mode = request.getMode() == SearchMode.SEARCH_MODE_KEYWORD ? DocumentSearch.Mode.KEYWORD
                     : DocumentSearch.Mode.HYBRID;
         } catch (IllegalArgumentException error) {
+            log.warn("gRPC Assistant/Search → INVALID_ARGUMENT no condomínio {}: {}", request.getCondominiumId(),
+                    error.getMessage());
             response.onError(Status.INVALID_ARGUMENT.withDescription(error.getMessage()).asRuntimeException());
             return;
         }
@@ -108,7 +110,8 @@ public class AssistantGrpcService extends AssistantGrpc.AssistantImplBase {
             response.onNext(output.build());
             response.onCompleted();
         } catch (RuntimeException error) {
-            log.warn("Falha na busca do condomínio {}: {}", request.getCondominiumId(), error.getMessage(), error);
+            // Unexpected: ERROR with the stack (ADR 0008, C4); the text of the search never goes to the log
+            log.error("gRPC Assistant/Search → INTERNAL no condomínio {}", request.getCondominiumId(), error);
             response.onError(Status.INTERNAL.withDescription("Falha na busca nos documentos").asRuntimeException());
         }
     }
@@ -121,6 +124,7 @@ public class AssistantGrpcService extends AssistantGrpc.AssistantImplBase {
     public void ask(AskRequest request, StreamObserver<AskEvent> stream) {
         String authorization = GrpcAuthorization.AUTHORIZATION.get();
         if (authorization == null || authorization.isBlank()) {
+            log.warn("gRPC Assistant/Ask → UNAUTHENTICATED: chamada sem token");
             stream.onError(Status.UNAUTHENTICATED
                     .withDescription("Chamada sem token: o metadado authorization é obrigatório.")
                     .asRuntimeException());
@@ -130,6 +134,8 @@ public class AssistantGrpcService extends AssistantGrpc.AssistantImplBase {
         try {
             input = toRequest(request, authorization);
         } catch (IllegalArgumentException error) {
+            log.warn("gRPC Assistant/Ask → INVALID_ARGUMENT no condomínio {}: {}", request.getCondominiumId(),
+                    error.getMessage());
             stream.onError(Status.INVALID_ARGUMENT.withDescription(error.getMessage()).asRuntimeException());
             return;
         }
@@ -140,9 +146,13 @@ public class AssistantGrpcService extends AssistantGrpc.AssistantImplBase {
             stream.onNext(AskEvent.newBuilder().setAnswer(response(result)).build());
             stream.onCompleted();
         } catch (QuestionService.InvalidQuestionException error) {
+            log.warn("gRPC Assistant/Ask → INVALID_ARGUMENT no condomínio {}: {}", request.getCondominiumId(),
+                    error.getMessage());
             stream.onError(Status.INVALID_ARGUMENT.withDescription(error.getMessage()).asRuntimeException());
         } catch (QuestionService.MissingConfigurationException | ProviderCatalog.ModelNotInCatalogException
                 | RagKeys.NoKeyPairException error) {
+            log.warn("gRPC Assistant/Ask → FAILED_PRECONDITION no condomínio {}: {}", request.getCondominiumId(),
+                    error.getMessage());
             stream.onError(Status.FAILED_PRECONDITION.withDescription(error.getMessage()).asRuntimeException());
         } catch (KeyEnvelope.UnreadableKeyException error) {
             log.warn("Chave de IA do condomínio {} não pôde ser lida: {}", request.getCondominiumId(),
@@ -153,13 +163,13 @@ public class AssistantGrpcService extends AssistantGrpc.AssistantImplBase {
             stream.onError(providerError(error));
         } catch (StatusRuntimeException error) {
             // Comes from the numeric tools in the api (Consulta gRPC)
-            log.warn("Ferramenta do assistente falhou: {}", error.getStatus());
+            log.warn("Ferramenta do assistente falhou no condomínio {}: o backend respondeu {}",
+                    request.getCondominiumId(), error.getStatus().getCode());
             stream.onError(Status.UNAVAILABLE.withDescription(
                     "Não foi possível consultar os dados gravados agora; tente de novo em instantes.")
                     .asRuntimeException());
         } catch (RuntimeException error) {
-            log.error("Falha ao responder a pergunta do condomínio {}: {}", request.getCondominiumId(),
-                    error.getMessage(), error);
+            log.error("gRPC Assistant/Ask → INTERNAL no condomínio {}", request.getCondominiumId(), error);
             stream.onError(Status.INTERNAL.withDescription("Falha ao responder a pergunta.").asRuntimeException());
         }
     }
@@ -263,6 +273,7 @@ public class AssistantGrpcService extends AssistantGrpc.AssistantImplBase {
     public void listProviders(ListProvidersRequest request, StreamObserver<ListProvidersResponse> response) {
         String authorization = GrpcAuthorization.AUTHORIZATION.get();
         if (authorization == null || authorization.isBlank()) {
+            log.warn("gRPC Assistant → UNAUTHENTICATED: chamada sem token");
             response.onError(Status.UNAUTHENTICATED
                     .withDescription("Chamada sem token: o metadado authorization é obrigatório.")
                     .asRuntimeException());

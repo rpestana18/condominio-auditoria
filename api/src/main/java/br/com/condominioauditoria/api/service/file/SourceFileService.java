@@ -143,6 +143,7 @@ public class SourceFileService {
             throw new IllegalStateException("O arquivo já está sendo processado");
         }
         categoryChanges.save(new CategoryChange(file.getId(), file.getCategory(), newCategory, username));
+        log.info("Categoria do arquivo {} trocada de {} para {}", file.getId(), file.getCategory(), newCategory);
         file.changeCategory(newCategory);
         return SourceFileMapper.toResponse(reprocess(file));
     }
@@ -157,6 +158,8 @@ public class SourceFileService {
             }
             var existing = files.findByCondominiumIdAndSha256(condominiumId, sha256);
             if (existing.isPresent()) {
+                log.info("Envio recusado no condomínio {}: conteúdo igual ao do arquivo {}", condominiumId,
+                        existing.get().getId());
                 throw new DuplicateFileException(existing.get());
             }
             String name = safeName(upload.getOriginalFilename());
@@ -166,8 +169,9 @@ public class SourceFileService {
                 try (InputStream input = Files.newInputStream(tempFile)) {
                     storage.store(path, input);
                 } catch (AccessDeniedException e) {
-                    log.error("The data folder does not accept writes ({}); check the owner of the mounted folder"
-                            + " (Docker on Linux: DADOS_UID in infra/.env)", e.getMessage());
+                    // The path carries the original name: never in the log (ADR 0008)
+                    log.error("A pasta de dados não aceita gravação; confira o dono da pasta montada (Docker no Linux:"
+                            + " DADOS_UID em infra/.env)");
                     throw new StorageWriteDeniedException(e);
                 }
             }
@@ -179,6 +183,9 @@ public class SourceFileService {
             if (indexingRequested) {
                 events.publishEvent(new FileIndexRequested(file.getId()));
             }
+            // By the id, the category and the hash, never by the original name (LGPD, ADR 0008)
+            log.info("Arquivo {} recebido no condomínio {}: categoria {}, {} bytes, sha256 {}", file.getId(),
+                    condominiumId, category, file.getSizeBytes(), sha256.substring(0, 12));
             return file;
         } finally {
             Files.deleteIfExists(tempFile);
@@ -190,6 +197,7 @@ public class SourceFileService {
             throw new IllegalStateException("O arquivo já está sendo processado");
         }
         file.requestProcessing();
+        log.info("Arquivo {} (condomínio {}) enviado de novo para leitura", file.getId(), file.getCondominiumId());
         boolean indexingRequested = requestIndexing(file);
         events.publishEvent(new FileReadRequested(file.getId()));
         if (indexingRequested) {

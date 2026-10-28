@@ -3,6 +3,8 @@ package br.com.condominioauditoria.api.messaging;
 import br.com.condominioauditoria.api.config.QueueConfig;
 import br.com.condominioauditoria.api.service.file.FileStatusService;
 import br.com.condominioauditoria.api.service.file.ProcessingResultService;
+import br.com.condominioauditoria.logging.LogContext;
+import br.com.condominioauditoria.logging.QueueLogContext;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -28,11 +30,15 @@ class ProcessingResultListener {
 
     @RabbitListener(queues = QueueConfig.PROCESSING_RESULTS, concurrency = "1")
     void onMessage(Message message) {
-        ProcessingResultMessage result = contract.readProcessingResult(message.getBody());
-        switch (result.status()) {
-            case STARTED -> fileStatus.processing(result.fileId(), result.processingId());
-            case FAILED -> fileStatus.failed(result.fileId(), result.processingId(), result.reason());
-            case COMPLETED -> processingResults.save(result);
+        // fileId, processingId and the request id of the header in every log line of this message (ADR 0008)
+        try (LogContext.Scope ignored = QueueLogContext.enter(message.getBody(),
+                message.getMessageProperties().getHeader(LogContext.AMQP_HEADER))) {
+            ProcessingResultMessage result = contract.readProcessingResult(message.getBody());
+            switch (result.status()) {
+                case STARTED -> fileStatus.processing(result.fileId(), result.processingId());
+                case FAILED -> fileStatus.failed(result.fileId(), result.processingId(), result.reason());
+                case COMPLETED -> processingResults.save(result);
+            }
         }
     }
 }

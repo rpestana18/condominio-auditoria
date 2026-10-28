@@ -132,7 +132,8 @@ public class ProcessingResultService {
                 result.parser(), cashFlow.periodStart(), cashFlow.periodEnd(), cashFlow.entryCount());
         // RF-13.10: a complete cash flow replaces the partial one of the same month, with the replacement in the trail
         partialMonths.recordReplacements(file.getCondominiumId());
-        log.info("Arquivo {} gravado: {} lançamentos", file.getOriginalName(), cashFlow.entryCount());
+        log.info("Extrato do arquivo {} (condomínio {}) gravado: {} lançamentos", file.getId(), file.getCondominiumId(),
+                cashFlow.entryCount());
     }
 
     private void saveBudget(SourceFile file, ProcessingResultMessage result, BudgetData budgetData) {
@@ -155,8 +156,8 @@ public class ProcessingResultService {
                         ? "PO lida com divergência: confira as somas antes de confirmar"
                         : "PO lida: aguarda a confirmação do Admin",
                 result.parser(), null, null, null);
-        log.info("PO do arquivo {} gravada: {} linhas, estado {}", file.getOriginalName(), budgetData.lines().size(),
-                budget.getStatus());
+        log.info("PO do arquivo {} (condomínio {}) gravada: {} linhas, estado {}", file.getId(),
+                file.getCondominiumId(), budgetData.lines().size(), budget.getStatus());
     }
 
     /** Support sheet of the budget (RF-13.13; v4): the origin of each line, never the planned amount (O4). */

@@ -37,7 +37,8 @@ public class QueryClient {
     QueryClient(RagProperties properties) {
         var config = properties.assistant();
         this.timeoutSeconds = config.toolTimeoutSeconds();
-        this.channel = Grpc.newChannelBuilder(config.apiGrpc(), InsecureChannelCredentials.create()).build();
+        this.channel = Grpc.newChannelBuilder(config.apiGrpc(), InsecureChannelCredentials.create())
+                .intercept(br.com.condominioauditoria.logging.RequestIdGrpc.client()).build();
         log.info("Ferramentas numéricas do assistente vão para o gRPC Consulta em {}", config.apiGrpc());
     }
 

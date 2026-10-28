@@ -1,11 +1,13 @@
 package br.com.condominioauditoria.mcp.config;
 
+import br.com.condominioauditoria.logging.LogContext;
 import br.com.condominioauditoria.mcp.config.properties.McpProperties;
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
+import java.util.HashMap;
 import java.util.Map;
 import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerStreamableHttpProperties;
 import org.springframework.ai.mcp.server.webmvc.transport.WebMvcStatelessServerTransport;
@@ -25,9 +27,15 @@ public class McpConfig {
     public static final String AUTHORIZATION = "authorization";
 
     /**
+     * Key, in the context of each MCP call, of the request id (ADR 0008): the X-Request-Id sent by the MCP client, or
+     * a new one per call. It goes to the api in the gRPC metadata and to every log line of the tool.
+     */
+    public static final String REQUEST_ID = LogContext.REQUEST_ID;
+
+    /**
      * Stateless MCP transport (each request is an independent POST), the same as Spring AI auto-configuration's, plus
      * one thing: it keeps the Authorization header in the call context. The tools run on another thread, so this is
-     * how the user's token reaches the gRPC call.
+     * how the user's token reaches the gRPC call. The request id travels the same way.
      */
     @Bean
     WebMvcStatelessServerTransport webMvcStatelessServerTransport(@Qualifier("mcpServerJsonMapper") JsonMapper json,
@@ -36,9 +44,14 @@ public class McpConfig {
                 .jsonMapper(new JacksonMcpJsonMapper(json))
                 .messageEndpoint(properties.getMcpEndpoint())
                 .contextExtractor(request -> {
+                    Map<String, Object> context = new HashMap<>();
+                    context.put(REQUEST_ID, LogContext.acceptOrCreate(request.headers().firstHeader(
+                            LogContext.HTTP_HEADER)));
                     String value = request.headers().firstHeader(HttpHeaders.AUTHORIZATION);
-                    return value == null ? McpTransportContext.EMPTY : McpTransportContext.create(Map.of(AUTHORIZATION,
-                            value));
+                    if (value != null) {
+                        context.put(AUTHORIZATION, value);
+                    }
+                    return McpTransportContext.create(context);
                 })
                 .build();
     }

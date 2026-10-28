@@ -43,7 +43,9 @@ class GrpcServer implements SmartLifecycle {
     public void start() {
         try {
             server = Grpc.newServerBuilderForPort(port, InsecureServerCredentials.create())
-                    .addService(io.grpc.ServerInterceptors.intercept(assistant, new GrpcAuthorization()))
+                    .addService(io.grpc.ServerInterceptors.intercept(assistant, new GrpcAuthorization(),
+                            // Outermost: the request id of the api (metadata x-request-id) in every line (ADR 0008)
+                            br.com.condominioauditoria.logging.RequestIdGrpc.server()))
                     .build()
                     .start();
             log.info("Servidor gRPC do assistente ouvindo na porta {}", port);

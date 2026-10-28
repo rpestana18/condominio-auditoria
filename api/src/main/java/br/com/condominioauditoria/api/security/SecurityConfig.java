@@ -4,6 +4,8 @@ import jakarta.servlet.DispatcherType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.security.oauth2.server.resource.autoconfigure.OAuth2ResourceServerProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +19,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
@@ -26,6 +30,8 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableMethodSecurity
 class SecurityConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationConverter roleConverter) throws Exception {
@@ -43,8 +49,32 @@ class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/**").hasAnyRole("USER", "MANAGER", "ADMIN")
                         .anyRequest().denyAll())
-                .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(roleConverter)));
+                .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(roleConverter))
+                        .authenticationEntryPoint(loggedEntryPoint()))
+                .exceptionHandling(e -> e.accessDeniedHandler(loggedAccessDenied()));
         return http.build();
+    }
+
+    /**
+     * 401 refused by the security before any controller (missing, invalid or expired token): one WARN line (ADR 0008,
+     * A3), with the reason of Spring Security and never the token.
+     */
+    private static org.springframework.security.web.AuthenticationEntryPoint loggedEntryPoint() {
+        var delegate = new BearerTokenAuthenticationEntryPoint();
+        return (request, response, error) -> {
+            log.warn("{} {} → 401: token ausente, inválido ou expirado ({})", request.getMethod(),
+                    request.getRequestURI(), error.getClass().getSimpleName());
+            delegate.commence(request, response, error);
+        };
+    }
+
+    /** 403 refused by the route rules (token without a role of the system): one WARN line (ADR 0008, A3). */
+    private static org.springframework.security.web.access.AccessDeniedHandler loggedAccessDenied() {
+        var delegate = new BearerTokenAccessDeniedHandler();
+        return (request, response, error) -> {
+            log.warn("{} {} → 403: perfil sem acesso a esta rota", request.getMethod(), request.getRequestURI());
+            delegate.handle(request, response, error);
+        };
     }
 
     /**

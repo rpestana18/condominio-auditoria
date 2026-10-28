@@ -127,8 +127,9 @@ public class FeatureService {
         row = states.save(row);
         events.save(new FeatureEvent(condominiumId, feature, before, enable, username, now, trimmedReason));
         publisher.publishEvent(new FeatureChanged(condominiumId, feature, enable, username));
-        log.info("Módulo {} {} no condomínio {} por {} (motivo: {})", feature, enable ? "ligado" : "desligado",
-                condominiumId, username, trimmedReason == null ? "não informado" : trimmedReason);
+        // The reason is free text typed by the user: it stays in the database, never in the log (ADR 0008)
+        log.info("Módulo {} {} no condomínio {} (motivo {})", feature, enable ? "ligado" : "desligado",
+                condominiumId, trimmedReason == null ? "não informado" : "registrado");
         return state(definition, Optional.of(row));
     }
 

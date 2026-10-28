@@ -1,6 +1,7 @@
 package br.com.condominioauditoria.api.grpc.server;
 
 import br.com.condominioauditoria.api.config.properties.ApiProperties;
+import br.com.condominioauditoria.logging.RequestIdGrpc;
 import io.grpc.Grpc;
 import io.grpc.InsecureServerCredentials;
 import io.grpc.Server;
@@ -49,7 +50,9 @@ class GrpcServer implements SmartLifecycle {
         try {
             server = Grpc.newServerBuilderForPort(port, InsecureServerCredentials.create())
                     .executor(threads)
-                    .addService(ServerInterceptors.intercept(query, authInterceptor))
+                    // The last interceptor runs first: the request id is set before the authentication, so a refusal is logged
+                    // with it (ADR 0008)
+                    .addService(ServerInterceptors.intercept(query, authInterceptor, RequestIdGrpc.server()))
                     .build()
                     .start();
             log.info("Servidor gRPC ouvindo na porta {}", port);

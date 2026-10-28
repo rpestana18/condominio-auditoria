@@ -135,8 +135,7 @@ public class ReallocationService {
         events.save(new ReallocationEvent(r, ReallocationEvent.REALLOCATED, username, now, description + "; arquivo "
                 + file.getOriginalName() + ", página " + l.getPage() + ", ordem " + l.getSequence()));
         publisher.publishEvent(BudgetChanged.of(condominiumId, description, username, now));
-        log.info("Realocação {}: lançamento {} → linha {} por {}", r.getId(), l.getId(), target.getEffectiveCode(),
-                username);
+        log.info("Realocação {}: lançamento {} → linha {}", r.getId(), l.getId(), target.getEffectiveCode());
         return ReallocationMapper.toResponse(r, target);
     }
 
@@ -158,7 +157,7 @@ public class ReallocationService {
         events.save(new ReallocationEvent(r, ReallocationEvent.UNDONE, username, now, description
                 + (line == null ? "" : "; estava em " + line.getEffectiveCode() + " " + line.getDescription())));
         publisher.publishEvent(BudgetChanged.of(condominiumId, description, username, now));
-        log.info("Realocação {} desfeita por {}", r.getId(), username);
+        log.info("Realocação {} desfeita", r.getId());
         return ReallocationMapper.toResponse(r, line);
     }
 

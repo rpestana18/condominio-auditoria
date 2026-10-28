@@ -1,20 +1,29 @@
 package br.com.condominioauditoria.mcp.client;
 
 import br.com.condominioauditoria.contracts.query.v2.QueryGrpc;
+import br.com.condominioauditoria.logging.RequestIdGrpc;
 import br.com.condominioauditoria.mcp.config.McpConfig;
 import br.com.condominioauditoria.mcp.config.properties.McpProperties;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
+import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.MetadataUtils;
 import io.modelcontextprotocol.common.McpTransportContext;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-/** Creates the api's gRPC stub already carrying the user's token and the call deadline. */
+/**
+ * Creates the api's gRPC stub already carrying the user's token, the request id of the tool call (metadata
+ * x-request-id, ADR 0008) and the call deadline.
+ */
 @Component
 public class ApiClient {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiClient.class);
 
     private static final Metadata.Key<String> AUTHORIZATION =
             Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER);
@@ -35,15 +44,25 @@ public class ApiClient {
         var headers = new Metadata();
         headers.put(AUTHORIZATION, token.toString());
         return QueryGrpc.newBlockingStub(channel)
-                .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers))
+                .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers), RequestIdGrpc.client())
                 .withDeadlineAfter(timeoutSeconds, TimeUnit.SECONDS);
     }
 
     /**
      * api error in Portuguese, for the AI to pass on to the user. The api already sends the description in Portuguese.
+     * Logged once here (ADR 0008, C1): a refusal of the api is one WARN line; the api out of reach (UNAVAILABLE with a
+     * cause, or the deadline) is a WARN with the cause, which the MCP client never sees; anything else is an ERROR.
      */
     public static RuntimeException translate(StatusRuntimeException error) {
         String description = error.getStatus().getDescription();
+        Status.Code code = error.getStatus().getCode();
+        switch (code) {
+            case UNAUTHENTICATED, PERMISSION_DENIED, NOT_FOUND, INVALID_ARGUMENT, FAILED_PRECONDITION, UNIMPLEMENTED ->
+                    log.warn("api recusou a chamada: {} {}", code, Objects.requireNonNullElse(description, ""));
+            case UNAVAILABLE, DEADLINE_EXCEEDED -> log.warn("api indisponível: {} {}", code,
+                    Objects.requireNonNullElse(description, ""), error.getCause() == null ? null : error);
+            default -> log.error("Erro inesperado na chamada à api: {}", code, error);
+        }
         return switch (error.getStatus().getCode()) {
             case UNAUTHENTICATED -> new IllegalStateException(Objects.requireNonNullElse(description,
                     "Token recusado"));

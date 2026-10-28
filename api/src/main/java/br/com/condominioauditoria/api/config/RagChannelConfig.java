@@ -1,6 +1,7 @@
 package br.com.condominioauditoria.api.config;
 
 import br.com.condominioauditoria.api.config.properties.ApiProperties;
+import br.com.condominioauditoria.logging.RequestIdGrpc;
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
@@ -16,6 +17,8 @@ class RagChannelConfig {
 
     @Bean(destroyMethod = "shutdown")
     ManagedChannel ragChannel(ApiProperties properties) {
-        return Grpc.newChannelBuilder(properties.rag().grpc(), InsecureChannelCredentials.create()).build();
+        // Every call carries the request id (metadata x-request-id, ADR 0008)
+        return Grpc.newChannelBuilder(properties.rag().grpc(), InsecureChannelCredentials.create())
+                .intercept(RequestIdGrpc.client()).build();
     }
 }

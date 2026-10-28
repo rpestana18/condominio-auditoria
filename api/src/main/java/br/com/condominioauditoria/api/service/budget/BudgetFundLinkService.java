@@ -145,7 +145,7 @@ public class BudgetFundLinkService {
                 "Ligação dos fundos alterada: " + String.join("; ", changes)));
         publisher.publishEvent(BudgetChanged.of(condominiumId, "ligação dos fundos da PO versão " + budget.getVersion()
                 + " alterada (" + String.join("; ", changes) + ")", username, now));
-        log.info("PO {}: ligação dos fundos alterada por {}: {}", budget.getId(), username, changes);
+        log.info("PO {}: ligação dos fundos alterada: {}", budget.getId(), changes);
         return query.detail(budget);
     }
 

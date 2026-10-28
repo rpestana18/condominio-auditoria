@@ -1,5 +1,7 @@
 package br.com.condominioauditoria.api.grpc.server;
 
+import br.com.condominioauditoria.api.security.UserLogFilter;
+import br.com.condominioauditoria.logging.LogContext;
 import io.grpc.ForwardingServerCallListener.SimpleForwardingServerCallListener;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
@@ -8,6 +10,8 @@ import io.grpc.ServerInterceptor;
 import io.grpc.Status;
 import java.util.Set;
 import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
@@ -29,6 +33,7 @@ public class GrpcAuthInterceptor implements ServerInterceptor {
 
     public static final Metadata.Key<String> AUTHORIZATION = Metadata.Key.of("authorization",
             Metadata.ASCII_STRING_MARSHALLER);
+    private static final Logger log = LoggerFactory.getLogger(GrpcAuthInterceptor.class);
     private static final Set<String> ROLES = Set.of("ROLE_USER", "ROLE_MANAGER", "ROLE_ADMIN");
 
     private final JwtDecoder decoder;
@@ -59,11 +64,13 @@ public class GrpcAuthInterceptor implements ServerInterceptor {
             return reject(call, Status.PERMISSION_DENIED.withDescription("Usuário sem perfil no sistema"));
         }
         SecurityContext context = new SecurityContextImpl(authentication);
+        String user = UserLogFilter.subject(authentication);
         // gRPC calls the methods on its own pool threads: the security context is set and cleared on each step
-        return new SimpleForwardingServerCallListener<>(withContext(context, () -> next.startCall(call, headers))) {
+        ServerCall.Listener<Q> delegate = withContext(context, user, () -> next.startCall(call, headers));
+        return new SimpleForwardingServerCallListener<>(delegate) {
             @Override
             public void onMessage(Q message) {
-                withContext(context, () -> {
+                withContext(context, user, () -> {
                     super.onMessage(message);
                     return null;
                 });
@@ -71,7 +78,7 @@ public class GrpcAuthInterceptor implements ServerInterceptor {
 
             @Override
             public void onHalfClose() {
-                withContext(context, () -> {
+                withContext(context, user, () -> {
                     super.onHalfClose();
                     return null;
                 });
@@ -79,7 +86,7 @@ public class GrpcAuthInterceptor implements ServerInterceptor {
 
             @Override
             public void onCancel() {
-                withContext(context, () -> {
+                withContext(context, user, () -> {
                     super.onCancel();
                     return null;
                 });
@@ -87,7 +94,7 @@ public class GrpcAuthInterceptor implements ServerInterceptor {
 
             @Override
             public void onComplete() {
-                withContext(context, () -> {
+                withContext(context, user, () -> {
                     super.onComplete();
                     return null;
                 });
@@ -95,7 +102,7 @@ public class GrpcAuthInterceptor implements ServerInterceptor {
 
             @Override
             public void onReady() {
-                withContext(context, () -> {
+                withContext(context, user, () -> {
                     super.onReady();
                     return null;
                 });
@@ -103,16 +110,20 @@ public class GrpcAuthInterceptor implements ServerInterceptor {
         };
     }
 
-    private static <T> T withContext(SecurityContext context, Supplier<T> action) {
+    /** Security context and the user of the log (the token's {@code sub}, ADR 0008) on each step of the call. */
+    private static <T> T withContext(SecurityContext context, String user, Supplier<T> action) {
         SecurityContextHolder.setContext(context);
-        try {
+        try (LogContext.Scope ignored = LogContext.with(LogContext.USER, user)) {
             return action.get();
         } finally {
             SecurityContextHolder.clearContext();
         }
     }
 
+    /** Refused call (security event, A3/C3): one WARN line with the method and the reason, never the token. */
     private static <Q, R> ServerCall.Listener<Q> reject(ServerCall<Q, R> call, Status status) {
+        log.warn("gRPC {} → {}: {}", call.getMethodDescriptor().getFullMethodName(), status.getCode(),
+                status.getDescription());
         call.close(status, new Metadata());
         return new ServerCall.Listener<>() {
         };

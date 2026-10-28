@@ -1,5 +1,7 @@
 package br.com.condominioauditoria.rag.service;
 
+import br.com.condominioauditoria.logging.LogContext;
+import br.com.condominioauditoria.logging.QueueLogContext;
 import br.com.condominioauditoria.rag.client.DocumentReaderClient;
 import br.com.condominioauditoria.rag.config.QueueConfig;
 import br.com.condominioauditoria.rag.messaging.FileReceivedMessage;
@@ -67,20 +69,32 @@ public class FileProcessingService {
         this.budgetParser = budgetParser;
     }
 
+    /**
+     * Logs by fileId, processingId and condominiumId (MDC, with the request id of the AMQP header), never by the
+     * original name: it is free text of the user and may carry a name or a CPF (ADR 0008, B1 and E1).
+     */
     @RabbitListener(queues = QueueConfig.FILES_RECEIVED)
     public void onReceive(Message message) {
-        FileReceivedMessage file = contract.readFileReceived(message.getBody());
-        publish(ProcessingResultMessage.started(file));
-        ProcessingResultMessage result;
-        try {
-            result = process(file);
-            log.info("Arquivo {} lido ({})", file.originalName(),
-                    result.parser() == null ? "layout ainda sem leitor" : result.parser());
-        } catch (Exception error) {
-            log.warn("Falha ao ler {}: {}", file.originalName(), error.getMessage(), error);
-            result = ProcessingResultMessage.failed(file, readableReason(error));
+        try (LogContext.Scope ignored = QueueLogContext.enter(message.getBody(),
+                message.getMessageProperties().getHeader(LogContext.AMQP_HEADER))) {
+            FileReceivedMessage file = contract.readFileReceived(message.getBody());
+            publish(ProcessingResultMessage.started(file));
+            ProcessingResultMessage result;
+            try {
+                result = process(file);
+                if (result.status() == ProcessingResultMessage.Status.FAILED) {
+                    log.warn("Leitura do arquivo {} falhou: {}", file.fileId(), result.reason());
+                } else {
+                    log.info("Arquivo {} lido ({}, categoria {})", file.fileId(),
+                            result.parser() == null ? "layout ainda sem leitor" : result.parser(), file.category());
+                }
+            } catch (Exception error) {
+                result = ProcessingResultMessage.failed(file, readableReason(error));
+                // A file problem or a service down is expected (WARN); the reason goes to the api and to the screen
+                log.warn("Leitura do arquivo {} falhou: {}", file.fileId(), result.reason(), error);
+            }
+            publish(result);
         }
-        publish(result);
     }
 
     private ProcessingResultMessage process(FileReceivedMessage file) throws Exception {

@@ -3,6 +3,8 @@ package br.com.condominioauditoria.api.service.file;
 import br.com.condominioauditoria.api.model.enums.FileStatus;
 import br.com.condominioauditoria.api.repository.file.SourceFileRepository;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class FileStatusService {
+
+    private static final Logger log = LoggerFactory.getLogger(FileStatusService.class);
 
     private final SourceFileRepository files;
 
@@ -31,6 +35,10 @@ public class FileStatusService {
     public void failed(UUID fileId, UUID processingId, String reason) {
         files.findById(fileId)
                 .filter(a -> a.isCurrentProcessing(processingId))
-                .ifPresent(a -> a.fail(reason));
+                .ifPresent(a -> {
+                    a.fail(reason);
+                    // The api decides the state of the file, so it logs the failure and why (ADR 0008, B3)
+                    log.warn("Leitura do arquivo {} (condomínio {}) falhou: {}", fileId, a.getCondominiumId(), reason);
+                });
     }
 }

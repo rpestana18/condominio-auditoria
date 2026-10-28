@@ -5,15 +5,49 @@ The layout interpretation (cash flow, trial balance, budget...) is done by the r
 """
 import hashlib
 import io
+import logging
+import time
+import zipfile
 from datetime import date, datetime
 
 import pdfplumber
 from docx import Document
-from fastapi import FastAPI, HTTPException, UploadFile
+from docx.opc.exceptions import PackageNotFoundError
+from fastapi import FastAPI, HTTPException, Request, UploadFile
 from openpyxl import load_workbook
+from openpyxl.utils.exceptions import InvalidFileException
+from pdfminer.pdfdocument import PDFEncryptionError, PDFPasswordIncorrect
+from pdfminer.pdfparser import PDFSyntaxError
+from pdfplumber.utils.exceptions import MalformedPDFException, PdfminerException
+
+from app import logs
 
 READER_VERSION = "reader-py 0.2.0"
 app = FastAPI(title="Leitor de documentos", version="0.2.0")
+logs.configure()
+log = logging.getLogger("reader")
+
+# A file that cannot be read for a reason of its own (corrupted, protected, not really a PDF/zip): expected, WARN.
+# Anything else is a bug of the reader: ERROR with the stack (ADR 0008, B2). The answer is 422 in both cases.
+FILE_PROBLEMS = (PdfminerException, MalformedPDFException, PDFSyntaxError, PDFPasswordIncorrect, PDFEncryptionError,
+                 zipfile.BadZipFile, InvalidFileException, PackageNotFoundError)
+
+
+@app.middleware("http")
+async def request_log(request: Request, call_next):
+    """Request id of the X-Request-Id header (or a new one) in every line and in the response; one line per request
+    instead of uvicorn's access log, which has no id. Only method, route, status and time: never the file name."""
+    token = logs.request_id.set(logs.accept_or_create(request.headers.get(logs.HEADER)))
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+        response.headers[logs.HEADER] = logs.request_id.get()
+        if request.url.path != "/health":
+            log.info("%s %s → %d em %d ms", request.method, request.url.path, response.status_code,
+                     (time.perf_counter() - start) * 1000)
+        return response
+    finally:
+        logs.request_id.reset(token)
 
 
 @app.get("/health")
@@ -46,8 +80,16 @@ async def read(file: UploadFile):
             result["sheets"] = read_xlsx(content)
         else:
             result["paragraphs"] = read_docx(content)
-    except Exception as error:  # corrupted or protected file
+    except FILE_PROBLEMS as error:  # corrupted or protected file
+        log.warning("Arquivo %s (sha256 %s) não pôde ser lido: %s", file_type, result["file"]["sha256"][:12],
+                    type(error).__name__)
         raise HTTPException(status_code=422, detail=f"Não foi possível ler o arquivo: {error}")
+    except Exception as error:  # a bug of the reader: same answer, but with the stack in the log
+        log.error("Erro inesperado ao ler arquivo %s (sha256 %s)", file_type, result["file"]["sha256"][:12],
+                  exc_info=True)
+        raise HTTPException(status_code=422, detail=f"Não foi possível ler o arquivo: {error}")
+    log.info("Arquivo %s lido (sha256 %s): %d página(s), %d planilha(s), %d parágrafo(s)", file_type,
+             result["file"]["sha256"][:12], len(result["pages"]), len(result["sheets"]), len(result["paragraphs"]))
     return result
 
 
@@ -58,6 +100,7 @@ def detect_type(content: bytes, name: str) -> str:
         if b"word/" in content[:4096] or name.lower().endswith(".docx"):
             return "docx"
         return "xlsx"
+    log.warning("Formato não suportado (%d bytes)", len(content))
     raise HTTPException(status_code=415, detail="Formato não suportado. Envie PDF, Excel (.xlsx) ou Word (.docx).")
 
 

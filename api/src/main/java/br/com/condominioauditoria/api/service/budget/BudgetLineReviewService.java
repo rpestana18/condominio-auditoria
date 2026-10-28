@@ -137,7 +137,7 @@ public class BudgetLineReviewService {
             }
         }
         lines.saveAll(budgetLines);
-        log.info("Conferência das linhas da PO {}: {} mudança(s) por {}", budget.getId(), changed, username);
+        log.info("Conferência das linhas da PO {}: {} mudança(s)", budget.getId(), changed);
         return response(budget, budgetLines);
     }
 
@@ -200,7 +200,7 @@ public class BudgetLineReviewService {
         origins.save(origin);
         events.save(new BudgetLineReviewEvent(line, BudgetLineReviewAction.ORIGIN_CHANGED, line.getReviewStatus(),
                 username, now, text(request.reason())));
-        log.info("Origem da linha {} da PO {} gravada por {}", line.getEffectiveCode(), budget.getId(), username);
+        log.info("Origem da linha {} da PO {} gravada", line.getEffectiveCode(), budget.getId());
         BudgetLineReviewResponse all = response(budget, budgetLines);
         return all.lines().stream().filter(l -> l.lineId().equals(line.getId())).findFirst().orElseThrow();
     }

@@ -102,8 +102,8 @@ public class BudgetLineOriginService {
             saved++;
         }
         origins.saveAll(toSave);
-        log.info("Origem de {} linha(s) da PO {} gravada da planilha {}", saved, chosen.getId(),
-                file.getOriginalName());
+        log.info("Origem de {} linha(s) da PO {} gravada da planilha do arquivo {}", saved, chosen.getId(),
+                file.getId());
         String version = chosen.getVersion() == null ? "lida" : "versão " + chosen.getVersion();
         return new Saved(chosen, saved, kept, "Planilha de apoio lida: origem de " + saved + " linha(s) da PO ("
                 + version + ")" + (kept == 0 ? "" : "; " + kept + " origem(ns) informada(s) pelo Admin mantida(s)")

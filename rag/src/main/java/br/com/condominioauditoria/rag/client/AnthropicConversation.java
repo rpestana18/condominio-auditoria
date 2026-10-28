@@ -176,7 +176,9 @@ final class AnthropicConversation implements AiGateway.Conversation {
             Map<String, Object> read = block._input().convert(Map.class);
             return read == null ? Map.of() : new LinkedHashMap<>(read);
         } catch (RuntimeException error) {
-            log.warn("Argumentos da ferramenta {} não puderam ser lidos: {}", block.name(), error.getMessage());
+            // Only the type of the error: its message may quote the arguments, which never go to the log (ADR 0008)
+            log.warn("Argumentos da ferramenta {} não puderam ser lidos ({})", block.name(),
+                    error.getClass().getSimpleName());
             return Map.of();
         }
     }

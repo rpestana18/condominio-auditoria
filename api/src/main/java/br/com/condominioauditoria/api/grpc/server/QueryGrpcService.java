@@ -42,23 +42,23 @@ public class QueryGrpcService extends QueryGrpc.QueryImplBase {
     @Override
     public void listCondominiums(ListCondominiumsRequest request,
             StreamObserver<ListCondominiumsResponse> response) {
-        respond(response, query::condominiums);
+        respond("ListCondominiums", response, query::condominiums);
     }
 
     @Override
     public void fundSummary(FundSummaryRequest request, StreamObserver<FundSummaryResponse> response) {
-        respond(response, () -> query.fundSummary(request));
+        respond("FundSummary", response, () -> query.fundSummary(request));
     }
 
     @Override
     public void listFiles(ListFilesRequest request, StreamObserver<ListFilesResponse> response) {
-        respond(response, () -> query.files(request));
+        respond("ListFiles", response, () -> query.files(request));
     }
 
     @Override
     public void fileChecks(FileChecksRequest request,
             StreamObserver<FileChecksResponse> response) {
-        respond(response, () -> query.fileChecks(request));
+        respond("FileChecks", response, () -> query.fileChecks(request));
     }
 
     /** Streamed response: each entry goes out as soon as it is converted. */
@@ -68,25 +68,37 @@ public class QueryGrpcService extends QueryGrpc.QueryImplBase {
             query.ledgerEntries(request).forEach(response::onNext);
             response.onCompleted();
         } catch (RuntimeException error) {
-            response.onError(translate(error));
+            response.onError(translate("ListEntries", error));
         }
     }
 
     @Override
     public void searchDocuments(SearchDocumentsRequest request, StreamObserver<SearchDocumentsResponse> response) {
-        respond(response, () -> query.searchDocuments(request));
+        respond("SearchDocuments", response, () -> query.searchDocuments(request));
     }
 
-    private static <T> void respond(StreamObserver<T> response, Supplier<T> action) {
+    private static <T> void respond(String rpc, StreamObserver<T> response, Supplier<T> action) {
         try {
             response.onNext(action.get());
             response.onCompleted();
         } catch (RuntimeException error) {
-            response.onError(translate(error));
+            response.onError(translate(rpc, error));
         }
     }
 
-    private static StatusRuntimeException translate(RuntimeException error) {
+    /**
+     * Status of the error, logged once here (ADR 0008, D3): a refusal or an expected failure (permission, module off,
+     * invalid argument, not found, rag down) is one WARN line; INTERNAL is an ERROR with the stack.
+     */
+    static StatusRuntimeException translate(String rpc, RuntimeException error) {
+        StatusRuntimeException status = status(error);
+        if (status.getStatus().getCode() != Status.Code.INTERNAL) {
+            log.warn("gRPC Query/{} → {}: {}", rpc, status.getStatus().getCode(), status.getStatus().getDescription());
+        }
+        return status;
+    }
+
+    private static StatusRuntimeException status(RuntimeException error) {
         return switch (error) {
             case StatusRuntimeException s -> s;
             case AccessDeniedException a ->
@@ -96,7 +108,7 @@ public class QueryGrpcService extends QueryGrpc.QueryImplBase {
             case IllegalArgumentException i ->
                     Status.INVALID_ARGUMENT.withDescription(i.getMessage()).asRuntimeException();
             default -> {
-                log.error("Erro no gRPC de consulta", error);
+                log.error("gRPC Query → INTERNAL: erro inesperado", error);
                 yield Status.INTERNAL.withDescription("Erro interno no backend").asRuntimeException();
             }
         };

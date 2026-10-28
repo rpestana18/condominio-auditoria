@@ -61,14 +61,13 @@ class BalanceBridgeTest {
     }
 
     /**
-     * RF-13.15 (version 4): items 1 + 2 + 3 = planned − actual in the budget lines (451.620,13 − 445.125,96 =
-     * 6.494,17 in September/2026), whatever the split by type; an occasional line goes to UNUSED_OCCASIONAL ("previsto
-     * que não virou gasto; não é economia"), never to LINE_SAVINGS (Q52, own item).
+     * RF-13.15 (version 5): items 1 + 2 = planned − actual in the budget lines (451.620,13 − 445.125,96 = 6.494,17 in
+     * September/2026), whatever the split by type; an occasional line goes to LINE_SAVINGS with its profile, so the
+     * screen marks it "eventual" (Q52, answered by the user on 28/10/2026: "as sobras são economia").
      */
     @Test
-    void occasionalLineIsUnusedPlannedNotSavings() {
-        assertThat(BalanceBridge.VERSION).isEqualTo("4");
-        assertThat(BalanceBridge.OCCASIONAL_SURPLUS_APART).isTrue();
+    void occasionalLineIsSavingsWithItsProfile() {
+        assertThat(BalanceBridge.VERSION).isEqualTo("5");
         var profiles = new java.util.HashMap<>(s.confirmedProfiles());
         var services = s.lines.stream().filter(l -> "1.8.1".equals(l.getPrintedCode())).findFirst().orElseThrow();
         profiles.put(services.getId(), new BudgetTrackingGrid.LineProfile(
@@ -78,22 +77,30 @@ class BalanceBridgeTest {
         var funds = FundMovements.calculate(s.funds(SEPTEMBER.minusMonths(1), SEPTEMBER));
         BalanceBridgeResponse r = BalanceBridge.calculate(BalanceBridge.Input.of(grid, funds, OPERATING, OPERATING,
                 SEPTEMBER, SEPTEMBER));
+        BalanceBridgeResponse recurring = bridge(OPERATING, SEPTEMBER, SEPTEMBER);
 
-        BridgeItemResponse unused = item(r, BalanceBridgeItemCode.UNUSED_OCCASIONAL);
-        assertThat(unused.amount()).isEqualByComparingTo("31374.65");
-        assertThat(unused.label()).contains("não é economia");
-        assertThat(unused.parts()).extracting(p -> p.code() + "=" + p.amount().toPlainString())
-                .containsExactly("UNUSED=31374.65", "ABOVE_LINE=0.00");
-        assertThat(unused.lines()).extracting(BridgeLineResponse::code).containsExactly("1.8.1");
-        assertThat(item(r, BalanceBridgeItemCode.LINE_SAVINGS).lines()).extracting(BridgeLineResponse::code)
-                .doesNotContain("1.8.1");
-        BigDecimal lines = item(r, BalanceBridgeItemCode.LINE_SAVINGS).amount()
-                .add(item(r, BalanceBridgeItemCode.PROVISIONS_RESERVED).amount()).add(unused.amount());
+        BridgeItemResponse savings = item(r, BalanceBridgeItemCode.LINE_SAVINGS);
+        assertThat(savings.label()).isEqualTo("Economia nas linhas");
+        assertThat(savings.parts()).isEmpty();
+        assertThat(savings.lines()).filteredOn(l -> l.code().equals("1.8.1")).singleElement().satisfies(l -> {
+            assertThat(l.effectiveProfile())
+                    .isEqualTo(br.com.condominioauditoria.api.model.enums.SpendingProfile.OCCASIONAL);
+            assertThat(l.amount()).isEqualByComparingTo("31374.65");
+        });
+        // The type of the line changes only its mark: the amount of the item and of every other item stay the same
+        assertThat(savings.amount()).isEqualByComparingTo(item(recurring, BalanceBridgeItemCode.LINE_SAVINGS).amount());
+        assertThat(r.items()).extracting(BridgeItemResponse::amount)
+                .usingElementComparator(BigDecimal::compareTo)
+                .containsExactlyElementsOf(recurring.items().stream().map(BridgeItemResponse::amount).toList());
+        BigDecimal lines = savings.amount().add(item(r, BalanceBridgeItemCode.PROVISIONS_RESERVED).amount());
         assertThat(lines).isEqualByComparingTo("6494.17");
+        // INCOME_ABOVE_PLANNED_EXPENSE still compares the income with the planned amount of every line
+        assertThat(item(r, BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE).parts())
+                .extracting(p -> p.code()).containsExactly("CONDO_FEE", "OTHER_INCOME", "PLANNED");
         assertThat(item(r, BalanceBridgeItemCode.UNEXPLAINED).amount()).isEqualByComparingTo("0.00");
         assertThat(r.closes()).isTrue();
-        assertThat(r.months().getFirst().items()).extracting(i -> i.code())
-                .contains(BalanceBridgeItemCode.UNUSED_OCCASIONAL);
+        assertThat(java.util.Arrays.stream(BalanceBridgeItemCode.values()).map(Enum::name))
+                .doesNotContain("UNUSED_OCCASIONAL");
     }
 
     /** RF-13.12: while the lines are not reviewed, the items by line have no number; the others stay. */
@@ -164,7 +171,7 @@ class BalanceBridgeTest {
         assertThat(r.effectiveTo()).isEqualTo("2026-09");
         assertThat(r.items()).extracting(BridgeItemResponse::code).containsExactly(
                 BalanceBridgeItemCode.LINE_SAVINGS, BalanceBridgeItemCode.PROVISIONS_RESERVED,
-                BalanceBridgeItemCode.UNUSED_OCCASIONAL, BalanceBridgeItemCode.SEPARATE_APPORTIONMENT,
+                BalanceBridgeItemCode.SEPARATE_APPORTIONMENT,
                 BalanceBridgeItemCode.INCOME_ABOVE_PLANNED_EXPENSE, BalanceBridgeItemCode.OUTSIDE_BUDGET,
                 BalanceBridgeItemCode.INTER_FUND_TRANSFERS, BalanceBridgeItemCode.APPORTIONMENT_FUNDS,
                 BalanceBridgeItemCode.UNEXPLAINED);

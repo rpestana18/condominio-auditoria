@@ -80,8 +80,8 @@ public class UtilityAccountService {
         decision.decide(type, username, Instant.now());
         accounts.save(decision);
         // Until the audit trail (RF-07.4) exists, the record stays in the log and in the decision columns
-        log.info("Conta de concessionária decidida: condominio={} conta={} ({}) tipo={} anterior={} por={}",
-                condominiumId, accountCode, account.getName(), type, previous, username);
+        log.info("Conta de concessionária decidida: condominio={} conta={} ({}) tipo={} anterior={}",
+                condominiumId, accountCode, account.getName(), type, previous);
     }
 
     private Map<String, UtilityAccount> decisions(UUID condominiumId) {

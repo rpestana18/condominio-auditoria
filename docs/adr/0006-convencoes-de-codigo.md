@@ -33,6 +33,8 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 
 **Decidido: B**, com o glossário abaixo como regra. Termo que não tiver tradução fiel entra no glossário antes de entrar no código; ninguém inventa tradução nova.
 
+Mensagens de log (acréscimo de 28/10/2026, ADR 0008, D9): o texto das mensagens de log fica em **português**, como as mensagens mostradas ao usuário; as chaves dos campos de log (MDC e JSON: `requestId`, `user`, `condominiumId`, `fileId`...) ficam em inglês, como o resto do código.
+
 ### Glossário (português → inglês no código)
 
 | Termo | No código | Observação |
@@ -65,7 +67,7 @@ São seis decisões. O usuário aprova ou troca cada uma em separado (seção "P
 | linha conferida, conferência das linhas, estado da conferência | `reviewed`, `BudgetLineReview`, `BudgetLineReviewStatus` (`PENDING`, `REVIEWED`) | RF-13.12 (ADR 0009, Decisão 1); avisos em `BudgetLineReviewCheck` |
 | conta de grupo, vale a descrição | `groupAccount`, `descriptionPrevails` | marcas do Admin na conferência (O2 e O1) |
 | entrada acima da despesa prevista | `incomeAbovePlannedExpense` (`INCOME_ABOVE_PLANNED_EXPENSE`) | substitui "receita acima ou abaixo do previsto" (`INCOME_VS_PLANNED`), RF-13.15 |
-| eventuais e anuais: previsto não usado | `UNUSED_OCCASIONAL` | parcela própria da ponte (Q52), "não é economia" |
+| economia nas linhas | `LINE_SAVINGS` | previsto − realizado das linhas recorrentes, sazonais, eventuais e anuais (RF-13.15; Q52, 28/10/2026). O termo "eventuais e anuais: previsto não usado" (`UNUSED_OCCASIONAL`) saiu em 28/10/2026 |
 | origem da linha, planilha de apoio, método | `BudgetLineOrigin`, `supportSheet`, `OriginMethod` (`AVERAGE_TIMES_INDEX`, `EQUAL_TO_AVERAGE`, `TYPED`, `NO_AVERAGE`) | RF-13.13 (ADR 0009, Decisão 3 B); fonte `SHEET` ou `ADMIN` |
 | entradas e saídas (mês a mês), lançamentos da tela | `MonthlyCashFlow`, `CashFlowEntry` | RF-13.11 (ADR 0009, Decisão 4) |
 | antes da PO aprovada | `BEFORE_BUDGET` | meses sem PO, no fluxo contínuo (RF-13.16) |

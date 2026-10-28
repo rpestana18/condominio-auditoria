@@ -37,7 +37,7 @@ public class OperatingFundService {
         UUID previous = condominium.getOperatingFundId();
         condominium.confirmOperatingFund(fund.getId(), username, Instant.now());
         // Until the audit trail (RF-07.4) exists, the record stays in the log and in the confirmation columns
-        log.info("Fundo ordinário confirmado: condominio={} fundo={} ({}) anterior={} por={}",
-                condominiumId, fund.getId(), fund.getName(), previous, username);
+        log.info("Fundo ordinário confirmado: condominio={} fundo={} ({}) anterior={}",
+                condominiumId, fund.getId(), fund.getName(), previous);
     }
 }

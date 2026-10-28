@@ -17,7 +17,7 @@ Documentos reais com o resultado esperado. Toda mudança no leitor (`reader/`) o
     as lê pelo contrato (`contracts/mensagens/v4`), sem usar classe do rag. Gravadas e conferidas por
     `rag/.../service/ProcessingResultGoldenTest`: sem o arquivo, o teste grava; com ele, exige saída idêntica. Os
     `*.resultado-v3.json` antigos podem ser apagados. Mudou a leitura do rag? Apague as três, rode `./gradlew :rag:test` e
-    depois `./gradlew :api:test`. Os números do RF-13 revisto (Entradas e saídas, conferência das linhas, origem, ponte v4
+    depois `./gradlew :api:test`. Os números do RF-13 revisto (Entradas e saídas, conferência das linhas, origem, ponte v5
     e fim do exercício) estão em `api/.../service/budget/CashFlowAndLineReviewGoldenTest` e `BudgetTrackingGoldenTest`.
   - `mapa-contas-fluxo-para-PO.csv`: de-para das 73 contas do piloto (planilha de sugestões do RF-03.1.5), cópia de
     `piloto-mio/`. Caso do de-para em `api/.../service/budget/AccountMappingGoldenTest`.

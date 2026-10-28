@@ -1,5 +1,6 @@
 package br.com.condominioauditoria.rag.client;
 
+import br.com.condominioauditoria.logging.LogContext;
 import br.com.condominioauditoria.rag.config.properties.RagProperties;
 import br.com.condominioauditoria.rag.model.document.ReadDocument;
 import br.com.condominioauditoria.rag.parser.ReaderContract;
@@ -35,6 +36,8 @@ public class DocumentReaderClient {
             }
         });
         String json = client.post().uri("/v2/read")
+                // The reader logs with the same request id (ADR 0008)
+                .header(LogContext.HTTP_HEADER, LogContext.currentOrNewRequestId())
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(parts)
                 .retrieve()

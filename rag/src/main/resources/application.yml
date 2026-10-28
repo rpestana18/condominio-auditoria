@@ -126,3 +126,10 @@ management:
     web:
       exposure:
         include: health,info
+
+# Logs (ADR 0008). Local: text, with the MDC (requestId, user, condominiumId, fileId...) between brackets on each line.
+# Cloud: JSON, native to Spring Boot, without a new library: LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs (the MDC goes as
+# fields of the JSON). Messages in Portuguese, keys in English.
+logging:
+  pattern:
+    correlation: "%replace([%mdc] ){'\\[\\] ', ''}"

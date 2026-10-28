@@ -3210,10 +3210,12 @@ export interface components {
             reasons?: string[];
             /** @description Em recusa do chat pelo modo (409): modo de respostas efetivo */
             aiMode?: components["schemas"]["AiMode"];
+            /** @description Id da requisição (o mesmo do cabeçalho X-Request-Id e da linha do log, ADR 0008); a tela mostra em erro 5xx para o usuário informar ao suporte */
+            requestId?: string;
         };
         /**
          * @description Tipo de gasto da linha (RF-13.14; ADR 0009, Decisão 2). RECURRING = recorrente (o antigo MONTHLY);
-         *     OCCASIONAL = eventual (não gastar não é economia, D4); SEASONAL = sazonal (O5); ANNUAL = anual (O6);
+         *     OCCASIONAL = eventual (cada compra é sinalizada; a sobra entra em economia nas linhas, Q52); SEASONAL = sazonal (O5); ANNUAL = anual (O6);
          *     PROVISION = provisão (férias, 13º, rescisão: o previsto não gasto fica reservado); SEPARATE_APPORTIONMENT =
          *     rateio à parte.
          * @enum {string}
@@ -3374,17 +3376,17 @@ export interface components {
             separateApportionment: components["schemas"]["TrackingBlockResponse"];
         };
         /**
-         * @description Itens da ponte, versão 4 (RF-13.15; ADR 0009, Decisão 5). LINE_SAVINGS (linhas recorrentes e sazonais: o único
-         *     lugar da palavra "economia"), PROVISIONS_RESERVED (provisões) e UNUSED_OCCASIONAL (eventuais e anuais: previsto
-         *     não usado, nunca economia, Q52) somam o previsto − realizado das linhas. INCOME_ABOVE_PLANNED_EXPENSE (substitui
-         *     INCOME_VS_PLANNED): entradas do fundo ordinário menos a despesa prevista do período (N2). Sem a PO conferida
+         * @description Itens da ponte, versão 5 (RF-13.15; ADR 0009, Decisão 5). LINE_SAVINGS (linhas recorrentes, sazonais, eventuais e
+         *     anuais: o único lugar da palavra "economia"; Q52, respondida em 28/10/2026) e PROVISIONS_RESERVED (provisões)
+         *     somam o previsto − realizado das linhas. INCOME_ABOVE_PLANNED_EXPENSE (substitui INCOME_VS_PLANNED): entradas do
+         *     fundo ordinário menos a despesa prevista do período, de todas as linhas (N2). Sem a PO conferida
          *     (lineReview), os itens por linha vêm com amount nulo. APPORTIONMENT_FUNDS (Q49) só na ponte de todos os fundos
          *     (fund=all), antes de UNEXPLAINED: créditos − débitos dos fundos de rateio, sem as transferências marcadas, sem
          *     percentual; nessa ponte INCOME_ABOVE_PLANNED_EXPENSE usa só o fundo ordinário e FUND_PLANNED_COLLECTION e
          *     FUND_EXPENSES não aparecem (continuam só na ponte de um fundo que não é o ordinário).
          * @enum {string}
          */
-        BalanceBridgeItemCode: "LINE_SAVINGS" | "PROVISIONS_RESERVED" | "UNUSED_OCCASIONAL" | "SEPARATE_APPORTIONMENT" | "INCOME_ABOVE_PLANNED_EXPENSE" | "FUND_PLANNED_COLLECTION" | "FUND_EXPENSES" | "OUTSIDE_BUDGET" | "INTER_FUND_TRANSFERS" | "APPORTIONMENT_FUNDS" | "UNEXPLAINED";
+        BalanceBridgeItemCode: "LINE_SAVINGS" | "PROVISIONS_RESERVED" | "SEPARATE_APPORTIONMENT" | "INCOME_ABOVE_PLANNED_EXPENSE" | "FUND_PLANNED_COLLECTION" | "FUND_EXPENSES" | "OUTSIDE_BUDGET" | "INTER_FUND_TRANSFERS" | "APPORTIONMENT_FUNDS" | "UNEXPLAINED";
         BalanceBridgeResponse: {
             calculationVersion: string;
             status: components["schemas"]["CalculationStatus"];
@@ -3476,7 +3478,7 @@ export interface components {
         BridgeItemResponse: {
             code: components["schemas"]["BalanceBridgeItemCode"];
             label: string;
-            /** @description Nulo nos itens por linha (LINE_SAVINGS, PROVISIONS_RESERVED, UNUSED_OCCASIONAL, SEPARATE_APPORTIONMENT) enquanto a PO não está conferida (lineReview, RF-13.12) */
+            /** @description Nulo nos itens por linha (LINE_SAVINGS, PROVISIONS_RESERVED, SEPARATE_APPORTIONMENT) enquanto a PO não está conferida (lineReview, RF-13.12) */
             amount: number | null;
             /** @description Nulo com variação zero e sempre em APPORTIONMENT_FUNDS (Q49): os percentuais não somam 100% */
             percentageOfVariation?: number | null;
@@ -3508,6 +3510,7 @@ export interface components {
             lineId: string;
             code: string;
             description: string;
+            /** @description Tipo que vale para a linha; em LINE_SAVINGS, a tela marca OCCASIONAL como "eventual" e ANNUAL como "anual" */
             effectiveProfile: components["schemas"]["SpendingProfile"];
             amount: number;
         };

@@ -21,9 +21,9 @@ const actionLabel: Record<string, string> = {
 };
 
 /**
- * Review of the budget lines (RF-13.12) and the origin of each value (RF-13.13), in "PO aprovada". Everyone sees it;
- * only the Admin reviews, marks and fills the origin (the backend answers 403 for the others). The warnings come from
- * the API and never block. While a line is pending, no screen distributes spending by line.
+ * The budget lines read and the origin of each value (RF-13.12, RF-13.13), in "PO aprovada". Since Q54 the lines read
+ * are valid by themselves: the warnings are only signals, block no screen, and marking a line as checked is optional.
+ * Everyone sees it; only the Admin marks and fills the origin (the backend answers 403 for the others).
  */
 export function LineReviewSection({ budgetId }: { budgetId: string }) {
   const { condominiumId, can } = useSession();
@@ -53,29 +53,29 @@ export function LineReviewSection({ budgetId }: { budgetId: string }) {
   return (
     <section className="block" id="conferencia">
       <div className="block-title">
-        <h2>Conferência das linhas</h2>
-        <span className={state.reviewed ? "badge ok" : "badge warning"}>
-          {state.reviewedLines} de {state.totalLines} conferidas
-        </span>
+        <h2>Linhas lidas da PO</h2>
+        <span className="badge ok">{state.totalLines} linhas valendo</span>
+        {data.linesWithWarnings > 0 && <span className="badge warning">{data.linesWithWarnings} com sinal</span>}
       </div>
       <p className="muted">
-        Confira o que o sistema leu do documento: conta, descrição, valor, observação e, no grupo 1.9, os fundos. Os avisos só apontam o
-        que merece atenção. Enquanto houver linha pendente, as telas não distribuem os gastos por linha da PO. {data.linesWithOrigin} linha(s)
-        com origem do valor.
+        O que o sistema leu da PO aprovada: conta, descrição, valor, observação e, no grupo 1.9, os fundos. As linhas já valem em todas
+        as telas, sem passo de conferência. Os sinais só apontam o que merece um olhar e não bloqueiam nada; marcar uma linha como
+        conferida é opcional e fica na trilha. {data.linesWithOrigin} linha(s) com origem do valor; {state.reviewedLines} marcada(s) como
+        conferida(s).
       </p>
       {!state.reviewed && state.message && <p className="notice warning">{state.message}</p>}
       <div className="filters">
         <label className="inline-field">
           <input type="checkbox" checked={onlyWarnings} onChange={(e) => setOnlyWarnings(e.target.checked)} />
-          Só as {data.linesWithWarnings} linha(s) com aviso
+          Só as {data.linesWithWarnings} linha(s) com sinal
         </label>
         {isAdmin && (
           <button
-            className="button"
-            disabled={state.reviewed || review.isPending}
+            className="button secondary"
+            disabled={state.reviewedLines === state.totalLines || review.isPending}
             onClick={() => review.mutate({ items: [], reviewAll: true })}
           >
-            Conferir todas
+            Marcar todas como conferidas (opcional)
           </button>
         )}
         <button className="link-button" onClick={() => setShowTrail((v) => !v)}>
@@ -93,7 +93,7 @@ export function LineReviewSection({ budgetId }: { budgetId: string }) {
               <th>Descrição</th>
               <th className="number">Valor mensal</th>
               <th>Observação</th>
-              <th>Avisos</th>
+              <th>Sinais</th>
               <th>Origem</th>
               <th>Marcas</th>
               <th>Situação</th>
@@ -116,7 +116,7 @@ export function LineReviewSection({ budgetId }: { budgetId: string }) {
           </tbody>
         </table>
       </div>
-      <p className="muted">Avisos: versão {data.checkVersion}.</p>
+      <p className="muted">Sinais: versão {data.checkVersion}.</p>
     </section>
   );
 }
@@ -182,7 +182,7 @@ function LineRows({ line, isAdmin, busy, open, onToggle, onStatus, onMark, budge
           )}
         </td>
         <td>
-          <span className={reviewed ? "badge ok" : "badge warning"}>{reviewed ? "conferida" : "pendente"}</span>
+          <span className={reviewed ? "badge ok" : "badge neutral"}>{reviewed ? "conferida" : "automática"}</span>
           {line.reviewedBy && line.reviewedAt && (
             <small className="note">
               por {line.reviewedBy} em {formatDateTime(line.reviewedAt)}
@@ -190,7 +190,7 @@ function LineRows({ line, isAdmin, busy, open, onToggle, onStatus, onMark, budge
           )}
           {isAdmin && (
             <button className="link-button" disabled={busy} onClick={() => onStatus(!reviewed)}>
-              {reviewed ? "Reabrir" : "Conferir"}
+              {reviewed ? "Desmarcar" : "Marcar como conferida"}
             </button>
           )}
         </td>

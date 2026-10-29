@@ -42,7 +42,7 @@ export function BridgeChart({ bridge }: { bridge: BalanceBridge }) {
       </p>
       {provisional.length > 0 && (
         <p className="muted">
-          Fora do gráfico até o de-para ser confirmado (provisório): {provisional.map((i) => `“${i.label}”`).join(" e ")}.
+          Fora do gráfico enquanto houver valor alto de contas sem linha encontrada (provisório): {provisional.map((i) => `“${i.label}”`).join(" e ")}.
         </p>
       )}
     </section>

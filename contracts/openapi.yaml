@@ -313,10 +313,13 @@ paths:
       summary: De-para das contas do fluxo nesta versão da PO (todos os perfis, RF-03.1.4 e RF-03.1.13)
       description: |
         Contas do fluxo com débito no fundo Condomínio no exercício da PO, mais as contas que já têm de-para.
-        Conta sem de-para tem estado nulo. Só CONFIRMED entra no previsto × realizado.
-        Abrir a lista (qualquer perfil) gera antes as sugestões que faltam numa PO confirmada (Q51, RF-03.1.5):
-        versão anterior → planilha guardada do condomínio → nome, só para contas sem de-para, autor "sistema".
-        Nada é confirmado; gerar de novo não duplica nem desfaz confirmação, recusa ou escolha do Admin.
+        Conta sem linha encontrada tem estado nulo. AUTOMATIC e CONFIRMED entram no previsto × realizado (Q54, 29/10/2026;
+        ADR 0009, Decisão 8): a ligação automática vale sem confirmação, inclusive a de baixa confiança.
+        Abrir a lista (qualquer perfil) aplica antes o de-para automático numa PO confirmada: versão anterior (o que o
+        Admin confirmou) → planilha guardada do condomínio → planilha de apoio da PO → nome; depois, de baixa confiança,
+        conta irmã da planilha de apoio, palavra rara do nome e favorecido. Autor "sistema". Aplicar de novo não duplica
+        nem desfaz confirmação, recusa ou escolha do Admin. filter=EXCEPTIONS mostra só as exceções: contas sem linha
+        encontrada, ligações de baixa confiança e recusadas.
       operationId: listAccountMappings
       parameters:
         - name: filter
@@ -336,8 +339,9 @@ paths:
       summary: Admin escolhe o destino de uma conta (só ADMIN, RF-03.1.4 e RF-03.1.5)
       description: |
         Destino BUDGET_LINE aponta para uma linha de despesa da PO (grupos 1.1 a 1.8) pelo id, nunca pela conta da PO.
-        Com confirmar nulo ou true, o de-para fica CONFIRMED; com false, SUGGESTED. A trilha registra o destino e o
-        estado anteriores e novos.
+        WITHOUT_LINE = "sem linha da PO" por decisão do Admin (O7): a conta fica fora das linhas, sem o aviso de conta
+        sem linha encontrada. Com confirm nulo ou true, o de-para fica CONFIRMED; com false, AUTOMATIC (vale do mesmo
+        jeito, origem ADMIN, e o sistema nunca troca). A trilha registra o destino e o estado anteriores e novos.
       operationId: setAccountMapping
       requestBody:
         required: true
@@ -364,14 +368,15 @@ paths:
   /condominiums/{condominiumId}/budgets/{budgetId}/account-mappings/suggestions:
     parameters: [{ $ref: "#/components/parameters/CondominiumId" }, { $ref: "#/components/parameters/BudgetId" }]
     post:
-      summary: Gera sugestões para as contas sem de-para (só ADMIN, RF-03.1.5), sem IA
+      summary: Aplica o de-para automático agora (só ADMIN, Q54), sem IA
       description: |
-        O sistema já gera sozinho (ao confirmar a PO, ao gravar um extrato e ao abrir a lista, Q51); esta chamada faz
-        a mesma geração e devolve o resumo. Primeiro a versão anterior da PO (só o que estava confirmado; linha igual =
-        mesmo código efetivo, conta e descrição), depois a planilha guardada do condomínio, depois a comparação de
-        nomes (sem dígitos, sem acento; nota mínima configurável; empate só é desfeito pelo favorecido do lançamento;
-        todas as palavras do fluxo numa única linha também sugerem). Tudo entra SUGGESTED, com o motivo. Nenhuma conta
-        é confirmada e nenhum número muda.
+        O sistema já aplica sozinho (ao confirmar a PO, ao gravar um extrato ou a planilha de apoio e ao abrir a lista);
+        esta chamada faz a mesma aplicação e devolve o resumo. Ordem: versão anterior da PO (só o que estava confirmado),
+        planilha guardada do condomínio, planilha de apoio da PO (o nome da conta do extrato igual ao nome de uma conta
+        da aba de despesas; a linha cuja origem cita essa conta ou a conta-mãe; nunca o número, RF-00.8) e comparação de
+        nomes. Baixa confiança (vale, e aparece em "só exceções"): conta irmã na planilha de apoio, desempate só pela
+        descrição, uma palavra rara do nome em uma só linha, favorecido que combina com a empresa de uma linha de
+        contrato. Tudo entra AUTOMATIC, com a origem e o motivo, e já conta nos números.
       operationId: suggestAccountMappings
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AccountMappingSuggestionsResponse" } } } }
@@ -381,10 +386,11 @@ paths:
   /condominiums/{condominiumId}/budgets/{budgetId}/account-mappings/suggestions/confirmation:
     parameters: [{ $ref: "#/components/parameters/CondominiumId" }, { $ref: "#/components/parameters/BudgetId" }]
     post:
-      summary: Confirma todas as contas SUGGESTED desta versão (só ADMIN, Q51), um evento por conta
+      summary: Confirma todas as ligações automáticas desta versão (só ADMIN, opcional desde a Q54), um evento por conta
       description: |
-        "Confirmar todas as sugestões". expected é quantas sugestões a tela mostrou (summary.suggested); se o número
-        mudou nesse meio-tempo, nada é confirmado (409). Contas sem de-para e recusadas não mudam.
+        "Confirmar todas as ligações automáticas". Opcional: a ligação automática já vale sem confirmação. expected é
+        quantas a tela mostrou (summary.automatic); se o número mudou nesse meio-tempo, nada é confirmado (409). Contas
+        sem linha encontrada e recusadas não mudam.
       operationId: confirmAllAccountMappingSuggestions
       requestBody:
         required: true
@@ -393,7 +399,7 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AccountMappingBatchResponse" } } } }
         "403": { description: Perfil sem permissão ou sem acesso ao condomínio }
         "404": { description: PO não encontrada }
-        "409": { description: PO ainda não confirmada ou as sugestões mudaram desde que a tela foi aberta, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+        "409": { description: PO ainda não confirmada ou as ligações automáticas mudaram desde que a tela foi aberta, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
         "422": { description: expected ausente ou menor que 1 }
   /condominiums/{condominiumId}/budgets/{budgetId}/account-mappings/sheet:
     parameters: [{ $ref: "#/components/parameters/CondominiumId" }, { $ref: "#/components/parameters/BudgetId" }]
@@ -401,10 +407,11 @@ paths:
       summary: Carrega a planilha de sugestões (CSV "conta do fluxo;linha da PO"), só ADMIN (RF-03.1.5)
       description: |
         Formato do mapa do piloto, separado por ponto e vírgula, com ou sem cabeçalho, UTF-8 ou Windows-1252. Destino:
-        código efetivo de uma linha de despesa, "AJUSTE (...)", "REALOCAR (...)" ou "TRANSFERENCIA (...)". Tudo entra
-        SUGGESTED; conta já confirmada não muda; linha inválida é listada e não entra. As linhas aceitas ficam guardadas
-        como a planilha do condomínio (substituem a anterior; nome, linha e SHA-256 do arquivo, nunca o arquivo) e são
-        reaplicadas, como SUGGESTED, a contas novas e a versões novas da PO (Q51).
+        código efetivo de uma linha de despesa, "AJUSTE (...)", "REALOCAR (...)", "TRANSFERENCIA (...)" ou "SEM LINHA DA
+        PO". Tudo entra AUTOMATIC e já vale (Q54); conta já confirmada ou escolhida pelo Admin não muda; linha inválida é
+        listada e não entra. As linhas aceitas ficam guardadas como a planilha do condomínio (substituem a anterior; nome,
+        linha e SHA-256 do arquivo, nunca o arquivo) e são reaplicadas, como AUTOMATIC, a contas novas e a versões novas
+        da PO (Q51, Q54).
       operationId: uploadAccountMappingSheet
       requestBody:
         required: true
@@ -801,11 +808,12 @@ paths:
     get:
       summary: Conferência das linhas da PO (todos os perfis, RF-13.12)
       description: |
-        Cada linha lida da PO (despesa e fundos 1.9) com o estado da conferência (PENDING ou REVIEWED, quem e quando),
-        as marcas do Admin (conta de grupo O2, vale a descrição O1), a origem do valor (RF-13.13, quando houver) e os
-        avisos calculados na consulta pela função pura BudgetLineReviewCheck (checkVersion). Aviso nunca bloqueia e
-        nunca é indício. Enquanto state.reviewed é falso, o acompanhamento, a ponte e "Entradas e saídas" não mostram
-        números por linha (aviso LINES_NOT_REVIEWED).
+        Cada linha lida da PO (despesa e fundos 1.9) com o estado (PENDING = "automática", vale sozinha; REVIEWED =
+        conferida pelo Admin, quem e quando), as marcas do Admin (conta de grupo O2, vale a descrição O1), a origem do
+        valor (RF-13.13, quando houver) e os sinais calculados na consulta pela função pura BudgetLineReviewCheck
+        (checkVersion). Desde a Q54 (29/10/2026) as linhas lidas da PO aprovada valem sozinhas: state.reviewed vem sempre
+        verdadeiro, nenhuma tela fica sem números por linha e LINES_NOT_REVIEWED não é mais emitido. Sinal nunca bloqueia
+        e nunca é indício; marcar como conferida é opcional.
       operationId: budgetLineReview
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetLineReviewResponse" } } } }
@@ -1023,7 +1031,7 @@ paths:
         Mês em andamento (Q50): só o realizado; difference das células, dos grupos e do mês, overrun e linesAbove vêm
         nulos até o mês fechar (o previsto do mês continua em planned).
         Avisos: PARTIAL_MONTH, MONTHS_WITHOUT_CASH_FLOW, TWO_CASH_FLOWS, PROFILE_NOT_CONFIRMED e NO_CONFIRMED_MAPPING
-        (contas do fundo Condomínio sem de-para confirmado no acumulado, com as contas e o valor em "sem linha da PO";
+        (contas do extrato do fundo Condomínio sem linha encontrada no acumulado, com as contas e o valor em "sem linha da PO"; a conta que o Admin pôs em "sem linha da PO" (WITHOUT_LINE) fica no bloco sem aviso;
         as contas também vêm em blocks.withoutBudgetLine.accounts).
       operationId: budgetTracking
       parameters:
@@ -1047,8 +1055,8 @@ paths:
         (inflows), saídas (outflows), saldos e variação: os itens vêm com amount nulo até o mês fechar (Q50). Na ponte de
         todos os fundos (fund=all, Q49) a receita é só a cota do fundo ordinário e os demais fundos ficam no item
         APPORTIONMENT_FUNDS, sem percentual, com a lista por fundo em funds. Outros avisos: MONTHS_WITHOUT_CASH_FLOW,
-        BALANCE_NOT_PRINTED, PARTIAL_MONTH, PROFILE_NOT_CONFIRMED e NO_CONFIRMED_MAPPING (contas do fundo Condomínio
-        sem de-para confirmado nos meses do total, com as contas e o valor que ficam em "Fora da PO"; só quando a
+        BALANCE_NOT_PRINTED, PARTIAL_MONTH, PROFILE_NOT_CONFIRMED e NO_CONFIRMED_MAPPING (contas do extrato do fundo
+        Condomínio sem linha encontrada nos meses do total, com as contas e o valor que ficam em "Fora da PO"; só quando a
         ponte inclui o fundo Condomínio). Sem fundo ordinário: status NO_OPERATING_FUND e números nulos.
       operationId: balanceBridge
       parameters:
@@ -1071,8 +1079,8 @@ paths:
         os blocos à parte (outflowBlocks: SEPARATE_APPORTIONMENT, WITHOUT_BUDGET_LINE, TO_REALLOCATE, ADJUSTMENTS e,
         com fund=all, OTHER_FUNDS); transferências entre fundos (recebidas e enviadas); saldo do mês e saldo
         acumulado conferido com o extrato (balanceMatches) e saídas + transferências enviadas conferidas com os débitos
-        impressos (debitsMatch, tolerância R$ 0,01). Mês sem PO confirmada, com a PO não conferida (lineReview) ou de
-        outro fundo: saídas por conta do fluxo (byAccount, bloco BY_ACCOUNT). Avisos: LINES_NOT_REVIEWED,
+        impressos (debitsMatch, tolerância R$ 0,01). Mês sem PO confirmada ou de outro fundo: saídas por conta do fluxo
+        (byAccount, bloco BY_ACCOUNT). Avisos: LINES_NOT_REVIEWED (não é mais emitido desde a Q54),
         DEBITS_DO_NOT_MATCH, BALANCE_DOES_NOT_MATCH, PARTIAL_MONTH, NO_OPERATING_FUND, NO_CASH_FLOW, TWO_CASH_FLOWS,
         CASH_FLOW_SPANS_MONTHS.
       operationId: monthlyCashFlow
@@ -2262,18 +2270,27 @@ components:
         justification: { type: [string, "null"], description: Obrigatória com cienteDivergencia }
     MappingTargetType:
       type: string
-      description: Linha da PO; ajuste (não é despesa); meio de pagamento a realocar (RF-02B); transferência entre fundos
-      enum: [BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
+      description: |
+        Linha da PO; ajuste (não é despesa); meio de pagamento a realocar (RF-02B); transferência entre fundos; "sem linha
+        da PO" por decisão do Admin (O7, sem aviso)
+      enum: [BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER, WITHOUT_LINE]
     AccountMappingStatus:
       type: string
-      enum: [SUGGESTED, CONFIRMED, REJECTED]
+      description: |
+        AUTOMATIC = ligação do sistema que já vale (Q54); CONFIRMED = conferida pelo Admin; REJECTED = ligação recusada
+        (a conta vai para "sem linha da PO" com aviso); SUGGESTED = estado antigo, não é mais gravado (V22 o trocou por
+        AUTOMATIC)
+      enum: [AUTOMATIC, SUGGESTED, CONFIRMED, REJECTED]
     AccountMappingSource:
       type: string
-      enum: [PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
+      description: BUDGET_SHEET = planilha de apoio da PO (contas da aba de despesas e origem das linhas)
+      enum: [PREVIOUS_VERSION, SPREADSHEET, BUDGET_SHEET, NAME, ADMIN]
     AccountMappingFilter:
       type: string
-      description: PENDING = sem de-para confirmado (sem de-para, sugerido ou recusado)
-      enum: [ALL, PENDING, SUGGESTED, CONFIRMED, REJECTED, UNMAPPED, SAME_AS_PREVIOUS_VERSION]
+      description: |
+        EXCEPTIONS = só exceções (sem linha encontrada, baixa confiança e recusadas); LOW_CONFIDENCE = ligações de baixa
+        confiança; PENDING = não confirmadas pelo Admin; UNMAPPED = sem linha encontrada
+      enum: [ALL, EXCEPTIONS, AUTOMATIC, LOW_CONFIDENCE, PENDING, SUGGESTED, CONFIRMED, REJECTED, UNMAPPED, SAME_AS_PREVIOUS_VERSION]
     MappingTargetResponse:
       type: object
       required: [type, text]
@@ -2286,46 +2303,51 @@ components:
         text: { type: string, description: Ex. "1.7.8 Material hidráulico" ou "ADJUSTMENT (estorno)" }
     AccountMappingResponse:
       type: object
-      required: [account, ledgerEntries, debits, sameAsPreviousVersion]
+      required: [account, ledgerEntries, debits, lowConfidence, sameAsPreviousVersion]
       properties:
         account: { type: string, description: Código da conta do fluxo como impresso }
         name: { type: [string, "null"], description: Nome como impresso no fluxo }
         ledgerEntries: { type: integer, description: Débitos do fundo Condomínio no exercício da PO }
         debits: { type: number }
         target: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/MappingTargetResponse" }] }
-        status: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/AccountMappingStatus" }], description: Nulo = sem de-para }
+        status: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/AccountMappingStatus" }], description: Nulo = sem linha encontrada }
         source: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/AccountMappingSource" }] }
-        reason: { type: [string, "null"], description: Nomes comparados, linha da planilha ou "igual à versão anterior" }
+        reason: { type: [string, "null"], description: Nomes comparados, contas da planilha de apoio, linha da planilha guardada ou "igual à versão anterior" }
+        lowConfidence: { type: boolean, description: Ligação automática de baixa confiança (vale e aparece em "só exceções") }
         sameAsPreviousVersion: { type: boolean }
         updatedBy: { type: [string, "null"] }
         updatedAt: { type: [string, "null"], format: date-time }
     AccountMappingSummaryResponse:
       type: object
-      description: Sempre sobre todas as contas, sem o filtro ("N de M contas confirmadas")
-      required: [accounts, confirmed, suggested, rejected, withoutMapping]
+      description: |
+        Sempre sobre todas as contas, sem o filtro. automatic inclui as de baixa confiança (lowConfidence é parte delas);
+        as exceções são lowConfidence + rejected + withoutMapping
+      required: [accounts, automatic, confirmed, lowConfidence, rejected, withoutMapping]
       properties:
         accounts: { type: integer }
+        automatic: { type: integer }
         confirmed: { type: integer }
-        suggested: { type: integer }
+        lowConfidence: { type: integer }
         rejected: { type: integer }
-        withoutMapping: { type: integer }
+        withoutMapping: { type: integer, description: Contas sem linha encontrada }
     AccountMappingsResponse:
       type: object
-      required: [budgetId, summary, suggestedBySource, accounts]
+      required: [budgetId, summary, automaticBySource, accounts]
       properties:
         budgetId: { type: string, format: uuid }
         version: { type: [integer, "null"] }
         summary: { $ref: "#/components/schemas/AccountMappingSummaryResponse" }
-        suggestedBySource: { $ref: "#/components/schemas/SuggestedBySourceResponse" }
+        automaticBySource: { $ref: "#/components/schemas/AutomaticBySourceResponse" }
         sheet: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/StoredSheetResponse" }], description: Planilha de sugestões guardada do condomínio (a última carregada) }
         accounts: { type: array, items: { $ref: "#/components/schemas/AccountMappingResponse" } }
-    SuggestedBySourceResponse:
+    AutomaticBySourceResponse:
       type: object
-      description: Contas SUGGESTED desta versão por origem, para a confirmação de "Confirmar todas as sugestões" (Q51)
-      required: [previousVersion, spreadsheet, name, admin]
+      description: Contas AUTOMATIC desta versão por origem da ligação (Q54)
+      required: [previousVersion, spreadsheet, budgetSheet, name, admin]
       properties:
         previousVersion: { type: integer }
         spreadsheet: { type: integer }
+        budgetSheet: { type: integer, description: Planilha de apoio da PO }
         name: { type: integer }
         admin: { type: integer }
     StoredSheetResponse:
@@ -2341,7 +2363,7 @@ components:
       type: object
       required: [expected]
       properties:
-        expected: { type: integer, minimum: 1, description: Quantas sugestões a tela mostrou }
+        expected: { type: integer, minimum: 1, description: Quantas ligações automáticas a tela mostrou }
     MappingTargetRequest:
       type: object
       required: [type]
@@ -2349,7 +2371,7 @@ components:
         type: { $ref: "#/components/schemas/MappingTargetType" }
         lineId: { type: [string, "null"], format: uuid, description: Obrigatória com BUDGET_LINE }
         detail: { type: [string, "null"] }
-        confirm: { type: [boolean, "null"], description: Nulo ou true confirma; false deixa SUGGESTED }
+        confirm: { type: [boolean, "null"], description: Nulo ou true confirma; false deixa AUTOMATIC (vale do mesmo jeito) }
     AccountMappingBatchRequest:
       type: object
       required: [action, accounts]
@@ -2368,12 +2390,14 @@ components:
         skipped: { type: array, items: { $ref: "#/components/schemas/SkippedAccountResponse" } }
     AccountMappingSuggestionsResponse:
       type: object
-      required: [created, fromPreviousVersion, fromSheet, byName, withoutSuggestion]
+      required: [created, fromPreviousVersion, fromSheet, fromBudgetSheet, byName, lowConfidence, withoutSuggestion]
       properties:
-        created: { type: integer }
+        created: { type: integer, description: Ligações automáticas gravadas ou mudadas }
         fromPreviousVersion: { type: integer }
         fromSheet: { type: integer, description: Da planilha guardada do condomínio (Q51) }
+        fromBudgetSheet: { type: integer, description: Da planilha de apoio da PO (Q54) }
         byName: { type: integer }
+        lowConfidence: { type: integer, description: Parte das gravadas que é de baixa confiança }
         withoutSuggestion:
           type: array
           items:
@@ -2399,7 +2423,7 @@ components:
         id: { type: string, format: uuid }
         account: { type: string }
         name: { type: [string, "null"] }
-        action: { type: string, enum: [SUGGESTED, CONFIRMED, REJECTED, CHANGED] }
+        action: { type: string, enum: [AUTOMATIC, SUGGESTED, CONFIRMED, REJECTED, CHANGED], description: SUGGESTED só em eventos antigos }
         username: { type: string }
         at: { type: string, format: date-time }
         previousTarget: { type: [string, "null"] }
@@ -2408,6 +2432,7 @@ components:
         newStatus: { $ref: "#/components/schemas/AccountMappingStatus" }
         source: { $ref: "#/components/schemas/AccountMappingSource" }
         reason: { type: [string, "null"] }
+        lowConfidence: { type: [boolean, "null"], description: Nulo em eventos anteriores à V22 }
     BudgetItemStatus:
       type: string
       enum: [SUGGESTED, CONFIRMED, REJECTED]
@@ -2478,7 +2503,7 @@ components:
       properties:
         budgetItemId: { type: [string, "null"], format: uuid, description: Rubrica do catálogo }
         newBudgetItem: { type: [string, "null"], description: Nome de uma rubrica nova criada a partir da linha }
-        confirm: { type: [boolean, "null"], description: Nulo ou true confirma; false deixa SUGGESTED }
+        confirm: { type: [boolean, "null"], description: Nulo ou true confirma; false deixa AUTOMATIC (vale do mesmo jeito) }
     BudgetItemBatchRequest:
       type: object
       required: [action, lines]
@@ -2727,7 +2752,7 @@ components:
             properties:
               account: { type: [string, "null"] }
               name: { type: [string, "null"] }
-              detail: { type: [string, "null"], description: Ex. "ADJUSTMENT (estorno)", "de-para sugerido", "sem de-para" }
+              detail: { type: [string, "null"], description: Ex. "ADJUSTMENT (estorno)", "conta sem linha encontrada", "sem linha da PO por decisão do Admin" }
               amount: { type: number }
               entries: { type: integer }
     EvidenceResponse:
@@ -2899,7 +2924,7 @@ components:
         groups: { type: array, items: { $ref: "#/components/schemas/TrackingGroupResponse" } }
         cumulative: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/TrackingCumulativeResponse" }] }
         blocks: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/TrackingBlocksResponse" }] }
-        warnings: { type: array, items: { $ref: "#/components/schemas/CalculationWarning" }, description: Com a PO não conferida, LINES_NOT_REVIEWED vem primeiro e groups vem vazio }
+        warnings: { type: array, items: { $ref: "#/components/schemas/CalculationWarning" }, description: LINES_NOT_REVIEWED não é mais emitido desde a Q54 (as linhas da PO valem sozinhas) }
         lineReview: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/LineReviewStateResponse" }], description: Estado da conferência das linhas da PO usada (RF-13.12) }
     TrackingMonthResponse:
       type: object
@@ -2994,7 +3019,7 @@ components:
             properties:
               account: { type: [string, "null"] }
               name: { type: [string, "null"] }
-              detail: { type: [string, "null"], description: Ex. "sem de-para", "de-para sugerido", "destino inválido" }
+              detail: { type: [string, "null"], description: Ex. "conta sem linha encontrada", "sem linha da PO por decisão do Admin", "ligação recusada pelo Admin, sem outra linha", "destino inválido" }
               amount: { type: number }
               entries: { type: integer }
     TrackingBlocksResponse:
@@ -3049,7 +3074,7 @@ components:
       type: object
       required: [unmappedAccounts, unmappedAmount, unmappedEntries, debits, provisionalLimitPercentage, provisional, accounts]
       properties:
-        unmappedAccounts: { type: integer, description: Contas com código sem de-para confirmado (as do aviso NO_CONFIRMED_MAPPING) }
+        unmappedAccounts: { type: integer, description: Contas do extrato sem linha encontrada (as do aviso NO_CONFIRMED_MAPPING); sem as que o Admin pôs em "sem linha da PO" }
         unmappedAmount: { type: number, description: 'Valor dessas contas em "sem linha da PO" nos meses do total' }
         unmappedEntries: { type: integer }
         debits: { type: number, description: Débitos do fundo Condomínio nos mesmos meses, sem as transferências entre fundos }
@@ -3062,7 +3087,7 @@ components:
       properties:
         account: { type: [string, "null"] }
         name: { type: [string, "null"] }
-        detail: { type: [string, "null"], description: Ex. "sem de-para", "de-para sugerido", "destino inválido" }
+        detail: { type: [string, "null"], description: Ex. "conta sem linha encontrada", "sem linha da PO por decisão do Admin", "ligação recusada pelo Admin, sem outra linha", "destino inválido" }
         amount: { type: number }
         entries: { type: integer }
     BridgePartialMonthResponse:
@@ -3291,13 +3316,13 @@ components:
     LineReviewStateResponse:
       type: object
       required: [budgetId, reviewed, reviewedLines, totalLines]
-      description: Estado da conferência das linhas da PO (RF-13.12). Os números por linha só aparecem com reviewed verdadeiro
+      description: Estado da conferência das linhas da PO (RF-13.12). Desde a Q54 as linhas valem sozinhas e reviewed vem sempre verdadeiro
       properties:
         budgetId: { type: string, format: uuid }
-        reviewed: { type: boolean, description: Todas as linhas conferidas }
-        reviewedLines: { type: integer }
+        reviewed: { type: boolean, description: 'Sempre verdadeiro desde a Q54: nenhum passo pendente' }
+        reviewedLines: { type: integer, description: Linhas marcadas como conferidas pelo Admin (opcional) }
         totalLines: { type: integer }
-        message: { type: [string, "null"], description: 'Ex.: "Confira as linhas da PO em \"PO aprovada\" (0 de 88 conferidas): até lá, os números por linha não aparecem"' }
+        message: { type: [string, "null"], description: Nulo desde a Q54 }
     BudgetLineReviewStatus:
       type: string
       enum: [PENDING, REVIEWED]

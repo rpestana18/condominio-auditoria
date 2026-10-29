@@ -22,7 +22,7 @@ export function SeparateBlocks({ result, onOpenEvidence }: Props) {
     <div className="two-columns">
       <EntryBlockSection
         title="Sem linha da PO"
-        hint="Contas do fluxo sem de-para confirmado. Entram na despesa realizada, mas em nenhuma linha da PO."
+        hint="Contas do fluxo sem linha encontrada na PO, com a ligação recusada ou que o Admin deixou sem linha. Entram na despesa realizada, mas em nenhuma linha da PO."
         block={result.withoutBudgetLine}
         onOpen={() => onOpenEvidence({ target: "NO_BUDGET_LINE", title: "Sem linha da PO" })}
       />

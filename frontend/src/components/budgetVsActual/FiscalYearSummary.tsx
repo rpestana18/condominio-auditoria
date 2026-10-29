@@ -24,7 +24,7 @@ export function FiscalYearSummary({ fiscalYear }: { fiscalYear: FiscalYear }) {
         </h2>
         {mapping && (
           <span className={mapping.confirmed === mapping.accounts ? "badge ok" : "badge warning"}>
-            De-para: {mapping.confirmed} de {mapping.accounts} contas confirmadas
+            De-para: {mapping.confirmed} de {mapping.accounts} contas ligadas
           </span>
         )}
       </header>

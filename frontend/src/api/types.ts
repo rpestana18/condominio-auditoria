@@ -38,7 +38,7 @@ export type AccountMappingBatchResult = Schemas["AccountMappingBatchResponse"];
 export type SkippedAccount = Schemas["SkippedAccountResponse"];
 export type AccountMappingSheetResult = Schemas["AccountMappingSheetResponse"];
 export type AccountMappingEvent = Schemas["AccountMappingEventResponse"];
-export type SuggestedBySource = Schemas["SuggestedBySourceResponse"];
+export type AutomaticBySource = Schemas["AutomaticBySourceResponse"];
 export type StoredSheet = Schemas["StoredSheetResponse"];
 export type ConfirmSuggestedRequest = Schemas["ConfirmSuggestedRequest"];
 

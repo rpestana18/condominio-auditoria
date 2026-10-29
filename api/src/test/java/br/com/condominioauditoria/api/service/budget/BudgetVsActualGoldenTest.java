@@ -217,26 +217,82 @@ class BudgetVsActualGoldenTest {
     }
 
     @Test
-    void the73SuggestedAccountsSumNothing() {
+    void the73AutomaticAccountsGiveTheSameNumbersAsTheConfirmedOnes() {
+        // Q54: the stored sheet comes in AUTOMATIC and counts without a confirmation: the same numbers as confirmMap()
         SeptemberGolden g = golden();
         g.scenario.accountMapping.loadSheet(g.scenario.condominiumId, g.budget.getId(), "mapa.csv",
-                SeptemberGolden.map()
-                .orElseThrow(), "admin");
+                SeptemberGolden.map().orElseThrow(), "admin");
 
         BudgetVsActualResponse r = g.september().result();
 
-        assertThat(r.totals().inLines()).isEqualByComparingTo("0.00");
-        assertThat(r.groups()).flatMap(BudgetVsActualGroupResponse::lines)
-                .allMatch(l -> l.actual().signum() == 0 && l.cashFlowAccounts().isEmpty());
-        assertThat(r.withoutBudgetLine().total()).isEqualByComparingTo("449455.13");
-        assertThat(r.withoutBudgetLine().entries()).isEqualTo(r.cashFlowCheck().entries());
-        assertThat(r.adjustments().total()).isEqualByComparingTo("0.00");
-        assertThat(r.toReallocate().total()).isEqualByComparingTo("0.00");
-        assertThat(r.mapping()).isEqualTo(new PeriodMappingSummaryResponse(73, 0, 73));
+        assertSeptemberNumbers(r);
+        assertThat(r.mapping()).isEqualTo(new PeriodMappingSummaryResponse(73, 73, 0));
+        assertThat(r.warnings()).extracting(BudgetVsActualWarningResponse::code).doesNotContain("NO_CONFIRMED_MAPPING");
+    }
+
+    @Test
+    void automaticLinksFromTheSupportSheetPlusTheStoredMapKeepTheSeptemberNumbers() {
+        // Q54, pilot: PO + support sheet + stored map, applied by the system (as when the cash flow is saved)
+        SeptemberGolden g = golden();
+        assumeTrue(loadSupportSheet(g), "planilha de apoio ausente no golden privado");
+        g.scenario.accountMapping.loadSheet(g.scenario.condominiumId, g.budget.getId(), "mapa.csv",
+                SeptemberGolden.map().orElseThrow(), "admin");
+        g.scenario.accountMapping.suggestPending(g.scenario.condominiumId);
+
+        BudgetVsActualResponse r = g.september().result();
+
+        assertSeptemberNumbers(r);
+        assertThat(r.mapping()).isEqualTo(new PeriodMappingSummaryResponse(73, 73, 0));
+    }
+
+    @Test
+    void automaticLinksWithoutTheMapLeaveOnlyTheAccountsWithoutALineFound() {
+        // Q54, pilot without the map: 63 accounts linked by the system (none differs from the map); the other 10 go to
+        // "sem linha da PO" with the warning. The outflows of the month do not change (RF-03.1.6).
+        SeptemberGolden g = golden();
+        assumeTrue(loadSupportSheet(g), "planilha de apoio ausente no golden privado");
+        g.scenario.accountMapping.suggestPending(g.scenario.condominiumId);
+
+        BudgetVsActualResponse r = g.september().result();
+
+        assertThat(r.cashFlowCheck().fundDebits()).isEqualByComparingTo("449455.13");
+        assertThat(r.cashFlowCheck().matches()).isTrue();
+        assertThat(r.mapping()).isEqualTo(new PeriodMappingSummaryResponse(73, 63, 10));
+        assertThat(r.withoutBudgetLine().accounts()).extracting(c -> c.account())
+                .containsExactly("1042", "1064", "1232", "1241", "1242", "1324", "1327", "1477", "1534", "1737");
+        assertThat(r.withoutBudgetLine().accounts())
+                .allMatch(c -> c.detail().equals(BudgetVsActualCalculator.NO_LINK_FOUND));
+        assertThat(r.totals().inLines().add(r.withoutBudgetLine().total())).isEqualByComparingTo("449455.13");
         assertThat(r.warnings()).extracting(BudgetVsActualWarningResponse::text)
-                .anyMatch(t -> t.startsWith("73 contas sem de-para confirmado"));
-        assertThat(r.provisional()).isTrue();
-        assertThat(r.withoutBudgetLine().accounts()).allMatch(c -> c.detail().equals("de-para sugerido"));
+                .anyMatch(t -> t.startsWith("10 contas do extrato sem linha encontrada na PO"));
+        System.out.println("set/26 sem o mapa: nas linhas " + r.totals().inLines() + "; sem linha da PO "
+                + r.withoutBudgetLine().total() + "; provisório " + r.provisional());
+    }
+
+    private static boolean loadSupportSheet(SeptemberGolden g) {
+        var sheet = GoldenMessages.read("po-2026-2027-planilha-apoio");
+        if (sheet.isEmpty()) {
+            return false;
+        }
+        var file = g.scenario.file(br.com.condominioauditoria.api.model.enums.FileCategory.PO,
+                "PO-2026-2027-planilha-apoio.xlsx");
+        g.scenario.lineOriginService.saveFromSheet(file, sheet.get().budgetLineOrigins());
+        return true;
+    }
+
+    /** The September/2026 numbers of {@link #septemberOperatingFund()} that depend on the mapping. */
+    private static void assertSeptemberNumbers(BudgetVsActualResponse r) {
+        assertThat(r.cashFlowCheck().fundDebits()).isEqualByComparingTo("449455.13");
+        assertThat(r.adjustments().total()).isEqualByComparingTo("3278.24");
+        assertThat(r.toReallocate().total()).isEqualByComparingTo("1050.93");
+        assertThat(r.totals().actualExpense()).isEqualByComparingTo("446176.89");
+        assertThat(r.totals().inLines()).isEqualByComparingTo("445125.96");
+        assertThat(r.totals().difference()).isEqualByComparingTo("-5443.24");
+        assertThat(r.withoutBudgetLine().total()).isEqualByComparingTo("0.00");
+        assertThat(groups(r)).containsExactly(
+                "1.1 69193.86 62815.41 -6378.45", "1.2 694.05 754.94 60.89", "1.3 336274.18 341277.13 5002.95",
+                "1.4 0.00 0.00 0.00", "1.5 2850.00 8958.32 6108.32", "1.6 17388.04 14264.32 -3123.72",
+                "1.7 15200.00 16910.40 1710.40", "1.8 10020.00 145.44 -9874.56");
     }
 
     @Test
@@ -255,13 +311,13 @@ class BudgetVsActualGoldenTest {
         assertThat(r.withoutBudgetLine().total()).isEqualByComparingTo("500.00");
         assertThat(r.withoutBudgetLine().accounts()).singleElement().satisfies(c -> {
             assertThat(c.account()).isEqualTo("8888");
-            assertThat(c.detail()).isEqualTo("sem de-para");
+            assertThat(c.detail()).isEqualTo("conta sem linha encontrada");
         });
         assertThat(r.totals().actualExpense()).isEqualByComparingTo("446676.89");
         assertThat(r.totals().inLines()).isEqualByComparingTo("445125.96");
         assertThat(r.rule20().overrun()).isEqualByComparingTo("38880.19");
         assertThat(r.warnings()).extracting(BudgetVsActualWarningResponse::text)
-                .anyMatch(t -> t.startsWith("1 conta sem de-para confirmado"));
+                .anyMatch(t -> t.startsWith("1 conta do extrato sem linha encontrada na PO"));
     }
 
     @Test

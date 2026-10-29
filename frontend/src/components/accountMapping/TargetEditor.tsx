@@ -13,11 +13,12 @@ interface Props {
   onClose: () => void;
 }
 
-const types: MappingTargetType[] = ["BUDGET_LINE", "ADJUSTMENT", "TO_REALLOCATE", "TRANSFER"];
+const types: MappingTargetType[] = ["BUDGET_LINE", "ADJUSTMENT", "TO_REALLOCATE", "TRANSFER", "WITHOUT_LINE"];
 
 /**
- * Admin chooses the target of a cash flow account (RF-03.1.4 and RF-03.1.5). The search is by code and by name
- * of the line; the cash flow account number is never used for matching.
+ * Admin changes or confirms the target of a cash flow account (RF-03.1.4, RF-03.1.5 and Q54). The search is by code
+ * and by name of the line; the cash flow account number is never used for matching. "Sem linha da PO" (O7) keeps the
+ * account out of the lines without the warning.
  */
 export function TargetEditor({ budgetId, account, lines, onClose }: Props) {
   const { condominiumId } = useSession();
@@ -63,7 +64,7 @@ export function TargetEditor({ budgetId, account, lines, onClose }: Props) {
           {account.ledgerEntries} lançamentos · {formatMoney(account.debits)} no exercício
           {account.target && ` · atual: ${account.target.text}`}
         </p>
-        {account.reason && <p className="muted">Motivo da sugestão: {account.reason}</p>}
+        {account.reason && <p className="muted">Motivo da ligação: {account.reason}</p>}
 
         <fieldset>
           <legend>Tipo de destino</legend>
@@ -88,6 +89,11 @@ export function TargetEditor({ budgetId, account, lines, onClose }: Props) {
               ))}
             </select>
           </fieldset>
+        ) : type === "WITHOUT_LINE" ? (
+          <p className="muted">
+            A conta fica em "sem linha da PO", fora das linhas, sem o aviso de conta sem linha encontrada (ex.: despesa paga pela cota
+            ordinária que a PO não previu).
+          </p>
         ) : (
           <label className="field">
             Detalhe (ex.: estorno, cartão)
@@ -97,7 +103,7 @@ export function TargetEditor({ budgetId, account, lines, onClose }: Props) {
 
         <label className="inline-field">
           <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} />
-          Confirmar agora (sem marcar, fica como sugerido e não muda nenhum número)
+          Marcar como conferida (sem marcar, a escolha vale do mesmo jeito e fica como automática, origem Admin; o sistema nunca a troca)
         </label>
 
         {setMapping.isError && <p className="notice error">{setMapping.error.message}</p>}

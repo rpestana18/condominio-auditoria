@@ -12,7 +12,8 @@ import java.util.UUID;
 
 /**
  * Mapping of a cash flow account in a budget version (RF-03.1.4): exactly one target per account (unique key per budget
- * and account). Every change writes an {@link AccountMappingEvent} to the trail, which is insert-only.
+ * and account). Every change writes an {@link AccountMappingEvent} to the trail, which is insert-only. Since Q54 the
+ * system's link (AUTOMATIC) counts by itself; {@code lowConfidence} marks a link by a weak rule (ADR 0009, Decision 8).
  */
 @Entity
 public class AccountMapping {
@@ -33,6 +34,7 @@ public class AccountMapping {
     private AccountMappingSource source;
     private String reason;
     private boolean sameAsPreviousVersion;
+    private boolean lowConfidence;
     private String updatedBy;
     private Instant updatedAt;
 
@@ -41,18 +43,18 @@ public class AccountMapping {
 
     public AccountMapping(Budget budget, String accountCode, String accountName, MappingTarget target,
             AccountMappingStatus status, AccountMappingSource source, String reason, boolean sameAsPreviousVersion,
-                    String username,
-            Instant at) {
+            boolean lowConfidence, String username, Instant at) {
         this.id = UUID.randomUUID();
         this.condominiumId = budget.getCondominiumId();
         this.budgetId = budget.getId();
         this.accountCode = accountCode;
         this.accountName = accountName;
-        change(target, status, source, reason, sameAsPreviousVersion, username, at);
+        change(target, status, source, reason, sameAsPreviousVersion, lowConfidence, username, at);
     }
 
     public void change(MappingTarget target, AccountMappingStatus status, AccountMappingSource source, String reason,
-            boolean sameAsPreviousVersion, String username, Instant at) {
+            boolean sameAsPreviousVersion, boolean lowConfidence, String username, Instant at) {
+        this.lowConfidence = lowConfidence;
         this.targetType = target.type();
         this.budgetLineId = target.budgetLineId();
         this.targetDetail = target.detail();
@@ -64,9 +66,15 @@ public class AccountMapping {
         this.updatedAt = at;
     }
 
-    /** Only the status changes (confirm or reject); target, source and reason stay. */
+    /**
+     * Only the status changes (confirm or reject); target, source and reason stay. A confirmed link is no longer of low
+     * confidence: a person checked it.
+     */
     public void changeStatus(AccountMappingStatus newStatus, String username, Instant at) {
         this.status = newStatus;
+        if (newStatus == AccountMappingStatus.CONFIRMED) {
+            this.lowConfidence = false;
+        }
         this.updatedBy = username;
         this.updatedAt = at;
     }
@@ -134,6 +142,10 @@ public class AccountMapping {
 
     public boolean isSameAsPreviousVersion() {
         return sameAsPreviousVersion;
+    }
+
+    public boolean isLowConfidence() {
+        return lowConfidence;
     }
 
     public String getUpdatedBy() {

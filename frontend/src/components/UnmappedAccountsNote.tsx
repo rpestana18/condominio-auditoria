@@ -12,8 +12,8 @@ interface Props {
 }
 
 /**
- * Short line about the accounts without a confirmed mapping (RF-03.1.10), built from the API fields instead of the
- * warning text: "88 contas do extrato ainda sem linha da PO (R$ 2.247.648,60) · Confirmar o de-para", with the 10
+ * Short line about the cash flow accounts without a line found (RF-03.1.10, Q54), built from the API fields instead of
+ * the warning text: "10 contas do extrato sem linha encontrada na PO (R$ 5.970,81) · Escolher o destino", with the 10
  * largest accounts in a collapsed panel. The order is the API's (largest amount first).
  */
 export function UnmappedAccountsNote({ steps, withAccounts = true }: Props) {
@@ -23,10 +23,10 @@ export function UnmappedAccountsNote({ steps, withAccounts = true }: Props) {
     // Inside a clickable row: the links and the panel do not select the row
     <div className="mapping-note" onClick={(e) => e.stopPropagation()}>
       <span>
-        {accountsText(steps.unmappedAccounts)} do extrato ainda sem linha da PO
+        {accountsText(steps.unmappedAccounts)} do extrato sem linha encontrada na PO
         {steps.unmappedAmount != null && ` (${formatMoney(steps.unmappedAmount)})`}
       </span>{" "}
-      · <Link to={mappingLink(steps.budgetId)}>Confirmar o de-para</Link>
+      · <Link to={mappingLink(steps.budgetId)}>Escolher o destino</Link>
       {withAccounts && listed.length > 0 && (
         <details className="mapping-accounts">
           <summary>

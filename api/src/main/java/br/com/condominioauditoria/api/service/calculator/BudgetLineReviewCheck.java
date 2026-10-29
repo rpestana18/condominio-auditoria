@@ -73,7 +73,7 @@ public final class BudgetLineReviewCheck {
             }
         }
         for (BudgetStructure.Group g : structure.groups()) {
-            boolean contracts = normalize(g.line().getDescription()).contains("contrat");
+            boolean contracts = isContractsGroup(g);
             for (BudgetLine l : g.lines()) {
                 List<Warning> w = new ArrayList<>();
                 if (!g.funds() && !contracts && l.getAccount() != null && !matches(l.getAccount(), l.getDescription())) {
@@ -117,6 +117,11 @@ public final class BudgetLineReviewCheck {
             }
         }
         return result;
+    }
+
+    /** A contracts group (group name with "contrat"): the description of its lines is the supplier (RF-13.2). */
+    public static boolean isContractsGroup(BudgetStructure.Group group) {
+        return normalize(group.line().getDescription()).contains("contrat");
     }
 
     /** The account codes cited in the account column ("1591 - Telefone Fixo + 1592 - Telefone Móvel" → 1591, 1592). */

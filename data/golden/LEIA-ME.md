@@ -12,15 +12,20 @@ Documentos reais com o resultado esperado. Toda mudança no leitor (`reader/`) o
     período da média, índice, método e valor final; RF-13.13), e `po-2026-2027-planilha-apoio.read-document.json`, a saída
     do leitor Python para ela (contrato `reader/v2`, células). Caso da leitura em
     `rag/.../parser/budget/SupportSheetParserGoldenTest` (86 linhas; 1.3.10 Vigia na linha 30, média × VIGILANTES RJ).
-  - `fluxo-caixa-2026-09.resultado-v4.json`, `po-2026-2027.resultado-v4.json` e `po-2026-2027-planilha-apoio.resultado-v4.json`:
-    mensagens `ProcessingResult` v4 que o rag publica para esses arquivos (ids fixos). São a entrada do golden do api, que
-    as lê pelo contrato (`contracts/mensagens/v4`), sem usar classe do rag. Gravadas e conferidas por
+  - `fluxo-caixa-2026-09.resultado-v5.json`, `po-2026-2027.resultado-v5.json` e `po-2026-2027-planilha-apoio.resultado-v5.json`:
+    mensagens `ProcessingResult` v5 que o rag publica para esses arquivos (ids fixos). São a entrada do golden do api, que
+    as lê pelo contrato (`contracts/mensagens/v5`), sem usar classe do rag. Gravadas e conferidas por
     `rag/.../service/ProcessingResultGoldenTest`: sem o arquivo, o teste grava; com ele, exige saída idêntica. Os
-    `*.resultado-v3.json` antigos podem ser apagados. Mudou a leitura do rag? Apague as três, rode `./gradlew :rag:test` e
-    depois `./gradlew :api:test`. Os números do RF-13 revisto (Entradas e saídas, conferência das linhas, origem, ponte v5
-    e fim do exercício) estão em `api/.../service/budget/CashFlowAndLineReviewGoldenTest` e `BudgetTrackingGoldenTest`.
+    `*.resultado-v3.json` e `*.resultado-v4.json` antigos podem ser apagados. A v5 traz, na planilha de apoio, as 133
+    contas da aba de despesas com a conta-mãe deduzida pelas somas (ADR 0009, Decisão 8). Mudou a leitura do rag? Apague
+    as três, rode `./gradlew :rag:test` e depois `./gradlew :api:test`. Os números do RF-13 revisto (Entradas e saídas,
+    conferência das linhas, origem, ponte v5 e fim do exercício) estão em
+    `api/.../service/budget/CashFlowAndLineReviewGoldenTest` e `BudgetTrackingGoldenTest`.
   - `mapa-contas-fluxo-para-PO.csv`: de-para das 73 contas do piloto (planilha de sugestões do RF-03.1.5), cópia de
-    `piloto-mio/`. Caso do de-para em `api/.../service/budget/AccountMappingGoldenTest`.
+    `piloto-mio/`. É o gabarito do de-para automático (Q54) em `api/.../service/budget/AccountMappingGoldenTest`: com a PO,
+    a planilha de apoio e o extrato de set/26, **sem** o mapa, o sistema liga 63 das 73 contas (4 de baixa confiança),
+    nenhuma diferente do mapa, e deixa 10 sem linha encontrada; com o mapa guardado, as 73 seguem o mapa e os números de
+    set/26 não mudam (`BudgetVsActualGoldenTest`).
   - `previsto-realizado-2026-09.csv`: previsto × realizado de setembro/2026 da análise manual, cópia de `piloto-mio/`
     (caso de aceite do RF-03.1.15). Conferido linha a linha, centavo a centavo, em
     `api/.../service/budget/BudgetVsActualGoldenTest`, com os totais, grupos, regra dos 20% e fundos do RF-03.1.6 a

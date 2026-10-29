@@ -39,7 +39,9 @@ import java.util.stream.Collectors;
  * description, and in a tie the other lines win over it (holidays go to 1.1.5 and the 13th salary to 1.1.12, not to
  * 1.1.1).</li>
  * </ul>
- * The suggestion is never confirmed here.
+ * Since Q54 (29/10/2026) the result counts in the numbers by itself (status AUTOMATIC); the Admin may change or
+ * confirm it. Two more rules give a <b>low-confidence</b> link, only when nothing else tied the account:
+ * {@link #weakMatch} and {@link #supplierMatch}. A tie among the best lines is also broken by the description alone.
  */
 public final class NameSuggestion {
 
@@ -87,7 +89,15 @@ public final class NameSuggestion {
         String reason();
     }
 
-    public record Suggested(BudgetLine line, Score score, String reason) implements Result {
+    /** {@code lowConfidence}: link by a weak rule (Q54; ADR 0009, Decision 8): it counts, and shows in "só exceções". */
+    /** Start of the reason of a low-confidence link. */
+    public static final String LOW_CONFIDENCE = "baixa confiança: ";
+
+    public record Suggested(BudgetLine line, Score score, String reason, boolean lowConfidence) implements Result {
+
+        public Suggested(BudgetLine line, Score score, String reason) {
+            this(line, score, reason, false);
+        }
     }
 
     public record NoSuggestion(String reason) implements Result {
@@ -198,6 +208,10 @@ public final class NameSuggestion {
             if (bySupplier.isPresent()) {
                 return bySupplier.get();
             }
+            Optional<Suggested> byDescription = tieBrokenByDescription(cashFlow, tied, best, cashFlowText, tiedCodes);
+            if (byDescription.isPresent()) {
+                return byDescription.get();
+            }
             return new NoSuggestion("fluxo: " + cashFlowText + "; empate entre as linhas " + tiedCodes + " (nota "
                     + display(best.value()) + "): escolha na lista");
         }
@@ -246,6 +260,39 @@ public final class NameSuggestion {
                 + "\" contém a descrição da linha " + chosen.getEffectiveCode() + " (" + chosen.getDescription() + ")"));
     }
 
+    /**
+     * Tie broken by the description (Q54): among the tied lines, the only one whose description alone has the highest
+     * score with the cash flow name ("CAIXA D'ÁGUA": 1.3.25 "Caixa D'água" and not 1.8.8 "Limpeza de caixa
+     * d'águas/cisternas", both with the account 1624 - Caixa D'água). None or more than one: empty.
+     */
+    private Optional<Suggested> tieBrokenByDescription(List<String> cashFlow, List<BudgetLine> tied, Score best,
+            String cashFlowText, String tiedCodes) {
+        Score top = Score.ZERO;
+        List<BudgetLine> winners = new ArrayList<>();
+        for (BudgetLine line : tied) {
+            Score d = score(cashFlow, normalize(line.getDescription()));
+            int c = d.compareTo(top);
+            if (c > 0) {
+                top = d;
+                winners.clear();
+                winners.add(line);
+            } else if (c == 0) {
+                winners.add(line);
+            }
+        }
+        if (winners.size() != 1 || top.common() == 0) {
+            return Optional.empty();
+        }
+        BudgetLine chosen = winners.getFirst();
+        // Low confidence (golden of September/2026): among all lines, "SALÁRIO" would go to 1.1.12 "13° Salário" and
+        // "CONTROLE DE ACESSO" to 1.6.10. Among the lines that cite the same account of the support sheet, the
+        // BudgetSheetBridge accepts it as a sure link.
+        return Optional.of(new Suggested(chosen, best, LOW_CONFIDENCE + "fluxo: " + cashFlowText
+                + "; empate entre as linhas " + tiedCodes + " (nota " + display(best.value())
+                + "); desempate pela descrição: \"" + chosen.getDescription() + "\" da linha "
+                + chosen.getEffectiveCode() + " (nota " + display(top.value()) + ")", true));
+    }
+
     /** The only line whose budget account plus description contain every cash flow word. None or more: empty. */
     private Optional<Suggested> allWordsInOneLine(List<String> cashFlow, String cashFlowText,
             List<BudgetLine> candidates, LineHints hints) {
@@ -269,6 +316,123 @@ public final class NameSuggestion {
         return Optional.of(new Suggested(chosen, score(cashFlow, chosenWords), "fluxo: " + cashFlowText + "; PO "
                 + chosen.getEffectiveCode() + ": " + String.join(" ", chosenWords)
                 + " (todas as palavras do fluxo estão na linha, e só nela: " + String.join(", ", cashFlow) + ")"));
+    }
+
+    /**
+     * Words that alone never tie an account to a line (Q54, low confidence): they appear in many lines of any budget.
+     * Already without accents, upper case and with the abbreviations expanded.
+     */
+    public static final Set<String> GENERIC_WORDS = Set.of("OUTRAS", "OUTROS", "OUTRA", "OUTRO", "DESPESA", "DESPESAS",
+            "SERVICO", "SERVICOS", "MATERIAL", "MATERIAIS", "MANUTENCAO", "REEMBOLSO", "GERAL", "GERAIS", "DIVERSOS",
+            "DIVERSAS", "TAXA", "TAXAS");
+
+    /** Words of a company name that say nothing about which company it is (supplier rule, Q54). */
+    public static final Set<String> COMPANY_WORDS = Set.of("LTDA", "SA", "ME", "EIRELI", "EPP", "CIA", "COMERCIO",
+            "SERVICO", "SERVICOS", "SOLUCOES", "TECNICA", "TECNICAS", "EQUIPAMENTO", "EQUIPAMENTOS", "ADMINISTRACAO",
+            "EMPREENDIMENTOS", "INSTITUICAO", "PAGAMENTO", "BRASIL", "DISTRIBUIDORA", "INDUSTRIA");
+
+    /**
+     * Low-confidence link by name (Q54; ADR 0009, Decision 8), used only when no other rule tied the account: without
+     * the {@link #GENERIC_WORDS} and with the plural folded ("HIDROMETRO" = "HIDROMETROS"), the only line (budget
+     * account plus description) with the most words in common with the cash flow name, at least one. A tie or no
+     * common word: no link.
+     */
+    public Optional<Suggested> weakMatch(String cashFlowName, List<BudgetLine> candidates, LineHints hints) {
+        Set<String> cashFlow = new LinkedHashSet<>();
+        normalize(cashFlowName).stream().filter(w -> !GENERIC_WORDS.contains(w)).map(NameSuggestion::fold)
+                .forEach(cashFlow::add);
+        if (cashFlow.isEmpty()) {
+            return Optional.empty();
+        }
+        int best = 0;
+        List<BudgetLine> tied = new ArrayList<>();
+        Set<String> bestCommon = Set.of();
+        for (BudgetLine line : candidates) {
+            Set<String> words = new LinkedHashSet<>();
+            (hints.byDescriptionOnly(line) ? List.<String>of() : normalize(line.getAccount())).stream()
+                    .map(NameSuggestion::fold).forEach(words::add);
+            normalize(line.getDescription()).stream().map(NameSuggestion::fold).forEach(words::add);
+            Set<String> common = new LinkedHashSet<>(cashFlow);
+            common.retainAll(words);
+            if (common.size() > best) {
+                best = common.size();
+                tied.clear();
+                tied.add(line);
+                bestCommon = common;
+            } else if (common.size() == best && best > 0) {
+                tied.add(line);
+            }
+        }
+        if (best == 0 || tied.size() != 1) {
+            return Optional.empty();
+        }
+        BudgetLine chosen = tied.getFirst();
+        return Optional.of(new Suggested(chosen, new Score(best, cashFlow.size()), LOW_CONFIDENCE + "fluxo "
+                + String.join(" ", cashFlow) + "; só a linha " + chosen.getEffectiveCode() + " tem "
+                + String.join(", ", bestCommon) + " (sem as palavras genéricas)", true));
+    }
+
+    /**
+     * Low-confidence link by the supplier (Q54), used only when no other rule tied the account: the only line of a
+     * contracts group whose description (the company, RF-13.2) shares at least two words, besides the
+     * {@link #COMPANY_WORDS}, with a supplier of the account's entries ("Obm - Sergio Diniz" and "SERGIO ALVES
+     * DINIZ"). The administrator's own name in a single word ("Protest") never ties an account.
+     */
+    public Optional<Suggested> supplierMatch(java.util.Collection<String> suppliers, List<BudgetLine> contractLines) {
+        BudgetLine chosen = null;
+        String found = null;
+        for (BudgetLine line : contractLines) {
+            Set<String> description = new LinkedHashSet<>();
+            normalize(line.getDescription()).stream().filter(w -> !COMPANY_WORDS.contains(w) && w.length() >= 3)
+                    .forEach(description::add);
+            for (String supplier : suppliers.stream().filter(java.util.Objects::nonNull).sorted().toList()) {
+                Set<String> common = new LinkedHashSet<>(normalize(supplier));
+                common.removeAll(COMPANY_WORDS);
+                common.retainAll(description);
+                if (common.size() >= 2) {
+                    if (chosen != null && chosen != line) {
+                        return Optional.empty();
+                    }
+                    chosen = line;
+                    found = supplier;
+                }
+            }
+        }
+        if (chosen == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new Suggested(chosen, Score.ZERO, LOW_CONFIDENCE + "o favorecido \"" + found
+                + "\" combina com a empresa da linha " + chosen.getEffectiveCode() + " (" + chosen.getDescription()
+                + ")", true));
+    }
+
+    /**
+     * Like {@link #normalize} but keeping the numbers as words ("13 Salário" ≠ "Salário"; "Lei 10833/03"), for names that
+     * have no account code in them (the accounts of the budget's support sheet and the cash flow's account name).
+     */
+    public List<String> normalizeKeepingNumbers(String text) {
+        if (text == null) {
+            return List.of();
+        }
+        String withoutAccents = Normalizer.normalize(text, Normalizer.Form.NFD).replaceAll("\\p{M}", "")
+                .toUpperCase(Locale.ROOT);
+        String plain = withoutAccents.replaceAll("[^A-Z0-9]+", " ").trim();
+        if (plain.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> words = new LinkedHashSet<>();
+        for (String p : plain.split(" ")) {
+            String whole = abbreviations.getOrDefault(p, p);
+            if (!stopWords.contains(whole)) {
+                words.add(whole);
+            }
+        }
+        return List.copyOf(words);
+    }
+
+    /** Plural folded: a final S of a word with five letters or more is dropped. */
+    static String fold(String word) {
+        return word.length() >= 5 && word.endsWith("S") ? word.substring(0, word.length() - 1) : word;
     }
 
     private static Score score(List<String> a, List<String> b) {

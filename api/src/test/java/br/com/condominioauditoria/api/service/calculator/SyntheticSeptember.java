@@ -183,7 +183,7 @@ final class SyntheticSeptember {
         byCode.put(code, l);
         String accountCode = String.valueOf(++account);
         mappings.add(new AccountMapping(budget, accountCode, description.toUpperCase(), MappingTarget.line(l),
-                AccountMappingStatus.CONFIRMED, AccountMappingSource.ADMIN, null, false, "admin", Instant.EPOCH));
+                AccountMappingStatus.CONFIRMED, AccountMappingSource.ADMIN, null, false, false, "admin", Instant.EPOCH));
         if (new BigDecimal(actual).signum() != 0) {
             entries.add(entry(septemberFile, OPERATING, accountCode, "0.00", actual, false, false,
                     SEPTEMBER.atDay(5)));
@@ -192,7 +192,7 @@ final class SyntheticSeptember {
 
     void special(String accountCode, MappingTargetType type, String amount) {
         mappings.add(new AccountMapping(budget, accountCode, "CONTA " + accountCode, MappingTarget.special(type, null),
-                AccountMappingStatus.CONFIRMED, AccountMappingSource.ADMIN, null, false, "admin", Instant.EPOCH));
+                AccountMappingStatus.CONFIRMED, AccountMappingSource.ADMIN, null, false, false, "admin", Instant.EPOCH));
         entries.add(entry(septemberFile, OPERATING, accountCode, "0.00", amount, false, false, SEPTEMBER.atDay(7)));
     }
 

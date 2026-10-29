@@ -79,7 +79,7 @@ class PreviousVersionCopyTest {
 
     private AccountMapping confirmed(String account, MappingTarget target) {
         return new AccountMapping(v1, account, null, target, AccountMappingStatus.CONFIRMED,
-                AccountMappingSource.ADMIN, null, false, "admin",
+                AccountMappingSource.ADMIN, null, false, false, "admin",
                 Instant.EPOCH);
     }
 

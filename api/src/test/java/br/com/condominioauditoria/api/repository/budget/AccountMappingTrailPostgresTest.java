@@ -104,6 +104,60 @@ class AccountMappingTrailPostgresTest {
         }
     }
 
+    @Test
+    void v22TurnsTheOldSuggestionsIntoAutomaticAndAcceptsLowConfidenceWithoutLineAndSheetAccounts()
+            throws SQLException {
+        // ADR 0009, Decision 8 (Q54): the suggestions saved before V22 count from then on, as AUTOMATIC
+        String old = "teste_v21_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        try (Statement s = connection.createStatement()) {
+            Flyway.configure().dataSource(url, username, password).schemas(old).defaultSchema(old).createSchemas(true)
+                    .target("21").load().migrate();
+            s.execute("set search_path to " + old);
+            insertEvent(s);
+            Flyway.configure().dataSource(url, username, password).schemas(old).defaultSchema(old).load().migrate();
+            try (var r = s.executeQuery("select status, low_confidence from account_mapping")) {
+                assertThat(r.next()).isTrue();
+                assertThat(r.getString(1)).isEqualTo("AUTOMATIC");
+                assertThat(r.getBoolean(2)).isFalse();
+            }
+            // The trail is not touched: the old event stays SUGGESTED
+            try (var r = s.executeQuery("select new_status from account_mapping_event")) {
+                assertThat(r.next()).isTrue();
+                assertThat(r.getString(1)).isEqualTo("SUGGESTED");
+            }
+        } finally {
+            try (Statement s = connection.createStatement()) {
+                s.execute("drop schema if exists " + old + " cascade");
+            }
+        }
+
+        try (Statement s = connection.createStatement()) {
+            s.execute("set search_path to " + schema);
+            insertEvent(s);
+            String budget = budgetId(s);
+            s.executeUpdate(mappingSql(budget, "1688", "WITHOUT_LINE", "null"));
+            assertThat(s.executeUpdate("update account_mapping set status = 'AUTOMATIC', low_confidence = true"
+                    + " where account_code = '1688'")).isEqualTo(1);
+            assertThatThrownBy(() -> s.executeUpdate("update account_mapping set status = 'SUGERIDO'"))
+                    .isInstanceOf(SQLException.class).hasMessageContaining("ck_account_mapping_status");
+            s.executeUpdate(sheetSql("1665", "WITHOUT_LINE", "null"));
+            s.executeUpdate(sheetAccountSql(budget, "1547", "1545"));
+            assertThatThrownBy(() -> s.executeUpdate(sheetAccountSql(budget, "1547", null)))
+                    .isInstanceOf(SQLException.class).hasMessageContaining("uk_budget_sheet_account");
+            // A new support sheet of the same budget replaces its accounts (not a trail)
+            assertThat(s.executeUpdate("delete from budget_sheet_account where budget_id = '" + budget + "'"))
+                    .isEqualTo(1);
+        }
+    }
+
+    private static String sheetAccountSql(String budget, String code, String parent) {
+        return "insert into budget_sheet_account (id, condominium_id, budget_id, account_code, account_name, parent_code,"
+                + " file_name, sheet, sheet_row, sha256, saved_at) values ('" + UUID.randomUUID()
+                + "', '6f1d2c1e-3b4a-4c8e-9a51-2815a0000001', '" + budget + "', '" + code + "', 'Adiantamento Quinzenal', "
+                + (parent == null ? "null" : "'" + parent + "'") + ", 'apoio.xlsx', 'Despesas', 12, '" + "c".repeat(64)
+                + "', now())";
+    }
+
     private static String sheetSql(String account, String type, String lineCode) {
         return "insert into account_mapping_sheet_item (id, condominium_id, account_code, target_type, target_line_code,"
                 + " file_name, file_sha256, file_line, loaded_by, loaded_at) values ('" + UUID.randomUUID()

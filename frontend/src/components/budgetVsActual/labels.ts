@@ -35,18 +35,21 @@ export const targetTypeLabel: Record<MappingTargetType, string> = {
   ADJUSTMENT: "Ajuste (não é despesa)",
   TO_REALLOCATE: "Meio de pagamento (a realocar)",
   TRANSFER: "Transferência entre fundos",
+  WITHOUT_LINE: "Sem linha da PO (decisão do Admin)",
 };
 
 export const accountMappingStatusLabel: Record<AccountMappingStatus, string> = {
-  SUGGESTED: "Sugerido",
+  AUTOMATIC: "Automático",
+  SUGGESTED: "Automático",
   CONFIRMED: "Confirmado",
   REJECTED: "Recusado",
 };
 
 export const sourceLabel: Record<AccountMappingSource, string> = {
-  PREVIOUS_VERSION: "versão anterior",
-  SPREADSHEET: "planilha",
-  NAME: "pelo nome",
+  PREVIOUS_VERSION: "automático: versão anterior",
+  SPREADSHEET: "automático: planilha guardada",
+  BUDGET_SHEET: "automático: planilha de apoio da PO",
+  NAME: "automático: nome",
   ADMIN: "escolha do Admin",
 };
 
@@ -81,7 +84,7 @@ export const budgetItemStatusLabel: Record<BudgetItemStatus, string> = {
 export const budgetItemSourceLabel: Record<BudgetItemSource, string> = {
   FIRST_BUDGET: "primeira PO do condomínio",
   BUDGET_ACCOUNT: "mesma conta da PO e mesmo grupo",
-  PREVIOUS_VERSION: "versão anterior",
+  PREVIOUS_VERSION: "automático: versão anterior",
   MANUAL: "escolha do Admin",
 };
 

@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * Account mapping suggestion sheet uploaded by the Admin (RF-03.1.5, approved proposal; ADR 0004, Decision 4). CSV in
  * the format of the pilot's {@code mapa-contas-fluxo-para-PO.csv}: {@code cash flow account;budget line[;anything]},
  * separated by semicolons, with or without a header. The target is the effective code of a budget expense line or a
- * special target: "AJUSTE (...)", "REALOCAR (...)" or "TRANSFERENCIA (...)". An invalid line is listed with the reason
+ * special target: "AJUSTE (...)", "REALOCAR (...)", "TRANSFERENCIA (...)" or "SEM LINHA DA PO (...)" (Q54, O7). An invalid line is listed with the reason
  * and not loaded. Pure function: not AI and not the reading of an accounting document (it is the Admin's
  * configuration).
  */
@@ -24,7 +24,8 @@ public final class AccountMappingSheet {
 
     private static final Pattern ACCOUNT = Pattern.compile("^\\d{1,20}$");
     private static final Pattern LINE_CODE = Pattern.compile("^\\d+(\\.\\d+)+$");
-    private static final Pattern SPECIAL = Pattern.compile("^(AJUSTE|A[ _]REALOCAR|REALOCAR|TRANSFERENCIA)\\s*(?:\\((.*)\\))?$");
+    private static final Pattern SPECIAL = Pattern.compile(
+            "^(AJUSTE|A[ _]REALOCAR|REALOCAR|TRANSFERENCIA|SEM LINHA DA PO|SEM LINHA)\\s*(?:\\((.*)\\))?$");
 
     public record Item(int line, String account, MappingTarget target) {
     }
@@ -108,6 +109,7 @@ public final class AccountMappingSheet {
                 MappingTargetType type = switch (m.group(1)) {
                     case "AJUSTE" -> MappingTargetType.ADJUSTMENT;
                     case "TRANSFERENCIA" -> MappingTargetType.TRANSFER;
+                    case "SEM LINHA DA PO", "SEM LINHA" -> MappingTargetType.WITHOUT_LINE;
                     default -> MappingTargetType.TO_REALLOCATE;
                 };
                 // The detail stays as written (with accents), only without the parentheses
@@ -118,7 +120,7 @@ public final class AccountMappingSheet {
                 continue;
             }
             rejections.add(new Rejection(number, raw, "destino \"" + targetText + "\" não é código de linha da PO nem"
-                    + " AJUSTE (...), REALOCAR (...) ou TRANSFERENCIA (...)"));
+                    + " AJUSTE (...), REALOCAR (...), TRANSFERENCIA (...) ou SEM LINHA DA PO (...)"));
         }
         return new Reading(List.copyOf(items), List.copyOf(rejections));
     }

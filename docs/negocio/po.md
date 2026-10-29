@@ -10,8 +10,8 @@ Marcas: **[fato]** com a fonte; **[decisão]** do usuário (Q-xx do `docs/requis
 
 **A ordem não pode ser invertida** [decisão, 23/10/2026]:
 
-1. **Entender o documento da PO primeiro.** Identificar cada linha com tudo o que o documento traz: grupo, item, código da conta, nome da conta, empresa (no grupo 1.3), serviço e descrição, valor mensal, observação, e os fundos (1.9). A PO muda de modelo de um ano e de uma administradora para outra, então essa identificação é conferida por uma pessoa antes de qualquer cálculo.
-2. **Só depois distribuir os gastos.** Com as linhas identificadas e confirmadas, cada lançamento do extrato é ligado à sua linha pelo de-para (seção 8).
+1. **Entender o documento da PO primeiro.** Identificar cada linha com tudo o que o documento traz: grupo, item, código da conta, nome da conta, empresa (no grupo 1.3), serviço e descrição, valor mensal, observação, e os fundos (1.9). ~~A PO muda de modelo de um ano e de uma administradora para outra, então essa identificação é conferida por uma pessoa antes de qualquer cálculo.~~ Revisto em 29/10/2026 (Q54): o sistema precisa ler e entender bem a PO aprovada e as linhas lidas já valem; o que merece um olhar aparece como sinal, sem passo de aprovação linha a linha. [decisão Q54]
+2. **Depois distribuir os gastos.** Com as linhas identificadas, cada lançamento do extrato é ligado à sua linha pelo de-para, que o sistema faz sozinho (seção 8).
 3. **Só então mostrar** entradas, saídas, previsto × realizado e a origem da economia.
 
 O problema que levou a este entendimento foi o sistema não saber interpretar a PO: confundiu linha com número do item, com empresa e com conta (seção 9). Sem o passo 1 bem feito, todo o resto sai errado.
@@ -91,6 +91,9 @@ Grupos 1.1 a 1.8 são despesa (piloto: 86 linhas, 451.620,13/mês pela soma das 
 - Corrente: **lançamento do extrato → conta da administradora → linha da PO**. Nunca pelo número do item, pelo número da conta ou pelo fornecedor. [decisão RF-03.1.4, RF-13]
 - PO e extrato usam planos de contas diferentes (Vigia e Portaria: 1692 na PO, 1442 no extrato; 1621 é "Interfones" na PO e "Material Hidráulico" no extrato). [fato]
 - O de-para é por administradora, mas o resultado final é um só: não importa quem fez a contabilidade, os números finais têm de bater. [decisão D6]
+- Contas pagas pela cota ordinária sem linha na PO (1688 Outros serviços contratados e 1665 Honorários advogados) ficam em "sem linha da PO", **sem alerta**: é uma decisão, não uma falha do de-para. O usuário pretende alocá-las nas despesas administrativas numa próxima PO. [decisão O7, usuário, 29/10/2026]
+- **O sistema liga sozinho** [decisão Q54, usuário, 29/10/2026]: "uma das maiores dificuldades das versões anteriores era não associar automaticamente. Não podemos ficar aprovando linha a linha. O sistema precisa ler e entender muito bem a PO aprovada e já designar. Somente sinalizar se não encontrar relação, o que acho muito difícil uma vez que a planilha com todas as linhas também está disponível caso precise." A ligação automática vale sem aprovação; o Admin pode mudar qualquer uma. Só são sinalizadas as contas sem relação encontrada e as ligações de baixa confiança.
+- A **planilha de apoio** da PO é a melhor ponte: a aba de despesas lista as contas da PO com o nome e o grupo de cada uma, e a origem de cada linha diz de quais contas veio o valor. O nome da conta do extrato costuma ser igual ao nome da conta da planilha (ex.: "ADIANTAMENTO QUINZENAL" = 1547 Adiantamento Quinzenal, do grupo 1545 Verbas Salariais, que é a origem da 1.1.1). O número nunca é comparado: os planos são diferentes. [fato, golden de set/26: 63 de 73 contas ligadas assim ou pelo nome, nenhuma diferente do mapa do piloto]
 - Conta sem de-para cai em "sem linha da PO" e faz a linha que pagaria o gasto parecer ter sobrado (piloto mai–set: 70.834,70, ex.: 31.749,00 de auxílio alimentação na conta 1299). Completar o de-para corrige a economia sem mudar o saldo. [fato]
 
 ## 9. Armadilhas já vividas
@@ -110,7 +113,7 @@ Cada uma trocou um conceito por outro: linha = número do item; linha = forneced
 
 ## 11. De onde sai cada linha (planilha de apoio)
 
-Análise de 24/10/2026 da planilha de apoio da PO 2026/2027 (`piloto-mio/fontes/PO-2026-2027-planilha-apoio.xlsx`); tabela das 86 linhas em `piloto-mio/analises/po-2026-2027-origem-das-linhas.md`. Os valores batem com o PDF aprovado. [fato] Recomendações O1–O8 aceitas pelo usuário em 25/10/2026 ("pode seguir"); O3 e O7 ainda dependem de conferência.
+Análise de 24/10/2026 da planilha de apoio da PO 2026/2027 (`piloto-mio/fontes/PO-2026-2027-planilha-apoio.xlsx`); tabela das 86 linhas em `piloto-mio/analises/po-2026-2027-origem-das-linhas.md`. Os valores batem com o PDF aprovado. [fato] Recomendações O1–O8 aceitas pelo usuário em 25/10/2026 ("pode seguir"). Em 29/10/2026 o usuário retirou a O3 e respondeu a O7 (abaixo).
 
 **A corrente de cada linha** [fato]: gasto real da gestão anterior por conta → uma média → um ajuste (índice, negociação ou decisão) → valor aprovado.
 
@@ -122,7 +125,7 @@ Análise de 24/10/2026 da planilha de apoio da PO 2026/2027 (`piloto-mio/fontes/
 
 **Regras que a análise confirmou** [decisão, 25/10/2026]:
 
-- O1: a linha vale pela descrição quando a conta impressa não combina com ela. No piloto, 1.1.2 "INSS/FGTS/PIS/IRPF" traz a conta 1546 Salário; os encargos estão na 1556 Leis Sociais, que nenhuma linha cita. O de-para liga a 1556 à 1.1.2. A conferência humana da seção 0 passa a checar conta × descrição.
+- O1: a linha vale pela descrição quando a conta impressa não combina com ela. No piloto, 1.1.2 "INSS/FGTS/PIS/IRPF" traz a conta 1546 Salário; os encargos estão na 1556 Leis Sociais, que nenhuma linha cita. O de-para liga a 1556 à 1.1.2. O sistema sinaliza conta × descrição e, no de-para, não alcança essa linha pela conta impressa (desde a Q54 não há conferência humana obrigatória).
 - O2: a conta analítica ganha da conta de grupo. No piloto, 1.1.1 usa o grupo 1545, que já contém salário, adiantamento, consignado, férias e 13º; férias e 13º vão para as suas linhas (1.1.5 e 1.1.12), para nada contar duas vezes. O plano de contas precisa da hierarquia grupo → conta.
 - O4: o índice é o valor aplicado. O "IGP-M" do piloto vale 4,44% (igual ao IPCA); a diferença de rótulo fica anotada.
 - O5 e O6: além de recorrente, eventual e provisão (seção 4), há linhas **sazonais** (reforço de verão espalhado no ano, ex.: 1.3.7 piscina, cuja média jan–abr inclui o apoio de nov a fev) e **anuais** (ex.: 1.6.21 e-mail, 2.650 por ano contra 150/mês; 13º em nov e dez). Essas se comparam no acumulado do exercício, não no mês.
@@ -132,8 +135,8 @@ Análise de 24/10/2026 da planilha de apoio da PO 2026/2027 (`piloto-mio/fontes/
 
 - Uma conta pode alimentar duas linhas (1600, 1606, 1693, 1624 no piloto), e as duas puxaram a média da conta inteira; a separação é pelo fornecedor ou pela descrição (seção 8).
 - Linha pode mudar de grupo de um ano para outro (caixa d'água: de 1.8 eventual para 1.3 contrato) e pode ser zerada (interfones, controle de acesso); gasto em linha zero é estouro.
-- Contas com gasto e sem linha na PO: 1556 (resolvida por O1), 1688 Outros serv. contratados (24.360,72/mês em jan–abr), 1665 Honorários advogados (4.085,75/mês) e 13 contas pequenas (3.258,88/mês). Se forem pagas pelo ordinário, aparecem em "sem linha da PO" (seção 8). [a confirmar: O7]
-- Folha: as colunas visíveis somam 64.339,87/mês, perto do realizado; o "custo total" de 92.196,79 inclui 1.857,13 por funcionário sem coluna. [a confirmar: O3]
+- Contas com gasto e sem linha na PO: 1556 (resolvida por O1), 1688 Outros serv. contratados (24.360,72/mês em jan–abr), 1665 Honorários advogados (4.085,75/mês) e 13 contas pequenas (3.258,88/mês). São pagas pela cota ordinária e aparecem em "sem linha da PO", sem alerta (seção 8). [decisão O7, 29/10/2026]
+- Folha: as colunas visíveis somam 64.339,87/mês, perto do realizado; o "custo total" de 92.196,79 (15 funcionários) vem da aba "Folha de Pagamento Mensal" da planilha de apoio e inclui 1.857,13 por funcionário sem coluna. A dúvida O3 foi **retirada** pelo usuário em 29/10/2026: a origem de 1.1.1 e 1.1.2 mostra só o que a PO e as colunas trazem, sem "a confirmar". [decisão, 29/10/2026]
 - Comparar na mesma base (Q37): o PDF imprime +7,45%, mas compara total com fundos contra total sem fundos; na mesma base o aumento é 2,34%. A proposta da outra empresa fica 10.230,58/mês acima nas despesas; o comparativo da planilha (26.654,46) usa uma versão anterior da PO e bases diferentes. Todo número comparado diz a versão, a base e o período da média.
 
 ## Fontes

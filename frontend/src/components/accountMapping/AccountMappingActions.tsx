@@ -13,8 +13,9 @@ interface Props {
 }
 
 /**
- * Admin action bar (RF-03.1.5, Q51): the suggestions already come ready from the backend (no "generate" button);
- * here the Admin confirms all of them at once, confirms or rejects the selected ones and loads the spreadsheet.
+ * Admin action bar (RF-03.1.5, Q54): the links already come ready from the backend and already count (no "generate"
+ * button, no mandatory step); here the Admin may mark them as checked, refuse the selected ones and load the
+ * spreadsheet.
  */
 export function AccountMappingActions({ budgetId, list, selected, onBatchDone }: Props) {
   const { condominiumId } = useSession();
@@ -29,7 +30,10 @@ export function AccountMappingActions({ budgetId, list, selected, onBatchDone }:
       { action, accounts: selected },
       {
         onSuccess: (r) => {
-          setMessage({ text: `${r.changed} conta(s) ${action === "CONFIRM" ? "confirmadas" : "recusadas"}.`, skipped: r.skipped });
+          setMessage({
+            text: `${r.changed} conta(s) ${action === "CONFIRM" ? "marcadas como conferidas" : "com a ligação recusada (vão para \"sem linha da PO\", com aviso)"}.`,
+            skipped: r.skipped,
+          });
           onBatchDone();
         },
       },
@@ -40,8 +44,8 @@ export function AccountMappingActions({ budgetId, list, selected, onBatchDone }:
       {list && (
         <ConfirmAllSuggestions
           budgetId={budgetId}
-          suggested={list.summary.suggested}
-          bySource={list.suggestedBySource}
+          automatic={list.summary.automatic}
+          bySource={list.automaticBySource}
           onDone={(text, skipped) => {
             setMessage({ text, skipped });
             onBatchDone();
@@ -50,14 +54,14 @@ export function AccountMappingActions({ budgetId, list, selected, onBatchDone }:
       )}
       <div className="upload">
         <button className="button secondary" disabled={busy || selected.length === 0} onClick={() => runBatch("CONFIRM")}>
-          Confirmar selecionadas ({selected.length})
+          Marcar selecionadas como conferidas ({selected.length})
         </button>
         <button className="button secondary" disabled={busy || selected.length === 0} onClick={() => runBatch("REJECT")}>
-          Recusar selecionadas
+          Recusar a ligação das selecionadas
         </button>
         <label
           className="button secondary file-picker"
-          title="A última planilha carregada fica guardada e vale também para contas novas e para as próximas versões da PO, sempre como sugerido."
+          title="A última planilha carregada fica guardada e vale também para contas novas e para as próximas versões da PO, ligando sozinha."
         >
           Carregar planilha (CSV)
           <input
@@ -72,7 +76,7 @@ export function AccountMappingActions({ budgetId, list, selected, onBatchDone }:
               sheet.mutate(file, {
                 onSuccess: (r) =>
                   setMessage({
-                    text: `${r.accepted} linha(s) da planilha entraram como sugerido. ${r.rejected.length} recusada(s). A planilha fica guardada para as contas novas e as próximas versões da PO.`,
+                    text: `${r.accepted} linha(s) da planilha ligadas e já valendo. ${r.rejected.length} recusada(s). A planilha fica guardada para as contas novas e as próximas versões da PO.`,
                     skipped: [
                       ...r.skipped,
                       ...r.rejected.map((x) => ({ account: `linha ${x.line}`, reason: `${x.reason}: ${x.content}` })),

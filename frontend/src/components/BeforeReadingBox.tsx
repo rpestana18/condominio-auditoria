@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { accountsText, hasPendingSteps, mappingLink, profilesLink, reviewLink, type PendingSteps } from "./pendingSteps";
+import { accountsText, hasPendingSteps, mappingLink, reviewLink, type PendingSteps } from "./pendingSteps";
 
 interface Props {
   steps: PendingSteps;
@@ -10,8 +10,9 @@ interface Props {
 }
 
 /**
- * The one place for what to know before reading the numbers: the pending steps, with links to where they are done,
- * and the other notes of the screen. Shows nothing when there is nothing pending and no note.
+ * The one place for what to know before reading the numbers: only the exceptions (Q54), with a link to where they are
+ * solved, and the other notes of the screen. No mandatory review step. Shows nothing when there is no exception and no
+ * note.
  */
 export function BeforeReadingBox({ steps, notes = [], compact = false }: Props) {
   const pending = hasPendingSteps(steps);
@@ -33,21 +34,15 @@ export function BeforeReadingBox({ steps, notes = [], compact = false }: Props) 
             {steps.unmappedAccounts > 0 && (
               <li>
                 <Link to={mappingLink(steps.budgetId)}>
-                  Confirmar o de-para ({accountsText(steps.unmappedAccounts)} {steps.unmappedAccounts === 1 ? "pendente" : "pendentes"})
+                  {accountsText(steps.unmappedAccounts)} do extrato sem linha encontrada na PO
                 </Link>
                 {!compact && (
                   <span className="muted">
                     {steps.provisional
-                      ? " · até lá, “Economia nas linhas” e “Fora da PO” são provisórios"
-                      : " · até lá, essas despesas ficam fora das linhas da PO"}
+                      ? " · ficam em “sem linha da PO”; “Economia nas linhas” e “Fora da PO” são provisórios até o Admin escolher o destino"
+                      : " · ficam em “sem linha da PO” até o Admin escolher o destino"}
                   </span>
                 )}
-              </li>
-            )}
-            {steps.profilesNotConfirmed && (
-              <li>
-                <Link to={profilesLink(steps.budgetId)}>Confirmar os tipos das linhas</Link>
-                {!compact && <span className="muted"> · até lá, vale a sugestão do sistema</span>}
               </li>
             )}
           </ol>

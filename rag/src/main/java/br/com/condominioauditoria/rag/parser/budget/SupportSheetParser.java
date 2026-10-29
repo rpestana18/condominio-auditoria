@@ -3,6 +3,7 @@ package br.com.condominioauditoria.rag.parser.budget;
 import br.com.condominioauditoria.rag.model.TotalsCheck;
 import br.com.condominioauditoria.rag.model.budget.BudgetLineOrigin;
 import br.com.condominioauditoria.rag.model.budget.BudgetLineOrigins;
+import br.com.condominioauditoria.rag.model.budget.ExpenseAccount;
 import br.com.condominioauditoria.rag.model.document.ReadDocument;
 import br.com.condominioauditoria.rag.model.document.ReadDocument.Cell;
 import br.com.condominioauditoria.rag.model.document.ReadDocument.Sheet;
@@ -42,6 +43,10 @@ import java.util.regex.Pattern;
  * Realizado (the base), the most recent Orçado (the final amount) and Observações. Lines: the rows of the groups 1.1 to
  * 1.8 (a group code has one dot; the funds group is skipped), in order; an item the spreadsheet turned into a date
  * stays as read. Nothing here is a business rule of the api: the sheet is only matched to the budget by the api.
+ *
+ * <p>v5 (ADR 0009, Decision 8): the accounts of the expenses sheet also go to the api, with the group account of each
+ * one deduced from the sums ({@link #groupAccounts}). They are the bridge between the cash flow's account names and the
+ * budget's lines in the automatic account mapping (Q54); the api never compares account numbers (RF-00.8).
  */
 public final class SupportSheetParser {
 
@@ -95,7 +100,8 @@ public final class SupportSheetParser {
                     number(cells, h.fin()), text(cells, h.notes()), expenses, indexes));
         }
         return new BudgetLineOrigins(budgetSheet.name(), expenses == null ? null : expenses.sheet(),
-                indexes == null ? null : indexes.sheet(), List.copyOf(lines));
+                indexes == null ? null : indexes.sheet(), List.copyOf(lines),
+                expenses == null ? List.of() : expenses.accounts());
     }
 
     /** Checks of the reading: the number of expense lines read and how many have an average. */
@@ -222,9 +228,12 @@ public final class SupportSheetParser {
     private record Average(YearMonth from, YearMonth to, BigDecimal amount) {
     }
 
-    /** Expenses sheet: the average columns and the amount of each account in each of them. */
+    /**
+     * Expenses sheet: the average columns and the amount of each account in each of them, and the accounts with the
+     * group account deduced from the sums (v5).
+     */
     private record Expenses(String sheet, List<Integer> columns, Map<Integer, YearMonth[]> periods,
-            Map<String, Map<Integer, BigDecimal>> byAccount) {
+            Map<String, Map<Integer, BigDecimal>> byAccount, List<ExpenseAccount> accounts) {
 
         Average match(List<String> accounts, BigDecimal base) {
             if (accounts.isEmpty() || !byAccount.keySet().containsAll(accounts)) {
@@ -272,7 +281,12 @@ public final class SupportSheetParser {
             if (columns.isEmpty()) {
                 continue;
             }
+            // Month columns (header cells read as dates) for the group accounts; without them, the average columns
+            List<Integer> monthColumns = row.getValue().values().stream().filter(c -> "date".equals(c.type()))
+                    .map(Cell::column).toList();
+            List<Integer> sumColumns = monthColumns.isEmpty() ? columns : monthColumns;
             Map<String, Map<Integer, BigDecimal>> byAccount = new LinkedHashMap<>();
+            List<AccountRow> rows = new ArrayList<>();
             for (var r : grid.entrySet()) {
                 if (r.getKey() <= row.getKey()) {
                     continue;
@@ -290,10 +304,79 @@ public final class SupportSheetParser {
                     }
                 }
                 byAccount.put(codes.getFirst(), values);
+                List<BigDecimal> amounts = new ArrayList<>();
+                for (int col : sumColumns) {
+                    BigDecimal v = number(r.getValue(), col);
+                    amounts.add(money(v == null ? BigDecimal.ZERO : v));
+                }
+                rows.add(new AccountRow(codes.getFirst(), accountName(first.value()), r.getKey(), amounts));
             }
-            return Optional.of(new Expenses(sheet.name(), List.copyOf(columns), periods, byAccount));
+            return Optional.of(new Expenses(sheet.name(), List.copyOf(columns), periods, byAccount,
+                    groupAccounts(rows)));
         }
         return Optional.empty();
+    }
+
+    /** An account row of the expenses sheet with its amounts in the month columns. */
+    record AccountRow(String code, String name, int row, List<BigDecimal> amounts) {
+    }
+
+    /** Name printed after the code ("1547 - Adiantamento Quinzenal" → "Adiantamento Quinzenal"). */
+    private static String accountName(String text) {
+        return text.replaceFirst("^\\s*\\d{3,}\\s*-\\s*", "").trim();
+    }
+
+    /**
+     * Group account of each account, deduced from the sums, without AI: an account with some amount is a group when the
+     * accounts right below it (each one counted with its own sub-accounts) add up, month by month and to the cent, to
+     * its amounts; those accounts get it as {@code parentCode}. The sheet is read from the bottom up, so a group inside a
+     * group (1545 Verbas Salariais inside 1451 CONDOMÍNIO) is counted as one account. A row that equals no sum has no
+     * parent.
+     */
+    static List<ExpenseAccount> groupAccounts(List<AccountRow> rows) {
+        int n = rows.size();
+        int[] end = new int[n];
+        String[] parent = new String[n];
+        for (int i = n - 1; i >= 0; i--) {
+            end[i] = i + 1;
+            List<BigDecimal> target = rows.get(i).amounts();
+            if (target.stream().allMatch(v -> v.signum() == 0)) {
+                continue;
+            }
+            List<BigDecimal> sum = new ArrayList<>(java.util.Collections.nCopies(target.size(), BigDecimal.ZERO));
+            List<Integer> children = new ArrayList<>();
+            int j = i + 1;
+            while (j < n) {
+                List<BigDecimal> child = rows.get(j).amounts();
+                for (int k = 0; k < sum.size(); k++) {
+                    sum.set(k, sum.get(k).add(child.get(k)));
+                }
+                children.add(j);
+                j = end[j];
+                if (equal(sum, target)) {
+                    end[i] = j;
+                    for (int c : children) {
+                        parent[c] = rows.get(i).code();
+                    }
+                    break;
+                }
+            }
+        }
+        List<ExpenseAccount> accounts = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            AccountRow r = rows.get(i);
+            accounts.add(new ExpenseAccount(r.code(), r.name(), r.row(), parent[i]));
+        }
+        return List.copyOf(accounts);
+    }
+
+    private static boolean equal(List<BigDecimal> a, List<BigDecimal> b) {
+        for (int k = 0; k < a.size(); k++) {
+            if (a.get(k).compareTo(b.get(k)) != 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private record Index(String name, BigDecimal rate, boolean forecast) {

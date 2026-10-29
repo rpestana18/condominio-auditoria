@@ -200,7 +200,7 @@ export function useAccountMappingBatch(condominiumId: string, budgetId: string) 
 }
 
 /**
- * "Confirmar todas as sugestões" (Q51): confirms every suggested account at once. `expected` is the count the screen
+ * "Marcar todas como conferidas" (optional since Q54): confirms every automatic link at once. `expected` is the count the screen
  * showed; if it changed in the meantime, the backend answers 409 and confirms nothing.
  */
 export function useConfirmAllSuggestions(condominiumId: string, budgetId: string) {

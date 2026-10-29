@@ -62,7 +62,7 @@ export function BalanceOriginCard({ dashboard }: { dashboard: Dashboard }) {
         </ul>
       )}
       <BeforeReadingBox steps={bridgeSteps(bridge)} compact />
-      {provisional && <span className="muted">As parcelas aparecem aqui depois do de-para.</span>}
+      {provisional && <span className="muted">As parcelas aparecem aqui quando as contas sem linha encontrada tiverem destino.</span>}
       {partial && <span className="muted">{partial}</span>}
       {bridge.closes === false && <span className="notice warning">a ponte não fecha</span>}
       <Link to="/origem-do-saldo">Ver a origem do saldo</Link>

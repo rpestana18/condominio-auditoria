@@ -12,9 +12,10 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Generates the account mapping suggestions by themselves (Q51, RF-03.1.5) after a change is committed: budget
- * confirmed, cash flow saved, mapping changed. Runs in its own transaction; a failure goes to the log and does not undo
- * the change. The generation is idempotent (only accounts without a mapping) and publishes nothing, so it never loops.
+ * Applies the automatic account mapping by itself (Q51, Q54; ADR 0009, Decision 8) after a change is committed: budget
+ * confirmed, cash flow or support sheet saved, mapping changed. Runs in its own transaction; a failure goes to the log
+ * and does not undo the change. The generation is idempotent (it writes only what changed, never touches the Admin's
+ * choice) and publishes nothing, so it never loops.
  */
 @Component
 class AccountMappingSuggestionListener {
@@ -35,7 +36,7 @@ class AccountMappingSuggestionListener {
         try {
             transaction.executeWithoutResult(s -> accountMappings.suggestPending(change.condominiumId()));
         } catch (RuntimeException e) {
-            log.error("Sugestões do de-para do condomínio {} falharam ({}): {}", change.condominiumId(),
+            log.error("De-para automático do condomínio {} falhou ({}): {}", change.condominiumId(),
                     change.trigger().text(), e.getMessage(), e);
         }
     }

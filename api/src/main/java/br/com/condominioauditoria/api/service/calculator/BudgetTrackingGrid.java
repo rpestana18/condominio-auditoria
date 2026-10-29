@@ -134,7 +134,7 @@ public final class BudgetTrackingGrid {
         }
 
         BudgetStructure structure = BudgetStructure.of(base.lines());
-        Map<String, MappingTarget> confirmed = EffectiveAccountMapping.confirmed(base.mappings());
+        Map<String, MappingTarget> confirmed = EffectiveAccountMapping.effective(base.mappings());
         Map<UUID, List<String>> accountsByLine = new HashMap<>();
         confirmed.forEach((account, t) -> {
             if (t.type() == MappingTargetType.BUDGET_LINE) {
@@ -340,14 +340,24 @@ public final class BudgetTrackingGrid {
     }
 
     /**
-     * Accounts of the operating fund without a confirmed mapping (the "sem linha da PO" block of the budget vs. actual),
-     * merged over some months. {@code accounts}: largest amount first, the entries without an account last (account
-     * null). {@code count}: accounts with a code, as in the NO_CONFIRMED_MAPPING warning of the budget vs. actual.
+     * Accounts of the operating fund in the "sem linha da PO" block of the budget vs. actual, merged over some months.
+     * {@code accounts}: largest amount first, the entries without an account last (account null). {@code count} and
+     * {@code alertTotal}: only the accounts <b>without a link found</b> (Q54), as in the NO_CONFIRMED_MAPPING warning;
+     * an account the Admin decided has no line (O7) stays in the block without the warning.
      */
     public record UnmappedAccounts(List<BlockAccountResponse> accounts, BigDecimal total, int entries) {
 
         public long count() {
-            return accounts.stream().filter(a -> a.account() != null).count();
+            return alertAccounts().size();
+        }
+
+        public List<BlockAccountResponse> alertAccounts() {
+            return accounts.stream().filter(a -> a.account() != null
+                    && !BudgetVsActualCalculator.DECIDED_WITHOUT_LINE.equals(a.detail())).toList();
+        }
+
+        public BigDecimal alertTotal() {
+            return alertAccounts().stream().map(BlockAccountResponse::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
         }
     }
 
@@ -380,14 +390,13 @@ public final class BudgetTrackingGrid {
         if (count == 0) {
             return Optional.empty();
         }
-        String accounts = u.accounts().stream()
-                .map(a -> (a.account() == null ? "lançamentos sem conta"
-                        : a.account() + (a.name() == null || a.name().isBlank() ? "" : " " + a.name()))
+        String accounts = u.alertAccounts().stream()
+                .map(a -> a.account() + (a.name() == null || a.name().isBlank() ? "" : " " + a.name())
                         + " R$ " + MoneyFormatter.format(a.amount()))
                 .collect(Collectors.joining("; "));
         return Optional.of(new BudgetVsActualWarningResponse("NO_CONFIRMED_MAPPING", count
-                + (count == 1 ? " conta" : " contas") + " sem de-para confirmado" + where + ": R$ "
-                + MoneyFormatter.format(u.total()) + " em \"sem linha da PO\", fora das linhas da PO; " + effect
+                + (count == 1 ? " conta" : " contas") + " do extrato sem linha encontrada na PO" + where + ": R$ "
+                + MoneyFormatter.format(u.alertTotal()) + " em \"sem linha da PO\", fora das linhas da PO; " + effect
                 + ". Contas: " + accounts));
     }
 

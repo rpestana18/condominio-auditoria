@@ -15,8 +15,8 @@ interface Props {
 }
 
 /**
- * Cash flow accounts with the target, the status, the source and the suggestion reason (RF-03.1.13). An account
- * without any mapping is highlighted (Q51).
+ * Cash flow accounts with the target, the status, the source of the link and its reason (RF-03.1.13, Q54). An account
+ * without a line found and a low-confidence link are highlighted.
  */
 export function AccountMappingTable({ accounts, editing }: Props) {
   const all = editing && accounts.length > 0 && accounts.every((a) => editing.selected.has(a.account));
@@ -43,7 +43,7 @@ export function AccountMappingTable({ accounts, editing }: Props) {
           {accounts.map((a) => (
             <tr
               key={a.account}
-              className={[editing?.selected.has(a.account) ? "selected" : "", a.status == null ? "without-mapping" : ""].join(" ").trim() || undefined}
+              className={[editing?.selected.has(a.account) ? "selected" : "", a.status == null || a.lowConfidence ? "without-mapping" : ""].join(" ").trim() || undefined}
             >
               {editing && (
                 <td>
@@ -62,17 +62,17 @@ export function AccountMappingTable({ accounts, editing }: Props) {
               <td className="number">{formatMoney(a.debits)}</td>
               <td>{a.target?.text ?? <span className="muted">—</span>}</td>
               <td>
-                <AccountMappingStatusBadge status={a.status} />
+                <AccountMappingStatusBadge status={a.status} lowConfidence={a.lowConfidence} />
                 {a.sameAsPreviousVersion && <span className="badge neutral">igual à versão anterior</span>}
               </td>
               <td className="muted">
-                {a.source && <span>{sourceLabel[a.source]}</span>}
+                {a.source && <span>{a.status === "CONFIRMED" && a.source !== "ADMIN" ? `${sourceLabel[a.source]}, confirmado` : sourceLabel[a.source]}</span>}
                 {a.reason && <small className="note">{a.reason}</small>}
               </td>
               {editing && (
                 <td>
                   <button className="link-button" onClick={() => editing.onEdit(a)}>
-                    {a.status == null ? "Escolher destino" : "Alterar"}
+                    {a.status == null ? "Escolher destino" : "Alterar ou confirmar"}
                   </button>
                 </td>
               )}

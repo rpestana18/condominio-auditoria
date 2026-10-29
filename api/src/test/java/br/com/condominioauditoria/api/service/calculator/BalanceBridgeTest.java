@@ -420,7 +420,7 @@ class BalanceBridgeTest {
                 .filteredOn(p -> p.code().equals("WITHOUT_BUDGET_LINE")).singleElement()
                 .satisfies(p -> assertThat(p.amount()).isEqualByComparingTo("-1050.00"));
         assertThat(r.warnings()).filteredOn(w -> w.code().equals("NO_CONFIRMED_MAPPING")).singleElement()
-                .satisfies(w -> assertThat(w.text()).isEqualTo("2 contas sem de-para confirmado no total da ponte:"
+                .satisfies(w -> assertThat(w.text()).isEqualTo("2 contas do extrato sem linha encontrada na PO no total da ponte:"
                         + " R$ 1.050,00 em \"sem linha da PO\", fora das linhas da PO; ficam em \"Fora da PO\" e"
                         + " \"Economia nas linhas\" pode incluir o previsto dessas despesas. Contas: 9001 CONTA 9001"
                         + " R$ 1.000,00; 9002 CONTA 9002 R$ 50,00"));
@@ -456,7 +456,15 @@ class BalanceBridgeTest {
         var accounts = List.of(new BlockAccountResponse("9001", "CONTA", "sem de-para", new BigDecimal("50.01"), 1));
         var unmapped = new BudgetTrackingGrid.UnmappedAccounts(accounts, new BigDecimal("50.01"), 1);
         assertThat(BalanceBridge.mapping(unmapped, new BigDecimal("1000.00")).provisional()).isTrue();
-        var atLimit = new BudgetTrackingGrid.UnmappedAccounts(accounts, new BigDecimal("50.00"), 1);
+        var atLimit = new BudgetTrackingGrid.UnmappedAccounts(List.of(new BlockAccountResponse("9001", "CONTA",
+                "conta sem linha encontrada", new BigDecimal("50.00"), 1)), new BigDecimal("50.00"), 1);
+        assertThat(BalanceBridge.mapping(atLimit, new BigDecimal("1000.00")).provisional()).isFalse();
+        // O7: an account the Admin decided has no line is not part of the warning nor of the provisional limit
+        var decided = new BudgetTrackingGrid.UnmappedAccounts(List.of(new BlockAccountResponse("1688",
+                "OUTROS SERVIÇOS CONTRATADOS", BudgetVsActualCalculator.DECIDED_WITHOUT_LINE, new BigDecimal("900.00"),
+                1)), new BigDecimal("900.00"), 1);
+        assertThat(BalanceBridge.mapping(decided, new BigDecimal("1000.00")).provisional()).isFalse();
+        assertThat(BalanceBridge.mapping(decided, new BigDecimal("1000.00")).unmappedAccounts()).isZero();
         assertThat(BalanceBridge.mapping(atLimit, new BigDecimal("1000.00")).provisional()).isFalse();
         var none = new BudgetTrackingGrid.UnmappedAccounts(List.of(), new BigDecimal("0.00"), 0);
         assertThat(BalanceBridge.mapping(none, new BigDecimal("0.00")).provisional()).isFalse();

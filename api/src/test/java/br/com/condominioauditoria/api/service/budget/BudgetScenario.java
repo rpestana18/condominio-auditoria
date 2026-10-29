@@ -120,6 +120,8 @@ public final class BudgetScenario {
     public final List<br.com.condominioauditoria.api.model.budget.BudgetLineReviewEvent> lineReviewEvents =
             new ArrayList<>();
     public final List<br.com.condominioauditoria.api.model.budget.BudgetLineOrigin> lineOrigins = new ArrayList<>();
+    /** Accounts of the support sheet's expenses sheet (v5; Q54). */
+    public final List<br.com.condominioauditoria.api.model.budget.BudgetSheetAccount> sheetAccounts = new ArrayList<>();
     /** Changes published by the services; {@link #afterCommit()} plays the after-commit trigger. */
     public final List<Object> published = new ArrayList<>();
 
@@ -368,8 +370,24 @@ public final class BudgetScenario {
             sheetItems.removeIf(x -> x.getCondominiumId().equals(i.getArgument(0)));
             return before - sheetItems.size();
         });
+        var originRepo = mock(br.com.condominioauditoria.api.repository.budget.BudgetLineOriginRepository.class);
+        var sheetAccountRepo = mock(br.com.condominioauditoria.api.repository.budget.BudgetSheetAccountRepository.class);
+        when(sheetAccountRepo.saveAll(any())).thenAnswer(i -> {
+            Iterable<br.com.condominioauditoria.api.model.budget.BudgetSheetAccount> all = i.getArgument(0);
+            all.forEach(sheetAccounts::add);
+            return all;
+        });
+        when(sheetAccountRepo.deleteByBudgetId(any())).thenAnswer(i -> {
+            int before = sheetAccounts.size();
+            sheetAccounts.removeIf(x -> x.getBudgetId().equals(i.getArgument(0)));
+            return before - sheetAccounts.size();
+        });
+        when(sheetAccountRepo.findByBudgetIdOrderBySheetRow(any())).thenAnswer(i -> sheetAccounts.stream()
+                .filter(x -> x.getBudgetId().equals(i.getArgument(0)))
+                .sorted(Comparator.comparingInt(br.com.condominioauditoria.api.model.budget.BudgetSheetAccount::getSheetRow))
+                .toList());
         accountMapping = new AccountMappingService(condominiums, budgetRepo, lineRepo, mappingRepo, mappingEventRepo,
-                entryRepo, sheetItemRepo,
+                entryRepo, sheetItemRepo, originRepo, sheetAccountRepo,
                 AccountMappingProperties.defaults(), published::add);
 
         ReallocationRepository reallocationRepo = mock(ReallocationRepository.class);
@@ -423,7 +441,6 @@ public final class BudgetScenario {
         });
         when(reviewEventRepo.findByBudgetIdOrderByOccurredAtAscLineCodeAsc(any())).thenAnswer(i -> lineReviewEvents
                 .stream().filter(e -> e.getBudgetId().equals(i.getArgument(0))).toList());
-        var originRepo = mock(br.com.condominioauditoria.api.repository.budget.BudgetLineOriginRepository.class);
         when(originRepo.save(any())).thenAnswer(i -> {
             if (!lineOrigins.contains(i.<br.com.condominioauditoria.api.model.budget.BudgetLineOrigin>getArgument(0))) {
                 lineOrigins.add(i.getArgument(0));
@@ -443,7 +460,7 @@ public final class BudgetScenario {
         when(originRepo.findByBudgetLineId(any())).thenAnswer(i -> lineOrigins.stream()
                 .filter(o -> o.getBudgetLineId().equals(i.getArgument(0))).findFirst());
         lineReview = new BudgetLineReviewService(budgetRepo, lineRepo, reviewEventRepo, originRepo);
-        lineOriginService = new BudgetLineOriginService(budgetRepo, lineRepo, originRepo);
+        lineOriginService = new BudgetLineOriginService(budgetRepo, lineRepo, originRepo, sheetAccountRepo);
         when(fileRepo.save(any())).thenAnswer(i -> i.getArgument(0));
         when(fileRepo.findByCondominiumIdAndIdIn(any(), any())).thenAnswer(i -> files.values().stream()
                 .filter(a -> a.getCondominiumId().equals(i.getArgument(0))

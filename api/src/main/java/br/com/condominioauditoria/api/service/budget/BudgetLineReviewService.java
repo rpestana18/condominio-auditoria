@@ -74,15 +74,15 @@ public class BudgetLineReviewService {
         return budget == null ? null : state(budget.getId(), lines.findByBudgetIdOrderByPosition(budget.getId()));
     }
 
-    /** Review state from the lines already loaded (expense lines and 1.9 fund lines; groups and total do not count). */
+    /**
+     * Review state from the lines already loaded (expense lines and 1.9 fund lines; groups and total do not count).
+     * Since Q54 (29/10/2026) the lines read are valid by themselves ("automática"): {@code reviewed} is always true and
+     * there is no pending step; {@code reviewedLines} counts the lines a person confirmed (optional).
+     */
     public static LineReviewStateResponse state(UUID budgetId, List<BudgetLine> budgetLines) {
         List<BudgetLine> reviewable = budgetLines.stream().filter(l -> l.getType() == BudgetLineType.LINE).toList();
         int reviewed = (int) reviewable.stream().filter(BudgetLine::isReviewed).count();
-        boolean all = !reviewable.isEmpty() && reviewed == reviewable.size();
-        String message = all ? null
-                : "Confira as linhas da PO em \"PO aprovada\" (" + reviewed + " de " + reviewable.size()
-                        + " conferidas): até lá, os números por linha não aparecem";
-        return new LineReviewStateResponse(budgetId, all, reviewed, reviewable.size(), message);
+        return new LineReviewStateResponse(budgetId, true, reviewed, reviewable.size(), null);
     }
 
     @Transactional(readOnly = true)

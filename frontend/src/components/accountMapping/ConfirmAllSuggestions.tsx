@@ -1,23 +1,24 @@
 import { useState } from "react";
 import { useConfirmAllSuggestions } from "../../api/budgetQueries";
-import type { SkippedAccount, SuggestedBySource } from "../../api/types";
+import type { AutomaticBySource, SkippedAccount } from "../../api/types";
 import { useSession } from "../../context";
 
 interface Props {
   budgetId: string;
-  /** How many accounts are "sugerido" now (summary.suggested). */
-  suggested: number;
-  bySource: SuggestedBySource;
+  /** How many accounts are "automático" now (summary.automatic). */
+  automatic: number;
+  bySource: AutomaticBySource;
   onDone: (text: string, skipped: SkippedAccount[]) => void;
 }
 
-/** "versão anterior: 12 · planilha: 30 · pelo nome: 7", only the sources that have suggestions. */
-function sourcesText(bySource: SuggestedBySource): string {
+/** "12 da versão anterior · 30 da planilha guardada · 7 pelo nome", only the sources that have links. */
+function sourcesText(bySource: AutomaticBySource): string {
   const parts: [string, number][] = [
     ["da versão anterior", bySource.previousVersion],
-    ["da planilha", bySource.spreadsheet],
+    ["da planilha guardada", bySource.spreadsheet],
+    ["da planilha de apoio da PO", bySource.budgetSheet],
     ["pelo nome", bySource.name],
-    ["escolhidas pelo Admin sem confirmar", bySource.admin],
+    ["escolhidas pelo Admin sem marcar como conferidas", bySource.admin],
   ];
   return parts
     .filter(([, n]) => n > 0)
@@ -26,33 +27,33 @@ function sourcesText(bySource: SuggestedBySource): string {
 }
 
 /**
- * "Confirmar todas as sugestões" (Q51), Admin only. Two steps: the first click shows how many suggestions there are and
- * where they came from; only the second one confirms. The count shown goes to the backend, which confirms nothing if it
- * changed in the meantime.
+ * "Marcar todas como conferidas", Admin only and optional since Q54: the automatic links already count. Two steps: the
+ * first click shows how many links there are and where they came from; only the second one confirms. The count shown
+ * goes to the backend, which confirms nothing if it changed in the meantime.
  */
-export function ConfirmAllSuggestions({ budgetId, suggested, bySource, onDone }: Props) {
+export function ConfirmAllSuggestions({ budgetId, automatic, bySource, onDone }: Props) {
   const { condominiumId } = useSession();
   const confirmAll = useConfirmAllSuggestions(condominiumId, budgetId);
   const [asking, setAsking] = useState(false);
 
-  if (suggested === 0 && !confirmAll.error) return null;
+  if (automatic === 0 && !confirmAll.error) return null;
 
   return (
     <div className="confirm-all">
       {!asking ? (
-        <button className="button" disabled={suggested === 0 || confirmAll.isPending} onClick={() => setAsking(true)}>
-          Confirmar todas as sugestões ({suggested})
+        <button className="button secondary" disabled={automatic === 0 || confirmAll.isPending} onClick={() => setAsking(true)}>
+          Marcar todas como conferidas ({automatic}, opcional)
         </button>
       ) : (
-        <div className="confirmation" role="group" aria-label="Confirmar todas as sugestões">
+        <div className="confirmation" role="group" aria-label="Marcar todas como conferidas">
           <p>
             <strong>
-              {suggested} {suggested === 1 ? "sugestão" : "sugestões"}: {sourcesText(bySource)}.
+              {automatic} {automatic === 1 ? "ligação automática" : "ligações automáticas"}: {sourcesText(bySource)}.
             </strong>
           </p>
           <p className="muted">
-            Todas passam a "confirmado" e entram no previsto × realizado. Cada conta vai para a trilha com o seu nome e a data. Contas sem
-            sugestão e recusadas não mudam. Confira a lista antes, se quiser: o filtro "Sugeridas" mostra só elas.
+            Elas já valem no previsto × realizado; marcar só registra que você conferiu, e o sistema não as troca mais. Cada conta vai
+            para a trilha com o seu nome e a data. Contas sem linha encontrada e recusadas não mudam.
           </p>
           <div className="upload">
             <button
@@ -60,18 +61,18 @@ export function ConfirmAllSuggestions({ budgetId, suggested, bySource, onDone }:
               disabled={confirmAll.isPending}
               onClick={() =>
                 confirmAll.mutate(
-                  { expected: suggested },
+                  { expected: automatic },
                   {
                     onSuccess: (r) => {
                       setAsking(false);
-                      onDone(`${r.changed} sugestão(ões) confirmadas.`, r.skipped);
+                      onDone(`${r.changed} ligação(ões) marcadas como conferidas.`, r.skipped);
                     },
                     onError: () => setAsking(false),
                   },
                 )
               }
             >
-              Confirmar as {suggested}
+              Marcar as {automatic}
             </button>
             <button className="button secondary" disabled={confirmAll.isPending} onClick={() => setAsking(false)}>
               Cancelar

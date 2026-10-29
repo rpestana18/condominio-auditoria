@@ -43,7 +43,8 @@ class CashFlowAndLineReviewGoldenTest {
 
         assertThat(review.lines()).hasSize(88);
         assertThat(review.lines()).filteredOn(LineReviewLineResponse::funds).hasSize(2);
-        assertThat(review.state().reviewed()).isFalse();
+        // Q54: the lines read are valid by themselves; the warnings are only signals
+        assertThat(review.state().reviewed()).isTrue();
         assertThat(review.state().totalLines()).isEqualTo(88);
         assertThat(review.lines()).allSatisfy(l -> assertThat(l.status()).isEqualTo(BudgetLineReviewStatus.PENDING));
         assertThat(codes(review.lines(), BudgetLineWarningCode.ACCOUNT_DESCRIPTION_MISMATCH)).contains("1.1.2");
@@ -59,31 +60,27 @@ class CashFlowAndLineReviewGoldenTest {
     }
 
     @Test
-    void withoutReviewedLinesTheScreensShowThePendingStepAndNoNumberByLine() {
+    void withoutAnyLineReviewTheScreensAlreadyShowTheNumbersByLine() {
+        // Q54 (29/10/2026): no pending step; the review warnings block no screen
         SeptemberGolden g = golden();
         g.confirmMap();
         positions(g);
 
         var grid = g.scenario.tracking.get(g.scenario.condominiumId, g.budget.getId());
-        assertThat(grid.groups()).isEmpty();
-        assertThat(grid.lineReview().reviewed()).isFalse();
-        assertThat(grid.warnings()).first().satisfies(w -> {
-            assertThat(w.code()).isEqualTo("LINES_NOT_REVIEWED");
-            assertThat(w.text()).contains("Confira as linhas da PO");
-        });
+        assertThat(grid.groups()).isNotEmpty();
+        assertThat(grid.lineReview().reviewed()).isTrue();
+        assertThat(grid.warnings()).noneMatch(w -> w.code().equals("LINES_NOT_REVIEWED"));
         BalanceBridgeResponse bridge = g.scenario.bridge.get(g.scenario.condominiumId, null, "2026-09", "2026-09");
         assertThat(bridge.items()).filteredOn(i -> i.code() == BalanceBridgeItemCode.LINE_SAVINGS).singleElement()
-                .satisfies(i -> assertThat(i.amount()).isNull());
+                .satisfies(i -> assertThat(i.amount()).isNotNull());
         assertThat(bridge.variation()).isEqualByComparingTo("43712.45");
 
-        // "Entradas e saídas": the outflows by cash flow account, the same total
         CashFlowMonthlyResponse r = g.scenario.cashFlow.monthly(g.scenario.condominiumId, null, null, null);
         CashFlowMonthResponse sep = month(r, "2026-09");
-        assertThat(sep.byAccount()).isTrue();
+        assertThat(sep.byAccount()).isFalse();
         assertThat(sep.outflows()).isEqualByComparingTo("449455.13");
-        assertThat(r.outflowGroups()).isEmpty();
-        assertThat(r.outflowBlocks()).extracting(CashFlowRowResponse::code).containsExactly(CashFlowRowCode.BY_ACCOUNT);
-        assertThat(r.warnings()).anyMatch(w -> w.code().equals("LINES_NOT_REVIEWED"));
+        assertThat(sep.inLines()).isEqualByComparingTo("445125.96");
+        assertThat(r.warnings()).noneMatch(w -> w.code().equals("LINES_NOT_REVIEWED"));
     }
 
     @Test

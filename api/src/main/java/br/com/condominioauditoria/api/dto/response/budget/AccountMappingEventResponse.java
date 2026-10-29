@@ -19,5 +19,6 @@ public record AccountMappingEventResponse(
         String newTarget,
         AccountMappingStatus newStatus,
         AccountMappingSource source,
-        String reason) {
+        String reason,
+        Boolean lowConfidence) {
 }

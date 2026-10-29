@@ -42,7 +42,7 @@ public class MessageContractTest {
                 CashFlowCheck.check(cashFlow)));
 
         String text = new String(json, StandardCharsets.UTF_8);
-        assertThat(text).contains("\"version\":4").contains("\"debit\":\"1500.10\"")
+        assertThat(text).contains("\"version\":5").contains("\"debit\":\"1500.10\"")
                 .contains("\"status\":\"COMPLETED\"").contains("\"condoFeeReceipt\":false")
                 .contains("\"budget\":null").doesNotContain("totalLancamentos");
     }
@@ -131,7 +131,7 @@ public class MessageContractTest {
     }
 
     /**
-     * The support-sheet example (v4, ADR 0009 Decision 3 B) fits the rag's types (rag.model.budget) and comes back the
+     * The support-sheet example (v5, ADR 0009 Decisions 3 B and 8) fits the rag's types (rag.model.budget) and comes back the
      * same: rates and money as text, months as YYYY-MM.
      */
     @Test
@@ -155,7 +155,7 @@ public class MessageContractTest {
 
     private static String example(String name) throws Exception {
         return java.nio.file.Files.readString(java.nio.file.Path.of(System.getProperty("contratos.dir"),
-                "mensagens/v4/examples", name));
+                "mensagens/v5/examples", name));
     }
 
     private static FileReceivedMessage fileOf(tools.jackson.databind.JsonNode example) {

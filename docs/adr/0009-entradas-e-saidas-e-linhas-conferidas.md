@@ -1,6 +1,6 @@
 # ADR 0009: Entradas e saídas, linhas conferidas e tipos revistos (RF-13 revisto)
 
-- **Status:** aprovada pelo usuário em 27/10/2026 (merge do PR #62); Decisão 3 na opção B e Q52 na opção "parcela própria", recomendações, enquanto os cartões não forem respondidos; Q52 respondida pelo usuário em 28/10/2026 (ponte versão 5, ver a Decisão 5)
+- **Status:** aprovada pelo usuário em 27/10/2026 (merge do PR #62); Decisão 3 na opção B e Q52 na opção "parcela própria", recomendações, enquanto os cartões não forem respondidos; Q52 respondida pelo usuário em 28/10/2026 (ponte versão 5, ver a Decisão 5); **revisão de 29/10/2026** (Q54): Decisão 1 revista e Decisão 8 nova (de-para automático), aprovadas pela decisão do usuário de 29/10/2026
 - **Requisitos atendidos:** revisão do RF-13 de 26/10/2026 (RF-13.11 a RF-13.17, menu e tela inicial revistos), a partir de `docs/negocio/po.md`
 - **Complementa:** ADR 0004 (cálculo na consulta, de-para), ADR 0007 (tipo da linha, grade e ponte). Não cria serviço, fila nova ou canal gRPC (ADR 0002).
 - **Número:** a ADR 0008 fica reservada para o padrão de logs, já anunciado ao usuário em 23/10/2026.
@@ -21,6 +21,9 @@ São sete decisões. O usuário aprova ou troca cada uma em separado.
 ---
 
 ## Decisão 1: conferência das linhas (RF-13.12)
+
+> **Revisão de 29/10/2026 (Q54, decisão do usuário):** "uma das maiores dificuldades das versões anteriores era não associar automaticamente. Não podemos ficar aprovando linha a linha. O sistema precisa ler e entender muito bem a PO aprovada e já designar. Somente sinalizar se não encontrar relação, o que acho muito difícil uma vez que a planilha com todas as linhas também está disponível caso precise."
+> As linhas lidas da PO aprovada passam a valer sozinhas. O estado `PENDING` continua no banco, sem migração, e é exibido como "automática"; `REVIEWED` é a marca opcional do Admin, com a mesma trilha. `BudgetLineReviewService.state` responde sempre `reviewed = true` e sem mensagem, então nenhuma tela fica sem números por linha e o aviso `LINES_NOT_REVIEWED` não é mais emitido (o código que o tratava fica, sem uso). Os avisos de `BudgetLineReviewCheck` viram sinais informativos: a tela mostra, nada bloqueia. O texto abaixo vale como histórico.
 
 **Recomendação:** a V21 cria em `linha_po` o estado da conferência (`PENDING`, `REVIEWED`), quem conferiu e quando. Cada mudança vai para uma tabela de eventos só de inserção, como a do tipo da linha. Os avisos são calculados na consulta, numa função pura, `BudgetLineReviewCheck`, com regras fixas e testadas:
 - conta impressa × descrição sem palavra em comum (O1);
@@ -86,7 +89,9 @@ A origem nunca entra no cálculo. O previsto continua sendo o valor da PO (O4). 
 
 O piloto sugere a marca na 1.1.1 porque o nome "Verbas Salariais" não é o de uma conta analítica, e o Admin confirma.
 
-**O3:** só muda o texto da origem das linhas 1.1.1 e 1.1.2. A estrutura não depende da resposta.
+**O3:** só muda o texto da origem das linhas 1.1.1 e 1.1.2. A estrutura não depende da resposta. (Retirada pelo usuário em 29/10/2026: a origem mostra só o que a PO e as colunas trazem.)
+
+**Hierarquia de contas, revisão de 29/10/2026:** a planilha de apoio traz a hierarquia de forma confiável pelas somas (a conta-mãe soma as contas logo abaixo, mês a mês). O `rag` deduz a mãe de cada conta da aba de despesas e a envia na mensagem v5 (Decisão 8). A marca "conta de grupo" do Admin continua valendo nas regras de nome.
 
 ## Decisão 4: tela "Entradas e saídas" calculada na consulta (RF-13.11, RF-13.16)
 
@@ -97,7 +102,7 @@ O piloto sugere a marca na 1.1.1 porque o nome "Verbas Salariais" não é o de u
 Para cada mês ela monta as entradas, as saídas por linha da PO e por bloco, as transferências, o saldo do mês e o saldo acumulado, e confere a soma das saídas com os débitos do extrato (D6). Sem tabela nova.
 
 Comportamento:
-- Linhas ainda não conferidas: as saídas saem agrupadas por conta do extrato (Decisão 1).
+- ~~Linhas ainda não conferidas: as saídas saem agrupadas por conta do extrato (Decisão 1).~~ Desde a Q54 as linhas valem sozinhas; só os meses sem PO confirmada saem por conta do extrato.
 - Meses antes do início do exercício: vêm com a marca `BEFORE_BUDGET` e sem linha da PO, o que dá o fluxo contínuo do N1.
 - **O7:** a função não muda com a resposta. Ela só decide se a conta da 1688 ou da 1665 vai para "sem linha da PO" ou para outro fundo, conforme o extrato.
 
@@ -144,6 +149,39 @@ Regras:
 - "Entradas e saídas" vira a rota de entrada da seção.
 - "Previsto × realizado" sai do menu, mas a rota continua existindo. Clicar no cabeçalho de um mês da grade leva a ela, e os endereços antigos funcionam.
 - O resumo da tela inicial usa os códigos da ponte versão 4.
+
+## Decisão 8: de-para automático (Q54, 29/10/2026)
+
+**Status:** aprovada pela decisão do usuário de 29/10/2026 (citação na revisão da Decisão 1). Substitui, no de-para, "sugestão nunca é confirmada sozinha" (Q51; ADR 0004, Decisão 5).
+
+**Estado da ligação** (`account_mapping.status`, sem migração destrutiva):
+- `AUTOMATIC` (novo): ligação feita pelo sistema que já vale no cálculo. A V22 troca as linhas `SUGGESTED` de `account_mapping` por `AUTOMATIC`; a trilha (`account_mapping_event`) não é tocada e os eventos antigos continuam `SUGGESTED`. O código não grava mais `SUGGESTED`.
+- `CONFIRMED`: o Admin conferiu (opcional). O sistema nunca troca.
+- `REJECTED`: o Admin recusou a ligação. A conta vai para "sem linha da PO" **com** aviso e o sistema não liga de novo.
+- O que vale no cálculo é `EffectiveAccountMapping.effective` (antes `confirmed`): `AUTOMATIC` e `CONFIRMED`.
+- Escolha do Admin (`setTarget`) com `confirm = false` fica `AUTOMATIC` com origem `ADMIN`, e o sistema nunca a troca.
+
+**Destino novo** `WITHOUT_LINE` ("SEM LINHA DA PO", O7): decisão do Admin de deixar a conta fora das linhas, sem aviso, sem achado e fora do limite do provisório da ponte. Aceito também na planilha guardada. V22 amplia os `check` de `account_mapping` e `account_mapping_sheet_item`.
+
+**Ordem das regras** (`AccountMappingService`, funções puras em `service.calculator`, sem IA):
+1. versão anterior da PO (só `CONFIRMED`; `PreviousVersionCopy`);
+2. planilha guardada do condomínio (`account_mapping_sheet_item`, origem `SPREADSHEET`);
+3. planilha de apoio da PO (`BudgetSheetBridge`, origem nova `BUDGET_SHEET`): nome da conta do extrato normalizado (sem acento, pontuação e palavras vazias, abreviações por extenso, **mantendo os números**) igual ao nome de **uma** conta da aba de despesas; a linha é a única cuja origem (`budget_line_origin.source_accounts`) cita a conta; senão, sobe pela conta-mãe; linha com aviso O1 (`ACCOUNT_DESCRIPTION_MISMATCH`) ou marcada "vale a descrição" não é alcançada pela conta; várias linhas → decide `NameSuggestion` entre elas (nome, favorecido, descrição);
+4. nome (`NameSuggestion`, as regras da Q51).
+
+**Baixa confiança** (`account_mapping.low_confidence`, V22; regra objetiva, testada): vale no cálculo e aparece no filtro "só exceções" (`EXCEPTIONS`). Só depois das quatro regras acima, nesta ordem: (i) conta irmã na planilha de apoio (nenhuma linha cita a conta nem a mãe; **uma** linha cita outra conta da mesma mãe); (ii) empate pelo nome desfeito só pela descrição (fora da ponte; dentro da ponte, entre linhas que citam a mesma conta, é ligação firme); (iii) `weakMatch`: uma palavra do nome, fora das genéricas (`GENERIC_WORDS`), em **uma** só linha; (iv) `supplierMatch`: favorecido dos lançamentos com **duas ou mais** palavras, fora das de empresa (`COMPANY_WORDS`), na descrição de **uma** só linha do grupo de contratos. Confirmar limpa a marca.
+
+**Contas da planilha de apoio** (`budget_sheet_account`, V22): código, nome, conta-mãe, arquivo, aba, linha e hash, por versão da PO; uma planilha nova substitui as contas da anterior. Chegam na **mensagem v5** (`contracts/mensagens/v5`: `budgetLineOrigins.accounts`, com `parentCode` deduzido pelo `rag` pelas somas da aba). A planilha não vai para o banco (ADR 0002 e CLAUDE.md).
+
+**Quando roda:** ao confirmar a PO, ao gravar um extrato ou a planilha de apoio (evento `BudgetChanged`, `AccountMappingSuggestionListener`, depois do commit) e ao abrir a tela "De-para". Só mexe nas contas do sistema (sem ligação ou `AUTOMATIC`/`SUGGESTED` de uma regra); grava só o que mudou, um evento `AUTOMATIC` por conta, autor "sistema".
+
+**Avisos:** `NO_CONFIRMED_MAPPING` (previsto × realizado, grade e ponte) e o provisório da ponte (PR #58) contam só as contas **sem linha encontrada** e as recusadas, nunca as `WITHOUT_LINE`. O texto passa a "N contas do extrato sem linha encontrada na PO". A regra do achado de conta sem linha (`UnmappedAccountRule`) vai à versão 2 e ignora `WITHOUT_LINE`.
+
+**API:** `AccountMappingSummaryResponse` (`automatic`, `confirmed`, `lowConfidence`, `rejected`, `withoutMapping`), `automaticBySource` (com `budgetSheet`), filtros `EXCEPTIONS`, `AUTOMATIC` e `LOW_CONFIDENCE`, `lowConfidence` na conta e no evento. "Confirmar todas" continua, opcional.
+
+**Medida no golden do piloto** (`AccountMappingGoldenTest`, set/26, 73 contas do extrato): sem o mapa e com a planilha de apoio, 63 ligadas (4 de baixa confiança), 0 diferentes do mapa, 10 sem linha encontrada (três delas, 1064, 1324 e 1327, não são linha nem no mapa); sem a planilha de apoio, 58 ligadas, 3 diferentes do mapa, todas de baixa confiança; com o mapa guardado, 73 iguais ao mapa e os números de set/26 do `BudgetVsActualGoldenTest` não mudam.
+
+Alternativas recusadas: comparar o número da conta do extrato com o da PO (RF-00.8; no piloto, 1621 é Interfones na PO e Material Hidráulico no extrato); IA (o fluxo tem de funcionar com o modo `DESLIGADO`); ligar por similaridade sem limiar objetivo (não dá para testar).
 
 ---
 

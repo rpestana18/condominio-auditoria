@@ -43,6 +43,7 @@ public class AccountMappingEvent {
     @Enumerated(EnumType.STRING)
     private AccountMappingSource source;
     private String reason;
+    private Boolean lowConfidence;
 
     protected AccountMappingEvent() {
     }
@@ -75,6 +76,7 @@ public class AccountMappingEvent {
         this.newStatus = mapping.getStatus();
         this.source = mapping.getSource();
         this.reason = mapping.getReason();
+        this.lowConfidence = mapping.isLowConfidence();
     }
 
     public UUID getId() {
@@ -143,5 +145,10 @@ public class AccountMappingEvent {
 
     public String getReason() {
         return reason;
+    }
+
+    /** Low confidence of the link at the event (Q54); null in the events before V22. */
+    public Boolean getLowConfidence() {
+        return lowConfidence;
     }
 }

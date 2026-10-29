@@ -211,7 +211,7 @@ class BudgetVsActualCalculatorTest {
         BudgetLine l = line(p, 3, BudgetLineType.LINE, "1.1.1", "1545 - Salários", "Salários", budgeted);
         AccountMapping d = new AccountMapping(p, "1001", "SALARIO", MappingTarget.line(l),
                 AccountMappingStatus.CONFIRMED,
-                AccountMappingSource.ADMIN, null, false, "admin", Instant.EPOCH);
+                AccountMappingSource.ADMIN, null, false, false, "admin", Instant.EPOCH);
         return new TestBudget(p, List.of(total, group, l), List.of(d), Map.of());
     }
 

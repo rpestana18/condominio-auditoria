@@ -5,12 +5,14 @@ import br.com.condominioauditoria.api.messaging.ProcessingResultMessage.BudgetLi
 import br.com.condominioauditoria.api.model.budget.Budget;
 import br.com.condominioauditoria.api.model.budget.BudgetLine;
 import br.com.condominioauditoria.api.model.budget.BudgetLineOrigin;
+import br.com.condominioauditoria.api.model.budget.BudgetSheetAccount;
 import br.com.condominioauditoria.api.model.enums.OriginMethod;
 import br.com.condominioauditoria.api.model.enums.OriginSource;
 import br.com.condominioauditoria.api.model.file.SourceFile;
 import br.com.condominioauditoria.api.repository.budget.BudgetLineOriginRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetLineRepository;
 import br.com.condominioauditoria.api.repository.budget.BudgetRepository;
+import br.com.condominioauditoria.api.repository.budget.BudgetSheetAccountRepository;
 import br.com.condominioauditoria.api.service.calculator.BudgetLineReviewCheck;
 import br.com.condominioauditoria.api.service.calculator.BudgetStructure;
 import java.time.Instant;
@@ -31,6 +33,9 @@ import org.springframework.stereotype.Service;
  * of expense lines and at least {@link #MIN_ACCOUNT_MATCH_PERCENT}% of the lines with the same accounts. An origin the
  * Admin filled in is never replaced by the sheet. Without a matching budget nothing is saved and the file message says
  * so (conservative: never ties a sheet to the wrong budget).
+ *
+ * <p>v5 (ADR 0009, Decision 8): the accounts of the expenses sheet are saved with the same budget, replacing the ones of
+ * a previous sheet. They are the bridge of the automatic account mapping (Q54).
  */
 @Service
 public class BudgetLineOriginService {
@@ -43,12 +48,14 @@ public class BudgetLineOriginService {
     private final BudgetRepository budgets;
     private final BudgetLineRepository lines;
     private final BudgetLineOriginRepository origins;
+    private final BudgetSheetAccountRepository sheetAccounts;
 
     public BudgetLineOriginService(BudgetRepository budgets, BudgetLineRepository lines,
-            BudgetLineOriginRepository origins) {
+            BudgetLineOriginRepository origins, BudgetSheetAccountRepository sheetAccounts) {
         this.budgets = budgets;
         this.lines = lines;
         this.origins = origins;
+        this.sheetAccounts = sheetAccounts;
     }
 
     /** Result of a support sheet: the budget it was tied to (null when none) and the message for the file. */
@@ -102,12 +109,31 @@ public class BudgetLineOriginService {
             saved++;
         }
         origins.saveAll(toSave);
-        log.info("Origem de {} linha(s) da PO {} gravada da planilha do arquivo {}", saved, chosen.getId(),
-                file.getId());
+        int accounts = saveAccounts(file, data, chosen, now);
+        log.info("Origem de {} linha(s) e {} conta(s) da PO {} gravadas da planilha do arquivo {}", saved, accounts,
+                chosen.getId(), file.getId());
         String version = chosen.getVersion() == null ? "lida" : "versão " + chosen.getVersion();
         return new Saved(chosen, saved, kept, "Planilha de apoio lida: origem de " + saved + " linha(s) da PO ("
                 + version + ")" + (kept == 0 ? "" : "; " + kept + " origem(ns) informada(s) pelo Admin mantida(s)")
                 + ". Confira na tela \"PO aprovada\"");
+    }
+
+    /** The accounts of the expenses sheet (v5), replacing the ones of a previous sheet of the same budget. */
+    private int saveAccounts(SourceFile file, BudgetLineOriginsData data, Budget budget, Instant now) {
+        if (data.accounts() == null || data.accounts().isEmpty()) {
+            return 0;
+        }
+        sheetAccounts.deleteByBudgetId(budget.getId());
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        List<BudgetSheetAccount> toSave = new ArrayList<>();
+        for (var a : data.accounts()) {
+            if (seen.add(a.code())) {
+                toSave.add(new BudgetSheetAccount(budget, a.code(), a.name(), a.parentCode(), file.getId(),
+                        file.getOriginalName(), data.expensesSheet(), a.row(), file.getSha256(), now));
+            }
+        }
+        sheetAccounts.saveAll(toSave);
+        return toSave.size();
     }
 
     /** Expense lines (groups 1.1 to 1.8) of a budget, in budget order. */

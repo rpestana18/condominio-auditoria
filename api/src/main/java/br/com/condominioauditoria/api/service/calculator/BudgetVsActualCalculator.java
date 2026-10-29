@@ -83,6 +83,16 @@ public final class BudgetVsActualCalculator {
     public static final String TARGET_TO_REALLOCATE = "TO_REALLOCATE";
     public static final String TARGET_WITHOUT_BUDGET_LINE = "NO_BUDGET_LINE";
     public static final String TARGET_TRANSFERS = "TRANSFERS";
+    /**
+     * Details of an account in the "sem linha da PO" block (Q54): every detail but {@link #DECIDED_WITHOUT_LINE} raises
+     * the NO_CONFIRMED_MAPPING warning; {@link #DECIDED_WITHOUT_LINE} is the Admin's target "sem linha da PO" (O7: 1688
+     * and 1665 stay outside the budget lines without a warning).
+     */
+    public static final String NO_LINK_FOUND = "conta sem linha encontrada";
+    public static final String DECIDED_WITHOUT_LINE = "sem linha da PO por decisão do Admin";
+    public static final String INVALID_TARGET = "destino inválido";
+    public static final String REJECTED_LINK = "ligação recusada pelo Admin, sem outra linha";
+    public static final String NO_ACCOUNT = "lançamento sem conta";
     /** Evidence of the whole actual expense: budget lines + to reallocate + without budget line (RF-03.1.12). */
     public static final String TARGET_TOTAL = "total";
 
@@ -367,7 +377,7 @@ public final class BudgetVsActualCalculator {
             this.input = e;
             this.structure = BudgetStructure.of(e.lines());
             AccountMappingService.debitTargets(structure).forEach(l -> validTargets.put(l.getId(), l));
-            this.confirmed = EffectiveAccountMapping.confirmed(e.mappings());
+            this.confirmed = EffectiveAccountMapping.effective(e.mappings());
             e.mappings().forEach(d -> mappingByAccount.put(d.getAccountCode(), d));
             e.reallocations().forEach(r -> reallocations.put(r.key(), r));
             this.linesById = e.lines().stream().collect(Collectors.toMap(BudgetLine::getId, Function.identity()));
@@ -432,13 +442,14 @@ public final class BudgetVsActualCalculator {
             MappingTarget d = account == null ? null : confirmed.get(account);
             if (d == null || (d.type() == MappingTargetType.BUDGET_LINE && !validTargets.containsKey(d.budgetLineId()))) {
                 AccountMapping pending = account == null ? null : mappingByAccount.get(account);
-                String detail = account == null ? "lançamento sem conta"
-                        : pending == null ? "sem de-para"
-                        : pending.getStatus() == AccountMappingStatus.CONFIRMED ? "destino inválido"
-                        : "de-para " + pending.getStatus().label();
+                String detail = account == null ? NO_ACCOUNT
+                        : pending == null || pending.getStatus() == AccountMappingStatus.SUGGESTED ? NO_LINK_FOUND
+                        : pending.getStatus() == AccountMappingStatus.REJECTED ? REJECTED_LINK
+                        : INVALID_TARGET;
                 ap.withoutLine.add(account, l.getAccountName(), detail, amount);
                 if (account != null) {
                     ap.accountsWithoutMapping.add(account);
+                    ap.withoutLinkTotal = ap.withoutLinkTotal.add(amount);
                 }
                 ap.addEvidence(TARGET_WITHOUT_BUDGET_LINE, l, f, name(l.getFundId()), null);
                 return;
@@ -446,6 +457,11 @@ public final class BudgetVsActualCalculator {
             ap.confirmedAccounts.add(account);
             switch (d.type()) {
                 case BUDGET_LINE -> ap.line(d.budgetLineId(), amount, l, f, name(l.getFundId()), null, null);
+                case WITHOUT_LINE -> {
+                    // Q54 / O7: the Admin decided the account has no budget line; no warning
+                    ap.withoutLine.add(account, l.getAccountName(), DECIDED_WITHOUT_LINE, amount);
+                    ap.addEvidence(TARGET_WITHOUT_BUDGET_LINE, l, f, name(l.getFundId()), null);
+                }
                 case ADJUSTMENT -> {
                     ap.adjustments.add(account, l.getAccountName(), d.text(), amount);
                     ap.addEvidence(TARGET_ADJUSTMENTS, l, f, name(l.getFundId()), null);
@@ -565,7 +581,9 @@ public final class BudgetVsActualCalculator {
             CashFlowCheckResponse check = new CashFlowCheckResponse(ap.debits, ap.debitCount, expense,
                     adjustments.total(),
                     transfers, ap.debits.compareTo(expense.add(adjustments.total()).add(transfers)) == 0);
-            boolean provisional = toReallocate.entries() > 0 || withoutLine.entries() > 0;
+            // Q54: an account the Admin decided has no line (O7) does not make the result provisional
+            boolean provisional = toReallocate.entries() > 0 || !ap.accountsWithoutMapping.isEmpty()
+                    || withoutLine.accounts().stream().anyMatch(c -> c.account() == null);
 
             List<BudgetVsActualWarningResponse> warnings = new ArrayList<>(input.budgetWarnings());
             Rule20Response rule20 = null;
@@ -576,8 +594,9 @@ public final class BudgetVsActualCalculator {
             if (withoutMapping > 0) {
                 warnings.add(new BudgetVsActualWarningResponse("NO_CONFIRMED_MAPPING",
                         withoutMapping + (withoutMapping == 1 ? " conta" : " contas")
-                        + " sem de-para confirmado (sem linha da PO): " + MoneyFormatter.format(withoutLine.total())
-                        + " fora das linhas da PO"));
+                        + " do extrato sem linha encontrada na PO (em \"sem linha da PO\"): "
+                        + MoneyFormatter.format(ap.withoutLinkTotal) + " fora das linhas da PO; escolha a linha em"
+                        + " \"De-para\" ou marque \"sem linha da PO\""));
             }
             if (withoutLine.accounts().stream().anyMatch(c -> c.account() == null)) {
                 warnings.add(new BudgetVsActualWarningResponse("ENTRY_WITHOUT_ACCOUNT",
@@ -730,6 +749,8 @@ public final class BudgetVsActualCalculator {
         final Set<String> accounts = new TreeSet<>();
         final Set<String> confirmedAccounts = new TreeSet<>();
         final Set<String> accountsWithoutMapping = new TreeSet<>();
+        /** Debits of the accounts without a link found (Q54): the amount of the NO_CONFIRMED_MAPPING warning. */
+        BigDecimal withoutLinkTotal = BigDecimal.ZERO;
         final Map<String, List<EvidenceResponse>> evidence = new LinkedHashMap<>();
         final Set<String> usedReallocations = new TreeSet<>();
         BigDecimal debits = ZERO;

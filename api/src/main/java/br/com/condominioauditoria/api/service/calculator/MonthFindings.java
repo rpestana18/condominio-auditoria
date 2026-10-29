@@ -62,6 +62,10 @@ public record MonthFindings(YearMonth month, Set<String> rules, List<AssessedFin
         List<EvidenceResponse> entries = calculation.evidence()
                 .getOrDefault(BudgetVsActualCalculator.TARGET_WITHOUT_BUDGET_LINE, List.of());
         for (BlockAccountResponse c : r.withoutBudgetLine().accounts()) {
+            if (BudgetVsActualCalculator.DECIDED_WITHOUT_LINE.equals(c.detail())) {
+                // Q54 / O7: the Admin decided the account has no budget line; no finding
+                continue;
+            }
             List<Evidence> proofs = entries.stream().filter(ev -> Objects.equals(ev.account(), c.account()))
                     .map(ev -> new Evidence(ev.fileId(), ev.sha256(), ev.page(), "Lançamento de "
                             + DATE.format(ev.date()) + (ev.account() == null ? ", sem conta" : ", conta " + ev.account())

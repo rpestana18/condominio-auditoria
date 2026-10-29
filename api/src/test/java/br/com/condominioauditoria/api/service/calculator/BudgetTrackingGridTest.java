@@ -203,10 +203,10 @@ class BudgetTrackingGridTest {
         assertThat(r.blocks().withoutBudgetLine().accounts())
                 .extracting(a -> a.account() + "=" + a.amount().toPlainString() + "/" + a.entries())
                 .containsExactly("9001=1000.00/2", "9002=50.00/1");
-        assertThat(r.blocks().withoutBudgetLine().accounts().getFirst().detail()).isEqualTo("sem de-para");
+        assertThat(r.blocks().withoutBudgetLine().accounts().getFirst().detail()).isEqualTo("conta sem linha encontrada");
         assertThat(r.blocks().separateApportionment().accounts()).isEmpty();
         assertThat(r.warnings()).filteredOn(w -> w.code().equals("NO_CONFIRMED_MAPPING")).singleElement()
-                .satisfies(w -> assertThat(w.text()).isEqualTo("2 contas sem de-para confirmado no acumulado:"
+                .satisfies(w -> assertThat(w.text()).isEqualTo("2 contas do extrato sem linha encontrada na PO no acumulado:"
                         + " R$ 1.050,00 em \"sem linha da PO\", fora das linhas da PO; o previsto das linhas dessas"
                         + " despesas fica como saldo da linha. Contas: 9001 CONTA 9001 R$ 1.000,00; 9002 CONTA 9002"
                         + " R$ 50,00"));

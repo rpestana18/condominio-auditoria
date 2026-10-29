@@ -8,7 +8,7 @@ import java.time.Instant;
 /**
  * A cash flow account. Null {@code status}: account without mapping in this version. {@code ledgerEntries} and
  * {@code debits}: debits of the Condomínio fund in the budget's fiscal year (zero when the account only came from
- * the sheet).
+ * the sheet). {@code lowConfidence}: automatic link by a weak rule (Q54): it counts, and shows in "só exceções".
  */
 public record AccountMappingResponse(
         String account,
@@ -19,6 +19,7 @@ public record AccountMappingResponse(
         AccountMappingStatus status,
         AccountMappingSource source,
         String reason,
+        boolean lowConfidence,
         boolean sameAsPreviousVersion,
         String updatedBy,
         Instant updatedAt) {

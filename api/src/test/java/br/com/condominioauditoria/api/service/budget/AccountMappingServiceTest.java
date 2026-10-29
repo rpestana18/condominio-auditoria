@@ -27,7 +27,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * ADR 0004, step 6: mapping per budget version, suggestions that never confirm themselves and a trail of every change.
+ * ADR 0004, step 6, and ADR 0009, Decision 8 (Q54): mapping per budget version, automatic links that count without
+ * confirmation, the Admin's choice that is never overwritten and a trail of every change.
  */
 class AccountMappingServiceTest {
 
@@ -46,29 +47,34 @@ class AccountMappingServiceTest {
     }
 
     @Test
-    void nameSuggestionsStaySuggestedWithReasonAndTrail() {
+    void nameLinksAreAutomaticAndCountWithReasonAndTrail() {
         var r = scenario.accountMapping.suggest(scenario.condominiumId, budget.getId(), "admin");
 
         assertThat(r.byName()).isEqualTo(1);
         assertThat(r.withoutSuggestion()).extracting(AccountWithoutSuggestionResponse::account).containsExactly("1108",
                 "1324");
         AccountMapping d = single("1621");
-        assertThat(d.getStatus()).isEqualTo(AccountMappingStatus.SUGGESTED);
+        assertThat(d.getStatus()).isEqualTo(AccountMappingStatus.AUTOMATIC);
         assertThat(d.getSource()).isEqualTo(AccountMappingSource.NAME);
+        assertThat(d.isLowConfidence()).isFalse();
         assertThat(d.getBudgetLineId()).isEqualTo(scenario.line(budget, "1.7.8", 0).getId());
         assertThat(d.getBudgetLineId()).isNotEqualTo(scenario.line(budget, "1.3.23", 0).getId());
         assertThat(d.getReason()).contains("MATERIAL HIDRAULICO");
         assertThat(scenario.mappingEvents).singleElement().satisfies(e -> {
-            assertThat(e.getAction()).isEqualTo(AccountMappingAction.SUGGESTED);
+            assertThat(e.getAction()).isEqualTo(AccountMappingAction.AUTOMATIC);
             assertThat(e.getPreviousTarget()).isNull();
             assertThat(e.getNewTarget()).startsWith("1.7.8");
             assertThat(e.getUsername()).isEqualTo("admin");
         });
 
         var list = scenario.accountMapping.list(scenario.condominiumId, budget.getId(), AccountMappingFilter.ALL);
-        assertThat(list.summary()).isEqualTo(new AccountMappingSummaryResponse(3, 0, 1, 0, 2));
+        assertThat(list.summary()).isEqualTo(new AccountMappingSummaryResponse(3, 1, 0, 0, 0, 2));
         assertThat(list.accounts()).extracting(AccountMappingResponse::account).containsExactly("1108", "1324", "1621");
-        assertThat(EffectiveAccountMapping.confirmed(scenario.mappings)).isEmpty();
+        // Q54: the automatic link counts in the numbers without confirmation
+        assertThat(EffectiveAccountMapping.effective(scenario.mappings)).containsOnlyKeys("1621");
+        // Only the exceptions: the two accounts without a link found
+        assertThat(scenario.accountMapping.list(scenario.condominiumId, budget.getId(), AccountMappingFilter.EXCEPTIONS)
+                .accounts()).extracting(AccountMappingResponse::account).containsExactly("1108", "1324");
     }
 
     @Test
@@ -82,7 +88,7 @@ class AccountMappingServiceTest {
     }
 
     @Test
-    void sheetComesInSuggestedAndConfirmedDoesNotChange() {
+    void sheetComesInAutomaticAndConfirmedDoesNotChange() {
         var r = scenario.accountMapping.loadSheet(scenario.condominiumId, budget.getId(), "mapa.csv", """
                 1621;1.7.8
                 1108;1.3.20
@@ -92,9 +98,9 @@ class AccountMappingServiceTest {
 
         assertThat(r.accepted()).isEqualTo(3);
         assertThat(r.rejected()).singleElement().satisfies(x -> assertThat(x.line()).isEqualTo(4));
-        assertThat(scenario.mappings).allMatch(d -> d.getStatus() == AccountMappingStatus.SUGGESTED
+        assertThat(scenario.mappings).allMatch(d -> d.getStatus() == AccountMappingStatus.AUTOMATIC
                 && d.getSource() == AccountMappingSource.SPREADSHEET);
-        assertThat(EffectiveAccountMapping.confirmed(scenario.mappings)).isEmpty();
+        assertThat(EffectiveAccountMapping.effective(scenario.mappings)).containsOnlyKeys("1108", "1324", "1621");
 
         scenario.accountMapping.batch(scenario.condominiumId, budget.getId(),
                 new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRM, List.of("1621")), "admin");
@@ -102,7 +108,7 @@ class AccountMappingServiceTest {
                 "1621;1.3.20\n",
                 "admin");
         assertThat(second.accepted()).isZero();
-        assertThat(second.skipped()).singleElement().satisfies(i -> assertThat(i.reason()).contains("já confirmada"));
+        assertThat(second.skipped()).singleElement().satisfies(i -> assertThat(i.reason()).contains("já confirmado"));
         assertThat(single("1621").getBudgetLineId()).isEqualTo(scenario.line(budget, "1.7.8", 0).getId());
     }
 
@@ -121,14 +127,14 @@ class AccountMappingServiceTest {
         assertThat(r.skipped()).extracting(SkippedAccountResponse::account).containsExactly("5555");
         assertThat(scenario.mappingEvents.subList(before, scenario.mappingEvents.size()))
                 .hasSize(3).allMatch(e -> e.getAction() == AccountMappingAction.CONFIRMED
-                        && e.getPreviousStatus() == AccountMappingStatus.SUGGESTED && e.getNewStatus() == AccountMappingStatus.CONFIRMED);
-        assertThat(EffectiveAccountMapping.confirmed(scenario.mappings)).containsOnlyKeys("1108", "1324", "1621");
+                        && e.getPreviousStatus() == AccountMappingStatus.AUTOMATIC && e.getNewStatus() == AccountMappingStatus.CONFIRMED);
+        assertThat(EffectiveAccountMapping.effective(scenario.mappings)).containsOnlyKeys("1108", "1324", "1621");
 
         scenario.accountMapping.batch(scenario.condominiumId, budget.getId(),
                 new AccountMappingBatchRequest(AccountMappingBatchAction.REJECT, List.of("1324")), "admin");
-        assertThat(EffectiveAccountMapping.confirmed(scenario.mappings)).containsOnlyKeys("1108", "1621");
+        assertThat(EffectiveAccountMapping.effective(scenario.mappings)).containsOnlyKeys("1108", "1621");
         assertThat(scenario.accountMapping.list(scenario.condominiumId, budget.getId(),
-                AccountMappingFilter.PENDING).accounts())
+                AccountMappingFilter.EXCEPTIONS).accounts())
                 .extracting(AccountMappingResponse::account).containsExactly("1324");
     }
 
@@ -175,7 +181,7 @@ class AccountMappingServiceTest {
     }
 
     @Test
-    void newVersionGetsPreviousAsSuggestionWithoutInheritingConfirmation() {
+    void newVersionGetsPreviousAutomaticallyWithoutInheritingConfirmation() {
         scenario.accountMapping.loadSheet(scenario.condominiumId, budget.getId(), null,
                 "1621;1.7.8\n1324;AJUSTE (estorno)\n",
                 "admin");
@@ -195,14 +201,16 @@ class AccountMappingServiceTest {
         var same = scenario.accountMapping.list(scenario.condominiumId, v2.getId(),
                 AccountMappingFilter.SAME_AS_PREVIOUS_VERSION);
         assertThat(same.accounts()).extracting(AccountMappingResponse::account).containsExactly("1324", "1621");
-        assertThat(same.accounts()).allMatch(c -> c.status() == AccountMappingStatus.SUGGESTED
+        assertThat(same.accounts()).allMatch(c -> c.status() == AccountMappingStatus.AUTOMATIC
                 && c.source() == AccountMappingSource.PREVIOUS_VERSION && c.reason().startsWith("igual à versão anterior"));
         assertThat(same.accounts().get(1).target().lineId()).isEqualTo(scenario.line(v2, "1.7.8", 0).getId());
-        // Version 1 does not change; version 2 does not inherit confirmation
-        assertThat(EffectiveAccountMapping.confirmed(scenario.mappings.stream()
+        // Version 1 does not change; version 2 does not inherit the confirmation, but its automatic links count
+        assertThat(EffectiveAccountMapping.effective(scenario.mappings.stream()
                 .filter(d -> d.getBudgetId().equals(budget.getId())).toList())).containsOnlyKeys("1324", "1621");
-        assertThat(EffectiveAccountMapping.confirmed(scenario.mappings.stream()
-                .filter(d -> d.getBudgetId().equals(v2.getId())).toList())).isEmpty();
+        assertThat(scenario.mappings.stream().filter(d -> d.getBudgetId().equals(v2.getId())))
+                .noneMatch(d -> d.getStatus() == AccountMappingStatus.CONFIRMED);
+        assertThat(EffectiveAccountMapping.effective(scenario.mappings.stream()
+                .filter(d -> d.getBudgetId().equals(v2.getId())).toList())).containsKeys("1324", "1621");
 
         scenario.accountMapping.batch(scenario.condominiumId, v2.getId(),
                 new AccountMappingBatchRequest(AccountMappingBatchAction.CONFIRM,
@@ -217,11 +225,11 @@ class AccountMappingServiceTest {
         scenario.published.clear();
         var list = scenario.accountMapping.open(scenario.condominiumId, budget.getId(), AccountMappingFilter.ALL);
 
-        // Q51: no click; the suggestion stays SUGGESTED, authored by the system
-        assertThat(list.summary()).isEqualTo(new AccountMappingSummaryResponse(3, 0, 1, 0, 2));
-        assertThat(list.suggestedBySource().name()).isEqualTo(1);
+        // Q51, Q54: no click; the link is AUTOMATIC, authored by the system, and already counts
+        assertThat(list.summary()).isEqualTo(new AccountMappingSummaryResponse(3, 1, 0, 0, 0, 2));
+        assertThat(list.automaticBySource().name()).isEqualTo(1);
         assertThat(single("1621").getUpdatedBy()).isEqualTo(AccountMappingService.SYSTEM);
-        assertThat(EffectiveAccountMapping.confirmed(scenario.mappings)).isEmpty();
+        assertThat(EffectiveAccountMapping.effective(scenario.mappings)).containsOnlyKeys("1621");
         assertThat(scenario.published).isEmpty();
 
         // Rejection and the Admin's choice are never undone by a new generation
@@ -250,13 +258,13 @@ class AccountMappingServiceTest {
         assertThat(stored.lines()).isEqualTo(4);
         assertThat(stored.loadedBy()).isEqualTo("admin");
 
-        // An account that shows up later in a cash flow takes the stored sheet's target, as SUGGESTED
+        // An account that shows up later in a cash flow takes the stored sheet's target, AUTOMATIC
         scenario.debit("4444", "MATERIAL DE LIMPEZA", "100.00", LocalDate.of(2026, 9, 12));
         scenario.debit("5555", "CONTA NOVA SEM NOME CONHECIDO", "50.00", LocalDate.of(2026, 9, 12));
         scenario.accountMapping.suggestPending(scenario.condominiumId);
         AccountMapping cleaning = single("4444");
         assertThat(cleaning.getSource()).isEqualTo(AccountMappingSource.SPREADSHEET);
-        assertThat(cleaning.getStatus()).isEqualTo(AccountMappingStatus.SUGGESTED);
+        assertThat(cleaning.getStatus()).isEqualTo(AccountMappingStatus.AUTOMATIC);
         assertThat(cleaning.getBudgetLineId()).isEqualTo(scenario.line(budget, "1.8.1", 0).getId());
 
         // A new sheet replaces the stored one
@@ -275,7 +283,7 @@ class AccountMappingServiceTest {
         assertThat(single(v2, "1108").getSource()).isEqualTo(AccountMappingSource.SPREADSHEET);
         assertThat(single(v2, "1108").getBudgetLineId()).isEqualTo(scenario.line(v2, "1.3.20", 0).getId());
         assertThat(scenario.mappings.stream().filter(d -> d.getBudgetId().equals(v2.getId())))
-                .allMatch(d -> d.getStatus() == AccountMappingStatus.SUGGESTED);
+                .allMatch(d -> d.getStatus() == AccountMappingStatus.AUTOMATIC);
     }
 
     @Test
@@ -285,7 +293,7 @@ class AccountMappingServiceTest {
         scenario.accountMapping.batch(scenario.condominiumId, budget.getId(),
                 new AccountMappingBatchRequest(AccountMappingBatchAction.REJECT, List.of("1324")), "admin");
         var screen = scenario.accountMapping.list(scenario.condominiumId, budget.getId(), null);
-        assertThat(screen.suggestedBySource().spreadsheet()).isEqualTo(2);
+        assertThat(screen.automaticBySource().spreadsheet()).isEqualTo(2);
         int events = scenario.mappingEvents.size();
         scenario.published.clear();
 
@@ -296,7 +304,7 @@ class AccountMappingServiceTest {
         var r = scenario.accountMapping.confirmAllSuggested(scenario.condominiumId, budget.getId(), 2, "admin");
 
         assertThat(r.changed()).isEqualTo(2);
-        assertThat(EffectiveAccountMapping.confirmed(scenario.mappings)).containsOnlyKeys("1108", "1621");
+        assertThat(EffectiveAccountMapping.effective(scenario.mappings)).containsOnlyKeys("1108", "1621");
         assertThat(scenario.mappingEvents.subList(events, scenario.mappingEvents.size())).hasSize(2)
                 .allMatch(e -> e.getAction() == AccountMappingAction.CONFIRMED && e.getUsername().equals("admin"));
         assertThat(single("1324").getStatus()).isEqualTo(AccountMappingStatus.REJECTED);

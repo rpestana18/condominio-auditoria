@@ -83,8 +83,8 @@ public final class BalanceBridge {
     public static final String VERSION = "5";
 
     /**
-     * Above this share (in %) of the operating fund's debits in "sem linha da PO" (accounts without a confirmed
-     * mapping), the bridge is flagged {@code provisional}: those debits are outside the budget lines, so "Economia nas
+     * Above this share (in %) of the operating fund's debits in "sem linha da PO" (accounts without a link found, Q54),
+     * the bridge is flagged {@code provisional}: those debits are outside the budget lines, so "Economia nas
      * linhas" keeps their planned amount and "Fora da PO" keeps their actual amount, and both mean little until the
      * mapping is confirmed. The bridge still closes. The only place of this limit; the screen reads it from the API.
      */
@@ -267,11 +267,12 @@ public final class BalanceBridge {
     }
 
     /**
-     * Mapping state of the total: provisional when the amount without a confirmed mapping is above
-     * {@link #PROVISIONAL_UNMAPPED_SHARE}% of the operating fund's debits (any amount, with no debits).
+     * Mapping state of the total: provisional when the amount of the accounts <b>without a link found</b> (Q54) is above
+     * {@link #PROVISIONAL_UNMAPPED_SHARE}% of the operating fund's debits (any amount, with no debits). An account the
+     * Admin decided has no line (O7) stays in the list and out of the amount.
      */
     static BridgeMappingResponse mapping(BudgetTrackingGrid.UnmappedAccounts unmapped, BigDecimal debits) {
-        BigDecimal amount = unmapped.total().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal amount = unmapped.alertTotal().setScale(2, RoundingMode.HALF_UP);
         BigDecimal limit = debits.multiply(PROVISIONAL_UNMAPPED_SHARE).divide(HUNDRED, 2, RoundingMode.HALF_UP);
         boolean provisional = unmapped.count() > 0 && amount.compareTo(limit) > 0;
         return new BridgeMappingResponse((int) unmapped.count(), amount, unmapped.entries(),

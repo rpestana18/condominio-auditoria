@@ -50,6 +50,7 @@ public record MappingTarget(MappingTargetType type, UUID budgetLineId, String co
             case ADJUSTMENT -> "AJUSTE";
             case TO_REALLOCATE -> "REALOCAR";
             case TRANSFER -> "TRANSFERENCIA";
+            case WITHOUT_LINE -> "SEM LINHA DA PO";
             case BUDGET_LINE -> throw new IllegalStateException();
         };
         return detail == null ? label : label + " (" + detail + ")";

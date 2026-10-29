@@ -797,28 +797,36 @@ GET /api/condominiums/{}/budgets/{}
 GET /api/condominiums/{}/budgets/{}/account-mappings
   path: UUID
   path: UUID
-  query filter?: enum[ALL, PENDING, SUGGESTED, CONFIRMED, REJECTED, UNMAPPED, SAME_AS_PREVIOUS_VERSION]
+  query filter?: enum[ALL, EXCEPTIONS, AUTOMATIC, LOW_CONFIDENCE, PENDING, SUGGESTED, CONFIRMED, REJECTED, UNMAPPED, SAME_AS_PREVIOUS_VERSION]
   returns: {
     accounts: [{
       account: string
       debits: number
       ledgerEntries: integer
+      lowConfidence: boolean
       name: string
       reason: string
       sameAsPreviousVersion: boolean
-      source: enum[PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
-      status: enum[SUGGESTED, CONFIRMED, REJECTED]
+      source: enum[PREVIOUS_VERSION, SPREADSHEET, BUDGET_SHEET, NAME, ADMIN]
+      status: enum[AUTOMATIC, SUGGESTED, CONFIRMED, REJECTED]
       target: {
         code: string
         description: string
         detail: string
         lineId: UUID
         text: string
-        type: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
+        type: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER, WITHOUT_LINE]
       }
       updatedAt: Instant
       updatedBy: string
     }]
+    automaticBySource: {
+      admin: integer
+      budgetSheet: integer
+      name: integer
+      previousVersion: integer
+      spreadsheet: integer
+    }
     budgetId: UUID
     sheet: {
       fileName: string
@@ -827,17 +835,12 @@ GET /api/condominiums/{}/budgets/{}/account-mappings
       loadedBy: string
       sha256: string
     }
-    suggestedBySource: {
-      admin: integer
-      name: integer
-      previousVersion: integer
-      spreadsheet: integer
-    }
     summary: {
       accounts: integer
+      automatic: integer
       confirmed: integer
+      lowConfidence: integer
       rejected: integer
-      suggested: integer
       withoutMapping: integer
     }
     version: integer
@@ -848,16 +851,17 @@ GET /api/condominiums/{}/budgets/{}/account-mappings/events
   path: UUID
   returns: [{
     account: string
-    action: enum[SUGGESTED, CONFIRMED, REJECTED, CHANGED]
+    action: enum[AUTOMATIC, SUGGESTED, CONFIRMED, REJECTED, CHANGED]
     at: Instant
     id: UUID
+    lowConfidence: boolean
     name: string
-    newStatus: enum[SUGGESTED, CONFIRMED, REJECTED]
+    newStatus: enum[AUTOMATIC, SUGGESTED, CONFIRMED, REJECTED]
     newTarget: string
-    previousStatus: enum[SUGGESTED, CONFIRMED, REJECTED]
+    previousStatus: enum[AUTOMATIC, SUGGESTED, CONFIRMED, REJECTED]
     previousTarget: string
     reason: string
-    source: enum[PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
+    source: enum[PREVIOUS_VERSION, SPREADSHEET, BUDGET_SHEET, NAME, ADMIN]
     username: string
   }]
 
@@ -1701,9 +1705,10 @@ GET /api/condominiums/{}/fiscal-years
     label: string
     mapping: {
       accounts: integer
+      automatic: integer
       confirmed: integer
+      lowConfidence: integer
       rejected: integer
-      suggested: integer
       withoutMapping: integer
     }
     monthlyPlanned: number
@@ -2140,8 +2145,10 @@ POST /api/condominiums/{}/budgets/{}/account-mappings/suggestions
   returns: {
     byName: integer
     created: integer
+    fromBudgetSheet: integer
     fromPreviousVersion: integer
     fromSheet: integer
+    lowConfidence: integer
     withoutSuggestion: [{
       account: string
       name: string
@@ -2458,24 +2465,25 @@ PUT /api/condominiums/{}/budgets/{}/account-mappings/{}
     confirm: boolean
     detail: string
     lineId: UUID
-    type: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
+    type: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER, WITHOUT_LINE]
   }
   returns: {
     account: string
     debits: number
     ledgerEntries: integer
+    lowConfidence: boolean
     name: string
     reason: string
     sameAsPreviousVersion: boolean
-    source: enum[PREVIOUS_VERSION, SPREADSHEET, NAME, ADMIN]
-    status: enum[SUGGESTED, CONFIRMED, REJECTED]
+    source: enum[PREVIOUS_VERSION, SPREADSHEET, BUDGET_SHEET, NAME, ADMIN]
+    status: enum[AUTOMATIC, SUGGESTED, CONFIRMED, REJECTED]
     target: {
       code: string
       description: string
       detail: string
       lineId: UUID
       text: string
-      type: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER]
+      type: enum[BUDGET_LINE, ADJUSTMENT, TO_REALLOCATE, TRANSFER, WITHOUT_LINE]
     }
     updatedAt: Instant
     updatedBy: string

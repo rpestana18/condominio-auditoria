@@ -50,14 +50,18 @@ class NameSuggestionTest {
     }
 
     @Test
-    void tieDoesNotSuggest() {
-        // "Caixa D'água" is in the account of the second 1.3.2 and in no other line: suggests; two equal ones: tie
+    void tieBrokenByTheDescriptionIsOnlyOfLowConfidence() {
+        // "Caixa D'água" is in the account of the second 1.3.2 and in no other line: suggests; two equal ones: tie,
+        // broken by the description only as a low-confidence link (Q54)
         var pair = new java.util.ArrayList<>(candidates);
         pair.add(extraLine("1.8.8", "1624 - Caixa D'água", "Limpeza caixa d'água"));
         var r = suggestion.suggest("CAIXA D'ÁGUA", pair);
 
-        assertThat(r).isInstanceOf(NameSuggestion.NoSuggestion.class);
-        assertThat(r.reason()).contains("empate").contains("1.3.2").contains("1.8.8");
+        assertThat(r).isInstanceOfSatisfying(NameSuggestion.Suggested.class, s -> {
+            assertThat(s.lowConfidence()).isTrue();
+            assertThat(s.line().getEffectiveCode()).isEqualTo("1.3.2");
+        });
+        assertThat(r.reason()).startsWith("baixa confiança").contains("empate").contains("1.3.2").contains("1.8.8");
     }
 
     @Test
@@ -92,10 +96,12 @@ class NameSuggestionTest {
         assertThat(((NameSuggestion.Suggested) r).line().getEffectiveCode()).isEqualTo("1.3.4");
         assertThat(r.reason()).contains("empate entre as linhas 1.3.4, 1.7.10").contains("desempate pelo favorecido")
                 .contains("RIO GELAR REFRIGERACAO LTDA");
-        // Without the supplier, or with a supplier that names no line, it stays a tie
-        assertThat(suggestion.suggest("AR CONDICIONADO", pair)).isInstanceOf(NameSuggestion.NoSuggestion.class);
+        assertThat(((NameSuggestion.Suggested) r).lowConfidence()).isFalse();
+        // Without the supplier, or with a supplier that names no line, the tie is only of low confidence
+        assertThat(suggestion.suggest("AR CONDICIONADO", pair)).isInstanceOfSatisfying(NameSuggestion.Suggested.class,
+                s -> assertThat(s.lowConfidence()).isTrue());
         assertThat(suggestion.suggest("AR CONDICIONADO", List.of("OUTRA EMPRESA LTDA"), pair))
-                .isInstanceOf(NameSuggestion.NoSuggestion.class);
+                .isInstanceOfSatisfying(NameSuggestion.Suggested.class, s -> assertThat(s.lowConfidence()).isTrue());
         // Two tied lines that both fit the supplier: no suggestion
         List<BudgetLine> both = List.of(extraLine("1.3.4", "1600 - Ar Condicionado", "Rio Gelar"),
                 extraLine("1.7.10", "1600 - Ar Condicionado", "Gelar"));
@@ -131,7 +137,8 @@ class NameSuggestionTest {
         BudgetLine group = extraLine("1.1.1", "1224 - Férias", "Salários");
         BudgetLine holidays = extraLine("1.1.5", "1553 - Provisão", "Férias");
         var pair = List.of(group, holidays);
-        assertThat(suggestion.suggest("FÉRIAS", List.of(), pair)).isInstanceOf(NameSuggestion.NoSuggestion.class);
+        assertThat(suggestion.suggest("FÉRIAS", List.of(), pair)).isInstanceOfSatisfying(NameSuggestion.Suggested.class,
+                s -> assertThat(s.lowConfidence()).isTrue());
 
         group.setMarks(true, false);
         var r = suggestion.suggest("FÉRIAS", List.of(), pair, NameSuggestion.LineHints.of(pair));

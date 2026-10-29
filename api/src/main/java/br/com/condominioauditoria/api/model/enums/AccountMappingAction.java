@@ -1,6 +1,9 @@
 package br.com.condominioauditoria.api.model.enums;
 
-/** Recorded action: suggestion created, confirmation, rejection or target change. */
+/**
+ * Recorded action: automatic link (Q54), confirmation, rejection ("sem linha da PO") or target change. SUGGESTED is the
+ * old suggestion (before Q54), kept for the trail.
+ */
 public enum AccountMappingAction {
-    SUGGESTED, CONFIRMED, REJECTED, CHANGED
+    AUTOMATIC, SUGGESTED, CONFIRMED, REJECTED, CHANGED
 }

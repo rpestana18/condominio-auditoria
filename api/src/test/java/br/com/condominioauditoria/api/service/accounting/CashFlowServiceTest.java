@@ -56,17 +56,18 @@ class CashFlowServiceTest {
     }
 
     @Test
-    void beforeTheReviewTheOutflowsAreByAccount() {
+    void withoutAnyLineReviewTheOutflowsAreAlreadyByLine() {
+        // Q54 (29/10/2026): the lines read from the approved PO are valid by themselves; no review step
         CashFlowMonthlyResponse r = scenario.cashFlow.monthly(scenario.condominiumId, null, null, null);
 
         CashFlowMonthResponse sep = r.months().getFirst();
         assertThat(sep.month()).isEqualTo("2026-09");
-        assertThat(sep.byAccount()).isTrue();
+        assertThat(sep.byAccount()).isFalse();
         assertThat(sep.outflows()).isEqualByComparingTo("5100.00");
         assertThat(sep.inflows()).isEqualByComparingTo("10000.00");
         assertThat(sep.monthBalance()).isEqualByComparingTo("4900.00");
-        assertThat(r.outflowGroups()).isEmpty();
-        assertThat(r.warnings()).anyMatch(w -> w.code().equals("LINES_NOT_REVIEWED"));
+        assertThat(r.outflowGroups()).isNotEmpty();
+        assertThat(r.warnings()).noneMatch(w -> w.code().equals("LINES_NOT_REVIEWED"));
     }
 
     @Test

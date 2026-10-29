@@ -21,6 +21,6 @@ public final class AccountMappingMapper {
         return new AccountMappingEventResponse(event.getId(), event.getAccountCode(), event.getAccountName(),
                 event.getAction(), event.getUsername(), event.getOccurredAt(), event.getPreviousTarget(),
                 event.getPreviousStatus(), event.getNewTarget(), event.getNewStatus(), event.getSource(),
-                event.getReason());
+                event.getReason(), event.getLowConfidence());
     }
 }

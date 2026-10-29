@@ -110,7 +110,7 @@ public class ReallocationService {
                         + BudgetVsActualCalculator.mmyyyy(month)));
         AccountMapping mapping = l.getAccountCode() == null ? null
                 : mappings.findByBudgetIdAndAccountCode(budget.getId(), l.getAccountCode()).orElse(null);
-        if (mapping == null || mapping.getStatus() != AccountMappingStatus.CONFIRMED
+        if (mapping == null || mapping.getStatus() == null || !mapping.getStatus().effective()
                 || mapping.getTargetType() != MappingTargetType.TO_REALLOCATE) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "Só lançamentos \"a realocar\" são"
                     + " realocados: a conta " + l.getAccountCode() + " não tem de-para confirmado para REALLOCATE");

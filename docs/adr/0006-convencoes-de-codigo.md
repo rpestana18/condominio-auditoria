@@ -64,12 +64,18 @@ Mensagens de log (acréscimo de 28/10/2026, ADR 0008, D9): o texto das mensagens
 | fundo de rateio | `ApportionmentFund` (`APPORTIONMENT_FUNDS`) | todo fundo que não é o ordinário, só na ponte de todos os fundos (Q49) |
 | mês parcial, mês em andamento | `PartialMonth`, "month in progress" | RF-13.10 e Q50 |
 | tipo da linha: recorrente, eventual, sazonal, anual | `SpendingProfile`: `RECURRING`, `OCCASIONAL`, `SEASONAL`, `ANNUAL` | RF-13.14 (ADR 0009, Decisão 2). `RECURRING` substitui `MONTHLY`; `PROVISION` e `SEPARATE_APPORTIONMENT` não mudam |
-| linha conferida, conferência das linhas, estado da conferência | `reviewed`, `BudgetLineReview`, `BudgetLineReviewStatus` (`PENDING`, `REVIEWED`) | RF-13.12 (ADR 0009, Decisão 1); avisos em `BudgetLineReviewCheck` |
+| linha conferida, conferência das linhas, estado da conferência | `reviewed`, `BudgetLineReview`, `BudgetLineReviewStatus` (`PENDING`, `REVIEWED`) | RF-13.12 (ADR 0009, Decisão 1); avisos (sinais, desde a Q54) em `BudgetLineReviewCheck`. Desde a Q54, `PENDING` aparece como "automática" e vale sozinha |
 | conta de grupo, vale a descrição | `groupAccount`, `descriptionPrevails` | marcas do Admin na conferência (O2 e O1) |
 | entrada acima da despesa prevista | `incomeAbovePlannedExpense` (`INCOME_ABOVE_PLANNED_EXPENSE`) | substitui "receita acima ou abaixo do previsto" (`INCOME_VS_PLANNED`), RF-13.15 |
 | economia nas linhas | `LINE_SAVINGS` | previsto − realizado das linhas recorrentes, sazonais, eventuais e anuais (RF-13.15; Q52, 28/10/2026). O termo "eventuais e anuais: previsto não usado" (`UNUSED_OCCASIONAL`) saiu em 28/10/2026 |
 | origem da linha, planilha de apoio, método | `BudgetLineOrigin`, `supportSheet`, `OriginMethod` (`AVERAGE_TIMES_INDEX`, `EQUAL_TO_AVERAGE`, `TYPED`, `NO_AVERAGE`) | RF-13.13 (ADR 0009, Decisão 3 B); fonte `SHEET` ou `ADMIN` |
 | entradas e saídas (mês a mês), lançamentos da tela | `MonthlyCashFlow`, `CashFlowEntry` | RF-13.11 (ADR 0009, Decisão 4) |
+| ligação automática (de-para) | `AccountMappingStatus.AUTOMATIC` | vale sem confirmação (Q54; ADR 0009, Decisão 8). `SUGGESTED` só em dados antigos |
+| ligação de baixa confiança | `lowConfidence` | regra objetiva da ADR 0009, Decisão 8; filtro "só exceções" (`EXCEPTIONS`) |
+| conta sem linha encontrada | `NO_LINK_FOUND` ("conta sem linha encontrada") | conta do extrato que nenhuma regra ligou; vai para "sem linha da PO" com aviso |
+| sem linha da PO (decisão do Admin) | `MappingTargetType.WITHOUT_LINE` | O7: fica em "sem linha da PO" sem aviso |
+| planilha de apoio da PO (origem da ligação) | `AccountMappingSource.BUDGET_SHEET`, `BudgetSheetBridge` | ponte por nome entre o extrato e as linhas (ADR 0009, Decisão 8) |
+| conta da planilha de apoio, conta-mãe | `BudgetSheetAccount` (api), `ExpenseAccount` (rag), `parentCode` | aba de despesas da planilha; mãe deduzida pelas somas (mensagem v5) |
 | antes da PO aprovada | `BEFORE_BUDGET` | meses sem PO, no fluxo contínuo (RF-13.16) |
 | saldo do mês, saldo acumulado | `monthBalance`, `closingBalance` | N2 |
 | severidade | `Severity` | |

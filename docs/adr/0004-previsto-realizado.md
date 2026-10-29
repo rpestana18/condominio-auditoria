@@ -94,6 +94,8 @@ São oito decisões. Cada uma traz opções, prós e contras e uma recomendaçã
 
 ## Decisão 4: método da sugestão automática do de-para
 
+> **Revisão de 29/10/2026:** desde a Q54 a ligação automática vale sem confirmação e a planilha de apoio da PO entra como fonte, antes do nome. Ver a ADR 0009, Decisão 8.
+
 | Opção | Prós | Contras |
 |---|---|---|
 | **A. Comparação de texto determinística no backend, sem IA**, mais a cópia da versão anterior da PO e a carga de planilha | Funciona em todos os modos de IA, inclusive `DESLIGADO` (RF-03.1.5). Sem custo, sem chamada registrada, repetível em teste. Nenhuma biblioteca nova | Acerta menos que a IA em nomes muito diferentes (ex.: "1442 Vigia e Portaria" contra "1692 - Vigia e Portaria / Join Facilities" acerta; abreviações estranhas, não) |

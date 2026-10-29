@@ -99,4 +99,23 @@ public class SupportSheetParserGoldenTest {
         assertThat(radios.indexName()).isEqualTo("IGP-M");
         assertThat(radios.indexNote()).isEqualTo("rótulo IGP-M, valor aplicado 4,44% (igual ao IPCA ACUMULADO)");
     }
+
+    /** v5 (ADR 0009, Decision 8): the accounts of the expenses sheet with the group deduced from the sums. */
+    @Test
+    public void expenseAccountsWithTheGroupDeducedFromTheSums() {
+        var byCode = new java.util.HashMap<String, br.com.condominioauditoria.rag.model.budget.ExpenseAccount>();
+        origins.accounts().forEach(a -> byCode.put(a.code(), a));
+        assertThat(origins.accounts()).hasSize(133);
+        assertThat(byCode.get("1547").name()).isEqualTo("Adiantamento Quinzenal");
+        assertThat(byCode.get("1547").parentCode()).isEqualTo("1545");
+        assertThat(byCode.get("1546").parentCode()).isEqualTo("1545");
+        assertThat(byCode.get("1545").parentCode()).isNull();
+        assertThat(byCode.get("1557").parentCode()).isEqualTo("1556");
+        assertThat(byCode.get("1570").parentCode()).isEqualTo("1569");
+        assertThat(byCode.get("1636").parentCode()).isEqualTo("1635");
+        assertThat(byCode.get("1703").parentCode()).isEqualTo("1702");
+        assertThat(byCode.get("1765").parentCode()).isEqualTo("1753");
+        assertThat(byCode.get("1738").parentCode()).isEqualTo("1736");
+        assertThat(byCode.get("1692").parentCode()).isNull();
+    }
 }

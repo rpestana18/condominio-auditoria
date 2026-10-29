@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Message rag → api. Contract: contracts/mensagens/v4/processing-result.schema.json
- * (v4: {@code budgetLineOrigins}, the origin of the lines read from the budget's support sheet, ADR 0009 Decision 3 B). These records belong to the
+ * Message rag → api. Contract: contracts/mensagens/v5/processing-result.schema.json
+ * (v5: the accounts of the support sheet's expenses sheet, ADR 0009 Decision 8; v4: {@code budgetLineOrigins}, the origin of the lines read from the budget's support sheet, ADR 0009 Decision 3 B). These records belong to the
  * api: the rag has its own. Only the JSON contract is shared.
  */
 public record ProcessingResultMessage(
@@ -126,12 +126,27 @@ public record ProcessingResultMessage(
             String detail) {
     }
 
-    /** Lines of the budget's support sheet (v4): where each amount came from. Explains only, never enters a calculation. */
+    /**
+     * Lines of the budget's support sheet (v4): where each amount came from. Explains only, never enters a calculation.
+     * {@code accounts} (v5): the accounts of the expenses sheet, the bridge of the automatic account mapping (Q54).
+     */
     public record BudgetLineOriginsData(
             String sheet,
             String expensesSheet,
             String indexSheet,
-            List<BudgetLineOriginData> lines) {
+            List<BudgetLineOriginData> lines,
+            List<ExpenseAccountData> accounts) {
+    }
+
+    /**
+     * One account of the expenses sheet (v5), in the budget's chart of accounts: code, printed name, row and the group
+     * account deduced by the rag from the sums (null when none).
+     */
+    public record ExpenseAccountData(
+            String code,
+            String name,
+            int row,
+            String parentCode) {
     }
 
     /**

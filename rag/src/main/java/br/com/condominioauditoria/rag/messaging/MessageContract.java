@@ -18,7 +18,7 @@ import tools.jackson.databind.ser.std.ToStringSerializer;
 /**
  * Converts the queue messages to and from JSON and validates them against the contracts, on output and on input:
  * FileReceived, IndexFile and IndexingResult in contracts/mensagens/v3 (ADR 0006); ProcessingResult in
- * contracts/mensagens/v4 (ADR 0009).
+ * contracts/mensagens/v5 (ADR 0009, Decisions 3 B and 8).
  * Money goes as text ("1234.56"), never as a floating-point number.
  */
 @Component
@@ -36,7 +36,7 @@ public class MessageContract {
     public MessageContract() {
         SchemaRegistry record = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
         this.fileReceived = record.getSchema(SchemaLocation.of("classpath:mensagens/v3/file-received.schema.json"));
-        this.processingResult = record.getSchema(SchemaLocation.of("classpath:mensagens/v4/processing-result.schema.json"));
+        this.processingResult = record.getSchema(SchemaLocation.of("classpath:mensagens/v5/processing-result.schema.json"));
         this.indexFile = record.getSchema(SchemaLocation.of("classpath:mensagens/v3/index-file.schema.json"));
         this.indexingResult = record.getSchema(
                 SchemaLocation.of("classpath:mensagens/v3/indexing-result.schema.json"));
@@ -50,7 +50,7 @@ public class MessageContract {
 
     public byte[] write(ProcessingResultMessage message) {
         String json = mapper.writeValueAsString(message);
-        validate(processingResult, json, "ProcessingResult v4");
+        validate(processingResult, json, "ProcessingResult v5");
         return json.getBytes(StandardCharsets.UTF_8);
     }
 

@@ -32,9 +32,9 @@ class MessageContractTest {
 
     @Test
     void readsTheCashFlowExampleWithCondoFeeReceipt() throws Exception {
-        ProcessingResultMessage r = contract.readProcessingResult(example("v4", "processing-result-cash-flow.json"));
+        ProcessingResultMessage r = contract.readProcessingResult(example("v5", "processing-result-cash-flow.json"));
 
-        assertThat(r.version()).isEqualTo(4);
+        assertThat(r.version()).isEqualTo(5);
         assertThat(r.budgetLineOrigins()).isNull();
         assertThat(r.status()).isEqualTo(ProcessingResultMessage.Status.COMPLETED);
         assertThat(r.budget()).isNull();
@@ -52,7 +52,7 @@ class MessageContractTest {
 
     @Test
     void readsTheBudgetExample() throws Exception {
-        ProcessingResultMessage r = contract.readProcessingResult(example("v4", "processing-result-budget.json"));
+        ProcessingResultMessage r = contract.readProcessingResult(example("v5", "processing-result-budget.json"));
 
         assertThat(r.cashFlow()).isNull();
         var budget = r.budget();
@@ -77,10 +77,13 @@ class MessageContractTest {
         });
     }
 
-    /** v4 (ADR 0009, Decision 3 B): the origin of each line of the support sheet, money and rates as text. */
+    /**
+     * v4 (ADR 0009, Decision 3 B): the origin of each line of the support sheet, money and rates as text; v5 (Decision
+     * 8): the accounts of the expenses sheet with the group account.
+     */
     @Test
     void readsTheSupportSheetExample() throws Exception {
-        ProcessingResultMessage r = contract.readProcessingResult(example("v4",
+        ProcessingResultMessage r = contract.readProcessingResult(example("v5",
                 "processing-result-support-sheet.json"));
 
         assertThat(r.budget()).isNull();
@@ -93,6 +96,14 @@ class MessageContractTest {
         assertThat(vigia.method()).isEqualTo("AVERAGE_TIMES_INDEX");
         assertThat(vigia.indexRate()).isEqualByComparingTo("0.0723");
         assertThat(vigia.finalAmount()).isEqualByComparingTo("80022.96");
+        assertThat(r.budgetLineOrigins().accounts()).extracting(a -> a.code() + ">" + a.parentCode())
+                .contains("1547>1545", "1545>null");
+    }
+
+    @Test
+    void v4ResultIsRejected() throws Exception {
+        assertThatThrownBy(() -> contract.readProcessingResult(example("v4", "processing-result-budget.json")))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -111,7 +122,7 @@ class MessageContractTest {
 
     @Test
     void entryWithoutCondoFeeReceiptIsRejected() throws Exception {
-        String json = new String(example("v4", "processing-result-cash-flow.json"), StandardCharsets.UTF_8)
+        String json = new String(example("v5", "processing-result-cash-flow.json"), StandardCharsets.UTF_8)
                 .replaceAll(",\\s*\"condoFeeReceipt\": false", "");
         assertThat(json).doesNotContain("\"condoFeeReceipt\": false");
         assertThatThrownBy(() -> contract.readProcessingResult(json.getBytes(StandardCharsets.UTF_8)))
@@ -120,7 +131,7 @@ class MessageContractTest {
 
     @Test
     void unknownBudgetMarkIsRejected() throws Exception {
-        String json = new String(example("v4", "processing-result-budget.json"), StandardCharsets.UTF_8)
+        String json = new String(example("v5", "processing-result-budget.json"), StandardCharsets.UTF_8)
                 .replaceFirst("\"SEPARATE_APPORTIONMENT\"", "\"Rateio à parte\"");
         assertThatThrownBy(() -> contract.readProcessingResult(json.getBytes(StandardCharsets.UTF_8)))
                 .hasMessageContaining("fora do contrato");
@@ -137,11 +148,11 @@ class MessageContractTest {
 
     @Test
     void moneyAsNumberIsRejected() throws Exception {
-        String cashFlow = new String(example("v4", "processing-result-cash-flow.json"), StandardCharsets.UTF_8)
+        String cashFlow = new String(example("v5", "processing-result-cash-flow.json"), StandardCharsets.UTF_8)
                 .replace("\"1500.10\"", "1500.1");
         assertThatThrownBy(() -> contract.readProcessingResult(cashFlow.getBytes(StandardCharsets.UTF_8)))
                 .hasMessageContaining("fora do contrato");
-        String budget = new String(example("v4", "processing-result-budget.json"), StandardCharsets.UTF_8)
+        String budget = new String(example("v5", "processing-result-budget.json"), StandardCharsets.UTF_8)
                 .replace("\"1585.14\"", "1585.14");
         assertThatThrownBy(() -> contract.readProcessingResult(budget.getBytes(StandardCharsets.UTF_8)))
                 .hasMessageContaining("fora do contrato");

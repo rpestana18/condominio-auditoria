@@ -95,7 +95,7 @@ public class FileProcessingServiceTest {
             assertThat(r.cashFlow()).isNull();
             assertThat(r.totalsChecks()).isNotEmpty();
             assertThat(new String(new MessageContract().write(r), java.nio.charset.StandardCharsets.UTF_8))
-                    .contains("\"version\":4").contains("\"budgeted\":\"1585.14\"");
+                    .contains("\"version\":5").contains("\"budgeted\":\"1585.14\"");
         }
         Path cashFlow = privateDir.resolve("fluxo-caixa-2026-09.read-document.json");
         if (Files.exists(cashFlow)) {

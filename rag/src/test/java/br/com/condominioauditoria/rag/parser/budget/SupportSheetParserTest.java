@@ -138,6 +138,28 @@ public class SupportSheetParserTest {
                 List.of());
     }
 
+    /** v5: an account is a group when the accounts right below it add up to its amounts, month by month. */
+    @Test
+    public void groupAccountDeducedFromTheSumsOfTheAccountsBelow() {
+        var rows = List.of(
+                row("1545", "Verbas Salariais", 3, "100.00", "50.00"),
+                row("1546", "Salário", 4, "60.00", "30.00"),
+                row("1547", "Adiantamento Quinzenal", 5, "40.00", "20.00"),
+                row("1556", "Leis Sociais", 6, "10.00", "0.00"),
+                row("1557", "INSS", 7, "10.00", "0.00"),
+                row("1692", "Vigia e Portaria", 8, "7.00", "7.00"));
+        var accounts = SupportSheetParser.groupAccounts(rows);
+        assertThat(accounts).extracting(a -> a.code() + ">" + a.parentCode())
+                .containsExactly("1545>null", "1546>1545", "1547>1545", "1556>null", "1557>1556", "1692>null");
+        assertThat(accounts.get(2).name()).isEqualTo("Adiantamento Quinzenal");
+        assertThat(accounts.get(2).row()).isEqualTo(5);
+    }
+
+    private static SupportSheetParser.AccountRow row(String code, String name, int row, String... amounts) {
+        return new SupportSheetParser.AccountRow(code, name, row,
+                java.util.Arrays.stream(amounts).map(java.math.BigDecimal::new).toList());
+    }
+
     private static void header(List<Cell> cells, int row, String... titles) {
         for (int i = 0; i < titles.length; i++) {
             cells.add(text(row, i + 1, titles[i]));

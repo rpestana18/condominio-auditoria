@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
  * ProcessingResultMessage v4 messages of the private golden (September/2026 cash flow, 2026/2027 budget and its
  * support sheet), in the
  * form the rag publishes them. They are the input of the api golden (ADR 0004, steps 6 and 7): the api never imports a
- * rag class, it only reads the message through the contract (contracts/mensagens/v4). The ids are fixed so the output
+ * rag class, it only reads the message through the contract (contracts/mensagens/v5). The ids are fixed so the output
  * is always the same.
  *
  * Without the message file, the test writes it; with it, it checks that the rag's current output is identical (did
@@ -66,7 +66,7 @@ public class ProcessingResultGoldenTest {
         var result = service.parse(file, new ReaderContract().convert(Files.readString(read)));
         String json = new String(new MessageContract().write(result), StandardCharsets.UTF_8);
 
-        Path message = privateDir.resolve(name + ".resultado-v4.json");
+        Path message = privateDir.resolve(name + ".resultado-v5.json");
         if (!Files.exists(message)) {
             Files.writeString(message, json);
         }

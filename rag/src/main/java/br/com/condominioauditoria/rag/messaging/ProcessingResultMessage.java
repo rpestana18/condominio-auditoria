@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Message rag → api. Contract: contracts/mensagens/v4/processing-result.schema.json (v4: {@code budgetLineOrigins}, the
+ * Message rag → api. Contract: contracts/mensagens/v5/processing-result.schema.json (v5: the expense accounts of the support sheet; v4: {@code budgetLineOrigins}, the
  * origin of the lines read from the budget's support sheet; ADR 0009, Decision 3 B).
  */
 public record ProcessingResultMessage(
@@ -25,8 +25,8 @@ public record ProcessingResultMessage(
         List<TotalsCheck> totalsChecks,
         BudgetLineOrigins budgetLineOrigins) {
 
-    /** Contract version published by the rag. The api accepts only v4 (ADR 0009). */
-    public static final int VERSION = 4;
+    /** Contract version published by the rag. The api accepts only v5 (ADR 0009, Decision 8). */
+    public static final int VERSION = 5;
 
     public enum Status {
         STARTED, COMPLETED, FAILED
@@ -56,7 +56,7 @@ public record ProcessingResultMessage(
                 Status.COMPLETED, null, parser, pages, null, budgetData, checks, null);
     }
 
-    /** Support sheet of the budget read: the origin of each line (v4). */
+    /** Support sheet of the budget read: the origin of each line and the expense accounts (v5). */
     public static ProcessingResultMessage completedSupportSheet(FileReceivedMessage a, String parser, int pages,
             BudgetLineOrigins origins, List<TotalsCheck> checks) {
         return new ProcessingResultMessage(VERSION, a.processingId(), a.fileId(), a.condominiumId(),
